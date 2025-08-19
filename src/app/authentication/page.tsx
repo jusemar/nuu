@@ -19,9 +19,12 @@ import {
 } from "@/components/ui/tabs"
 import SigInForm from "./components/sign-in-form"
 import SignUpForm from "./components/sign-up-form"
+import { Header } from "@/components/common/header"
 
 const  Authentication= async () =>{
   return (
+   <>
+   <Header/>
     <div className="flex w-full max-w-sm flex-col gap-6 p-5">
       <Tabs defaultValue="sign-in">
         <TabsList>
@@ -37,6 +40,8 @@ const  Authentication= async () =>{
         </TabsContent>
       </Tabs>
     </div>
+   
+   </>
   )
 }
 

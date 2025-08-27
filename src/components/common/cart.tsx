@@ -18,7 +18,7 @@ import {
 } from "../ui/sheet";
 import CartItem from "./cart-item";
 
-export const Cart = () => {
+export const Cart = () => { 
   const { data: cart } = useCart();
   return (
     <Sheet>

@@ -44,6 +44,7 @@
 }
 
 :root {
+  --progress: 0;
   --radius: 0.65rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -113,11 +114,50 @@
 }
 
 
+
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  html {
+    @apply min-h-screen;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground min-h-screen flex flex-col;
   }
+  main {
+    @apply flex-1; /* Faz o main crescer e empurrar footer para baixo */
+  }
+}
+
+
+.autoplay-progress circle {
+  stroke-dashoffset: calc(125.6 * (1 - var(--progress)));
+  stroke-dasharray: 125.6;
+}
+
+/* Se quiser personalizar as cores da barra de progresso */
+.autoplay-progress {
+  color: var(--primary); /* Usa a cor primária do seu tema */
+}
+
+.autoplay-progress circle {
+  stroke: currentColor;
+}
+
+/* Estilos da paginação (bolinhas) */
+.swiper-pagination-bullet {
+  @apply bg-gray-300 opacity-100 w-3 h-3 mx-1;
+}
+
+.swiper-pagination-bullet-active {
+  @apply bg-blue-500;
+}
+
+/* Estilos das setas de navegação */
+.swiper-button-next,
+.swiper-button-prev {
+  @apply text-blue-500 w-10 h-10;
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+  @apply text-2xl font-bold;
 }

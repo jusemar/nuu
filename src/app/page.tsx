@@ -10,6 +10,7 @@ import { productTable } from "@/db/schema";
 import { getNewlyCreatedProducts, getProductsWithVariants } from "@/data/products/get";
 import { get } from "http";
 import { getCategories } from "@/data/categories/get";
+import { BannerCarousel } from "@/components/ui/BannerCarousel";
 
 const Home = async () => {
 
@@ -21,19 +22,26 @@ const Home = async () => {
 
   return (
     <>
-      <Header />
+      <Header />     
+  
       <div className="space-y-6">
-        <div className="px-5">
-          <Image
-            src="/banner-01.png"
-            alt="Leve uma vida com estilo"
-            height={0}
-            width={0}
-            sizes="100vw"
-            className="h-auto w-full"
-          />
-        </div>
+        
 
+      <BannerCarousel 
+  banners={[
+    {
+      mobileSrc: "/banner-promocao.webp", 
+      desktopSrc: "/banner-promocao.webp",
+      alt: "Banner 1"
+    },
+     {
+      mobileSrc: "/banner-promocao.webp", 
+      desktopSrc: "/banner-promocao.webp",
+      alt: "Banner 2"
+    }
+  ]} 
+/>      
+ 
         <ProductList products={products} title="Mais vendidos" />
 
         <div className="px-5">

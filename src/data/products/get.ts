@@ -2,6 +2,7 @@
 import { db } from "@/db";
 import { productTable } from "@/db/schema";
 import { desc } from "drizzle-orm";
+import "server-only"
 
 
 /*interface Product {

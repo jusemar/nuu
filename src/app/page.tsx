@@ -1,3 +1,4 @@
+import { Navbar08 } from "@/components/ui/shadcn-io/navbar-08"
 import { desc } from "drizzle-orm";
 import Image from "next/image";
 
@@ -11,6 +12,7 @@ import { getNewlyCreatedProducts, getProductsWithVariants } from "@/data/product
 import { get } from "http";
 import { getCategories } from "@/data/categories/get";
 import { BannerCarousel } from "@/components/ui/BannerCarousel";
+import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 
 const Home = async () => {
 
@@ -22,6 +24,12 @@ const Home = async () => {
 
   return (
     <>
+    
+    <MarqueeBanner 
+  text="&nbsp;🚚 Frete Grátis acima de R$ 100&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;🎁 10% off na primeira compra &nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;⭐ Produtos com garantia &nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo Brasil &nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
+  speed={60}
+/>
+<Navbar08 />
       <Header />     
   
       <div className="space-y-6">

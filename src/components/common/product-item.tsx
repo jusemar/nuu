@@ -9,39 +9,34 @@ interface ProductItemProps {
   product: typeof productTable.$inferSelect & {
     variants: (typeof productVariantTable.$inferSelect)[];
   };
-  textContainerClassName?: string;
+  className?: string;
 }
 
-const ProductItem = ({ product, textContainerClassName }: ProductItemProps) => {
+const ProductItem = ({ product, className }: ProductItemProps) => {
   const firstVariant = product.variants[0];
+  
   return (
-    <Link
-      href={`/product-variant/${firstVariant.slug}`}
-      className="flex flex-col gap-4"
-    >
-      <Image
-        src={firstVariant.imageUrl}
-        alt={firstVariant.name}
-        sizes="100vw"
-        height={0}
-        width={0}
-        className="h-auto w-full rounded-3xl"
-      />
-      <div
-        className={cn(
-          "flex max-w-[200px] flex-col gap-1",
-          textContainerClassName,
-        )}
+    <div className={cn("group w-full max-w-xs mx-auto", className)}>
+      <Link
+        href={`/product-variant/${firstVariant.slug}`}
+        className="block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg"
       >
-        <p className="truncate text-sm font-medium">{product.name}</p>
-        <p className="text-muted-foreground truncate text-xs font-medium">
-          {product.description}
-        </p>
-        <p className="truncate text-sm font-semibold">
-          {formatCentsToBRL(firstVariant.priceInCents)}
-        </p>
-      </div>
-    </Link>
+        <div className="relative mx-auto w-64 h-64 overflow-hidden">
+          <Image
+            src={firstVariant.imageUrl}
+            alt={firstVariant.name}
+            fill
+            className="object-contain group-hover:scale-105 transition-transform duration-300" // object-contain mantém a proporção sem cortar
+          />
+        </div>
+        <div className="p-2 w-full max-w-full min-w-0 break-words overflow-hidden">
+  <p className="font-semibold text-gray-800 truncate mb-2 break-words whitespace-normal">{product.name}</p>
+  <p className="text-gray-500 text-xs mb-2 break-words whitespace-normal overflow-wrap-break-word">{product.description}</p>
+  <p className="font-bold text-lg text-gray-900 break-words whitespace-normal">{formatCentsToBRL(firstVariant.priceInCents)}</p>
+</div>
+      
+      </Link>
+    </div>
   );
 };
 

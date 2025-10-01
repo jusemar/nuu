@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBasketIcon } from "lucide-react";
+import { ShoppingBasketIcon, ShoppingCartIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -17,16 +17,27 @@ import {
   SheetTrigger,
 } from "../ui/sheet";
 import CartItem from "./cart-item";
+import { Badge } from "@/components/ui/badge";
 
 export const Cart = () => { 
   const { data: cart } = useCart();
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="icon">
-          <ShoppingBasketIcon />
-        </Button>
-      </SheetTrigger>
+    <Sheet>   
+
+<SheetTrigger asChild>
+  <Button variant="ghost" size="icon" className="relative h-8 w-8">
+    <ShoppingCartIcon className="h-6 w-6" />
+    {cart?.items && cart.items.length > 0 && (
+      <Badge 
+        variant="secondary" 
+        className="absolute -top-1 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs bg-orange-500 text-white"
+      >
+        {cart.items.length}
+      </Badge>
+    )}
+  </Button>
+</SheetTrigger>
+
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Carrinho</SheetTitle>

@@ -8,6 +8,7 @@ import { UserIcon, SearchIcon, MenuIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client'; // USE O MESMO DO HEADER
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // USE O MESMO DO HEADER
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -19,7 +20,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+// No topo do arquivo, adicione:
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronDownIcon, LogOutIcon } from 'lucide-react'; // Adicione estes ícones
 import { cn } from '@/lib/utils';
+import { Cart } from '@/components/common/cart';
 
 // Logo Component (no mesmo arquivo)
 const Logo = () => {
@@ -85,6 +95,12 @@ export const Navbar08 = () => {
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Left side */}
           <div className="flex flex-1 items-center gap-2">
+               {/* Logo */}
+            <Link href="/" className="flex items-center space-x-2 text-primary">
+              <Logo />
+              <span className="hidden font-bold text-xl sm:inline-block">Do Rocha</span>
+            </Link>
+
             {/* Mobile menu trigger */}
             {isMobile && (
               <Popover>
@@ -111,31 +127,31 @@ export const Navbar08 = () => {
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <p className="font-semibold text-sm">{session.user.name}</p>
-                            <p className="text-xs text-muted-foreground">{session.user.email}</p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => authClient.signOut()}
-                          >
-                            <UserIcon className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+  <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage
+                          src={session?.user?.image as string | undefined}
+                        />
+                        <AvatarFallback>
+                          {session?.user?.name?.split(" ")?.[0]?.[0]}
+                          {session?.user?.name?.split(" ")?.[1]?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div>
+                        <h3 className="font-semibold">{session?.user?.name}</h3>
+                        <span className="text-muted-foreground block text-xs">
+                          {session?.user?.email}
+                        </span>
+                      </div>
+                    </div>
+)}
                     </div>
                   </div>
                 </PopoverContent>
               </Popover>
-            )}
-            
-            {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 text-primary">
-              <Logo />
-              <span className="hidden font-bold text-xl sm:inline-block">Do Rocha</span>
-            </Link>
+            )}            
+         
           </div>
 
           {/* Middle area - Search */}
@@ -153,25 +169,40 @@ export const Navbar08 = () => {
           </div>
 
           {/* Right side - Botão de Login SIMPLES */}
-          <div className="flex flex-1 items-center justify-end">
-            {!session?.user ? (
-              <Button asChild variant="ghost" size="sm" className="h-8 gap-2">
-                <Link href="/authentication">
-                  <UserIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Entrar</span>
-                </Link>
-              </Button>
-            ) : (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 gap-2"
-                onClick={() => authClient.signOut()}
-              >
-                <UserIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Sair</span>
-              </Button>
-            )}
+          <div className="flex flex-1 items-center justify-end gap-2">
+            <Cart />
+  {!session?.user ? (
+    <Button asChild variant="ghost" size="sm" className="h-8 gap-2">
+      <Link href="/authentication">
+        <UserIcon className="h-4 w-4" />
+        <span className="hidden sm:inline">Entrar</span>
+      </Link>
+    </Button>
+ // Right side - Substitua TODO o bloco do usuário logado por:
+) : (
+  <div className="flex items-center gap-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 gap-2 hover:bg-accent">
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={session?.user?.image as string | undefined} />
+            <AvatarFallback>
+              {session?.user?.name?.split(' ')[0]?.[0]}
+            </AvatarFallback>
+          </Avatar>
+          <span className="hidden sm:inline">{session?.user?.name?.split(' ')[0]}</span>
+          <ChevronDownIcon className="h-4 w-4 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => authClient.signOut()}>
+          <LogOutIcon className="h-4 w-4 mr-2" />
+          Sair
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+)}
           </div>
         </div>
 
@@ -186,6 +217,8 @@ export const Navbar08 = () => {
             </div>
           </div>
         )}
+
+      
       </div>
     </header>
   );

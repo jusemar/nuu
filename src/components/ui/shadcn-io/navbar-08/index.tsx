@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { Cart } from '@/components/common/cart';
 import { CategoriesMenu } from '@/components/common/categories-menu';
 import { useCategories } from '@/providers/categories-provider-client';
+import { MobileCategoriesMenu } from '@/components/common/categories-menu/mobile-menu';
 
 // Logo Component (no mesmo arquivo)
 const Logo = () => {
@@ -116,44 +117,20 @@ export const Navbar08 = () => {
                     <MenuIcon className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-64">
+                 {/* TODO o conteúdo do Popover mobile */}
+                 
+                <PopoverContent align="start" className="w-64 p-0">
                   <div className="p-2">
-                    <Link href="/" className="block py-2">Home</Link>
-                    <Link href="/products" className="block py-2">Produtos</Link>
-                    <Link href="/categories" className="block py-2">Categorias</Link>
+                    {/* Links principais */}
+                    <Link href="/" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-accent">
+                      Home
+                    </Link>
+                    <Link href="/about" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-accent">
+                      Sobre
+                    </Link>
                     
-                    {/* Seção de login mobile - IGUAL AO HEADER */}
-                    <div className="mt-4 border-t pt-4">
-                      {!session?.user ? (
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">Olá. Faça seu login!</p>
-                          <Button size="icon" asChild variant="outline">
-                            <Link href="/authentication">
-                              <UserIcon className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      ) : (
-  <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage
-                          src={session?.user?.image as string | undefined}
-                        />
-                        <AvatarFallback>
-                          {session?.user?.name?.split(" ")?.[0]?.[0]}
-                          {session?.user?.name?.split(" ")?.[1]?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div>
-                        <h3 className="font-semibold">{session?.user?.name}</h3>
-                        <span className="text-muted-foreground block text-xs">
-                          {session?.user?.email}
-                        </span>
-                      </div>
-                    </div>
-)}
-                    </div>
+                    {/* Categorias com submenu */}
+                    <MobileCategoriesMenu />
                   </div>
                 </PopoverContent>
               </Popover>

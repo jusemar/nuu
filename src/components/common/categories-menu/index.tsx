@@ -33,10 +33,10 @@ export const CategoriesMenu = ({ categories }: CategoriesMenuProps) => {
           <ChevronDownIcon className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        <ScrollArea className="h-96">
-          <div className="p-2">
-            {categories && categories.length > 0 ? (
+         <PopoverContent className="w-44 p-0" align="start"> 
+            <ScrollArea className="h-auto max-h-64"> 
+              <div className="p-1"> 
+                  {categories && categories.length > 0 ? (
               categories.map((category) => (
                 <Link
                   key={category.id}

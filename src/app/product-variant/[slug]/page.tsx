@@ -3,7 +3,6 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import Footer from "@/components/common/footer";
-import { Header } from "@/components/common/header";
 import ProductList from "@/components/common/product-list";
 import { db } from "@/db";
 import { productTable, productVariantTable } from "@/db/schema";
@@ -11,6 +10,7 @@ import { formatCentsToBRL } from "@/helpers/money";
 
 import ProductActions from "./components/product-actions";
 import VariantSelector from "./components/variant-selector";
+import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 
 interface ProductVariantPageProps {
   params: Promise<{ slug: string }>;
@@ -39,7 +39,8 @@ const ProductVariantPage = async ({ params }: ProductVariantPageProps) => {
   });
   return (
     <>
-      <Header />
+    <Navbar08 />
+      
       <div className="flex flex-col space-y-6">
         <Image
           src={productVariant.imageUrl}

@@ -2,12 +2,13 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { Header } from "@/components/common/header";
+
 import { db } from "@/db";
 import { orderTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import Orders from "./components/orders";
+import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 
 const MyOrdersPage = async () => {
   const session = await auth.api.getSession({
@@ -33,7 +34,8 @@ const MyOrdersPage = async () => {
 
   return (
     <>
-      <Header />
+    <Navbar08 />
+      
       <div className="px-5">
         <Orders
           orders={orders.map((order) => ({

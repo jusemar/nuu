@@ -4,7 +4,7 @@ import Image from "next/image";
 import CategorySelector from "@/components/common/category-selector";
 import ProductCarousel from "@/components/common/product-carousel";
 import Footer from "@/components/common/footer";
-import { Header } from "@/components/common/header";
+
 import ProductList from "@/components/common/product-list";
 import { db } from "@/db";
 import { productTable } from "@/db/schema";
@@ -32,9 +32,7 @@ const Home = async () => {
         text="&nbsp;🚚 Frete Grátis acima de R$ 100&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;🎁 10% off na primeira compra &nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;⭐ Produtos com garantia &nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo Brasil &nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
         speed={60}
       />
-      <Navbar08 />
-      <Header />     
-  
+      <Navbar08 categories={categories} />
       <div className="space-y-6">
         <BannerCarousel 
           banners={[
@@ -64,7 +62,7 @@ const Home = async () => {
           <CategorySelector categories={categories} />
         </div>
 
-        <div className="px-5">
+      {/*   <div className="px-5">
           <Image
             src="/banner-02.png"
             alt="Leve uma vida com estilo"
@@ -73,7 +71,7 @@ const Home = async () => {
             sizes="100vw"
             className="h-auto w-full"
           />
-        </div>
+        </div>*/}
 
         <ProductList products={newlyCreatedProducts} title="Novos produtos" />
 

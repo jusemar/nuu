@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 
 import CartSummary from "../components/cart-summary";
 import Addresses from "./components/addresses";
+import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 
 const IdentificationPage = async () => {
   const session = await auth.api.getSession({
@@ -45,6 +46,7 @@ const IdentificationPage = async () => {
   );
   return (
     <div>
+      <Navbar08 />
       <Header />
       <div className="space-y-4 px-5">
         <Addresses

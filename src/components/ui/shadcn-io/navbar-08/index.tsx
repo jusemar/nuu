@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client'; // USE O MESMO DO HEADER
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // USE O MESMO DO HEADER
+import type { Category } from "@/components/common/categories-menu";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -30,6 +31,8 @@ import {
 import { ChevronDownIcon, LogOutIcon } from 'lucide-react'; // Adicione estes ícones
 import { cn } from '@/lib/utils';
 import { Cart } from '@/components/common/cart';
+import { CategoriesMenu } from '@/components/common/categories-menu';
+import { useCategories } from '@/providers/categories-provider-client';
 
 // Logo Component (no mesmo arquivo)
 const Logo = () => {
@@ -57,7 +60,12 @@ const Logo = () => {
   );
 };
 
+
+
 export const Navbar08 = () => {
+
+   const categories = useCategories();
+
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
 
@@ -100,9 +108,8 @@ export const Navbar08 = () => {
               <Logo />
               <span className="hidden font-bold text-xl sm:inline-block">Do Rocha</span>
             </Link>
-
             {/* Mobile menu trigger */}
-            {isMobile && (
+            {isMobile &&   (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -150,19 +157,33 @@ export const Navbar08 = () => {
                   </div>
                 </PopoverContent>
               </Popover>
-            )}            
+            )}              
          
+
+          </div>  
+            {/* Bottom navigation - Desktop */}
+        {!isMobile && (
+          <div>
+            <div className="flex gap-6">
+              <Link href="/" className="text-sm font-medium hover:text-primary">Home</Link>
+              <Link href="/about" className="text-sm font-medium hover:text-primary">Sobre</Link>
+            </div>
           </div>
+        )}
+
+            {!isMobile && <CategoriesMenu categories={categories} />}  
 
           {/* Middle area - Search */}
-          <div className="grow">
-            <div className="relative mx-auto max-w-xs">
+
+          <div className="grow">       
+            <div className="relative mx-auto max-w-xs">              
               <Input
                 className="h-8 ps-8 pe-10"
                 placeholder="Search..."
                 type="search"
               />
               <div className="absolute inset-y-0 left-0 flex items-center pl-2">
+                
                 <SearchIcon size={16} />
               </div>
             </div>
@@ -204,19 +225,7 @@ export const Navbar08 = () => {
   </div>
 )}
           </div>
-        </div>
-
-        {/* Bottom navigation - Desktop */}
-        {!isMobile && (
-          <div className="border-t py-2">
-            <div className="flex gap-6">
-              <Link href="/" className="text-sm font-medium hover:text-primary">Home</Link>
-              <Link href="/products" className="text-sm font-medium hover:text-primary">Produtos</Link>
-              <Link href="/categories" className="text-sm font-medium hover:text-primary">Categorias</Link>
-              <Link href="/about" className="text-sm font-medium hover:text-primary">Sobre</Link>
-            </div>
-          </div>
-        )}
+        </div>   
 
       
       </div>

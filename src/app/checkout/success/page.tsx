@@ -2,8 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-
-import { Header } from "@/components/common/header";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,11 +10,12 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 
 const CheckoutSuccessPage = () => {
   return (
     <>
-      <Header />
+      <Navbar08 />      
       <Dialog open={true} onOpenChange={() => {}}>
         <DialogContent className="text-center">
           <Image

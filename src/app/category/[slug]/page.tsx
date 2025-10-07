@@ -6,6 +6,7 @@ import { categoryTable, productTable } from "@/db/schema";
 import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 import ProductItem from "@/components/common/product-item";
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
+import { SortSection } from "@/components/common/wrappers/sort-section";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -58,12 +59,11 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
           {/* CONTEÚDO PRINCIPAL (direita) */}
            <main className="flex-1">
             {/* Breadcrumb e Ordenação */}
+                      {/* Breadcrumb e Ordenação */}
             <div className="mb-6">
-
-           <CategoryBreadcrumb categoryName={category.name} />
-
               <div className="flex justify-between items-center">
-                <div>Ordenar: ▾ Mais Relevantes</div>
+                <CategoryBreadcrumb categoryName={category.name} />
+                <SortSection />
               </div>
             </div>
 

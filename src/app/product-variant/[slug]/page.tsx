@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import Footer from "@/components/common/footer";
+import {Footer} from "@/components/common/footer";
 import ProductList from "@/components/common/product-list";
 import { db } from "@/db";
 import { productTable, productVariantTable } from "@/db/schema";
@@ -79,9 +79,9 @@ const ProductVariantPage = async ({ params }: ProductVariantPageProps) => {
           </p>
         </div>
 
-        <ProductList title="Talvez você goste" products={likelyProducts} />
+        <ProductList products={likelyProducts} />
 
-        <Footer />
+        
       </div>
     </>
   );

@@ -8,6 +8,8 @@ import ProductItem from "@/components/common/product-item";
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { SortSection } from "@/components/common/wrappers/sort-section";
 import { PriceFilter } from "@/components/common/price-filter";
+import { CategoryFilter } from "@/components/common/category-filter";
+import { SidebarMenu } from "@/components/common/sidebar-menu";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -50,11 +52,17 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
         <div className="flex gap-8">
           
                 {/* SIDEBAR FILTROS (esquerda) */}
-        <aside className="w-80 hidden lg:block">
-          <div className="bg-muted p-4 rounded-lg space-y-6">
-            <PriceFilter />
-          </div>
-        </aside>
+         <aside className="w-80 hidden lg:block">
+            <div className="bg-muted p-4 rounded-lg space-y-0">
+              <SidebarMenu title="Categoria" defaultOpen={true}>
+               <CategoryFilter />
+              </SidebarMenu>
+              
+              <SidebarMenu title="Preço">
+                 <PriceFilter />                
+              </SidebarMenu>
+            </div>
+          </aside>
 
           {/* CONTEÚDO PRINCIPAL (direita) */}
            <main className="flex-1">

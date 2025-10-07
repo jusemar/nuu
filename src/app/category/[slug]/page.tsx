@@ -7,6 +7,7 @@ import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 import ProductItem from "@/components/common/product-item";
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { SortSection } from "@/components/common/wrappers/sort-section";
+import { PriceFilter } from "@/components/common/price-filter";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -48,13 +49,12 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
       <div className="max-w-7xl mx-auto px-5 py-6">
         <div className="flex gap-8">
           
-          {/* SIDEBAR FILTROS (esquerda) */}
-          <aside className="w-80 hidden lg:block">
-            {/* Aqui virá o SidebarMenu collapsible */}
-            <div className="bg-muted p-4 rounded-lg">
-              Filtros aparecerão aqui
-            </div>
-          </aside>
+                {/* SIDEBAR FILTROS (esquerda) */}
+        <aside className="w-80 hidden lg:block">
+          <div className="bg-muted p-4 rounded-lg space-y-6">
+            <PriceFilter />
+          </div>
+        </aside>
 
           {/* CONTEÚDO PRINCIPAL (direita) */}
            <main className="flex-1">

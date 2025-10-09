@@ -161,17 +161,15 @@ export function DataTable<TData, TValue>({
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={() => navigator.clipboard.writeText(row.id)}
-                        >
-                          Copiar ID
-                        </DropdownMenuItem>
+
+                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem>✏️ Editar</DropdownMenuItem>
+                        <DropdownMenuItem>👁️ Visualizar</DropdownMenuItem>
+                        <DropdownMenuItem>📊 Estatísticas</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Excluir</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600">🗑️ Excluir</DropdownMenuItem>
                       </DropdownMenuContent>
+
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>

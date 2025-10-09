@@ -15,9 +15,26 @@ import { ChevronDown, CheckCircle2, Clock } from "lucide-react"
 export default function Page() {
   const columns = useMemo(() => [
     {
-      accessorKey: "header",
-      header: "Título",
-    },
+  accessorKey: "header",
+  header: "Título",
+  cell: ({ row }: { row: any }) => {
+    const title = row.getValue("header")
+    return (
+      <a 
+        href="#" 
+        className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+        onClick={(e) => {
+          e.preventDefault()
+          // Aqui vai a ação quando clicar (editar, visualizar, etc)
+          console.log("Clicou no título:", title)
+        }}
+      >
+        {title}
+      </a>
+    )
+  }
+},
+
     {
       accessorKey: "type", 
       header: "Tipo",

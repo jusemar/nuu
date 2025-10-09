@@ -35,8 +35,7 @@ export default function RootLayout({
       >
         <CategoriesProvider>
           <ReactQueryProvider>
-            {children}
-             <Footer />
+            {children}           
             <Toaster />
           </ReactQueryProvider>
         </CategoriesProvider>

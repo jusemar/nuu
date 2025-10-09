@@ -83,6 +83,7 @@ const ProductVariantPage = async ({ params }: ProductVariantPageProps) => {
 
         
       </div>
+        <Footer />
     </>
   );
 };

@@ -23,8 +23,7 @@ export const CategoryFilter = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Categorias</h3>
+    <div className="space-y-4">      
       <div className="space-y-3">
         {categories.map((category) => (
           <div key={category.id} className="flex items-center space-x-2">

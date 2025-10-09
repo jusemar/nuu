@@ -113,8 +113,6 @@
   --sidebar-ring: oklch(0.541 0.281 293.009);
 }
 
-
-
 @layer base {
   html {
     @apply min-h-screen;
@@ -126,7 +124,6 @@
     @apply flex-1; /* Faz o main crescer e empurrar footer para baixo */
   }
 }
-
 
 .autoplay-progress circle {
   stroke-dashoffset: calc(125.6 * (1 - var(--progress)));
@@ -160,5 +157,14 @@
 .swiper-button-next:after,
 .swiper-button-prev:after {
   @apply text-2xl font-bold;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 

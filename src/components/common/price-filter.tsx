@@ -8,8 +8,7 @@ export const PriceFilter = () => {
   const [priceRange, setPriceRange] = useState([0, 1000]);
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-semibold">Preço</h3>
+    <div className="space-y-4">    
       <Slider
         value={priceRange}
         onValueChange={setPriceRange}

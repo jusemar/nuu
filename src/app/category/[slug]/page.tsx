@@ -10,6 +10,7 @@ import { SortSection } from "@/components/common/wrappers/sort-section";
 import { PriceFilter } from "@/components/common/price-filter";
 import { CategoryFilter } from "@/components/common/category-filter";
 import { SidebarMenu } from "@/components/common/sidebar-menu";
+import { Footer } from "@/components/common/footer";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -96,6 +97,7 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
            Aqui virão mais títulos/frases SEO 
         </div>
       </div>
+        <Footer />
     </>
   );
 };

@@ -81,7 +81,8 @@ const Home = async () => {
           <SectionTitle icon="flame">Destaque</SectionTitle>
           <ProductList products={newlyCreatedProducts} />
 
-        <ProductCarousel products={products} title="Mais vendidos" />        
+        <ProductCarousel products={products} title="Mais vendidos" /> 
+          <Footer />       
         
       </div>
     </>

@@ -29,7 +29,11 @@ export default function Page() {
         const status = row.getValue("status")
         const isDone = status === "Done"
         return (
-          <Badge variant={isDone ? "default" : "secondary"} className="gap-1">
+         <Badge className={`gap-1 ${
+  isDone 
+    ? "bg-green-500 text-white hover:bg-green-600" 
+    : "bg-yellow-500 text-white hover:bg-yellow-600"
+}`}>
             {isDone ? (
               <>
                 <CheckCircle2 className="h-3 w-3" />

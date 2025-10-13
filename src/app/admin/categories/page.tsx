@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { Plus } from "lucide-react"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { AdminHeader } from "@/components/admin/header"
 import { Button } from "@/components/ui/button"
@@ -9,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Search, ChevronDown, MoreHorizontal } from "lucide-react"
 import { Toolbar } from "@/components/admin/toolbar"
+import { useState } from "react"
 
 export default function CategoriesPage() {
   const columns = [
@@ -72,32 +75,53 @@ export default function CategoriesPage() {
       status: "active"
     }
   ]
+  const [columnVisibility, setColumnVisibility] = useState({})
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col">
-        <AdminHeader />
-        <main className="flex-1 p-6">
-          <div className="flex flex-1 flex-col gap-2">
-            {/* Header da página */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">Categorias</h1>
-                <p className="text-muted-foreground">Gerencie as categorias da sua loja</p>
-              </div>
-              <Button>
-                ＋ Nova Categoria
-              </Button>
-            </div>
-      
-            
+  const toolbarColumns = [
+    {
+      id: "name",
+      label: "Nome",
+      visible: true,
+      toggleVisibility: (visible: boolean) => setColumnVisibility(prev => ({...prev, name: !visible}))
+    },
+    {
+      id: "subcategories", 
+      label: "Subcategorias",
+      visible: true,
+      toggleVisibility: (visible: boolean) => setColumnVisibility(prev => ({...prev, subcategories: !visible}))
+    },
+    {
+      id: "tags",
+      label: "Tags", 
+      visible: true,
+      toggleVisibility: (visible: boolean) => setColumnVisibility(prev => ({...prev, tags: !visible}))
+    },
+    {
+      id: "status",
+      label: "Status",
+      visible: true, 
+      toggleVisibility: (visible: boolean) => setColumnVisibility(prev => ({...prev, status: !visible}))
+    }
+  ]
 
-            {/* DataTable de Categorias - COM DADOS DE TESTE */}
-            <DataTable columns={columns} data={testData} />
-          </div>
-        </main>
+  return (   
+    
+  <div className="flex flex-1 flex-col gap-2">
+    {/* Header da página */}
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-2xl font-bold">Categorias</h1>
+        <p className="text-muted-foreground">Gerencie as categorias da sua loja</p>
       </div>
+      <Button asChild>
+        <Link href="/admin/categories/new">
+          ＋ Nova Categoria
+        </Link>
+      </Button>
     </div>
-  )
+    {/* DataTable */}
+    <DataTable columns={columns} data={testData} />
+  </div>
+)
+  
 }

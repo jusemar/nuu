@@ -7,12 +7,14 @@ import {
   LayoutDashboard, 
   Package, 
   Users, 
-  ShoppingCart 
+  ShoppingCart, 
+  FolderIcon
 } from "lucide-react";
 
 const menuItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/products", icon: Package, label: "Produtos" },
+  { href: "/admin/categories", icon: FolderIcon, label: "Categorias" },
   { href: "/admin/orders", icon: ShoppingCart, label: "Pedidos" },
   { href: "/admin/customers", icon: Users, label: "Clientes" },
 ];

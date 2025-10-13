@@ -28,7 +28,7 @@ export const AdminHeader = () => {
             <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
               <User className="h-4 w-4" />
             </div>
-            <span className="text-sm font-medium">Admin</span>
+            <span className="text-sm font-medium"></span>
           </div>
         </div>
       </div>

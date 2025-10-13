@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -72,14 +72,19 @@ export function DataTable<TData, TValue>({
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
-        <Input
-          placeholder="Filtrar..."
-          value={(table.getColumn("header")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("header")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+        
+        <div className="relative w-80">
+  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+  <Input
+    placeholder="Filtrar..."
+    value={(table.getColumn("header")?.getFilterValue() as string) ?? ""}
+    onChange={(event) =>
+      table.getColumn("header")?.setFilterValue(event.target.value)
+    }
+    className="pl-10 bg-background border-input"
+  />
+</div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">

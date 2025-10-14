@@ -8,6 +8,11 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { categoryTable } from '@/db/table/categories';
+
+
+
+
 
 export const userTable = pgTable("user", {
   id: text("id").primaryKey(),
@@ -78,12 +83,6 @@ export const verificationTable = pgTable("verification", {
   ),
 });
 
-export const categoryTable = pgTable("category", {
-  id: uuid().primaryKey().defaultRandom(),
-  name: text().notNull(),
-  slug: text().notNull().unique(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
 
 export const categoryRelations = relations(categoryTable, ({ many }) => ({
   products: many(productTable),

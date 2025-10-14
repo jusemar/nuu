@@ -1,5 +1,5 @@
 import { db } from "@/db"; // Seu db original que funciona
-import { categoryTable } from "@/db/schema"; // Novo schema organizado
+import { categoryTable } from "@/db/table/categories"; // Seu schema organizado
 
 export async function POST(request: Request) {
   const data = await request.json();

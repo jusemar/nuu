@@ -5,187 +5,186 @@ import Link from "next/link"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
-import { Badge } from "@/components/ui/badge"
-import { useState, useEffect } from "react"
 import { EditableCell } from "@/components/admin/editable-cell"
 import { EditableSwitch } from "@/components/admin/editable-switch"
-
+import { useCategories } from "@/hooks/admin/queries/use-categories"
+import { useUpdateCategory } from "@/hooks/admin/mutations/useUpdateCategory"
+import { useState, useEffect } from "react"
 
 interface Category {
-  id: string; // ⬅️ Mude para string (UUID)
+  id: string;
   name: string;
   slug: string;
   description: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
-  isActive: boolean; // ⬅️ Campo correto do banco
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const { data: categories, isLoading } = useCategories()
+  const { mutate: updateCategory } = useUpdateCategory()
+  const [localCategories, setLocalCategories] = useState<Category[]>([])
+  const [originalCategories, setOriginalCategories] = useState<Category[]>([])
 
- 
-  // Busca as categorias do banco
-useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('/api/admin/categories');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Dados do banco:', data); // ← ADICIONE ESTA LINHA
-        setCategories(data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-    } finally {
-      setLoading(false);
+  // Sincroniza dados
+  useEffect(() => {
+    if (categories) {
+      setLocalCategories(categories)
+      setOriginalCategories(categories)
     }
-  };
+  }, [categories])
 
-  fetchCategories();
-}, []);
+  // Verifica se há alterações
+  const hasChanges = JSON.stringify(localCategories) !== JSON.stringify(originalCategories)
 
-const columns = [
-  {
-    accessorKey: "name",
-    header: "Nome",
-    cell: ({ row }: { row: any }) => (
-      <EditableCell
-        value={row.getValue("name") || ""}
-        onSave={(newValue) => console.log('Salvar nome:', { id: row.original.id, newValue })}
-        placeholder="Sem nome"
-      />
-    )
-  },
-  {
-    accessorKey: "slug", 
-    header: "Slug",
-    cell: ({ row }: { row: any }) => (
-      <EditableCell
-        value={row.getValue("slug") || ""}
-        onSave={(newValue) => console.log('Salvar slug:', { id: row.original.id, newValue })}
-        placeholder="Sem slug"
-      />
-    )
-  },
-  {
-    accessorKey: "description",
-    header: "Descrição",
-    cell: ({ row }: { row: any }) => (
-      <EditableCell
-        value={row.getValue("description") || ""}
-        onSave={(newValue) => console.log('Salvar descrição:', { id: row.original.id, newValue })}
-        type="textarea"
-        placeholder="Sem descrição"
-      />
-    )
-  },
-  
-  {
-    accessorKey: "metaTitle",
-    header: "Meta Título",
-    cell: ({ row }: { row: any }) => (
-      <EditableCell
-        value={row.getValue("metaTitle") || ""}
-        onSave={(newValue) => console.log('Salvar metaTitle:', { id: row.original.id, newValue })}
-        placeholder="Sem meta título"
-      />
-    )
-  },
-  {
-    accessorKey: "metaDescription",
-    header: "Meta Descrição",
-    cell: ({ row }: { row: any }) => (
-      <EditableCell
-        value={row.getValue("metaDescription") || ""}
-        onSave={(newValue) => console.log('Salvar metaDescription:', { id: row.original.id, newValue })}
-        type="textarea"
-        placeholder="Sem meta descrição"
-      />
-    )
-  },
-  {
-    accessorKey: "isActive",
-    header: "Status",
-    cell: ({ row }: { row: any }) => (
-      <EditableSwitch
-        value={row.getValue("isActive")}
-        onSave={(newValue) => console.log('Alterar status:', { id: row.original.id, newValue })}
-      />
-    )
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Criado em",
-    cell: ({ row }: { row: any }) => {
-      const date = new Date(row.getValue("createdAt"))
-      return (
-        <span className="text-sm text-gray-600">
-          {date.toLocaleDateString('pt-BR')}
-        </span>
+  // Atualiza localmente
+  const updateLocalCategory = (id: string, field: string, value: any) => {
+    setLocalCategories(prev => 
+      prev.map(cat => 
+        cat.id === id ? { ...cat, [field]: value } : cat
       )
-    }
-  },
-  {
-    accessorKey: "updatedAt",
-    header: "Última Atualização",
-    cell: ({ row }: { row: any }) => {
-      const date = new Date(row.getValue("updatedAt"))
-      return (
-        <span className="text-sm text-gray-600">
-          {date.toLocaleDateString('pt-BR')}
-        </span>
-      )
-    }
+    )
   }
-]
 
-  if (loading) {
-    return (
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Categorias</h1>
-            <p className="text-muted-foreground">Carregando...</p>
-          </div>
-          <Button disabled>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Categoria
-          </Button>
-        </div>
-        <div className="animate-pulse">Carregando categorias...</div>
-      </div>
-    )
+  // Salva no banco
+  const saveChanges = () => {
+    localCategories.forEach(category => {
+      updateCategory({
+        id: category.id,
+        data: {
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          metaTitle: category.metaTitle,
+          metaDescription: category.metaDescription,
+          isActive: category.isActive
+        }
+      })
+    })
+    setOriginalCategories(localCategories)
+  }
+
+  // Cancela alterações
+  const cancelChanges = () => {
+    setLocalCategories(originalCategories)
+  }
+
+  const columns = [
+    {
+      accessorKey: "name",
+      header: "Nome",
+      cell: ({ row }: { row: any }) => (
+        <EditableCell
+          value={row.getValue("name") || ""}
+          onBlur={(newValue) => updateLocalCategory(row.original.id, "name", newValue)}
+        />
+      )
+    },
+    {
+      accessorKey: "slug", 
+      header: "Slug",
+      cell: ({ row }: { row: any }) => (
+        <EditableCell
+          value={row.getValue("slug") || ""}
+          onBlur={(newValue) => updateLocalCategory(row.original.id, "slug", newValue)}
+        />
+      )
+    },
+    {
+      accessorKey: "description",
+      header: "Descrição",
+      cell: ({ row }: { row: any }) => (
+        <EditableCell
+          value={row.getValue("description") || ""}
+          onBlur={(newValue) => updateLocalCategory(row.original.id, "description", newValue)}
+        />
+      )
+    },
+    {
+      accessorKey: "metaTitle",
+      header: "Meta Título",
+      cell: ({ row }: { row: any }) => (
+        <EditableCell
+          value={row.getValue("metaTitle") || ""}
+          onBlur={(newValue) => updateLocalCategory(row.original.id, "metaTitle", newValue)}
+        />
+      )
+    },
+    {
+      accessorKey: "metaDescription",
+      header: "Meta Descrição",
+      cell: ({ row }: { row: any }) => (
+        <EditableCell
+          value={row.getValue("metaDescription") || ""}
+          onBlur={(newValue) => updateLocalCategory(row.original.id, "metaDescription", newValue)}
+        />
+      )
+    },
+    {
+      accessorKey: "isActive",
+      header: "Status",
+      cell: ({ row }: { row: any }) => (
+        <EditableSwitch
+          value={row.getValue("isActive")}
+          onSave={(newValue) => updateLocalCategory(row.original.id, "isActive", newValue)}
+        />
+      )
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Criado em",
+      cell: ({ row }: { row: any }) => {
+        const date = new Date(row.getValue("createdAt"))
+        return <span className="text-sm text-gray-600">{date.toLocaleDateString('pt-BR')}</span>
+      }
+    },
+    {
+      accessorKey: "updatedAt",
+      header: "Última Atualização", 
+      cell: ({ row }: { row: any }) => {
+        const date = new Date(row.getValue("updatedAt"))
+        return <span className="text-sm text-gray-600">{date.toLocaleDateString('pt-BR')}</span>
+      }
+    }
+  ]
+
+  if (isLoading) {
+    return <div>Carregando...</div>
   }
 
   return (    
-    <div className="flex flex-1 flex-col gap-2">
-      {/* Header da página */}
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Categorias</h1>
           <p className="text-muted-foreground">
-            {categories.length} categoria(s) encontrada(s)
+            {localCategories.length} categoria(s)
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/categories/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Categoria
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          {hasChanges && (
+            <>
+              <Button onClick={saveChanges} variant="default">
+                💾 Salvar
+              </Button>
+              <Button onClick={cancelChanges} variant="outline">
+                ↩️ Cancelar
+              </Button>
+            </>
+          )}
+          <Button asChild>
+            <Link href="/admin/categories/new">
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Categoria
+            </Link>
+          </Button>
+        </div>
       </div>
       
-      {/* DataTable com dados reais do banco */}
-      <DataTable 
-        columns={columns} 
-        data={categories}         
-      />
+      <DataTable columns={columns} data={localCategories} />
     </div>
   )
 }

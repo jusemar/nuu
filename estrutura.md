@@ -1,3 +1,41 @@
+Server Action (create.ts)
+✅ Validação dos dados (futuro com Zod)
+
+✅ Operações no banco (Drizzle + Neon)
+
+✅ Revalidação de cache
+
+✅ Segurança (autenticação/autorização)
+
+❌ NUNCA estado da UI
+
+❌ NUNCA hooks React
+
+Hook (useCreateCategory)
+✅ Gerenciar estado de loading/error
+
+✅ Integração com Toast (UI feedback)
+
+✅ Chamar a Server Action
+
+✅ Navegação após sucesso
+
+❌ NUNCA operações diretas no banco
+
+Componente (category-form.tsx)
+✅ Renderizar UI
+
+✅ Coletar dados do usuário
+
+✅ Chamar o hook
+
+❌ NUNCA lógica de negócio
+
+Fluxo ideal:
+Usuário preenche → Componente chama Hook → Hook chama Server Action → Banco
+
+
+
 
 src/db/
 ├── schema/

@@ -116,14 +116,18 @@ export function DataTable<TData, TValue>({
   {/* Filtro - Corrigido para filtrar por "name" */}
   <div className="relative w-80">
     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-    <Input
-      placeholder="Filtrar por nome..."
-      value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-      onChange={(event) =>
-        table.getColumn("name")?.setFilterValue(event.target.value)
-      }
-      className="pl-10 bg-background border-input"
-    />
+     <Input
+  placeholder="Filtrar..."
+  value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+  onChange={(event) => {
+    const nameColumn = table.getColumn("name")
+    if (nameColumn) {
+      nameColumn.setFilterValue(event.target.value)
+    }
+  }}
+  className="pl-10 bg-background border-input"
+/>
+
   </div>
 
   {/* Colunas - Mantém igual mas com ml-auto */}

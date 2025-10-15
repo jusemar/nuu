@@ -12,3 +12,5 @@
           {value ? "Ativo" : "Inativo"}
         </div>
       </Badge> -->
+      https://www.shadcn.io/components/forms/minimal-tiptap
+      

@@ -9,16 +9,16 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { useCategoryForm } from "@/hooks/forms/use-category-form"
+import { useCreateCategoryForm } from "@/hooks/admin/mutations/categories/useCategoryFormState"
 
 export function CategoryForm() {
   const { 
-    formData, 
+    formData,  
     setFormData, 
     isLoading, 
     handleSubmit,
     generateSlug 
-  } = useCategoryForm()
+  } = useCreateCategoryForm()
 
   return (
     <div className="container mx-auto py-6 space-y-6">

@@ -1,72 +1,59 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 
 interface EditableCellProps {
   value: string
-  onSave: (newValue: string) => void
+  onBlur: (newValue: string) => void
   type?: 'text' | 'textarea'
-  placeholder?: string
 }
 
 export function EditableCell({ 
   value, 
-  onSave, 
-  type = 'text',
-  placeholder = "" 
+  onBlur,
+  type = 'text'
 }: EditableCellProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedValue, setEditedValue] = useState(value)
 
-  const handleSave = () => {
-    onSave(editedValue)
+  useEffect(() => {
+    setEditedValue(value)
+  }, [value])
+
+  const handleBlur = () => {
     setIsEditing(false)
+    onBlur(editedValue)
   }
 
-  const handleCancel = () => {
-    setEditedValue(value)
-    setIsEditing(false)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleBlur()
+    } else if (e.key === 'Escape') {
+      setEditedValue(value)
+      setIsEditing(false)
+    }
   }
 
   if (isEditing) {
     return (
-      <div className="space-y-2">
-        {type === 'textarea' ? (
-          <textarea
-            value={editedValue}
-            onChange={(e) => setEditedValue(e.target.value)}
-            className="w-full p-2 border rounded-md text-sm resize-none"
-            rows={3}
-            autoFocus
-          />
-        ) : (
-          <Input
-            value={editedValue}
-            onChange={(e) => setEditedValue(e.target.value)}
-            className="text-sm"
-            autoFocus
-          />
-        )}
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} className="h-7 text-xs">
-            ✓
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleCancel} className="h-7 text-xs">
-            ✕
-          </Button>
-        </div>
-      </div>
+      <Input
+        value={editedValue}
+        onChange={(e) => setEditedValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="h-8 border-0 bg-transparent p-1 focus-visible:ring-1"
+        autoFocus
+      />
     )
   }
 
   return (
     <div 
-      className="cursor-pointer p-2 rounded hover:bg-gray-50 transition-colors"
-      onDoubleClick={() => setIsEditing(true)}
+      className="cursor-pointer p-2 min-h-[40px] flex items-center hover:bg-gray-50 rounded"
+      onClick={() => setIsEditing(true)}
     >
-      {value || placeholder}
+      {value || "—"}
     </div>
   )
 }

@@ -99,9 +99,9 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar />
+     
       <div className="flex-1 flex flex-col">
-        <AdminHeader />
+       
         <main className="flex-1 p-6">
           <div className="flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

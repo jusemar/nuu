@@ -35,7 +35,15 @@ Fluxo ideal:
 Usuário preenche → Componente chama Hook → Hook chama Server Action → Banco
 
 
+hooks/ - lógica reutilizável com estado (React hooks)
 
+lib/ - funções puras sem estado (utils, formatters)
+
+helpers/ - mesmo que lib (funções auxiliares)
+
+providers/ - Context API providers
+
+O useSlugGenerator está no lugar certo - em hooks/! ✅
 
 src/db/
 ├── schema/

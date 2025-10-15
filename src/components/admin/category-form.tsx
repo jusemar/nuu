@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { useCreateCategoryForm } from "@/hooks/admin/mutations/categories/useCategoryFormState"
+import {  useCategoryFormState } from "@/hooks/admin/mutations/categories/useCategoryFormState"
 
 export function CategoryForm() {
   const { 
@@ -17,8 +17,8 @@ export function CategoryForm() {
     setFormData, 
     isLoading, 
     handleSubmit,
-    generateSlug 
-  } = useCreateCategoryForm()
+    handleNameChange,    
+  } =  useCategoryFormState()
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -52,16 +52,11 @@ export function CategoryForm() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome da Categoria *</Label>
-                  <Input
+                 <Input
                     id="name"
                     placeholder="Ex: Eletrônicos, Roupas, etc."
                     value={formData.name}
-                    onChange={(e) => {
-                      setFormData(prev => ({ ...prev, name: e.target.value }))
-                      if (!formData.slug) {
-                        generateSlug(e.target.value)
-                      }
-                    }}
+                    onChange={(e) => handleNameChange(e.target.value)} // ← USAR handleNameChange
                   />
                 </div>
 

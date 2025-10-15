@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from 'react'
-import { useCreateCategory } from './useCategoryCRUD' // ← IMPORTAR
+import { useCreateCategory } from '@/hooks/admin/mutations/categories/useCategoryCRUD'
+import { useSlugGenerator } from '@/hooks/forms/useSlugGenerator'
 
-export const useCreateCategoryForm = () => {
+export const useCategoryFormState = () => {
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -13,28 +14,48 @@ export const useCreateCategoryForm = () => {
     metaDescription: ''
   })
 
-  const createCategoryMutation = useCreateCategory() // ← USAR O HOOK
+  const createCategoryMutation = useCreateCategory()
+   const { generateSlug } = useSlugGenerator() 
 
-  const generateSlug = (name: string) => {
-    const slug = name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^\w-]+/g, '')
-    setFormData(prev => ({ ...prev, slug }))
+  const handleNameChange = (name: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      name,
+      slug: generateSlug(name) // ← GERA SLUG AUTOMATICAMENTE
+    }))
+  }
+
+  // Função para limpar o formulário
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      slug: '',
+      description: '',
+      isActive: true,
+      metaTitle: '',
+      metaDescription: ''
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Chamar a mutation do TanStack Query ← CORREÇÃO AQUI
-    createCategoryMutation.mutate(formData)
+    createCategoryMutation.mutate(formData, {
+      onSuccess: (result) => {
+        if (result.success) {
+          resetForm() // ← LIMPA O FORMULÁRIO APÓS SUCESSO
+        }
+      }
+    })
   }
 
   return {
     formData, 
     setFormData, 
-    isLoading: createCategoryMutation.isPending, // ← CORRIGIDO
+    isLoading: createCategoryMutation.isPending,
     handleSubmit,
-    generateSlug 
+    generateSlug,
+    handleNameChange,
+    resetForm // ← EXPORTA A FUNÇÃO TAMBÉM
   }
 }

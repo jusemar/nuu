@@ -36,7 +36,16 @@ export default function RootLayout({
         <CategoriesProvider>
           <ReactQueryProvider>
             {children}           
-            <Toaster />
+            
+            <Toaster
+          toastOptions={{
+            classNames: {
+              success: "bg-green-500 text-white",
+              error: "bg-red-500 text-white",
+            },
+          }}
+        />
+            
           </ReactQueryProvider>
         </CategoriesProvider>
       </body>

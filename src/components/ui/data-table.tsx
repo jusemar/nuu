@@ -39,11 +39,12 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  onDeleteSelected?: (selectedRows: TData[]) => void
 }
-
 export function DataTable<TData, TValue>({
   columns,
   data,
+  onDeleteSelected
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -79,17 +80,18 @@ export function DataTable<TData, TValue>({
 {table.getFilteredSelectedRowModel().rows.length > 0 && (
   <div className="flex items-center gap-2">
     {/* BOTÃO EXCLUIR QUE VAMOS ADICIONAR */}
-    <Button 
+     <Button 
       variant="destructive"
       onClick={() => {
         const selectedCount = table.getFilteredSelectedRowModel().rows.length
         if (confirm(`Tem certeza que deseja excluir ${selectedCount} item(ns) selecionado(s)?`)) {
-          console.log('Excluir selecionados:', table.getFilteredSelectedRowModel().rows.map(row => row.original))
+          onDeleteSelected?.(table.getFilteredSelectedRowModel().rows.map(row => row.original))
         }
       }}
-    >
-      🗑️ Excluir ({table.getFilteredSelectedRowModel().rows.length})
-    </Button>
+      >
+        🗑️ Excluir ({table.getFilteredSelectedRowModel().rows.length})
+      </Button>
+
 
          {/* DROPDOWN DE AÇÕES QUE JÁ EXISTIA - MANTEM */}
 <DropdownMenu>

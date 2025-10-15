@@ -1,4 +1,3 @@
-// src/app/admin/categories/page.tsx
 "use client"
 
 import Link from "next/link"
@@ -8,8 +7,11 @@ import { DataTable } from "@/components/ui/data-table"
 import { EditableCell } from "@/components/admin/editable-cell"
 import { EditableSwitch } from "@/components/admin/editable-switch"
 import { useCategories } from "@/hooks/admin/queries/use-categories"
-import { useUpdateCategory } from "@/hooks/admin/mutations/useUpdateCategory"
+import { useUpdateCategory } from "@/hooks/admin/mutations/categories/useUpdateCategory"
+import { useDeleteCategory } from "@/hooks/admin/mutations/categories/useDeleteCategory"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
+
 
 interface Category {
   id: string;
@@ -26,10 +28,10 @@ interface Category {
 export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories()
   const { mutate: updateCategory } = useUpdateCategory()
+  const { mutate: deleteCategory } = useDeleteCategory()
   const [localCategories, setLocalCategories] = useState<Category[]>([])
   const [originalCategories, setOriginalCategories] = useState<Category[]>([])
 
-  // Sincroniza dados
   useEffect(() => {
     if (categories) {
       setLocalCategories(categories)
@@ -37,10 +39,8 @@ export default function CategoriesPage() {
     }
   }, [categories])
 
-  // Verifica se há alterações
   const hasChanges = JSON.stringify(localCategories) !== JSON.stringify(originalCategories)
 
-  // Atualiza localmente
   const updateLocalCategory = (id: string, field: string, value: any) => {
     setLocalCategories(prev => 
       prev.map(cat => 
@@ -49,28 +49,52 @@ export default function CategoriesPage() {
     )
   }
 
-  // Salva no banco
-  const saveChanges = () => {
-    localCategories.forEach(category => {
-      updateCategory({
-        id: category.id,
-        data: {
-          name: category.name,
-          slug: category.slug,
-          description: category.description,
-          metaTitle: category.metaTitle,
-          metaDescription: category.metaDescription,
-          isActive: category.isActive
-        }
-      })
-    })
-    setOriginalCategories(localCategories)
-  }
+const saveChanges = () => {
+  // Encontrar apenas as categorias que foram modificadas
+  const modifiedCategories = localCategories.filter((category, index) => {
+    return JSON.stringify(category) !== JSON.stringify(originalCategories[index])
+  })
 
-  // Cancela alterações
+  // Atualizar apenas as modificadas
+  modifiedCategories.forEach(category => {
+    updateCategory({
+      id: category.id,
+      data: {
+        name: category.name,
+        slug: category.slug,
+        description: category.description,
+        metaTitle: category.metaTitle,
+        metaDescription: category.metaDescription,
+        isActive: category.isActive
+      }
+    })
+  })
+
+  setOriginalCategories(localCategories)
+  
+  // UM toast único
+  toast.success(`${modifiedCategories.length} categoria(s) atualizada(s) com sucesso!`, {
+    style: {
+      backgroundColor: "#22c55e",
+      color: "#ffffff",
+    },
+  })
+}
+
+
   const cancelChanges = () => {
     setLocalCategories(originalCategories)
   }
+
+const handleDeleteSelected = async (selectedRows: Category[]) => {
+  const total = selectedRows.length
+  
+  // Exclui com delay
+  selectedRows.forEach((row, index) => {
+    setTimeout(() => deleteCategory(row.id), index * 50)
+  })  
+}
+
 
   const columns = [
     {
@@ -184,7 +208,11 @@ export default function CategoriesPage() {
         </div>
       </div>
       
-      <DataTable columns={columns} data={localCategories} />
+      <DataTable 
+        columns={columns} 
+        data={localCategories}
+        onDeleteSelected={handleDeleteSelected}
+      />
     </div>
   )
 }

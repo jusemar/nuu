@@ -41,6 +41,10 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   onDeleteSelected?: (selectedRows: TData[]) => void
 }
+
+
+
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -50,6 +54,18 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+
+
+  // Dentro do DataTable
+React.useEffect(() => {
+  function clearSelection() {
+    setRowSelection({})
+  }
+  window.addEventListener("clearSelection", clearSelection)
+  return () => window.removeEventListener("clearSelection", clearSelection)
+}, [])
+
+
 
   const table = useReactTable({
     data,

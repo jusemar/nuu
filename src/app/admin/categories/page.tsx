@@ -88,11 +88,24 @@ const saveChanges = () => {
 
 const handleDeleteSelected = async (selectedRows: Category[]) => {
   const total = selectedRows.length
-  
-  // Exclui com delay
-  selectedRows.forEach((row, index) => {
-    setTimeout(() => deleteCategory(row.id), index * 50)
-  })  
+
+  // Exclui todos de uma vez (pode manter o delay se quiser, mas não é necessário)
+  await Promise.all(selectedRows.map(row => deleteCategory(row.id)))
+
+  // Mensagem única de sucesso
+  toast.success(`${total} categoria(s) excluída(s) com sucesso!`, {
+    style: {
+      backgroundColor: "#22c55e",
+      color: "#ffffff",
+    },
+  })
+
+  // Limpa seleção dos checkboxes
+  setTimeout(() => {
+    // Encontra o DataTable e limpa seleção via evento customizado
+    const event = new CustomEvent("clearSelection")
+    window.dispatchEvent(event)
+  }, 100)
 }
 
 

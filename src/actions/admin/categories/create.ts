@@ -13,9 +13,7 @@ export async function createCategory(formData: {
   metaDescription?: string
 }) {
   try {
-
-    console.log("📍 1. Server Action iniciada") // ← ADICIONE AQUI
-    console.log("Dados recebidos:", formData)    // ← ADICIONE AQUI
+   
     // Validação básica
     if (!formData.name || !formData.slug) {
       return { 
@@ -35,9 +33,7 @@ export async function createCategory(formData: {
         metaDescription: formData.metaDescription || null,
         isActive: formData.isActive,
       })
-      .returning()
-
-    console.log("Categoria criada com ID:", newCategory.id)
+      .returning()   
 
     // Revalida o cache
     revalidatePath("/admin/categories")

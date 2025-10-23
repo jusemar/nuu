@@ -11,7 +11,7 @@ import { useUpdateCategory } from "@/hooks/admin/mutations/categories/useUpdateC
 import { useDeleteCategory } from "@/hooks/admin/mutations/categories/useDeleteCategory"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-
+import { useRouter } from "next/navigation"
 
 interface Category {
   id: string;
@@ -21,22 +21,26 @@ interface Category {
   metaTitle: string | null;
   metaDescription: string | null;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date; // ← Mude para Date
+  updatedAt: Date; // ← Mude para Date
 }
 
 export default function CategoriesPage() {
+  const router = useRouter()
   const { data: categories, isLoading } = useCategories()
   const { mutate: updateCategory } = useUpdateCategory()
   const { mutate: deleteCategory } = useDeleteCategory()
   const [localCategories, setLocalCategories] = useState<Category[]>([])
   const [originalCategories, setOriginalCategories] = useState<Category[]>([])
 
+
+ 
   useEffect(() => {
     if (categories) {
       setLocalCategories(categories)
       setOriginalCategories(categories)
     }
+   
   }, [categories])
 
   const hasChanges = JSON.stringify(localCategories) !== JSON.stringify(originalCategories)

@@ -10,25 +10,37 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import {  useCategoryFormState } from "@/hooks/admin/mutations/categories/useCategoryFormState"
+import { useRouter } from "next/navigation"
+import { revalidateCategories } from "@/actions/admin/shared/revalidate"
 
 export function CategoryForm() {
+  const router = useRouter()
   const { 
     formData,  
     setFormData, 
     isLoading, 
     handleSubmit,
-    handleNameChange,    
+    handleNameChange,
+    generateSlug 
   } =  useCategoryFormState()
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/admin/categories">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+        
+      
+    <Button 
+  variant="outline" 
+  size="icon"
+  onClick={async () => {
+    await revalidateCategories()
+    router.push('/admin/categories')
+  }}
+>
+  <ArrowLeft className="h-4 w-4" />
+</Button>
+
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Nova Categoria</h1>
           <p className="text-muted-foreground">
@@ -154,10 +166,9 @@ export function CategoryForm() {
                     type="submit" 
                     className="w-full" 
                     size="sm"
-                    disabled={isLoading}
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    {isLoading ? "Salvando..." : "Salvar Categoria"}
+                    {isLoading ? "Salvando..." : "Salvar Categoria"}                    
                   </Button>
                   
                   <Button variant="outline" className="w-full" size="sm" type="button">

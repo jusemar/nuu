@@ -11,7 +11,7 @@ export const useDeleteCategory = () => {
     mutationFn: deleteCategory,
     onSuccess: (result) => {
       if (result.success) {   
-        queryClient.invalidateQueries({ queryKey: ['admin', 'categories'] })
+        queryClient.refetchQueries({ queryKey: ['categories'] })
       } else {
         toast.error(result.message)
       }

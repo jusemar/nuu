@@ -1,15 +1,9 @@
-// src/hooks/admin/queries/use-categories.ts
 import { useQuery } from "@tanstack/react-query"
-// REMOVA: import { getCategories } from "@/data/categories/get"
+import { getCategories } from "@/actions/admin/categories/get" // ← import da server action
 
 export const useCategories = () => {
   return useQuery({
-    queryKey: ['admin', 'categories'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/categories')
-      if (!response.ok) throw new Error('Erro ao buscar categorias')
-      return response.json()
-    },
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['categories'], // ← MUDOU para ['categories']
+    queryFn: getCategories, // ← usa server action direta
   })
 }

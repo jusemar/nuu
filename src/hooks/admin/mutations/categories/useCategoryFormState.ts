@@ -37,17 +37,17 @@ export const useCategoryFormState = () => {
     })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    createCategoryMutation.mutate(formData, {
-      onSuccess: (result) => {
-        if (result.success) {
-          resetForm() // ← LIMPA O FORMULÁRIO APÓS SUCESSO
-        }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  createCategoryMutation.mutate(formData, {
+    onSuccess: (result) => {
+      if (result.success) {
+        resetForm() // ← SÓ LIMPA O FORMULÁRIO
       }
-    })
-  }
+    }
+  })
+}
 
   return {
     formData, 

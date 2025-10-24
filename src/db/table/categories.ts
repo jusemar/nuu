@@ -8,7 +8,7 @@ export const categoryTable = pgTable("category", {
   metaTitle: text("meta_title"), // Para SEO
   metaDescription: text("meta_description"), // Para SEO  
   isActive: boolean("is_active").default(true).notNull(), // Para status ativo/inativo
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { mode: 'date', withTimezone: true }).notNull().defaultNow(),
+updatedAt: timestamp("updated_at", { mode: 'date', withTimezone: true }).notNull().defaultNow(),
 });
 

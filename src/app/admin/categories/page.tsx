@@ -9,7 +9,7 @@ import { EditableSwitch } from "@/components/admin/editable-switch"
 import { useCategories } from "@/hooks/admin/queries/use-categories"
 import { useUpdateCategory } from "@/hooks/admin/mutations/categories/useUpdateCategory"
 import { useDeleteCategory } from "@/hooks/admin/mutations/categories/useDeleteCategory"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -21,29 +21,40 @@ interface Category {
   metaTitle: string | null;
   metaDescription: string | null;
   isActive: boolean;
-  createdAt: Date; // ← Mude para Date
-  updatedAt: Date; // ← Mude para Date
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export default function CategoriesPage() {
   const router = useRouter()
-  const { data: categories, isLoading } = useCategories()
+  const { data: categories, isLoading, refetch } = useCategories()
   const { mutate: updateCategory } = useUpdateCategory()
   const { mutate: deleteCategory } = useDeleteCategory()
   const [localCategories, setLocalCategories] = useState<Category[]>([])
   const [originalCategories, setOriginalCategories] = useState<Category[]>([])
 
-
- 
   useEffect(() => {
     if (categories) {
       setLocalCategories(categories)
       setOriginalCategories(categories)
     }
-   
   }, [categories])
 
-  const hasChanges = JSON.stringify(localCategories) !== JSON.stringify(originalCategories)
+  const hasChanges = useMemo(() => {
+    if (localCategories.length !== originalCategories.length) return true;
+    
+    return localCategories.some((category, index) => {
+      const original = originalCategories[index];
+      if (!original) return true;
+      
+      return category.name !== original.name ||
+             category.slug !== original.slug ||
+             category.description !== original.description ||
+             category.metaTitle !== original.metaTitle ||
+             category.metaDescription !== original.metaDescription ||
+             category.isActive !== original.isActive;
+    });
+  }, [localCategories, originalCategories]);
 
   const updateLocalCategory = (id: string, field: string, value: any) => {
     setLocalCategories(prev => 
@@ -54,12 +65,10 @@ export default function CategoriesPage() {
   }
 
 const saveChanges = () => {
-  // Encontrar apenas as categorias que foram modificadas
   const modifiedCategories = localCategories.filter((category, index) => {
     return JSON.stringify(category) !== JSON.stringify(originalCategories[index])
   })
 
-  // Atualizar apenas as modificadas
   modifiedCategories.forEach(category => {
     updateCategory({
       id: category.id,
@@ -74,9 +83,14 @@ const saveChanges = () => {
     })
   })
 
+  // Atualiza o estado local primeiro
   setOriginalCategories(localCategories)
   
-  // UM toast único
+  // Depois faz o refetch
+  setTimeout(() => {
+    refetch()
+  }, 200)
+
   toast.success(`${modifiedCategories.length} categoria(s) atualizada(s) com sucesso!`, {
     style: {
       backgroundColor: "#22c55e",
@@ -84,34 +98,32 @@ const saveChanges = () => {
     },
   })
 }
-
-
   const cancelChanges = () => {
     setLocalCategories(originalCategories)
   }
 
-const handleDeleteSelected = async (selectedRows: Category[]) => {
+  const handleDeleteSelected = async (selectedRows: Category[]) => {
   const total = selectedRows.length
 
-  // Exclui todos de uma vez (pode manter o delay se quiser, mas não é necessário)
+  // Primeiro limpa a seleção
+  const event = new CustomEvent("clearSelection")
+  window.dispatchEvent(event)
+
+  // Exclui as categorias
   await Promise.all(selectedRows.map(row => deleteCategory(row.id)))
 
-  // Mensagem única de sucesso
+  // Faz refetch após um pequeno delay
+  setTimeout(() => {
+    refetch()
+  }, 200)
+
   toast.success(`${total} categoria(s) excluída(s) com sucesso!`, {
     style: {
       backgroundColor: "#22c55e",
       color: "#ffffff",
     },
   })
-
-  // Limpa seleção dos checkboxes
-  setTimeout(() => {
-    // Encontra o DataTable e limpa seleção via evento customizado
-    const event = new CustomEvent("clearSelection")
-    window.dispatchEvent(event)
-  }, 100)
 }
-
 
   const columns = [
     {
@@ -186,8 +198,10 @@ const handleDeleteSelected = async (selectedRows: Category[]) => {
       accessorKey: "updatedAt",
       header: "Última Atualização", 
       cell: ({ row }: { row: any }) => {
-        const date = new Date(row.getValue("updatedAt"))
-        return <span className="text-sm text-gray-600">{date.toLocaleDateString('pt-BR')}</span>
+        const date = new Date(row.getValue("updatedAt"));
+        return <span className="text-sm text-gray-600">
+          {date.toLocaleDateString('pt-BR')} {date.getHours()-3}:{date.getMinutes().toString().padStart(2, '0')}
+        </span>
       }
     }
   ]

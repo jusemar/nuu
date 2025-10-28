@@ -1,6 +1,6 @@
 
 import { db } from "@/db";
-import { productTable } from "@/db/schema";
+import { productTable, productVariantTable } from '@/db/table/products';
 import { desc } from "drizzle-orm";
 import "server-only"
 

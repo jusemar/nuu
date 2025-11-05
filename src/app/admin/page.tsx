@@ -98,20 +98,17 @@ export default function Page() {
   ], [])
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-     
-      <div className="flex-1 flex flex-col">
-       
-        <main className="flex-1 p-6">
-          <div className="flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards />
-              <ChartAreaInteractive />
-              <DataTable columns={columns} data={data} />
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
+   // No return, adicione um container como no exemplo
+<div className="space-y-6">
+  <div className="bg-white/80 backdrop-blur-lg rounded-xl border border-white/20 p-6">
+  <SectionCards />
+</div>
+  <div className="admin-card p-6">
+    <ChartAreaInteractive />
+  </div>
+  <div className="admin-card p-6">
+    <DataTable columns={columns} data={data} />
+  </div>
+</div>
   )
 }

@@ -7,12 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // Import das abas
 import { BasicTab } from './components/tabs/BasicTab'
-import { FinancialTab } from './components/tabs/FinancialTab'
+import { PricingTab } from './components/tabs/PricingTab'
 import { ShippingTab } from './components/tabs/ShippingTab'
 import { WarrantyTab } from './components/tabs/WarrantyTab'
 import { VariantsTab } from './components/tabs/VariantsTab'
 import { SellerTab } from './components/tabs/SellerTab'
-import { ModalitiesTab } from './components/tabs/ModalitiesTab'
 import { SeoTab } from './components/tabs/SeoTab'
 
 const tabs = [
@@ -22,9 +21,9 @@ const tabs = [
     component: <BasicTab />
   },
   {
-    name: '💰 Financeiro',
-    value: 'financial', 
-    component: <FinancialTab />
+    name: '💲 Preços',
+    value: 'pricing', 
+    component: <PricingTab />
   },
   {
     name: '🚚 Frete',
@@ -45,11 +44,6 @@ const tabs = [
     name: '👥 Vendedor',
     value: 'seller',
     component: <SellerTab />
-  },
-  {
-    name: '📦 Modalidades',
-    value: 'modalities',
-    component: <ModalitiesTab />
   },
   {
     name: '🔍 SEO',

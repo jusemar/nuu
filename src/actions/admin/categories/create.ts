@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/db" // Seu arquivo de configuração do Drizzle
-import { categoryTable } from "@/db/table/categories"
+import { categoryTable } from "@/db/table/categories/categories"
 
 export async function createCategory(formData: {
   name: string

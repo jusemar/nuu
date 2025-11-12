@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/db"
-import { categoryTable } from "@/db/table/categories"
+import { categoryTable } from "@/db/table/categories/categories"
 
 export async function getCategories() {
   try {

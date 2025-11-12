@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/db"
-import { categoryTable } from "@/db/table/categories"
+import { categoryTable } from "@/db/table/categories/categories"
 import { eq } from "drizzle-orm"
 
 export async function deleteCategory(id: string) {

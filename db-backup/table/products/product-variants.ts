@@ -1,16 +1,6 @@
+// src/db/table/products/product-variants.ts
 import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
-import { categoryTable } from './categories';
-
-export const productTable = pgTable("product", {
-  id: uuid().primaryKey().defaultRandom(),
-  categoryId: uuid("category_id")
-    .notNull()
-    .references(() => categoryTable.id, { onDelete: "set null" }),
-  name: text().notNull(),
-  slug: text().notNull().unique(),
-  description: text().notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+import { productTable } from './products';
 
 export const productVariantTable = pgTable("product_variant", {
   id: uuid().primaryKey().defaultRandom(),

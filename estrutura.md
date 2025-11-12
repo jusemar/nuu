@@ -57,50 +57,100 @@ src/db/
 └── types.ts (tipos TypeScript)
 
 
-Seu Modelo é: "Feature-Based Structure" (Estrutura por Funcionalidade)
-É uma abordagem moderna onde você organiza por domínio/funcionalidade em vez de por tipo de arquivo.
+Seu Modelo é: Feature-based (modular por domínio) — Next.js App Router.
+Tecnologias/padrões observados: Next.js (app/), TanStack Query, Drizzle (ORM), Better Auth (better-auth/react), Tailwind, Sonner (toasts), dnd-kit (drag & drop), React Context Providers.
 nuu/
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx
+│   │   ├── authentication/
+│   │   │   └── components/
+│   │   │       ├── sign-in-form.tsx
+│   │   │       └── sign-up-form.tsx
+│   │   ├── admin/
+│   │   │   ├── categories/
+│   │   │   │   ├── new/page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── products/page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── cart/
+│   │   │   ├── confirmation/
+│   │   │   │   └── components/finish-order-button.tsx
+│   │   │   ├── identification/
+│   │   │   │   └── components/addresses.tsx
+│   │   │   └── components/cart-summary.tsx
+│   │   ├── category/
+│   │   │   └── [slug]/page.tsx
+│   │   ├── product-variant/
+│   │   │   └── [slug]/page.tsx (with components: add-to-cart-button.tsx, product-actions.tsx, variant-selector.tsx)
+│   │   ├── checkout/
+│   │   │   └── success/page.tsx
+│   │   ├── my-orders/page.tsx
+│   │   ├── api/
+│   │   │   ├── auth/[...all]/route.ts
+│   │   │   ├── admin/categories/route.ts
+│   │   │   └── stripe/webhook/route.ts
 │   │   ├── layout.tsx
-│   │   └── authentication/
-│   │       └── components/
-│   │           ├── sign-in-form.tsx
-│   │           └── sign-up-form.tsx
+│   │   ├── page.tsx
+│   │   └── globals.css
 │   ├── components/
+│   │   ├── admin/ (header, sidebar, toolbar, category-form)
 │   │   ├── common/
 │   │   │   ├── header.tsx
+│   │   │   ├── footer.tsx
 │   │   │   ├── cart.tsx
-│   │   │   ├── deals-grid.tsx
-│   │   │   └── flash-deal-card.tsx
+│   │   │   ├── categories-menu/ (index.tsx, mobile-menu.tsx, wrapper.tsx)
+│   │   │   └── many product/category UI components
 │   │   └── ui/
-│   │       ├── countdown-timer.tsx
-│   │       └── shadcn-io/
-│   │           └── navbar-08/
-│   │               └── index.tsx
+│   │       ├── shadcn-io/navbar-08/ (index.tsx, logo.tsx, desktop-navigation.tsx, mobile-menu.tsx, notification-menu.tsx)
+│   │       ├── data-table.tsx
+│   │       ├── popover.tsx
+│   │       ├── table.tsx
+│   │       ├── input.tsx, button.tsx, toast/sonner.tsx, scroll-area.tsx, etc.
+│   ├── data/
+│   │   ├── categories/get.ts
+│   │   └── products/get.ts
+│   ├── db/
+│   │   ├── index.ts
+│   │   ├── schema.ts
+│   │   ├── seed.ts
+│   │   ├── types.ts
+│   │   └── table/
+│   │       ├── categories.ts
+│   │       └── products.ts
+│   ├── actions/
+│   │   ├── admin/categories/create.ts
+│   │   ├── admin/categories/delete.ts
+│   │   ├── add-cart-product/
+│   │   ├── remove-cart-product/
+│   │   └── create-checkout-session/
 │   ├── hooks/
-│   │   ├── queries/
-│   │   │   └── use-cart.ts
-│   │   └── use-countdown.ts
+│   │   ├── queries/ (use-cart.ts, use-user-addresses.ts)
+│   │   ├── mutations/ (use-create-shipping-address.ts, use-finish-order.ts, admin/mutations/categories/useDeleteCategory.ts)
+│   │   ├── use-auth.ts
+│   │   ├── use-mobile.ts
+│   │   └── forms/use-category-form.ts
+│   ├── helpers/ (money.ts)
 │   ├── lib/
 │   │   ├── auth-client.ts
-│   │   └── auth.ts
-│   ├── db/
-│   │   ├── schema.ts
-│   │   └── index.ts
-│   ├── data/
-│   │   └── products/
-│   │       └── get.ts
-│   ├── actions/
-│   │   └── remove-cart-product/
-│   │       └── index.ts
-│   └── app/
-│       └── globals.css
+│   │   ├── auth.ts
+│   │   └── utils.ts
+│   ├── providers/
+│   │   ├── react-query.tsx
+│   │   ├── categories-provider.tsx
+│   │   └── categories-provider-client.tsx
+│   └── app/test/... (example/test pages with data-table draggable)
+├── public/ (images, svgs, banners)
 ├── drizzle.config.ts
+├── drizzle/ (migrations/meta)
+├── package.json
+├── package-lock.json
 ├── tsconfig.json
+├── postcss.config.mjs
+├── .prettierrc.json
 ├── .env
-└── package.json
+├── README.md
+└── estrutura.md
 
 
 

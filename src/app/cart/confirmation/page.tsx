@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import Footer from "@/components/common/footer";
+import { Footer } from "@/components/common/footer";
 import { Header } from "@/components/common/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,10 +67,10 @@ const ConfirmationPage = async () => {
           products={cart.items.map((item) => ({
             id: item.productVariant.id,
             name: item.productVariant.product.name,
-            variantName: item.productVariant.name,
+            variantName: item.productVariant.name || "",
             quantity: item.quantity,
             priceInCents: item.productVariant.priceInCents,
-            imageUrl: item.productVariant.imageUrl,
+            imageUrl: item.productVariant.imageUrl || "",
           }))}
         />
       </div>

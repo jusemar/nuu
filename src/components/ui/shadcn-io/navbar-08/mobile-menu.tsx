@@ -18,11 +18,15 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { authClient } from '@/lib/auth-client';
-import { Navbar08NavItem } from '.';
+import  Navbar08NavItem  from '.';
 import { cn } from '@/lib/utils';
 
 interface MobileMenuProps {
-  navigationLinks: Navbar08NavItem[];
+  navigationLinks: Array<{
+    title: string;
+    href: string;
+    active?: boolean;
+  }>;
   onNavItemClick?: (href: string) => void;
 }
 
@@ -55,7 +59,7 @@ export const MobileMenu = ({ navigationLinks, onNavItemClick }: MobileMenuProps)
                     link.active && 'bg-accent text-accent-foreground'
                   )}
                 >
-                  {link.label}
+                  {link.title}
                 </button>
               </NavigationMenuItem>
             ))}

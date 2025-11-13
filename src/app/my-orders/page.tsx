@@ -45,9 +45,9 @@ const MyOrdersPage = async () => {
             createdAt: order.createdAt,
             items: order.items.map((item) => ({
               id: item.id,
-              imageUrl: item.productVariant.imageUrl,
+              imageUrl: item.productVariant.imageUrl || '',
               productName: item.productVariant.product.name,
-              productVariantName: item.productVariant.name,
+              productVariantName: item.productVariant.name || '',
               priceInCents: item.productVariant.priceInCents,
               quantity: item.quantity,
             })),

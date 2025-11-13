@@ -12,13 +12,15 @@ import { Switch } from "@/components/ui/switch"
 import { X, RefreshCw, Plus } from "lucide-react"
 // IMPORT DO NOVO COMPONENTE
 import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
+import { useCategories } from '@/hooks/admin/queries/use-categories'
 
 export function BasicTab() {
+  const { data: categories, isLoading } = useCategories()
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     description: '',
-    category: '',
+    categoryId: '',
     brand: '',
     sku: '',
     isActive: true,
@@ -34,17 +36,17 @@ export function BasicTab() {
 
   // Geração automática do SKU
   const generateSku = () => {
-    const categoryCode = formData.category?.slice(0, 3).toUpperCase() || 'GEN'
+    const categoryCode = formData.categoryId?.slice(0, 3).toUpperCase() || 'GEN'
     const brandCode = formData.brand?.slice(0, 4).toUpperCase() || 'PROD'
     const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
     return `${categoryCode}-${brandCode}-${randomNum}`
   }
 
   useEffect(() => {
-    if (formData.category && formData.brand && !formData.sku) {
+    if (formData.categoryId && formData.brand && !formData.sku) {
       setFormData(prev => ({ ...prev, sku: generateSku() }))
     }
-  }, [formData.category, formData.brand, formData.sku])
+  }, [formData.categoryId, formData.brand, formData.sku])
 
   const addTag = (e: React.KeyboardEvent | React.MouseEvent) => {
     e.preventDefault()
@@ -218,21 +220,23 @@ export function BasicTab() {
               {/* Categoria */}
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria *</Label>
+                
                 <Select 
-                  value={formData.category} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                  value={formData.categoryId} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
                 >
                   <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Selecione a categoria" />
+                    <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione a categoria"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="electronics">📱 Eletrônicos</SelectItem>
-                    <SelectItem value="clothing">👕 Roupas</SelectItem>
-                    <SelectItem value="home">🏠 Casa</SelectItem>
-                    <SelectItem value="sports">⚽ Esportes</SelectItem>
-                    <SelectItem value="books">📚 Livros</SelectItem>
+                    {categories?.map(category => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+
               </div>
 
               {/* Marca */}

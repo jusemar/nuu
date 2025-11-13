@@ -7,14 +7,17 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from '@/components/ui/navigation-menu';
-import { Navbar08NavItem } from '.';
+import  Navbar08NavItem  from '.';
 import { cn } from '@/lib/utils';
 
 interface DesktopNavigationProps {
-  navigationLinks: Navbar08NavItem[];
+  navigationLinks: Array<{
+    title: string;
+    href: string;
+    active?: boolean; // Adicione esta linha
+  }>;
   onNavItemClick?: (href: string) => void;
 }
-
 export const DesktopNavigation = ({ navigationLinks, onNavItemClick }: DesktopNavigationProps) => {
   return (
     <div className="border-t py-2">
@@ -33,7 +36,7 @@ export const DesktopNavigation = ({ navigationLinks, onNavItemClick }: DesktopNa
                   link.active && 'text-primary'
                 )}
               >
-                {link.label}
+                {link.title}
               </NavigationMenuLink>
             </NavigationMenuItem>
           ))}

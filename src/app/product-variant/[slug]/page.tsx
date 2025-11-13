@@ -17,9 +17,9 @@ interface ProductVariantPageProps {
 }
 
 const ProductVariantPage = async ({ params }: ProductVariantPageProps) => {
-  const { slug } = await params;
+  const { slug} = await params;
   const productVariant = await db.query.productVariantTable.findFirst({
-    where: eq(productVariantTable.slug, slug),
+  where: eq(productVariantTable.id, slug),
     with: {
       product: {
         with: {
@@ -43,8 +43,8 @@ const ProductVariantPage = async ({ params }: ProductVariantPageProps) => {
       
       <div className="flex flex-col space-y-6">
         <Image
-          src={productVariant.imageUrl}
-          alt={productVariant.name}
+          src={productVariant.imageUrl || ""}
+          alt={productVariant.name || "Product variant"}
           sizes="100vw"
           height={0}
           width={0}
@@ -53,7 +53,7 @@ const ProductVariantPage = async ({ params }: ProductVariantPageProps) => {
 
         <div className="px-5">
           <VariantSelector
-            selectedVariantSlug={productVariant.slug}
+            selectedVariantSlug={productVariant.id}
             variants={productVariant.product.variants}
           />
         </div>

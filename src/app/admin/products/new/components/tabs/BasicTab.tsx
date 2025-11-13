@@ -1,4 +1,3 @@
-// src/app/admin/products/new/components/tabs/BasicTab.tsx
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -10,11 +9,14 @@ import { RichTextEditor } from "@/components/admin/rich-text-editor"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { X, RefreshCw, Plus } from "lucide-react"
-// IMPORT DO NOVO COMPONENTE
 import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
 import { useCategories } from '@/hooks/admin/queries/use-categories'
+import { useSlugGenerator } from '@/hooks/forms/useSlugGenerator'
+import { useSkuGenerator } from '@/hooks/forms/useSkuGenerator'
 
 export function BasicTab() {
+  const { generateSlug } = useSlugGenerator()
+  const { generateSku } = useSkuGenerator()
   const { data: categories, isLoading } = useCategories()
   const [formData, setFormData] = useState({
     name: '',
@@ -34,19 +36,16 @@ export function BasicTab() {
 
   const [tagInput, setTagInput] = useState('')
 
-  // Geração automática do SKU
-  const generateSku = () => {
-    const categoryCode = formData.categoryId?.slice(0, 3).toUpperCase() || 'GEN'
-    const brandCode = formData.brand?.slice(0, 4).toUpperCase() || 'PROD'
-    const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-    return `${categoryCode}-${brandCode}-${randomNum}`
+useEffect(() => {
+  if (formData.categoryId && formData.brand && !formData.sku) {
+    const newSku = generateSku({
+      categoryId: formData.categoryId,
+      categoryName: categories?.find(cat => cat.id === formData.categoryId)?.name,
+      brand: formData.brand
+    })
+    setFormData(prev => ({ ...prev, sku: newSku }))
   }
-
-  useEffect(() => {
-    if (formData.categoryId && formData.brand && !formData.sku) {
-      setFormData(prev => ({ ...prev, sku: generateSku() }))
-    }
-  }, [formData.categoryId, formData.brand, formData.sku])
+}, [formData.categoryId, formData.brand, formData.sku, categories, generateSku])
 
   const addTag = (e: React.KeyboardEvent | React.MouseEvent) => {
     e.preventDefault()
@@ -85,11 +84,18 @@ export function BasicTab() {
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Produto *</Label>
                   <Input 
-                    id="name" 
-                    placeholder="Smartphone Galaxy Pro" 
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  />
+                      id="name" 
+                      placeholder="Smartphone Galaxy Pro" 
+                      value={formData.name}
+                      onChange={(e) => {
+                        const name = e.target.value
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          name: name,
+                          slug: generateSlug(name) // ← Usa o hook existente
+                        }))
+                      }}
+                    />
                 </div>
                 
                 {/* Slug */}
@@ -206,14 +212,19 @@ export function BasicTab() {
                     onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
                     className="flex-1 text-sm"
                   />
-                  <button 
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, sku: generateSku() }))}
-                    className="px-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                    title="Gerar novo SKU"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
+                 <button 
+                  type="button"
+                  onClick={() => {
+                    const newSku = generateSku({
+                      categoryId: formData.categoryId,
+                      categoryName: categories?.find(cat => cat.id === formData.categoryId)?.name,
+                      brand: formData.brand
+                    })
+                    setFormData(prev => ({ ...prev, sku: newSku }))
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
                 </div>
               </div>
 

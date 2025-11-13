@@ -16,10 +16,10 @@ const VariantSelector = ({
     <div className="flex items-center gap-4">
       {variants.map((variant) => (
         <Link
-          href={`/product-variant/${variant.slug}`}
+          href={`/product-variant/${variant.id}`}
           key={variant.id}
           className={
-            selectedVariantSlug === variant.slug
+            selectedVariantSlug === variant.id
               ? "border-primary rounded-xl border-2"
               : ""
           }
@@ -27,8 +27,8 @@ const VariantSelector = ({
           <Image
             width={68}
             height={68}
-            src={variant.imageUrl}
-            alt={variant.name}
+             src={variant.imageUrl || ""}  // ADICIONEI: || "" para evitar null
+            alt={variant.name || "Variant"}
             className="rounded-xl"
           />
         </Link>

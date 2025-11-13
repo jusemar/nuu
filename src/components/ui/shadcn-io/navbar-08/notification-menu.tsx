@@ -12,8 +12,8 @@ import { DesktopNavigation } from './desktop-navigation';
 
 // Interfaces
 export interface Navbar08NavItem {
-  href?: string;
-  label: string;
+  href: string;
+  title: string;
   active?: boolean;
 }
 
@@ -28,10 +28,10 @@ export interface Navbar08Props extends React.HTMLAttributes<HTMLElement> {
 
 // Default navigation links
 const defaultNavigationLinks: Navbar08NavItem[] = [
-  { href: '/', label: 'Home', active: true },
-  { href: '/products', label: 'Produtos' },
-  { href: '/categories', label: 'Categorias' },
-  { href: '/about', label: 'Sobre' },
+  { href: '/', title: 'Home', active: true },
+  { href: '/products', title: 'Produtos' },
+  { href: '/categories', title: 'Categorias' },
+  { href: '/about', title: 'Sobre' },
 ];
 
 export const Navbar08 = React.forwardRef<HTMLElement, Navbar08Props>(

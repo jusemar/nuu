@@ -8,8 +8,8 @@ export const productImageTable = pgTable("product_image", {
     .notNull()
     .references(() => productVariantTable.id, { onDelete: "cascade" }),
   imageUrl: text("image_url").notNull(),
-  cloudinaryPublicId: text("cloudinary_public_id").notNull(), // ID para gerenciar no Cloudinary
-  sortOrder: integer("sort_order").notNull().default(0), // Para ordenar as imagens
+  externalImageId: text("external_image_id").notNull(), 
+  sortOrder: integer("sort_order").notNull(), // Para ordenar as imagens
   altText: text("alt_text"), // Texto alternativo para SEO/acessibilidade
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

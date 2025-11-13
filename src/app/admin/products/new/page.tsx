@@ -4,6 +4,7 @@ import Link from "next/link"
 import { ArrowLeft, Save, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCreateProduct } from '@/hooks/admin/mutations/products/useCreateProduct'
 
 // Import das abas
 import { BasicTab } from './components/tabs/BasicTab'
@@ -53,6 +54,47 @@ const tabs = [
 ]
 
 export default function NewProductPage() {
+  const createProductMutation = useCreateProduct()
+
+  // Função para lidar com a publicação do produto
+  const handlePublishProduct = async () => {
+    try {
+      // TODO: Coletar dados reais de todas as abas
+      const productData = {
+        name: "Produto Teste",
+        slug: "produto-teste",
+        description: "Descrição do produto",
+        categoryId: "category-id-here", // Pegar do formulário
+        brand: "Marca Teste",
+        sku: "SKU-TEST-001",
+        productType: "ean",
+        productCode: "123456789",
+        ncmCode: "8517.12.00",
+        collection: "Coleção Teste",
+        tags: ["tag1", "tag2"],
+        images: [], // Array com URLs das imagens do Vercel Blob
+        variant: {
+          sku: "VARIANT-SKU-001",
+          priceInCents: 9999, // R$ 99,99
+          stockQuantity: 10,
+          attributes: {}
+        }
+      }
+      
+      const result = await createProductMutation.mutateAsync(productData)
+      
+      if (result.success) {
+        // TODO: Redirecionar para página do produto ou lista
+        console.log('Produto criado com ID:', result.productId)
+        // redirect('/admin/products')
+      } else {
+        console.error('Erro ao criar produto:', result.error)
+      }
+    } catch (error) {
+      console.error('Erro ao publicar produto:', error)
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col min-h-screen">
       {/* HEADER FIXO COM AÇÕES */}
@@ -79,9 +121,13 @@ export default function NewProductPage() {
               <Save className="w-4 h-4 mr-2" />
               Salvar Rascunho
             </Button>
-            <Button size="sm">
+            <Button 
+              size="sm" 
+              onClick={handlePublishProduct}
+              disabled={createProductMutation.isPending}
+            >
               <Save className="w-4 h-4 mr-2" />
-              Publicar Produto
+              {createProductMutation.isPending ? "Publicando..." : "Publicar Produto"}
             </Button>
           </div>
         </div>

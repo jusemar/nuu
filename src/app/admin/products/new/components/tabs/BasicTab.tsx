@@ -10,6 +10,8 @@ import { RichTextEditor } from "@/components/admin/rich-text-editor"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { X, RefreshCw, Plus } from "lucide-react"
+// IMPORT DO NOVO COMPONENTE
+import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
 
 export function BasicTab() {
   const [formData, setFormData] = useState({
@@ -24,7 +26,8 @@ export function BasicTab() {
     tags: [] as string[],
     productType: '',
     productCode: '',
-    ncmCode: ''
+    ncmCode: '',
+    images: [] as UploadedImage[] // ✅ NOVO CAMPO PARA IMAGENS
   })
 
   const [tagInput, setTagInput] = useState('')
@@ -53,6 +56,11 @@ export function BasicTab() {
 
   const removeTag = (tagToRemove: string) => {
     setFormData(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }))
+  }
+
+  // ✅ FUNÇÃO PARA LIDAR COM MUDANÇAS NAS IMAGENS
+  const handleImagesChange = (images: UploadedImage[]) => {
+    setFormData(prev => ({ ...prev, images }))
   }
 
   return (
@@ -106,19 +114,11 @@ export function BasicTab() {
             </CardContent>
           </Card>
 
-          {/* CARD GALERIA DE IMAGENS */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Galeria de Imagens</CardTitle>
-              <CardDescription>Adicione imagens do produto</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                <p className="text-gray-500 text-lg">📷 Galeria de Imagens</p>
-                <p className="text-sm text-gray-400 mt-2">(Será implementada em breve)</p>
-              </div>
-            </CardContent>
-          </Card>
+          {/* ✅ CARD GALERIA DE IMAGENS - AGORA FUNCIONAL! */}
+          <ProductImageGallery 
+            onImagesChange={handleImagesChange}
+            maxFiles={10}
+          />
 
           {/* CARD CÓDIGOS ESPECÍFICOS */}
           <Card>

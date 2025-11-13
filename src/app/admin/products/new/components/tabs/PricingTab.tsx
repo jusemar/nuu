@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronUp, Package, Clock, Zap, Calendar, ChevronDownIcon } from "lucide-react"
+import { Package, Clock, Zap, Calendar } from "lucide-react"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,9 +20,8 @@ export function PricingTab() {
   const [costPrice, setCostPrice] = useState('')
   const [modalities, setModalities] = useState({
     stock: { 
-      active: false, 
       price: '', 
-      deliveryText: '', 
+      deliveryText: '1-2 dias', 
       promo: { 
         active: false, 
         type: 'normal', 
@@ -31,9 +30,8 @@ export function PricingTab() {
       } 
     },
     preSale: { 
-      active: false, 
       price: '', 
-      deliveryText: '', 
+      deliveryText: '15-30 dias', 
       promo: { 
         active: false, 
         type: 'normal', 
@@ -42,9 +40,8 @@ export function PricingTab() {
       } 
     },
     dropshipping: { 
-      active: false, 
       price: '', 
-      deliveryText: '', 
+      deliveryText: '3-7 dias', 
       promo: { 
         active: false, 
         type: 'normal', 
@@ -53,9 +50,8 @@ export function PricingTab() {
       } 
     },
     orderBasis: { 
-      active: false, 
       price: '', 
-      deliveryText: '', 
+      deliveryText: '10-20 dias', 
       promo: { 
         active: false, 
         type: 'normal', 
@@ -64,8 +60,6 @@ export function PricingTab() {
       } 
     }
   })
-
-  const [expandedModality, setExpandedModality] = useState<string | null>(null)
 
   const calculateMargin = () => {
     if (!costPrice || !modalities.stock.price) return '0%'
@@ -92,10 +86,9 @@ export function PricingTab() {
     }))
   }
 
-  const toggleModality = (type: string) => {
-    const newActive = !modalities[type as keyof typeof modalities].active
-    updateModality(type, 'active', newActive)
-    setExpandedModality(newActive ? type : null)
+  const togglePromo = (type: string) => {
+    const newActive = !modalities[type as keyof typeof modalities].promo.active
+    updatePromo(type, 'active', newActive)
   }
 
   const DateTimePicker = ({ 
@@ -144,7 +137,6 @@ export function PricingTab() {
       }
     }, [date])
 
-    // Opções de horários pré-definidos
     const timeOptions = [
       "00:00", "01:00", "02:00", "03:00", "04:00", "05:00", 
       "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
@@ -154,7 +146,6 @@ export function PricingTab() {
 
     return (
       <div className="flex gap-2 w-full">
-        {/* Date Picker */}
         <div className="flex-1 min-w-0">
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -163,7 +154,7 @@ export function PricingTab() {
                 className="w-full justify-between font-normal h-9 text-sm min-w-[120px]"
               >
                 {date ? format(date, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
-                <ChevronDownIcon className="w-4 h-4" />
+                <Calendar className="w-4 h-4 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -179,7 +170,6 @@ export function PricingTab() {
           </Popover>
         </div>
 
-        {/* Time Picker com Select */}
         <div className="flex-1 min-w-0">
           <Select value={selectedTime} onValueChange={handleTimeChange}>
             <SelectTrigger className="h-9 text-sm">
@@ -204,164 +194,139 @@ export function PricingTab() {
     icon: React.ReactNode,
     description: string 
   }) => {
-    const isActive = modalities[type as keyof typeof modalities].active
-    const isExpanded = expandedModality === type
+    const isPromoActive = modalities[type as keyof typeof modalities].promo.active
 
     return (
-      <Card className={`transition-all duration-200 ${isActive ? 'border-blue-200 bg-blue-50' : 'border-gray-200'}`}>
+      <Card className="border-gray-200 hover:border-gray-300 transition-colors">
         <CardContent className="p-4">
-          {/* Header Compacto */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="p-2 bg-white rounded-lg border shrink-0">
-                {icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-gray-900 truncate">{label}</h3>
-                <p className="text-sm text-gray-500 truncate">{description}</p>
+          {/* Header - Sempre Visível */}
+          <div className="flex items-start gap-3 mb-4">
+            <div className="p-2 bg-blue-50 rounded-lg border border-blue-100 shrink-0 mt-1">
+              {icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-gray-900 text-base">{label}</h3>
+              <p className="text-sm text-gray-600 mt-1">{description}</p>
+            </div>
+          </div>
+
+          {/* Campos de Preço e Prazo - Sempre Visíveis */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Preço de Venda
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  step="0.01"
+                  value={modalities[type as keyof typeof modalities].price}
+                  onChange={(e) => updateModality(type, 'price', e.target.value)}
+                  className="pl-8 text-sm h-10 border-gray-300 focus:border-blue-500"
+                />
               </div>
             </div>
             
-            <div className="flex items-center gap-2 shrink-0">
-              {isActive && (
-                <button
-                  onClick={() => setExpandedModality(isExpanded ? null : type)}
-                  className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
-                >
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-              )}
-              <Switch
-                checked={isActive}
-                onCheckedChange={() => toggleModality(type)}
-                className="shrink-0"
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Prazo de Entrega
+              </Label>
+              <Input
+                placeholder="Ex: 2-3 dias"
+                value={modalities[type as keyof typeof modalities].deliveryText}
+                onChange={(e) => updateModality(type, 'deliveryText', e.target.value)}
+                className="text-sm h-10 border-gray-300 focus:border-blue-500"
               />
             </div>
           </div>
 
-          {/* Conteúdo Expandido */}
-          {isActive && isExpanded && (
-            <div className="mt-4 space-y-4 pl-11">
-              {/* Preço e Prazo - Layout Compacto */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-sm">
-                    <Package className="w-4 h-4 shrink-0" />
-                    Preço de Venda
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      step="0.01"
-                      value={modalities[type as keyof typeof modalities].price}
-                      onChange={(e) => updateModality(type, 'price', e.target.value)}
-                      className="pl-8 text-sm h-9"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 shrink-0" />
-                    Prazo de Entrega
-                  </Label>
-                  <Input
-                    placeholder="Ex: 2-3 dias"
-                    value={modalities[type as keyof typeof modalities].deliveryText}
-                    onChange={(e) => updateModality(type, 'deliveryText', e.target.value)}
-                    className="text-sm h-9"
-                  />
-                </div>
+          {/* Seção de Promoção - Controlada apenas pelo Switch */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Zap className={`w-4 h-4 ${isPromoActive ? 'text-orange-500' : 'text-gray-400'}`} />
+                <Label className="text-sm font-medium text-gray-700 cursor-pointer" onClick={() => togglePromo(type)}>
+                  Promoção
+                </Label>
               </div>
-
-              {/* Promoção */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <Label className="flex items-center gap-2 text-sm">
-                    <Zap className="w-4 h-4 shrink-0" />
-                    Promoção
-                  </Label>
-                  <Switch
-                    checked={modalities[type as keyof typeof modalities].promo.active}
-                    onCheckedChange={(checked) => updatePromo(type, 'active', checked)}
-                    className="shrink-0"
-                  />
-                </div>
-
-                {modalities[type as keyof typeof modalities].promo.active && (
-                  <div className="space-y-4 bg-white p-4 rounded-lg border">
-                    {/* Tipo de Promoção */}
-                    <div className="space-y-2">
-                      <Label className="text-sm">Tipo de Promoção</Label>
-                      <RadioGroup
-                        value={modalities[type as keyof typeof modalities].promo.type}
-                        onValueChange={(value) => updatePromo(type, 'type', value)}
-                        className="flex gap-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="normal" id={`${type}-normal`} />
-                          <Label htmlFor={`${type}-normal`} className="text-sm font-normal">
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                              Normal
-                            </Badge>
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="flash" id={`${type}-flash`} />
-                          <Label htmlFor={`${type}-flash`} className="text-sm font-normal">
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700">
-                              Relâmpago
-                            </Badge>
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    {/* Preço Promocional e Validade - Layout Ajustado */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm">Preço Promocional</Label>
-                        <div className="relative max-w-[180px]">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            step="0.01"
-                            value={modalities[type as keyof typeof modalities].promo.price}
-                            onChange={(e) => updatePromo(type, 'price', e.target.value)}
-                            className="pl-8 text-sm h-9"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2 text-sm">
-                          <Calendar className="w-4 h-4 shrink-0" />
-                          Validade da Oferta
-                        </Label>
-                        <DateTimePicker
-                          date={modalities[type as keyof typeof modalities].promo.endDate}
-                          onSelect={(date) => updatePromo(type, 'endDate', date)}
-                          placeholder="Selecione data e hora"
-                        />
-                        {modalities[type as keyof typeof modalities].promo.endDate && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Promoção válida até {format(
-                              modalities[type as keyof typeof modalities].promo.endDate as Date, 
-                              "dd/MM/yyyy 'às' HH:mm", 
-                              { locale: ptBR }
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={isPromoActive}
+                  onCheckedChange={() => togglePromo(type)}
+                  className="data-[state=checked]:bg-orange-500"
+                />
               </div>
             </div>
-          )}
+
+            {/* Conteúdo da Promoção - Visível apenas quando ativa */}
+            {isPromoActive && (
+              <div className="space-y-4 bg-orange-50/50 p-4 rounded-lg border border-orange-200">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Tipo de Promoção</Label>
+                  <RadioGroup
+                    value={modalities[type as keyof typeof modalities].promo.type}
+                    onValueChange={(value) => updatePromo(type, 'type', value)}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="normal" id={`${type}-normal`} />
+                      <Label htmlFor={`${type}-normal`} className="text-sm font-normal cursor-pointer">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          Normal
+                        </Badge>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="flash" id={`${type}-flash`} />
+                      <Label htmlFor={`${type}-flash`} className="text-sm font-normal cursor-pointer">
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                          Relâmpago
+                        </Badge>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">Preço Promocional</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        step="0.01"
+                        value={modalities[type as keyof typeof modalities].promo.price}
+                        onChange={(e) => updatePromo(type, 'price', e.target.value)}
+                        className="pl-8 text-sm h-10 border-orange-300 focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">
+                      Validade da Oferta
+                    </Label>
+                    <DateTimePicker
+                      date={modalities[type as keyof typeof modalities].promo.endDate}
+                      onSelect={(date) => updatePromo(type, 'endDate', date)}
+                    />
+                    {modalities[type as keyof typeof modalities].promo.endDate && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        Promoção válida até {format(
+                          modalities[type as keyof typeof modalities].promo.endDate as Date, 
+                          "dd/MM/yyyy 'às' HH:mm", 
+                          { locale: ptBR }
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     )
@@ -378,7 +343,7 @@ export function PricingTab() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-md">
             <div className="space-y-2">
-              <Label>Preço de Custo</Label>
+              <Label className="font-medium">Preço de Custo</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
                 <Input
@@ -387,56 +352,56 @@ export function PricingTab() {
                   step="0.01"
                   value={costPrice}
                   onChange={(e) => setCostPrice(e.target.value)}
-                  className="pl-8 h-9"
+                  className="pl-8 h-10 border-gray-300 focus:border-blue-500"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Margem de Lucro</Label>
+              <Label className="font-medium">Margem de Lucro</Label>
               <Input
                 value={calculateMargin()}
                 disabled
-                className="bg-gray-50 font-medium h-9"
+                className="bg-gray-50 font-medium h-10 border-gray-300"
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* MODALIDADES DE VENDA - LAYOUT HORIZONTAL */}
+      {/* MODALIDADES DE VENDA - DESIGN PROFISSIONAL */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Modalidades de Venda</CardTitle>
-          <CardDescription>Configure diferentes formas de vender este produto</CardDescription>
+          <CardDescription>Todas as modalidades disponíveis para este produto</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ModalityCard
               type="stock"
               label="Estoque Próprio"
               icon={<Package className="w-5 h-5 text-blue-600" />}
-              description="Pronto para envio imediato"
+              description="Produto em estoque para envio rápido"
             />
 
             <ModalityCard
               type="preSale"
               label="Pré-venda"
               icon={<Calendar className="w-5 h-5 text-purple-600" />}
-              description="Reserva antecipada"
+              description="Venda antecipada com data de entrega futura"
             />
 
             <ModalityCard
               type="dropshipping"
               label="Dropshipping"
               icon={<Package className="w-5 h-5 text-green-600" />}
-              description="Enviado pelo fornecedor"
+              description="Enviado diretamente pelo fornecedor"
             />
 
             <ModalityCard
               type="orderBasis"
               label="Sob Encomenda"
               icon={<Clock className="w-5 h-5 text-orange-600" />}
-              description="Produzido sob demanda"
+              description="Produzido especialmente para o cliente"
             />
           </div>
         </CardContent>

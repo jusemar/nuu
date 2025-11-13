@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import Footer from "@/components/common/footer";
+import {Footer} from "@/components/common/footer";
 import { Header } from "@/components/common/header";
 import { db } from "@/db";
 import { shippingAddressTable } from "@/db/schema";
@@ -59,10 +59,10 @@ const IdentificationPage = async () => {
           products={cart.items.map((item) => ({
             id: item.productVariant.id,
             name: item.productVariant.product.name,
-            variantName: item.productVariant.name,
+            variantName: item.productVariant.name || '',
             quantity: item.quantity,
             priceInCents: item.productVariant.priceInCents,
-            imageUrl: item.productVariant.imageUrl,
+            imageUrl: item.productVariant.imageUrl || '',
           }))}
         />
       </div>

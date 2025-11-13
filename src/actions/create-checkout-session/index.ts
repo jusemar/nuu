@@ -46,30 +46,35 @@ export const createCheckoutSession = async (
       productVariant: { with: { product: true } },
     },
   });
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  const checkoutSession = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    mode: "payment",
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/cancel`,
-    metadata: {
-      orderId,
-    },
-    line_items: orderItems.map((orderItem) => {
-      return {
-        price_data: {
-          currency: "brl",
-          product_data: {
-            name: `${orderItem.productVariant.product.name} - ${orderItem.productVariant.name}`,
-            description: orderItem.productVariant.product.description,
-            images: [orderItem.productVariant.imageUrl],
-          },
-          // Em centavos
-          unit_amount: orderItem.priceInCents,
-        },
-        quantity: orderItem.quantity,
-      };
-    }),
+  
+  // Com stripe@13.3.0, use assim:
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2023-10-16",
   });
+  
+  const checkoutSession = await stripe.checkout.sessions.create({
+  payment_method_types: ["card"],
+  mode: "payment",
+  success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
+  cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/cancel`,
+  metadata: {
+    orderId,
+  },
+  // CORREÇÃO: line_items -> line_items (mas verifique a sintaxe)
+  line_items: orderItems.map((orderItem) => {
+    return {
+      price_data: {
+        currency: "brl",
+        product_data: {
+          name: `${orderItem.productVariant.product.name} - ${orderItem.productVariant.name}`,
+          description: orderItem.productVariant.product.description,
+          images: orderItem.productVariant.imageUrl ? [orderItem.productVariant.imageUrl] : [],
+        },
+        unit_amount: orderItem.priceInCents,
+      },
+      quantity: orderItem.quantity,
+    };
+  }),
+});
   return checkoutSession;
 };

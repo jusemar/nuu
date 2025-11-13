@@ -5,6 +5,8 @@ import { ArrowLeft, Save, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCreateProduct } from '@/hooks/admin/mutations/products/useCreateProduct'
+import { useState } from "react"
+import { ProductFormData, initialProductData } from './data/product-form-data'
 
 // Import das abas
 import { BasicTab } from './components/tabs/BasicTab'
@@ -15,11 +17,18 @@ import { VariantsTab } from './components/tabs/VariantsTab'
 import { SellerTab } from './components/tabs/SellerTab'
 import { SeoTab } from './components/tabs/SeoTab'
 
-const tabs = [
+export default function NewProductPage() {
+  const createProductMutation = useCreateProduct()
+  const [productData, setProductData] = useState<ProductFormData>(initialProductData)
+
+  const tabs = [
   {
     name: '📝 Básico',
     value: 'basic',
-    component: <BasicTab />
+    component: <BasicTab 
+      data={productData} 
+      onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))} 
+    />
   },
   {
     name: '💲 Preços',
@@ -53,26 +62,23 @@ const tabs = [
   }
 ]
 
-export default function NewProductPage() {
-  const createProductMutation = useCreateProduct()
-
   // Função para lidar com a publicação do produto
   const handlePublishProduct = async () => {
     try {
       // TODO: Coletar dados reais de todas as abas
-      const productData = {
-        name: "Produto Teste",
-        slug: "produto-teste",
-        description: "Descrição do produto",
-        categoryId: "category-id-here", // Pegar do formulário
-        brand: "Marca Teste",
-        sku: "SKU-TEST-001",
-        productType: "ean",
-        productCode: "123456789",
-        ncmCode: "8517.12.00",
-        collection: "Coleção Teste",
-        tags: ["tag1", "tag2"],
-        images: [], // Array com URLs das imagens do Vercel Blob
+      const productDataToSave = {
+        name: productData.name || "Produto Teste",
+        slug: productData.slug || "produto-teste",
+        description: productData.description || "Descrição do produto",
+        categoryId: productData.categoryId || "category-id-here", // Pegar do formulário
+        brand: productData.brand || "Marca Teste",
+        sku: productData.sku || "SKU-TEST-001",
+        productType: productData.productType || "ean",
+        productCode: productData.productCode || "123456789",
+        ncmCode: productData.ncmCode || "8517.12.00",
+        collection: productData.collection || "Coleção Teste",
+        tags: productData.tags || ["tag1", "tag2"],
+        images: productData.images || [], // Array com URLs das imagens do Vercel Blob
         variant: {
           sku: "VARIANT-SKU-001",
           priceInCents: 9999, // R$ 99,99
@@ -81,7 +87,7 @@ export default function NewProductPage() {
         }
       }
       
-      const result = await createProductMutation.mutateAsync(productData)
+      const result = await createProductMutation.mutateAsync(productDataToSave)
       
       if (result.success) {
         // TODO: Redirecionar para página do produto ou lista

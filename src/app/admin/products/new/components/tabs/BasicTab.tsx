@@ -1,3 +1,4 @@
+// src/app/admin/products/new/components/tabs/BasicTab.tsx
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -9,67 +10,67 @@ import { RichTextEditor } from "@/components/admin/rich-text-editor"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { X, RefreshCw, Plus } from "lucide-react"
-import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
 import { useCategories } from '@/hooks/admin/queries/use-categories'
 import { useSlugGenerator } from '@/hooks/forms/useSlugGenerator'
 import { useSkuGenerator } from '@/hooks/forms/useSkuGenerator'
+import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
 
-export function BasicTab() {
+interface BasicTabProps {
+  data: {
+    name: string
+    slug: string
+    description: string
+    categoryId: string
+    brand: string
+    sku: string
+    isActive: boolean
+    collection: string
+    tags: string[]
+    productType: string
+    productCode: string
+    ncmCode: string
+    images: UploadedImage[]
+  }
+  onChange: (updates: any) => void
+}
+
+export function BasicTab({ data, onChange }: BasicTabProps) {
+  const { data: categories, isLoading } = useCategories()
   const { generateSlug } = useSlugGenerator()
   const { generateSku } = useSkuGenerator()
-  const { data: categories, isLoading } = useCategories()
-  const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    description: '',
-    categoryId: '',
-    brand: '',
-    sku: '',
-    isActive: true,
-    collection: '',
-    tags: [] as string[],
-    productType: '',
-    productCode: '',
-    ncmCode: '',
-    images: [] as UploadedImage[] // ✅ NOVO CAMPO PARA IMAGENS
-  })
-
   const [tagInput, setTagInput] = useState('')
 
-useEffect(() => {
-  if (formData.categoryId && formData.brand && !formData.sku) {
-    const newSku = generateSku({
-      categoryId: formData.categoryId,
-      categoryName: categories?.find(cat => cat.id === formData.categoryId)?.name,
-      brand: formData.brand
-    })
-    setFormData(prev => ({ ...prev, sku: newSku }))
-  }
-}, [formData.categoryId, formData.brand, formData.sku, categories, generateSku])
+  // Geração automática do SKU
+  useEffect(() => {
+    if (data.categoryId && data.brand && !data.sku) {
+      const newSku = generateSku({
+        categoryId: data.categoryId,
+        categoryName: categories?.find(cat => cat.id === data.categoryId)?.name,
+        brand: data.brand
+      })
+      onChange({ sku: newSku })
+    }
+  }, [data.categoryId, data.brand, data.sku, categories, generateSku, onChange])
 
   const addTag = (e: React.KeyboardEvent | React.MouseEvent) => {
     e.preventDefault()
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }))
+    if (tagInput.trim() && !data.tags.includes(tagInput.trim())) {
+      onChange({ tags: [...data.tags, tagInput.trim()] })
       setTagInput('')
     }
   }
 
   const removeTag = (tagToRemove: string) => {
-    setFormData(prev => ({ ...prev, tags: prev.tags.filter(tag => tag !== tagToRemove) }))
+    onChange({ tags: data.tags.filter(tag => tag !== tagToRemove) })
   }
 
-  // ✅ FUNÇÃO PARA LIDAR COM MUDANÇAS NAS IMAGENS
   const handleImagesChange = (images: UploadedImage[]) => {
-    setFormData(prev => ({ ...prev, images }))
+    onChange({ images })
   }
 
   return (
     <div className="space-y-6">
-      {/* LAYOUT PRINCIPAL COM COLUNAS DESIGUAIS */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        {/* COLUNA PRINCIPAL (2/3) */}
         <div className="xl:col-span-2 space-y-6">
           {/* CARD INFORMAÇÕES PRINCIPAIS */}
           <Card>
@@ -78,51 +79,46 @@ useEffect(() => {
               <CardDescription>Dados essenciais para identificação</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Linha Única: Nome e Slug */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Nome */}
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Produto *</Label>
                   <Input 
-                      id="name" 
-                      placeholder="Smartphone Galaxy Pro" 
-                      value={formData.name}
-                      onChange={(e) => {
-                        const name = e.target.value
-                        setFormData(prev => ({ 
-                          ...prev, 
-                          name: name,
-                          slug: generateSlug(name) // ← Usa o hook existente
-                        }))
-                      }}
-                    />
+                    id="name" 
+                    placeholder="Smartphone Galaxy Pro" 
+                    value={data.name}
+                    onChange={(e) => {
+                      const name = e.target.value
+                      onChange({ 
+                        name: name,
+                        slug: generateSlug(name)
+                      })
+                    }}
+                  />
                 </div>
                 
-                {/* Slug */}
                 <div className="space-y-2">
                   <Label htmlFor="slug">Slug *</Label>
                   <Input 
                     id="slug" 
                     placeholder="smartphone-pro" 
-                    value={formData.slug}
-                    onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                    value={data.slug}
+                    onChange={(e) => onChange({ slug: e.target.value })}
                   />
                 </div>
               </div>
 
-              {/* Descrição */}
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição *</Label>
                 <RichTextEditor
-                  value={formData.description}
-                  onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
+                  value={data.description}
+                  onChange={(value) => onChange({ description: value })}
                   placeholder="Descreva as características principais do produto..."
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* ✅ CARD GALERIA DE IMAGENS - AGORA FUNCIONAL! */}
+          {/* GALERIA DE IMAGENS */}
           <ProductImageGallery 
             onImagesChange={handleImagesChange}
             maxFiles={10}
@@ -135,14 +131,13 @@ useEffect(() => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Tipo de Identificação e Código na mesma linha */}
                 <div className="space-y-2 md:col-span-2">
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="space-y-2 md:col-span-2">
                       <Label className="text-sm">Tipo</Label>
                       <Select 
-                        value={formData.productType} 
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, productType: value }))}
+                        value={data.productType} 
+                        onValueChange={(value) => onChange({ productType: value })}
                       >
                         <SelectTrigger className="text-sm">
                           <SelectValue placeholder="Selecione" />
@@ -158,21 +153,20 @@ useEffect(() => {
                       <Label className="text-sm">Código</Label>
                       <Input 
                         placeholder="Código correspondente" 
-                        value={formData.productCode}
-                        onChange={(e) => setFormData(prev => ({ ...prev, productCode: e.target.value }))}
+                        value={data.productCode}
+                        onChange={(e) => onChange({ productCode: e.target.value })}
                         className="text-sm"
                       />
                     </div>
                   </div>
                 </div>
                 
-                {/* NCM */}
                 <div className="space-y-2">
                   <Label className="text-sm">Código NCM</Label>
                   <Input 
                     placeholder="8517.12.00" 
-                    value={formData.ncmCode}
-                    onChange={(e) => setFormData(prev => ({ ...prev, ncmCode: e.target.value }))}
+                    value={data.ncmCode}
+                    onChange={(e) => onChange({ ncmCode: e.target.value })}
                     className="text-sm"
                   />
                 </div>
@@ -181,15 +175,13 @@ useEffect(() => {
           </Card>
         </div>
 
-        {/* COLUNA LATERAL (1/3) */}
+        {/* COLUNA LATERAL */}
         <div className="space-y-6">
-          {/* CARD ORGANIZAÇÃO */}
           <Card>
             <CardHeader>
               <CardTitle>Organização</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Status Arquivo */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="archived" className="text-sm font-medium">Arquivado</Label>
@@ -197,44 +189,43 @@ useEffect(() => {
                 </div>
                 <Switch 
                   id="archived"
-                  checked={!formData.isActive}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: !checked }))}
+                  checked={!data.isActive}
+                  onCheckedChange={(checked) => onChange({ isActive: !checked })}
                 />
               </div>
 
-              {/* SKU */}
               <div className="space-y-2">
                 <Label htmlFor="sku">SKU *</Label>
                 <div className="flex gap-2">
                   <Input 
                     id="sku" 
-                    value={formData.sku}
-                    onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                    value={data.sku}
+                    onChange={(e) => onChange({ sku: e.target.value })}
                     className="flex-1 text-sm"
                   />
-                 <button 
-                  type="button"
-                  onClick={() => {
-                    const newSku = generateSku({
-                      categoryId: formData.categoryId,
-                      categoryName: categories?.find(cat => cat.id === formData.categoryId)?.name,
-                      brand: formData.brand
-                    })
-                    setFormData(prev => ({ ...prev, sku: newSku }))
-                  }}
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const newSku = generateSku({
+                        categoryId: data.categoryId,
+                        categoryName: categories?.find(cat => cat.id === data.categoryId)?.name,
+                        brand: data.brand
+                      })
+                      onChange({ sku: newSku })
+                    }}
+                    className="px-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    title="Gerar novo SKU"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Categoria */}
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria *</Label>
-                
                 <Select 
-                  value={formData.categoryId} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
+                  value={data.categoryId} 
+                  onValueChange={(value) => onChange({ categoryId: value })}
                 >
                   <SelectTrigger className="text-sm">
                     <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione a categoria"} />
@@ -247,36 +238,32 @@ useEffect(() => {
                     ))}
                   </SelectContent>
                 </Select>
-
               </div>
 
-              {/* Marca */}
               <div className="space-y-2">
                 <Label htmlFor="brand">Marca</Label>
                 <Input 
                   id="brand" 
                   placeholder="Samsung, Nike, Apple..." 
-                  value={formData.brand}
-                  onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+                  value={data.brand}
+                  onChange={(e) => onChange({ brand: e.target.value })}
                   className="text-sm"
                 />
               </div>
 
-              {/* Collection */}
               <div className="space-y-2">
                 <Label htmlFor="collection">Coleção</Label>
                 <Input 
                   id="collection" 
                   placeholder="Verão 2024, Black Friday..." 
-                  value={formData.collection}
-                  onChange={(e) => setFormData(prev => ({ ...prev, collection: e.target.value }))}
+                  value={data.collection}
+                  onChange={(e) => onChange({ collection: e.target.value })}
                   className="text-sm"
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* CARD TAGS */}
           <Card>
             <CardHeader>
               <CardTitle>Tags</CardTitle>
@@ -300,9 +287,9 @@ useEffect(() => {
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                {formData.tags.length > 0 && (
+                {data.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border min-h-[60px]">
-                    {formData.tags.map(tag => (
+                    {data.tags.map(tag => (
                       <Badge key={tag} variant="secondary" className="flex items-center gap-1 py-1 text-xs">
                         {tag}
                         <button 

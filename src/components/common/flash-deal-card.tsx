@@ -22,13 +22,16 @@ export const FlashDealCard = ({ product, endDate }: FlashDealCardProps) => {
       <CardContent className="p-0">
         {/* Badge no topo da imagem */}
         <div className="relative">
-          <Image
-            src={firstVariant.imageUrl}
-            alt={product.name}
-            width={300}
-            height={200}
-            className="w-full h-48 object-cover"
-          />
+         {firstVariant?.imageUrl ? (
+  <Image
+    src={firstVariant.imageUrl}
+    alt={product.name}
+    width={300}
+    height={200}
+  />
+) : (
+  <div>Imagem não disponível</div>
+)}
           <div className="absolute top-3 left-3">
             <span className="bg-white text-red-600 text-xs font-bold px-3 py-1 rounded-full">
               🔥 OFERTA RELÂMPAGO
@@ -44,7 +47,13 @@ export const FlashDealCard = ({ product, endDate }: FlashDealCardProps) => {
           
           {/* Preço */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl font-bold">{formatCentsToBRL(firstVariant.priceInCents)}</span>
+           {firstVariant ? (
+              <span className="text-2xl font-bold">
+                {formatCentsToBRL(firstVariant.priceInCents)}
+              </span>
+            ) : (
+              <span className="text-2xl font-bold">Preço não disponível</span>
+            )}
           </div>
 
           {/* Contador com data fixa */}

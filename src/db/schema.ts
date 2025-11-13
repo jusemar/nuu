@@ -1,3 +1,4 @@
+// src/db/schema.ts
 import { relations } from "drizzle-orm";
 import {
   boolean,
@@ -15,6 +16,8 @@ import { productVariantTable } from './table/products/product-variants';
 import { productTable } from './table/products/products';
 import { productImageTable } from './table/products/product-images';
 import { productPricingTable } from './table/products/product-pricing';
+import { productAttributeTable } from './table/products/product-attributes';
+import { productVariantImageTable } from './table/products/variant-images';
 
 // TABELAS EXISTENTES (mantenha as que já estão aqui)
 export const userTable = pgTable("user", {
@@ -175,7 +178,15 @@ export const categoryRelations = relations(categoryTable, ({ many }) => ({
   products: many(productTable),
 }));
 
-// RELAÇÕES PARA productImageTable
+// RELAÇÕES PARA PRODUCT ATTRIBUTES
+export const productAttributeRelations = relations(productAttributeTable, ({ one }) => ({
+  product: one(productTable, {
+    fields: [productAttributeTable.productId],
+    references: [productTable.id],
+  }),
+}));
+
+// RELAÇÕES PARA PRODUCT IMAGES
 export const productImageRelations = relations(productImageTable, ({ one }) => ({
   productVariant: one(productVariantTable, {
     fields: [productImageTable.productVariantId],
@@ -183,6 +194,15 @@ export const productImageRelations = relations(productImageTable, ({ one }) => (
   }),
 }));
 
+// RELAÇÕES PARA VARIANT IMAGES
+export const productVariantImageRelations = relations(productVariantImageTable, ({ one }) => ({
+  variant: one(productVariantTable, {
+    fields: [productVariantImageTable.variantId],
+    references: [productVariantTable.id],
+  }),
+}));
+
+// RELAÇÕES PARA PRODUCT VARIANTS
 export const productVariantRelations = relations(
   productVariantTable,
   ({ one, many }) => ({
@@ -190,11 +210,23 @@ export const productVariantRelations = relations(
       fields: [productVariantTable.productId],
       references: [productTable.id],
     }),
-    images: many(productImageTable), 
+    images: many(productImageTable),
+    variantImages: many(productVariantImageTable),
     cartItems: many(cartItemTable),
     orderItems: many(orderItemTable),
   }),
 );
+
+// RELAÇÕES PARA PRODUCTS
+export const productRelations = relations(productTable, ({ one, many }) => ({
+  category: one(categoryTable, {
+    fields: [productTable.categoryId],
+    references: [categoryTable.id],
+  }),
+  variants: many(productVariantTable),
+  attributes: many(productAttributeTable),
+  pricing: many(productPricingTable),
+}));
 
 export const shippingAddressRelations = relations(
   shippingAddressTable,
@@ -257,15 +289,6 @@ export const orderItemRelations = relations(orderItemTable, ({ one }) => ({
   }),
 }));
 
-export const productRelations = relations(productTable, ({ one, many }) => ({
-  category: one(categoryTable, {
-    fields: [productTable.categoryId],
-    references: [categoryTable.id],
-  }),
-  variants: many(productVariantTable),
-  pricing: many(productPricingTable), // ← NOVA RELAÇÃO
-}));
-
 export const productPricingRelations = relations(productPricingTable, ({ one }) => ({
   product: one(productTable, {
     fields: [productPricingTable.productId],
@@ -273,12 +296,11 @@ export const productPricingRelations = relations(productPricingTable, ({ one }) 
   }),
 }));
 
-
-
-
 // RE-EXPORTAR TODAS AS TABELAS PARA O SCHEMA
 export { categoryTable } from './table/categories/categories';
 export { productTable } from './table/products/products';
 export { productVariantTable } from './table/products/product-variants';
 export { productImageTable } from './table/products/product-images';
 export { productPricingTable } from './table/products/product-pricing';
+export { productAttributeTable } from './table/products/product-attributes';
+export { productVariantImageTable } from './table/products/variant-images';

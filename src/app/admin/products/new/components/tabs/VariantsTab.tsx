@@ -402,7 +402,7 @@ export function VariantsTab() {
                       <Switch
                         checked={variant.isActive}
                         onCheckedChange={() => toggleVariantActive(variant.id)}
-                        size="sm"
+                     
                       />
                     </div>
                     

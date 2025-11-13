@@ -14,27 +14,40 @@ interface ProductItemProps {
 
 const ProductItem = ({ product, className }: ProductItemProps) => {
   const firstVariant = product.variants[0];
-  
+
+  // ✅ CORRETO: if ANTES do return
+  if (!firstVariant) {
+    return (
+      <div className={cn("group w-full max-w-xs mx-auto", className)}>
+        <div className="block bg-gray-100 rounded-xl shadow-sm border border-gray-200 overflow-hidden p-8 text-center">
+          <p className="text-gray-500">Variante não disponível</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ AGORA SIM o return
   return (
     <div className={cn("group w-full max-w-xs mx-auto", className)}>
       <Link
-        href={`/product-variant/${firstVariant.slug}`}
+        href={`/product-variant/${firstVariant.id}`}
         className="block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg"
       >
         <div className="relative mx-auto w-64 h-64 overflow-hidden">
           <Image
-            src={firstVariant.imageUrl}
-            alt={firstVariant.name}
+            src={firstVariant?.imageUrl || '/placeholder-image.jpg'}
+            alt={firstVariant?.name || 'Produto sem nome'}
             fill
-            className="object-contain group-hover:scale-105 transition-transform duration-300" // object-contain mantém a proporção sem cortar
+            className="object-contain group-hover:scale-105 transition-transform duration-300"
           />
         </div>
         <div className="p-2 w-full max-w-full min-w-0 break-words overflow-hidden">
-  <p className="font-semibold text-gray-800 truncate mb-2 break-words whitespace-normal">{product.name}</p>
-  <p className="text-gray-500 text-xs mb-2 break-words whitespace-normal overflow-wrap-break-word">{product.description}</p>
-  <p className="font-bold text-lg text-gray-900 break-words whitespace-normal">{formatCentsToBRL(firstVariant.priceInCents)}</p>
-</div>
-      
+          <p className="font-semibold text-gray-800 truncate mb-2 break-words whitespace-normal">{product.name}</p>
+          <p className="text-gray-500 text-xs mb-2 break-words whitespace-normal overflow-wrap-break-word">{product.description}</p>
+          <p className="font-bold text-lg text-gray-900 break-words whitespace-normal">
+            {formatCentsToBRL(firstVariant.priceInCents)}
+          </p>
+        </div>
       </Link>
     </div>
   );

@@ -8,51 +8,64 @@ import { Label } from "@/components/ui/label"
 import { Package, Calendar, Clock } from "lucide-react"
 import { ModalityCard } from './pricing/ModalityCard'
 
-export function PricingTab() {
-  const [costPrice, setCostPrice] = useState('')
-  const [modalities, setModalities] = useState({
-      stock: { 
+interface PricingTabProps {
+  data: {
+    pricing?: {
+      costPrice?: string
+      modalities?: any
+    }
+  }
+  onChange: (updates: any) => void
+}
+
+export function PricingTab({ data, onChange }: PricingTabProps) {
+  const pricingData = data.pricing || {}
+  
+  const initialModalities = {
+    stock: { 
+      price: '', 
+      deliveryText: '',
+      promo: { 
+        active: false, 
+        type: 'normal', 
         price: '', 
-        deliveryText: '',
-        promo: { 
-          active: false, 
-          type: 'normal', 
-          price: '', 
-          endDate: undefined
-        } 
-      },
-      preSale: { 
+        endDate: undefined
+      } 
+    },
+    preSale: { 
+      price: '', 
+      deliveryText: '',
+      promo: { 
+        active: false, 
+        type: 'normal', 
         price: '', 
-        deliveryText: '',
-        promo: { 
-          active: false, 
-          type: 'normal', 
-          price: '', 
-          endDate: undefined
-        } 
-      },
-      dropshipping: { 
+        endDate: undefined
+      } 
+    },
+    dropshipping: { 
+      price: '', 
+      deliveryText: '',
+      promo: { 
+        active: false, 
+        type: 'normal', 
         price: '', 
-        deliveryText: '',
-        promo: { 
-          active: false, 
-          type: 'normal', 
-          price: '', 
-          endDate: undefined
-        } 
-      },
-      orderBasis: { 
+        endDate: undefined
+      } 
+    },
+    orderBasis: { 
+      price: '', 
+      deliveryText: '',
+      promo: { 
+        active: false, 
+        type: 'normal', 
         price: '', 
-        deliveryText: '',
-        promo: { 
-          active: false, 
-          type: 'normal', 
-          price: '', 
-          endDate: undefined
-        } 
-      }
-    })
-          
+        endDate: undefined
+      } 
+    }
+  }
+
+  const modalities = pricingData.modalities || initialModalities
+  const costPrice = pricingData.costPrice || ''
 
   const calculateMargin = () => {
     if (!costPrice || !modalities.stock.price) return '0%'
@@ -62,21 +75,29 @@ export function PricingTab() {
     return isNaN(margin) ? '0%' : `${margin.toFixed(1)}%`
   }
 
+  const handlePricingChange = (updates: any) => {
+    onChange({ 
+      pricing: { ...pricingData, ...updates } 
+    })
+  }
+
   const updateModality = (type: string, field: string, value: any) => {
-    setModalities(prev => ({
-      ...prev,
-      [type]: { ...prev[type as keyof typeof prev], [field]: value }
-    }))
+    const updatedModalities = {
+      ...modalities,
+      [type]: { ...modalities[type as keyof typeof modalities], [field]: value }
+    }
+    handlePricingChange({ modalities: updatedModalities })
   }
 
   const updatePromo = (type: string, field: string, value: any) => {
-    setModalities(prev => ({
-      ...prev,
+    const updatedModalities = {
+      ...modalities,
       [type]: { 
-        ...prev[type as keyof typeof prev], 
-        promo: { ...prev[type as keyof typeof prev].promo, [field]: value }
+        ...modalities[type as keyof typeof modalities], 
+        promo: { ...modalities[type as keyof typeof modalities].promo, [field]: value }
       }
-    }))
+    }
+    handlePricingChange({ modalities: updatedModalities })
   }
 
   const togglePromo = (type: string) => {
@@ -103,7 +124,7 @@ export function PricingTab() {
                   placeholder="0.00"
                   step="0.01"
                   value={costPrice}
-                  onChange={(e) => setCostPrice(e.target.value)}
+                  onChange={(e) => handlePricingChange({ costPrice: e.target.value })}
                   className="pl-8 h-10 border-gray-300 focus:border-blue-500"
                 />
               </div>

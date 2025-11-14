@@ -1,3 +1,4 @@
+// src/components/admin/rich-text-editor.tsx
 "use client"
 
 import { useEditor, EditorContent } from '@tiptap/react'
@@ -568,6 +569,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
 
 export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
   const [mounted, setMounted] = useState(false)
+  const previousValueRef = useRef<string>(value)
 
   const editor = useEditor({
     extensions: [
@@ -627,7 +629,9 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      const html = editor.getHTML()
+      onChange(html)
+      previousValueRef.current = html
     },
     immediatelyRender: false,
     editorProps: {
@@ -638,74 +642,110 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
     },
   })
 
+  // 🔥 SOLUÇÃO PROFISSIONAL CORRIGIDA: Sincronização com tratamento de edge cases
+  useEffect(() => {
+    if (!editor) return
+
+    // Edge case 1: Reset completo quando value é string vazia
+    if (value === '' && editor.getHTML() !== '<p></p>') {
+      editor.commands.clearContent()
+      previousValueRef.current = ''
+      return
+    }
+
+    // Edge case 2: Só sincroniza se o valor externo mudou E for diferente do atual
+    const isExternalChange = value !== previousValueRef.current
+    const isDifferentFromCurrent = value !== editor.getHTML()
+
+    if (isExternalChange && isDifferentFromCurrent) {
+      // Preserva a seleção e posição do cursor
+      const { from, to } = editor.state.selection
+      
+      // CORREÇÃO: setContent sem segundo parâmetro ou com objeto vazio
+      editor.commands.setContent(value)
+      
+      // Restaura a seleção se possível
+      try {
+        editor.commands.setTextSelection({ 
+          from: Math.min(from, editor.state.doc.content.size), 
+          to: Math.min(to, editor.state.doc.content.size) 
+        })
+      } catch (e) {
+        // Se não conseguir restaurar, vai para o final
+        editor.commands.focus('end')
+      }
+      
+      previousValueRef.current = value
+    }
+  }, [editor, value])
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
-useEffect(() => {
-  if (mounted) {
-    const style = document.createElement('style')
-    style.textContent = `
-      .tiptap table {
-        border-collapse: collapse;
-        margin: 0.5rem 0;
-        border: 1px solid #d1d5db;
-        background-color: white;
-        width: auto;
-      }
-      
-      .tiptap table td,
-      .tiptap table th {
-        border: 1px solid #e5e7eb;
-        padding: 4px 8px;
-        text-align: left;
-        background-color: white;
-        white-space: nowrap;
-        height: 28px;
-        line-height: 1.2;
-      }
-      
-      .tiptap table th {
-        background-color: #f9fafb;
-        font-weight: 600;
-        color: #374151;
-      }
+  useEffect(() => {
+    if (mounted) {
+      const style = document.createElement('style')
+      style.textContent = `
+        .tiptap table {
+          border-collapse: collapse;
+          margin: 0.5rem 0;
+          border: 1px solid #d1d5db;
+          background-color: white;
+          width: auto;
+        }
+        
+        .tiptap table td,
+        .tiptap table th {
+          border: 1px solid #e5e7eb;
+          padding: 4px 8px;
+          text-align: left;
+          background-color: white;
+          white-space: nowrap;
+          height: 28px;
+          line-height: 1.2;
+        }
+        
+        .tiptap table th {
+          background-color: #f9fafb;
+          font-weight: 600;
+          color: #374151;
+        }
 
-      .tiptap table td {
-        min-width: fit-content;
-        color: #4b5563;
-      }
+        .tiptap table td {
+          min-width: fit-content;
+          color: #4b5563;
+        }
 
-      /* FORÇAR ESPAÇO EDITÁVEL AO LADO DA TABELA */
-      .tiptap .ProseMirror {
-        min-height: 150px;
-      }
-      
-      .tiptap .ProseMirror > * {
-        margin: 0.25rem 0;
-      }
-      
-      /* GARANTIR QUE EXISTAM PARÁGRAFOS EDITÁVEIS */
-      .tiptap .ProseMirror:before {
-        content: "";
-        display: block;
-        height: 1px;
-      }
-      
-      .tiptap .ProseMirror:after {
-        content: "";
-        display: block;
-        height: 1px;
-      }
-    `
-    document.head.appendChild(style)
+        /* FORÇAR ESPAÇO EDITÁVEL AO LADO DA TABELA */
+        .tiptap .ProseMirror {
+          min-height: 150px;
+        }
+        
+        .tiptap .ProseMirror > * {
+          margin: 0.25rem 0;
+        }
+        
+        /* GARANTIR QUE EXISTAM PARÁGRAFOS EDITÁVEIS */
+        .tiptap .ProseMirror:before {
+          content: "";
+          display: block;
+          height: 1px;
+        }
+        
+        .tiptap .ProseMirror:after {
+          content: "";
+          display: block;
+          height: 1px;
+        }
+      `
+      document.head.appendChild(style)
 
-    return () => {
-      document.head.removeChild(style)
+      return () => {
+        document.head.removeChild(style)
+      }
     }
-  }
-}, [mounted])
-
+  }, [mounted])
 
   if (!mounted || !editor) {
     return (

@@ -119,60 +119,10 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
           </Card>
 
           {/* GALERIA DE IMAGENS */}
-         <ProductImageGallery         
+          <ProductImageGallery         
             onImagesChange={handleImagesChange}
             maxFiles={10}
           />
-
-          {/* CARD CÓDIGOS ESPECÍFICOS */}      
-            <Card>
-              <CardHeader>
-                <CardTitle>Debug - Estado das Imagens</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      // Adiciona uma imagem de teste ao productData
-                      const testImage: UploadedImage = {
-                        id: 'test-' + Date.now(),
-                        url: 'https://via.placeholder.com/300',
-                        preview: 'https://via.placeholder.com/300',
-                        isPrimary: data.images.length === 0, 
-                        altText: 'Imagem de teste'                        
-                      }
-                      onChange({ images: [...data.images, testImage] })
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded"
-                  >
-                    Adicionar Imagem de Teste ao Estado
-                  </button>
-                  
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      // Limpa todas as imagens
-                      onChange({ images: [] })
-                    }}
-                    className="px-4 py-2 bg-red-600 text-white rounded ml-2"
-                  >
-                    Limpar Imagens
-                  </button>
-                  
-                  <div className="mt-2 text-sm">
-                    <div>Total de imagens no estado: {data.images.length}</div>
-                    {data.images.map(img => (
-                      <div key={img.id} className="text-xs text-gray-600">
-                        - {img.url} {img.isPrimary ? '(PRINCIPAL)' : ''}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-
         </div>
 
         {/* COLUNA LATERAL */}

@@ -1,12 +1,8 @@
 'use server'
 
 import { db } from '@/db'
-import { productTable, productGalleryImagesTable } from '@/db/schema'
+import { productTable, productGalleryImagesTable, productPricingTable } from '@/db/schema'
 import { revalidatePath } from 'next/cache'
-
-
-
-
 
 interface CreateProductData {
   name: string
@@ -21,7 +17,21 @@ interface CreateProductData {
   collection?: string
   tags?: string[]
   
-  // Imagens
+  pricing?: {
+    costPrice?: string
+    modalities?: any
+  }
+  warranty?: {
+    period?: string
+    provider?: string
+    terms?: string
+  }
+  seo?: {
+    metaTitle?: string
+    metaDescription?: string
+    canonicalUrl?: string
+  }
+  
   images: Array<{
     url: string
     isPrimary: boolean
@@ -44,11 +54,20 @@ export async function createProduct(data: CreateProductData) {
       ncmCode: data.ncmCode,
       collection: data.collection,
       tags: data.tags,
+      
+      // NOVOS CAMPOS
+      costPrice: data.pricing?.costPrice ? parseInt(data.pricing.costPrice) * 100 : null,
+      warrantyPeriod: data.warranty?.period ? parseInt(data.warranty.period) : null,
+      warrantyProvider: data.warranty?.provider,
+      metaTitle: data.seo?.metaTitle,
+      metaDescription: data.seo?.metaDescription,
+      canonicalUrl: data.seo?.canonicalUrl, 
+      
       status: 'draft',
       isActive: true,
     }).returning()
 
-    // 2. Adicionar imagens na galeria (se houver)
+    // 2. Adicionar imagens na galeria
     if (data.images.length > 0) {
       await db.insert(productGalleryImagesTable).values(
         data.images.map((image, index) => ({
@@ -61,7 +80,26 @@ export async function createProduct(data: CreateProductData) {
       )
     }
 
-    // 3. Revalidar cache
+    // 3. SALVAR MODALIDADES DE PREÇO (apenas texto descritivo)
+    if (data.pricing?.modalities) {
+      const pricingEntries = Object.entries(data.pricing.modalities).map(([type, modality]: [string, any]) => ({
+        productId: product.id,
+        type: type,
+        price: modality.price ? parseInt(modality.price) * 100 : 0,
+        deliveryDays: modality.deliveryText || '',
+        pricingModalDescription: modality.deliveryText || '',
+        
+        isActive: true,
+      }))
+
+      if (pricingEntries.length > 0) {
+        await db.insert(productPricingTable).values(pricingEntries)
+      }
+    }
+
+
+
+    // 4. Revalidar cache
     revalidatePath('/admin/products')
     return { success: true, productId: product.id }
     

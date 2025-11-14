@@ -52,6 +52,7 @@ export const productTable = pgTable("product", {
   // SEO
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
+  canonicalUrl: text("canonical_url"),
   
   // Controle
   isActive: boolean("is_active").default(true),

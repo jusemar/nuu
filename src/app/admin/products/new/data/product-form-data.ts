@@ -61,7 +61,14 @@ export interface SellerTabProps {
 }
 
 export interface SeoTabProps {
-  data: ProductFormData
+  data: {
+    slug: string // ← ADICIONAR slug aqui
+    seo?: {
+      metaTitle?: string
+      metaDescription?: string
+      canonicalUrl?: string
+    }
+  }
   onChange: (updates: Partial<ProductFormData>) => void
 }
 

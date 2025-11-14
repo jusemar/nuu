@@ -10,7 +10,7 @@ export const productPricingTable = pgTable("product_pricing", {
   type: text("type").notNull(), // 'stock', 'pre_sale', 'dropshipping', 'order_basis'
   pricingModalDescription: text("pricing_modal_description"),
   price: integer("price_in_cents").notNull(),
-  deliveryDays: integer("delivery_days").notNull(),
+  deliveryDays: text("delivery_days"),
   hasPromo: boolean("has_promo").default(false),
   promoType: text("promo_type"), // 'normal', 'flash'
   promoPrice: integer("promo_price_in_cents"),

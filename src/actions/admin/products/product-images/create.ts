@@ -11,6 +11,8 @@ export async function createProductImage(data: {
   altText?: string
   sortOrder?: number
 }) {
+  console.log('Dados recebidos na action createProductImage:', data)
+  
   const [image] = await db
     .insert(productImageTable)
     .values(data)

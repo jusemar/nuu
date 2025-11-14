@@ -1,7 +1,7 @@
 // src/app/test/page.tsx
 "use client"
 
-import { ProductImageUpload } from '../admin/products/new/components/image-upload/product-image-upload'
+import { ProductImageUpload } from '../admin/products/new/components/image-upload/Excluirproduct-image-upload'
 
 export default function TestPage() {
   return (

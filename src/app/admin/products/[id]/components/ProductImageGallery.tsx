@@ -1,4 +1,3 @@
-// src/app/admin/products/[id]/components/ProductImageGallery.tsx
 "use client"
 
 import { useState } from 'react'

@@ -119,60 +119,60 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
           </Card>
 
           {/* GALERIA DE IMAGENS */}
-          <ProductImageGallery 
+         <ProductImageGallery         
             onImagesChange={handleImagesChange}
             maxFiles={10}
           />
 
-          {/* CARD CÓDIGOS ESPECÍFICOS */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Códigos de Identificação</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2 md:col-span-2">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-sm">Tipo</Label>
-                      <Select 
-                        value={data.productType} 
-                        onValueChange={(value) => onChange({ productType: value })}
-                      >
-                        <SelectTrigger className="text-sm">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="isbn">ISBN</SelectItem>
-                          <SelectItem value="upc">UPC</SelectItem>
-                          <SelectItem value="ean">EAN</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2 md:col-span-3">
-                      <Label className="text-sm">Código</Label>
-                      <Input 
-                        placeholder="Código correspondente" 
-                        value={data.productCode}
-                        onChange={(e) => onChange({ productCode: e.target.value })}
-                        className="text-sm"
-                      />
-                    </div>
+          {/* CARD CÓDIGOS ESPECÍFICOS */}      
+            <Card>
+              <CardHeader>
+                <CardTitle>Debug - Estado das Imagens</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      // Adiciona uma imagem de teste ao productData
+                      const testImage: UploadedImage = {
+                        id: 'test-' + Date.now(),
+                        url: 'https://via.placeholder.com/300',
+                        preview: 'https://via.placeholder.com/300',
+                        isPrimary: data.images.length === 0, 
+                        altText: 'Imagem de teste'                        
+                      }
+                      onChange({ images: [...data.images, testImage] })
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded"
+                  >
+                    Adicionar Imagem de Teste ao Estado
+                  </button>
+                  
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      // Limpa todas as imagens
+                      onChange({ images: [] })
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded ml-2"
+                  >
+                    Limpar Imagens
+                  </button>
+                  
+                  <div className="mt-2 text-sm">
+                    <div>Total de imagens no estado: {data.images.length}</div>
+                    {data.images.map(img => (
+                      <div key={img.id} className="text-xs text-gray-600">
+                        - {img.url} {img.isPrimary ? '(PRINCIPAL)' : ''}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm">Código NCM</Label>
-                  <Input 
-                    placeholder="8517.12.00" 
-                    value={data.ncmCode}
-                    onChange={(e) => onChange({ ncmCode: e.target.value })}
-                    className="text-sm"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+
         </div>
 
         {/* COLUNA LATERAL */}
@@ -226,6 +226,7 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                 <Select 
                   value={data.categoryId} 
                   onValueChange={(value) => onChange({ categoryId: value })}
+                  required
                 >
                   <SelectTrigger className="text-sm">
                     <SelectValue placeholder={isLoading ? "Carregando..." : "Selecione a categoria"} />

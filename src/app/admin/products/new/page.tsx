@@ -18,7 +18,11 @@ import { SellerTab } from './components/tabs/SellerTab'
 import { SeoTab } from './components/tabs/SeoTab'
 
 export default function NewProductPage() {
-  const createProductMutation = useCreateProduct()
+  const createProductMutation = useCreateProduct({
+  onSuccess: () => {
+    setProductData(initialProductData)
+  }
+})
   const [productData, setProductData] = useState<ProductFormData>(initialProductData)
 
   const tabs = [
@@ -63,43 +67,44 @@ export default function NewProductPage() {
 ]
 
   // Função para lidar com a publicação do produto
-  const handlePublishProduct = async () => {
-    try {
-      // TODO: Coletar dados reais de todas as abas
-      const productDataToSave = {
-        name: productData.name || "Produto Teste",
-        slug: productData.slug || "produto-teste",
-        description: productData.description || "Descrição do produto",
-        categoryId: productData.categoryId || "category-id-here", // Pegar do formulário
-        brand: productData.brand || "Marca Teste",
-        sku: productData.sku || "SKU-TEST-001",
-        productType: productData.productType || "ean",
-        productCode: productData.productCode || "123456789",
-        ncmCode: productData.ncmCode || "8517.12.00",
-        collection: productData.collection || "Coleção Teste",
-        tags: productData.tags || ["tag1", "tag2"],
-        images: productData.images || [], // Array com URLs das imagens do Vercel Blob
-        variant: {
-          sku: "VARIANT-SKU-001",
-          priceInCents: 9999, // R$ 99,99
-          stockQuantity: 10,
-          attributes: {}
-        }
-      }
-      
-      const result = await createProductMutation.mutateAsync(productDataToSave)
-      
-      if (result.success) {
-        // TODO: Redirecionar para página do produto ou lista
-        console.log('Produto criado com ID:', result.productId)
-        // redirect('/admin/products')
-      } else {
-        console.error('Erro ao criar produto:', result.error)
-      }
-    } catch (error) {
-      console.error('Erro ao publicar produto:', error)
-    }
+  const handlePublishProduct = async () => {    
+      try {
+        console.log('Dados antes de salvar:', productData)
+        console.log('Imagens:', productData.images)
+         if (!productData.categoryId) {
+    alert('Selecione uma categoria antes de salvar!')
+    return
   }
+        
+        // REMOVER TODOS OS VALORES PADRÃO - usar apenas os dados do estado
+        const productDataToSave = {
+          name: productData.name,
+          slug: productData.slug,
+          description: productData.description,          
+          categoryId: productData.categoryId || "", // ← CORRETO: com ""
+          brand: productData.brand,
+          sku: productData.sku,
+          productType: productData.productType, // Remove valor fixo
+          productCode: productData.productCode, // Remove valor fixo
+          ncmCode: productData.ncmCode, // Remove valor fixo
+          collection: productData.collection,
+          tags: productData.tags,
+          images: productData.images
+        }
+        
+        console.log('Dados que serão salvos:', productDataToSave) // Verifique isso
+        
+        const result = await createProductMutation.mutateAsync(productDataToSave)
+        
+        if (result.success) {
+          console.log('Produto criado com ID:', result.productId)
+        } else {
+          console.error('Erro ao criar produto:', result.error)
+        }
+      } catch (error) {
+        console.error('Erro ao publicar produto:', error)
+      }
+    }
 
   return (
     <div className="flex flex-1 flex-col min-h-screen">

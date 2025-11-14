@@ -15,6 +15,7 @@ export interface UploadedImage {
   preview: string
   isPrimary: boolean
   uploadProgress?: number
+  altText?: string
 }
 
 interface ProductImageGalleryProps {
@@ -29,11 +30,14 @@ export function ProductImageGallery({
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
   const [isUploading, setIsUploading] = useState(false)
 
-  // Função para upload no Vercel Blob  
+  
+
 const uploadToBlob = async (file: File): Promise<string> => {
   try {
     const formData = new FormData();
     formData.append('file', file);
+
+    console.log('Fazendo upload do arquivo:', file.name);
 
     const response = await fetch('/api/upload', {
       method: 'POST',
@@ -46,56 +50,93 @@ const uploadToBlob = async (file: File): Promise<string> => {
 
     const blobData = await response.json();
     
-    // Retorna a URL real do Vercel Blob
-    return blobData.url;
+    // DEBUG: Mostrar a resposta completa da API
+    console.log('Resposta COMPLETA da API /api/upload:', blobData);
+    
+    // Verificar diferentes possibilidades de estrutura de resposta
+    if (blobData.url) {
+      console.log('URL encontrada em blobData.url:', blobData.url);
+      return blobData.url;
+    } else if (blobData.imageUrl) {
+      console.log('URL encontrada em blobData.imageUrl:', blobData.imageUrl);
+      return blobData.imageUrl;
+    } else if (blobData.data?.url) {
+      console.log('URL encontrada em blobData.data.url:', blobData.data.url);
+      return blobData.data.url;
+    } else {
+      console.log('Estrutura da resposta não reconhecida, retornando primeiro valor:', Object.values(blobData)[0]);
+      return Object.values(blobData)[0] as string;
+    }
+
   } catch (error) {
     console.error('Erro no upload para Vercel Blob:', error);
     throw error;
   }
 };
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (uploadedImages.length + acceptedFiles.length > maxFiles) {
-      alert(`Máximo de ${maxFiles} imagens permitido`)
-      return
-    }
+const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  if (uploadedImages.length + acceptedFiles.length > maxFiles) {
+    alert(`Máximo de ${maxFiles} imagens permitido`)
+    return
+  }
 
-    setIsUploading(true)
+  setIsUploading(true)
 
-    // Criar previews imediatos
-    const newImages: UploadedImage[] = acceptedFiles.map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      preview: URL.createObjectURL(file),
-      isPrimary: uploadedImages.length === 0 && acceptedFiles[0] === file,
-      uploadProgress: 0
-    }))
+  // Criar previews imediatos
+  const newImages: UploadedImage[] = acceptedFiles.map(file => ({
+    id: Math.random().toString(36).substr(2, 9),
+    file,
+    preview: URL.createObjectURL(file),
+    isPrimary: uploadedImages.length === 0 && acceptedFiles[0] === file,
+    uploadProgress: 0
+  }))
 
-    const updatedImages = [...uploadedImages, ...newImages]
-    setUploadedImages(updatedImages)
-    onImagesChange?.(updatedImages)
+  const updatedImages = [...uploadedImages, ...newImages]
+  setUploadedImages(updatedImages)
+  onImagesChange?.(updatedImages) // mantém preview imediata
 
-    // Fazer upload para Vercel Blob
-    try {
-      for (const image of newImages) {
-        if (image.file) {
-          const blobUrl = await uploadToBlob(image.file)
-          
-          // Atualizar com URL real do blob
-          setUploadedImages(prev => prev.map(img => 
-            img.id === image.id 
-              ? { ...img, url: blobUrl, uploadProgress: 100 }
-              : img
-          ))
-        }
+  // Fazer upload para Vercel Blob - MANTENDO O ORIGINAL QUE FUNCIONA
+  try {
+    const uploadResults: { id: string; url: string }[] = []
+
+    for (const image of newImages) {
+      if (image.file) {
+        const blobUrl = await uploadToBlob(image.file)
+
+        // guarda resultado para construir finalImages depois
+        uploadResults.push({ id: image.id, url: blobUrl })
+
+        // Atualizar o estado conforme cada upload termina (UI)
+        setUploadedImages(prev => prev.map(img =>
+          img.id === image.id
+            ? { ...img, url: blobUrl, uploadProgress: 100 }
+            : img
+        ))
       }
-    } catch (error) {
-      console.error('Erro no upload:', error)
-      alert('Erro ao fazer upload das imagens')
-    } finally {
-      setIsUploading(false)
     }
-  }, [uploadedImages, maxFiles, onImagesChange])
+
+    // Construir finalImages usando os resultados reais do upload
+    const finalImages = updatedImages.map(img => {
+      const res = uploadResults.find(r => r.id === img.id)
+      if (res) {
+        return { ...img, url: res.url, uploadProgress: 100 }
+      }
+      return img
+    })
+
+    // Garantir que o estado reflita as URLs finais e notificar parent
+    setUploadedImages(finalImages)
+    onImagesChange?.(finalImages)
+
+  } catch (error) {
+    console.error('Erro no upload:', error)
+    alert('Erro ao fazer upload das imagens')
+  } finally {
+    setIsUploading(false)
+  }
+}, [uploadedImages, maxFiles, onImagesChange])
+
+
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

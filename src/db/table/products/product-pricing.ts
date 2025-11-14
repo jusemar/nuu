@@ -8,6 +8,7 @@ export const productPricingTable = pgTable("product_pricing", {
     .notNull()
     .references(() => productTable.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // 'stock', 'pre_sale', 'dropshipping', 'order_basis'
+  pricingModalDescription: text("pricing_modal_description"),
   price: integer("price_in_cents").notNull(),
   deliveryDays: integer("delivery_days").notNull(),
   hasPromo: boolean("has_promo").default(false),

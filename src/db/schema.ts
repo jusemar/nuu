@@ -18,6 +18,7 @@ import { productImageTable } from './table/products/product-images';
 import { productPricingTable } from './table/products/product-pricing';
 import { productAttributeTable } from './table/products/product-attributes';
 import { productVariantImageTable } from './table/products/variant-images';
+import { productGalleryImagesTable } from './table/products/product-gallery-images';
 
 // TABELAS EXISTENTES (mantenha as que já estão aqui)
 export const userTable = pgTable("user", {
@@ -226,6 +227,7 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   variants: many(productVariantTable),
   attributes: many(productAttributeTable),
   pricing: many(productPricingTable),
+  galleryImages: many(productGalleryImagesTable),
 }));
 
 export const shippingAddressRelations = relations(
@@ -296,6 +298,13 @@ export const productPricingRelations = relations(productPricingTable, ({ one }) 
   }),
 }));
 
+export const productGalleryImagesRelations = relations(productGalleryImagesTable, ({ one }) => ({
+  product: one(productTable, {
+    fields: [productGalleryImagesTable.productId],
+    references: [productTable.id],
+  }),
+}));
+
 // RE-EXPORTAR TODAS AS TABELAS PARA O SCHEMA
 export { categoryTable } from './table/categories/categories';
 export { productTable } from './table/products/products';
@@ -304,3 +313,4 @@ export { productImageTable } from './table/products/product-images';
 export { productPricingTable } from './table/products/product-pricing';
 export { productAttributeTable } from './table/products/product-attributes';
 export { productVariantImageTable } from './table/products/variant-images';
+export { productGalleryImagesTable } from './table/products/product-gallery-images';

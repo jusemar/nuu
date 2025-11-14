@@ -1,13 +1,14 @@
-// src/actions/admin/products/create.ts
 'use server'
 
 import { db } from '@/db'
-import { productTable, productVariantTable, productImageTable } from '@/db/schema'
+import { productTable, productGalleryImagesTable } from '@/db/schema'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+
+
+
+
 
 interface CreateProductData {
-  // Dados básicos do produto
   name: string
   slug: string
   description: string
@@ -26,14 +27,6 @@ interface CreateProductData {
     isPrimary: boolean
     altText?: string
   }>
-  
-  // Variante padrão (obrigatória)
-  variant: {
-    sku: string
-    priceInCents: number
-    stockQuantity: number
-    attributes?: Record<string, string>
-  }
 }
 
 export async function createProduct(data: CreateProductData) {
@@ -55,33 +48,20 @@ export async function createProduct(data: CreateProductData) {
       isActive: true,
     }).returning()
 
-    // 2. Criar variante padrão
-    const [variant] = await db.insert(productVariantTable).values({
-      productId: product.id,
-      sku: data.variant.sku,
-      name: data.name, // Nome inicial igual ao produto
-      priceInCents: data.variant.priceInCents,
-      stockQuantity: data.variant.stockQuantity,
-      attributes: data.variant.attributes || {},
-      isActive: true,
-      isDefault: true, // Esta é a variante principal
-    }).returning()
+    // 2. Adicionar imagens na galeria (se houver)
+    if (data.images.length > 0) {
+      await db.insert(productGalleryImagesTable).values(
+        data.images.map((image, index) => ({
+          productId: product.id,
+          imageUrl: image.url,
+          altText: image.altText || data.name,
+          isPrimary: image.isPrimary,
+          sortOrder: index,
+        }))
+      )
+    }
 
-   
-// 3. Adicionar imagens (se houver)
-        if (data.images.length > 0) {
-        await db.insert(productImageTable).values(
-            data.images.map((image, index) => ({
-            productVariantId: variant.id,
-            imageUrl: image.url,
-            altText: image.altText || data.name,
-            sortOrder: image.isPrimary ? 0 : index + 1,
-            externalImageId: `vercel-blob-${Date.now()}-${index}`, // ← AGORA OPCIONAL
-            }))
-        )
-        }
-
-    // 4. Revalidar cache e redirecionar
+    // 3. Revalidar cache
     revalidatePath('/admin/products')
     return { success: true, productId: product.id }
     

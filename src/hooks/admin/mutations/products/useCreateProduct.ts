@@ -1,14 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createProduct } from '@/actions/admin/products/create'
 
-export function useCreateProduct() {
+interface UseCreateProductOptions {
+  onSuccess?: () => void
+}
+
+export function useCreateProduct(options?: UseCreateProductOptions) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: createProduct,
     onSuccess: () => {
-      // Invalidar queries de produtos para atualizar a lista
       queryClient.invalidateQueries({ queryKey: ['products'] })
+      options?.onSuccess?.()
     },
   })
 }

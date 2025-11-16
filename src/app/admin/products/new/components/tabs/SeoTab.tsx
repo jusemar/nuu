@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react' // ← ADICIONAR IMPORT
 
 interface SeoTabProps {
   data: {
@@ -26,6 +27,18 @@ export function SeoTab({ data, onChange }: SeoTabProps) {
   
   // URL canônica automática
   const autoCanonicalUrl = `${baseUrl}/produtos/${data.slug}`
+
+  // 🔥 SOLUÇÃO: Salvar automaticamente quando o slug mudar
+  useEffect(() => {
+    if (data.slug && !seoData.canonicalUrl) {
+      onChange({ 
+        seo: { 
+          ...seoData, 
+          canonicalUrl: autoCanonicalUrl 
+        } 
+      })
+    }
+  }, [data.slug]) // ← Executa quando o slug mudar
 
   const handleSeoChange = (updates: any) => {
     onChange({ 

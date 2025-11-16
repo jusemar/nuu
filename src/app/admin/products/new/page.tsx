@@ -85,6 +85,8 @@ export default function NewProductPage() {
 
   const handlePublishProduct = async () => {    
     try {
+
+         console.log('Dados sendo enviados:', productData)
       if (!productData.categoryId) {
         alert('Selecione uma categoria antes de salvar!')
         return

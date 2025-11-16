@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { useProducts } from "@/hooks/admin/queries/use-products"
 import { useState } from "react"
+import { useProductBulkActions } from "@/hooks/admin/mutations/products/useProductBulkActions"
+
+const { handleDeleteSelected } = useProductBulkActions()
 
 interface Product {
   id: string;
@@ -66,21 +69,7 @@ export default function ProductsPage() {
         const date = new Date(row.getValue("createdAt"))
         return <span className="text-sm text-gray-600">{date.toLocaleDateString('pt-BR')}</span>
       }
-    },
-    {
-      accessorKey: "actions",
-      header: "Ações",
-      cell: ({ row }: { row: any }) => (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            Editar
-          </Button>
-          <Button variant="destructive" size="sm">
-            Excluir
-          </Button>
-        </div>
-      )
-    }
+    },   
   ]
 
   if (isLoading) {
@@ -193,6 +182,7 @@ export default function ProductsPage() {
           <DataTable 
             columns={columns} 
             data={filteredProducts}
+            onDeleteSelected={handleDeleteSelected}
           />
         </div>
       </div>

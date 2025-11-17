@@ -1,3 +1,7 @@
+export interface BasicTabProps {
+  data: ProductFormData
+  onChange: (updates: Partial<ProductFormData>) => void
+}
 // Primeiro, defina um tipo comum para Image
 export interface ProductImage {
   id: string;
@@ -26,16 +30,20 @@ export interface ProductFormData {
   images: ProductImage[]; // Usar o tipo comum
   
   // Dados de outras abas (serão preenchidos depois)
-  pricing: any
-  shipping: any
-  warranty: any
-  variants: any
-  seller: any
-  seo: any
+  pricing?: any
+  shipping?: any
+  warranty?: any
+  variants?: any
+  seller?: any
+  seo?: {
+    metaTitle?: string
+    metaDescription?: string 
+    canonicalUrl?: string
+  }
 }
 
 // Adicione estas interfaces no product-form-data.ts
-export interface PricingTabProps {
+export  interface PricingTabProps {
   data: ProductFormData
   onChange: (updates: Partial<ProductFormData>) => void
 }
@@ -61,14 +69,7 @@ export interface SellerTabProps {
 }
 
 export interface SeoTabProps {
-  data: {
-    slug: string // ← ADICIONAR slug aqui
-    seo?: {
-      metaTitle?: string
-      metaDescription?: string
-      canonicalUrl?: string
-    }
-  }
+  data: ProductFormData 
   onChange: (updates: Partial<ProductFormData>) => void
 }
 
@@ -85,30 +86,6 @@ export const initialProductData: ProductFormData = {
   productType: '',
   productCode: '',
   ncmCode: '',
-  images: [],
-  pricing: {},
-  shipping: {},
-  warranty: {},
-  variants: {},
-  seller: {},
-  seo: {}
+  images: [], 
 }
 
-export interface BasicTabProps {
-  data: {
-    name: string
-    slug: string
-    description: string
-    categoryId: string
-    brand: string
-    sku: string
-    isActive: boolean
-    collection: string
-    tags: string[]
-    productType: string
-    productCode: string
-    ncmCode: string
-    images: ProductImage[] // Usar o mesmo tipo
-  }
-  onChange: (data: Partial<ProductFormData>) => void
-}

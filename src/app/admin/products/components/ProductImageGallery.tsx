@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Trash2, Eye, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useProductImages } from '@/hooks/admin/queries/produtcs/product-images/use-product-images'
+import { useProductImages } from '@/hooks/admin/queries/products/product-images/use-product-images'
 import { useProductImageMutations } from '@/hooks/admin/mutations/products/product-images/use-product-image-mutations'
 import {
   DndContext,

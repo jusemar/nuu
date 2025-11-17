@@ -61,12 +61,14 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onDeleteSelected?: (selectedRows: TData[]) => void
+  actionsContent?: (row: TData) => React.ReactNode // ← NOVO SLOT
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
-  onDeleteSelected
+  onDeleteSelected,
+  actionsContent // ← NOVA PROP
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -237,7 +239,8 @@ export function DataTable<TData, TValue>({
                       <DraggableTableHeader key={header.id} header={header as Header<TData, unknown>} />
                     ))}
 
-                    <TableHead>Ações</TableHead>
+                    {/* Cabeçalho da coluna Ações - só aparece se actionsContent existir */}
+                    {actionsContent && <TableHead>Ações</TableHead>}
                   </SortableContext>
                 </TableRow>
               ))}
@@ -265,39 +268,31 @@ export function DataTable<TData, TValue>({
                     </TableCell>
                   ))}
 
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <div className="opacity-40 group-hover:opacity-0 transition-opacity duration-200">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </div>
+                  {/* Coluna Ações - só aparece se actionsContent existir */}
+                  {actionsContent && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <div className="opacity-40 group-hover:opacity-0 transition-opacity duration-200">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </div>
 
-                      <div className="absolute gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600" title="Editar">
-                          ✏️
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600" title="Visualizar">
-                          👁️
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-purple-50 hover:text-purple-600" title="Estatísticas">
-                          📊
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600" title="Excluir">
-                          🗑️
-                        </Button>
+                        <div className="absolute gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex">
+                          {actionsContent(row.original)}
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
-
               <TableRow>
-                <TableCell colSpan={columns.length + 2} className="h-24 text-center">
+                <TableCell 
+                  colSpan={columns.length + (actionsContent ? 2 : 1)} 
+                  className="h-24 text-center"
+                >
                   Nenhum resultado.
                 </TableCell>
               </TableRow>
-
             )}
           </TableBody>
         </Table>

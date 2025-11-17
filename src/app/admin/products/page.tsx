@@ -4,11 +4,12 @@ import Link from "next/link"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
-import { useProducts } from "@/hooks/admin/queries/use-products"
-import { useState } from "react"
+import { EditableCell } from "@/components/admin/editable-cell"
+import { useProducts } from "@/hooks/admin/queries/products/use-products"
 import { useProductBulkActions } from "@/hooks/admin/mutations/products/useProductBulkActions"
-
-const { handleDeleteSelected } = useProductBulkActions()
+import { useState, useEffect, useMemo } from "react"
+import { toast } from "sonner"
+import { EditableSwitch } from "@/components/admin/editable-switch"
 
 interface Product {
   id: string;
@@ -22,55 +23,129 @@ interface Product {
 
 export default function ProductsPage() {
   const { data: products, isLoading } = useProducts()
+  const { handleDeleteSelected } = useProductBulkActions()
   const [searchTerm, setSearchTerm] = useState("")
+  const [localProducts, setLocalProducts] = useState<Product[]>([])
+  const [originalProducts, setOriginalProducts] = useState<Product[]>([])
 
   // Filtro simples por nome
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
 
+  useEffect(() => {
+    if (products) {
+      setLocalProducts(products)
+      setOriginalProducts(products)
+    }
+  }, [products])
+
+  const updateLocalProduct = (id: string, field: string, value: any) => {
+    setLocalProducts(prev => 
+      prev.map(product => 
+        product.id === id ? { ...product, [field]: value } : product
+      )
+    )
+  }
+
+  const hasChanges = useMemo(() => {
+    if (localProducts.length !== originalProducts.length) return true;
+    
+    return localProducts.some((product, index) => {
+      const original = originalProducts[index];
+      if (!original) return true;
+      
+      return product.name !== original.name ||
+             product.slug !== original.slug ||
+             product.description !== original.description;
+    });
+  }, [localProducts, originalProducts])
+
+  const saveChanges = () => {
+    // Aqui você implementará a lógica de salvar no banco
+    // Similar à função saveChanges das categorias
+    toast.success("Alterações salvas com sucesso!", {
+      style: {
+        backgroundColor: "#22c55e",
+        color: "#ffffff",
+      },
+    })
+    setOriginalProducts(localProducts)
+  }
+
+  const cancelChanges = () => {
+    setLocalProducts(originalProducts)
+  }
+
   const columns = [
     {
-      accessorKey: "name",
-      header: "Nome",
-      cell: ({ row }: { row: any }) => (
-        <div className="font-medium">{row.getValue("name")}</div>
-      )
-    },
-    {
-      accessorKey: "categoryName", 
-      header: "Categoria",
-      cell: ({ row }: { row: any }) => (
+    accessorKey: "sku",
+    header: "SKU", 
+    cell: ({ row }: { row: any }) => (
+      <span className="text-sm text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded">
+        {row.getValue("sku")}
+      </span>
+    )
+  }, 
+  {
+    accessorKey: "name",
+    header: "Nome",
+    cell: ({ row }: { row: any }) => (
+      <div className="font-medium">{row.getValue("name")}</div>
+    )
+  }, 
+  {
+    accessorKey: "categoryName", 
+    header: "Categoria",
+    cell: ({ row }: { row: any }) => (
+      <span className="text-sm text-gray-600">
+        {row.getValue("categoryName") || "Sem categoria"}
+      </span>
+    )
+  },   
+  /*status*/
+ {
+  accessorKey: "isActive",
+  header: "Status",
+  cell: ({ row }: { row: any }) => (
+    <EditableSwitch
+      value={row.getValue("isActive")}
+      onSave={(newValue) => updateLocalProduct(row.original.id, "isActive", newValue)}
+    />
+  )
+},
+
+   {
+    accessorKey: "brand",
+    header: "Marca",
+    cell: ({ row }: { row: any }) => (
+      <span className="text-sm text-gray-600">
+        {row.getValue("brand") || "—"}
+      </span>
+    )
+  },
+ 
+  {
+    accessorKey: "updatedAt",
+    header: "Última atualização",
+    cell: ({ row }: { row: any }) => {
+      const date = new Date(row.getValue("updatedAt"))
+      return (
         <span className="text-sm text-gray-600">
-          {row.getValue("categoryName") || "Sem categoria"}
+          {date.toLocaleDateString('pt-BR')} às {date.getHours()}:{date.getMinutes().toString().padStart(2, '0')}
         </span>
       )
-    },
-    {
-      accessorKey: "slug",
-      header: "Slug",
-      cell: ({ row }: { row: any }) => (
-        <span className="text-sm text-gray-600">{row.getValue("slug")}</span>
-      )
-    },
-    {
-      accessorKey: "description",
-      header: "Descrição",
-      cell: ({ row }: { row: any }) => (
-        <span className="text-sm text-gray-600 line-clamp-2">
-          {row.getValue("description")}
-        </span>
-      )
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Criado em",
-      cell: ({ row }: { row: any }) => {
-        const date = new Date(row.getValue("createdAt"))
-        return <span className="text-sm text-gray-600">{date.toLocaleDateString('pt-BR')}</span>
-      }
-    },   
-  ]
+    }
+  },
+   {
+    accessorKey: "createdAt",
+    header: "Criado em",
+    cell: ({ row }: { row: any }) => {
+      const date = new Date(row.getValue("createdAt"))
+      return <span className="text-sm text-gray-600">{date.toLocaleDateString('pt-BR')}</span>
+    }
+  }
+]
 
   if (isLoading) {
     return (
@@ -171,19 +246,38 @@ export default function ProductsPage() {
                 {filteredProducts.length} produto(s)
               </p>
             </div>
-            <Button asChild>
-              <Link href="/admin/products/new">
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Produto
-              </Link>
-            </Button>
+            
+            <div className="flex gap-2">
+              {hasChanges && (
+                <>
+                  <Button onClick={saveChanges} variant="default">
+                    💾 Salvar
+                  </Button>
+                  <Button onClick={cancelChanges} variant="outline">
+                    ↩️ Cancelar
+                  </Button>
+                </>
+              )}
+              <Button asChild>
+                <Link href="/admin/products/new">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Novo Produto
+                </Link>
+              </Button>
+            </div>
           </div>
           
           <DataTable 
             columns={columns} 
-            data={filteredProducts}
+            data={localProducts}
             onDeleteSelected={handleDeleteSelected}
+            actionsContent={(row) => (
+              <Link href={`/admin/products/${row.id}/edit`}>
+                ✏️
+              </Link>
+            )}
           />
+
         </div>
       </div>
     </div>

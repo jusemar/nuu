@@ -18,6 +18,7 @@ export interface ProductFormData {
   name: string
   slug: string
   description: string
+  cardShortText: string
   categoryId: string
   brand: string
   sku: string
@@ -34,12 +35,11 @@ export interface ProductFormData {
   shipping?: any
   warranty?: any
   variants?: any
-  seller?: any
-  seo?: {
-    metaTitle?: string
-    metaDescription?: string 
-    canonicalUrl?: string
-  }
+  seller?: any 
+  metaTitle?: string
+  metaDescription?: string 
+  canonicalUrl?: string
+  
 }
 
 // Adicione estas interfaces no product-form-data.ts
@@ -77,6 +77,7 @@ export const initialProductData: ProductFormData = {
   name: '',
   slug: '',
   description: '',
+  cardShortText: '', 
   categoryId: '',
   brand: '',
   sku: '',
@@ -87,5 +88,7 @@ export const initialProductData: ProductFormData = {
   productCode: '',
   ncmCode: '',
   images: [], 
+  metaTitle: '',
+  metaDescription: '',
+  canonicalUrl: '',
 }
-

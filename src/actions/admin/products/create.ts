@@ -8,6 +8,7 @@ interface CreateProductData {
   name: string
   slug: string
   description: string
+  cardShortText: string
   categoryId: string
   brand?: string
   sku: string
@@ -20,6 +21,7 @@ interface CreateProductData {
   pricing?: {
     costPrice?: string
     modalities?: any
+    mainCardPriceType?: string
   }
   warranty?: {
     period?: string
@@ -53,9 +55,8 @@ export async function createProduct(data: CreateProductData) {
       productCode: data.productCode,
       ncmCode: data.ncmCode,
       collection: data.collection,
-      tags: data.tags,
-      
-      // NOVOS CAMPOS
+      tags: data.tags,      
+      cardShortText: data.cardShortText, 
       costPrice: data.pricing?.costPrice ? parseInt(data.pricing.costPrice) * 100 : null,
       warrantyPeriod: data.warranty?.period ? parseInt(data.warranty.period) : null,
       warrantyProvider: data.warranty?.provider,
@@ -88,6 +89,8 @@ export async function createProduct(data: CreateProductData) {
         price: modality.price ? parseInt(modality.price) * 100 : 0,
         deliveryDays: modality.deliveryText || '',
         pricingModalDescription: modality.deliveryText || '',
+
+        mainCardPrice: data.pricing?.mainCardPriceType === type,
         
         isActive: true,
       }))

@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Package, Calendar, Clock } from "lucide-react"
 import { ModalityCard } from './pricing/ModalityCard'
+import { useSingleSelection } from '@/hooks/admin/forms/useSingleSelection'
 
 interface PricingTabProps {
   data: {
     pricing?: {
       costPrice?: string
       modalities?: any
+      mainCardPriceType?: string
     }
   }
   onChange: (updates: any) => void
@@ -66,6 +68,16 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
 
   const modalities = pricingData.modalities || initialModalities
   const costPrice = pricingData.costPrice || ''
+
+  const { selectedValue, selectValue, isSelected } = useSingleSelection<string>({
+    initialValue: pricingData.mainCardPriceType
+  })
+
+  useEffect(() => {
+    if (selectedValue !== pricingData.mainCardPriceType) {
+      handlePricingChange({ mainCardPriceType: selectedValue })
+    }
+  }, [selectedValue, pricingData.mainCardPriceType])
 
   const calculateMargin = () => {
     if (!costPrice || !modalities.stock.price) return '0%'
@@ -145,7 +157,11 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Modalidades de Venda</CardTitle>
-          <CardDescription>Todas as modalidades disponíveis para este produto</CardDescription>
+          <CardDescription>
+            Todas as modalidades disponíveis para este produto
+            <br />
+            <span className="text-sm text-blue-600">• Selecione qual preço aparecerá no card da loja</span>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -158,6 +174,8 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
               updateModality={updateModality}
               updatePromo={updatePromo}
               togglePromo={togglePromo}
+              isMainCard={isSelected('stock')}
+              onSelectMainCard={() => selectValue('stock')}
             />
 
             <ModalityCard
@@ -169,6 +187,8 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
               updateModality={updateModality}
               updatePromo={updatePromo}
               togglePromo={togglePromo}
+              isMainCard={isSelected('preSale')}
+              onSelectMainCard={() => selectValue('preSale')}
             />
 
             <ModalityCard
@@ -180,6 +200,8 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
               updateModality={updateModality}
               updatePromo={updatePromo}
               togglePromo={togglePromo}
+              isMainCard={isSelected('dropshipping')}
+              onSelectMainCard={() => selectValue('dropshipping')}
             />
 
             <ModalityCard
@@ -191,6 +213,8 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
               updateModality={updateModality}
               updatePromo={updatePromo}
               togglePromo={togglePromo}
+              isMainCard={isSelected('orderBasis')}
+              onSelectMainCard={() => selectValue('orderBasis')}
             />
           </div>
         </CardContent>

@@ -12,6 +12,7 @@ export const productTable = pgTable("product", {
     .references(() => categoryTable.id, { onDelete: "set null" }),
   name: text().notNull(),
   slug: text().notNull().unique(),
+  cardShortText: text("card_short_text"),
   description: text().notNull(),
   brand: text("brand"),
   

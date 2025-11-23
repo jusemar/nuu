@@ -30,6 +30,7 @@ interface BasicTabProps {
     productCode: string
     ncmCode: string
     images: UploadedImage[]
+    cardShortText: string 
   }
   onChange: (updates: any) => void
 }
@@ -106,6 +107,23 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                   />
                 </div>
               </div>
+
+               <div className="space-y-2">
+                <Label htmlFor="cardShortText">Descrição Curta para Card</Label>
+                <div className="space-y-1">
+                  <Input 
+                    id="cardShortText"
+                    placeholder="Curta descrição para o card (máx. 60 caracteres)"
+                    value={data.cardShortText || ''}
+                    onChange={(e) => onChange({ cardShortText: e.target.value })}
+                    maxLength={60}
+                    className="text-sm"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">                   
+                    <span>{data.cardShortText?.length || 0}/60</span>
+                  </div>
+                </div>
+            </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição *</Label>

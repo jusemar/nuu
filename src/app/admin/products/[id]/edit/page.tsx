@@ -28,32 +28,30 @@ export default function EditProductPage() {
   
   const [productData, setProductData] = useState<ProductFormData>(initialProductData)
 
-  // Preencher formulário quando produto carregar
-useEffect(() => {
+  useEffect(() => {
   if (productResponse?.success && productResponse.data) {
-    const product = productResponse.data
     setProductData({
-      name: product.name || "",
-      slug: product.slug || "",
-      description: product.description || "",
-      categoryId: product.categoryId || "",
-      brand: product.brand || "",
-      sku: product.sku || "",
-      isActive: product.isActive ?? true,
-      collection: product.collection || "",
-      tags: product.tags || [],
-      productType: product.productType || "",
-      productCode: product.productCode || "",
-      ncmCode: product.ncmCode || "",
-      images: [],
-      seo: {
-        metaTitle: product.metaTitle || "",
-        metaDescription: product.metaDescription || "",
-        canonicalUrl: product.canonicalUrl || "",
-      }
+      name: productResponse.data.name,
+      slug: productResponse.data.slug,
+      description: productResponse.data.description,
+      cardShortText: productResponse.data.cardShortText || '',
+      categoryId: productResponse.data.categoryId,
+      brand: productResponse.data.brand || '',
+      sku: productResponse.data.sku,
+      isActive: productResponse.data.isActive ?? true,
+      collection: productResponse.data.collection || '',
+      tags: productResponse.data.tags || [],
+      productType: productResponse.data.productType || '',
+      productCode: productResponse.data.productCode || '',
+      ncmCode: productResponse.data.ncmCode || '',
+      metaTitle: productResponse.data.metaTitle || '',
+      metaDescription: productResponse.data.metaDescription || '',
+      canonicalUrl: productResponse.data.canonicalUrl || '',
+      images: [] // ajuste conforme suas imagens
     })
   }
 }, [productResponse])
+
 
   const tabs = [
     {

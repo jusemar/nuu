@@ -1,4 +1,5 @@
-import { Navbar08 } from "@/components/ui/shadcn-io/navbar-08/index"
+
+
 import { desc } from "drizzle-orm";
 import Image from "next/image";
 import CategorySelector from "@/components/common/category-selector";
@@ -16,6 +17,7 @@ import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 import { DealsGrid } from "@/components/common/deals-grid";
 import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
+import ClientHeader from "@/components/layout/ClientHeader";
 
 const Home = async () => {
 
@@ -33,8 +35,8 @@ const Home = async () => {
       <MarqueeBanner 
         text="&nbsp;🚚 Frete Grátis acima de R$ 100&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;🎁 10% off na primeira compra &nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;⭐ Produtos com garantia &nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo Brasil &nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
         speed={60}
-      />
-      <Navbar08/>
+      />      
+      <ClientHeader />
       <div className="space-y-6">
         <BannerCarousel 
           banners={[

@@ -8,44 +8,32 @@ import { useEffect } from 'react' // ← ADICIONAR IMPORT
 
 interface SeoTabProps {
   data: {
-    slug: string
-    seo?: {
-      metaTitle?: string
-      metaDescription?: string
-      canonicalUrl?: string
-    }
+    slug: string   
+    metaTitle?: string
+    metaDescription?: string
+    canonicalUrl?: string
+   
   }
   onChange: (updates: any) => void
 }
 
 export function SeoTab({ data, onChange }: SeoTabProps) {
   const router = useRouter()
-  const seoData = data.seo || {}
-
-  // URL base do site (pega do environment ou usa fallback)
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://seusite.com'
   
-  // URL canônica automática
+  // URL base do site
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://seusite.com'
   const autoCanonicalUrl = `${baseUrl}/produtos/${data.slug}`
 
-  // 🔥 SOLUÇÃO: Salvar automaticamente quando o slug mudar
+  // ✅ CORRIGIDO: Salvar URL canônica automaticamente
   useEffect(() => {
-    if (data.slug && !seoData.canonicalUrl) {
+    if (data.slug && !data.canonicalUrl) {
       onChange({ 
-        seo: { 
-          ...seoData, 
-          canonicalUrl: autoCanonicalUrl 
-        } 
+        canonicalUrl: autoCanonicalUrl 
       })
     }
-  }, [data.slug]) // ← Executa quando o slug mudar
+  }, [data.slug])
 
-  const handleSeoChange = (updates: any) => {
-    onChange({ 
-      seo: { ...seoData, ...updates } 
-    })
-  }
-
+  // ✅ CORRIGIDO: Agora onChange é direto (não precisa do handleSeoChange)
   return (
     <Card>
       <CardHeader>
@@ -58,8 +46,8 @@ export function SeoTab({ data, onChange }: SeoTabProps) {
           <Input 
             id="metaTitle" 
             placeholder="Título para SEO (até 60 caracteres)" 
-            value={seoData.metaTitle || ''}
-            onChange={(e) => handleSeoChange({ metaTitle: e.target.value })}
+            value={data.metaTitle || ''}
+            onChange={(e) => onChange({ metaTitle: e.target.value })}
           />
         </div>
         <div className="space-y-2">
@@ -67,8 +55,8 @@ export function SeoTab({ data, onChange }: SeoTabProps) {
           <Input 
             id="metaDescription" 
             placeholder="Descrição para SEO (até 160 caracteres)" 
-            value={seoData.metaDescription || ''}
-            onChange={(e) => handleSeoChange({ metaDescription: e.target.value })}
+            value={data.metaDescription || ''}
+            onChange={(e) => onChange({ metaDescription: e.target.value })}
           />
         </div>
         <div className="space-y-2">
@@ -76,8 +64,8 @@ export function SeoTab({ data, onChange }: SeoTabProps) {
           <Input 
             id="canonicalUrl" 
             placeholder={autoCanonicalUrl}
-            value={seoData.canonicalUrl || autoCanonicalUrl}
-            onChange={(e) => handleSeoChange({ canonicalUrl: e.target.value })}
+            value={data.canonicalUrl || autoCanonicalUrl}
+            onChange={(e) => onChange({ canonicalUrl: e.target.value })}
           />
           <p className="text-xs text-gray-500">
             Gerado automaticamente a partir do slug

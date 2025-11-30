@@ -80,12 +80,16 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
   }, [selectedValue, pricingData.mainCardPriceType])
 
   const calculateMargin = () => {
-    if (!costPrice || !modalities.stock.price) return '0%'
-    const cost = parseFloat(costPrice)
-    const sale = parseFloat(modalities.stock.price)
-    const margin = ((sale - cost) / cost) * 100
-    return isNaN(margin) ? '0%' : `${margin.toFixed(1)}%`
-  }
+  const stockPrice = modalities?.stock?.price;
+  if (!costPrice || !stockPrice) return '0%';
+  
+  const cost = parseFloat(costPrice);
+  const sale = parseFloat(stockPrice);
+  if (isNaN(cost) || isNaN(sale)) return '0%';
+  
+  const margin = ((sale - cost) / cost) * 100;
+  return `${margin.toFixed(1)}%`;
+}
 
   const handlePricingChange = (updates: any) => {
     onChange({ 

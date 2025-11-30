@@ -1,3 +1,4 @@
+import type { UploadedImage } from "@/app/admin/products/new/components/image-upload/ProductImageGallery";
 export interface BasicTabProps {
   data: ProductFormData
   onChange: (updates: Partial<ProductFormData>) => void
@@ -6,7 +7,7 @@ export interface BasicTabProps {
 export interface ProductImage {
   id: string;
   url: string;
-  preview: string; // tornar obrigatório para compatibilidade
+  preview?: string; // tornar obrigatório para compatibilidade
   isPrimary: boolean;
   altText?: string;
   uploadProgress?: number;
@@ -23,12 +24,13 @@ export interface ProductFormData {
   brand: string
   sku: string
   isActive: boolean
+  storeProductFlags: string[]
   collection: string
   tags: string[]
   productType: string
   productCode: string
   ncmCode: string
-  images: ProductImage[]; // Usar o tipo comum
+  images:  UploadedImage[]
   
   // Dados de outras abas (serão preenchidos depois)
   pricing?: any
@@ -82,6 +84,7 @@ export const initialProductData: ProductFormData = {
   brand: '',
   sku: '',
   isActive: true,
+  storeProductFlags: [],
   collection: '',
   tags: [],
   productType: '',

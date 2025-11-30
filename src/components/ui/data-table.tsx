@@ -214,14 +214,14 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="rounded-md border">
-        <Table>
-          {/* Header com DnD */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToHorizontalAxis]}
-            onDragEnd={handleDragEnd}
-          >
+        {/* DndContext MOVIDO PARA FORA da tabela */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToHorizontalAxis]}
+          onDragEnd={handleDragEnd}
+        >
+          <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -245,57 +245,57 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               ))}
             </TableHeader>
-          </DndContext>
 
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="group hover:bg-blue-50/30 transition-colors duration-150"
-                >
-                  <TableCell>
-                    <Checkbox
-                      checked={row.getIsSelected()}
-                      onCheckedChange={(value) => row.toggleSelected(!!value)}
-                      aria-label="Select row"
-                    />
-                  </TableCell>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-
-                  {/* Coluna Ações - só aparece se actionsContent existir */}
-                  {actionsContent && (
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="group hover:bg-blue-50/30 transition-colors duration-150"
+                  >
                     <TableCell>
-                      <div className="flex gap-1">
-                        <div className="opacity-40 group-hover:opacity-0 transition-opacity duration-200">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </div>
-
-                        <div className="absolute gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex">
-                          {actionsContent(row.original)}
-                        </div>
-                      </div>
+                      <Checkbox
+                        checked={row.getIsSelected()}
+                        onCheckedChange={(value) => row.toggleSelected(!!value)}
+                        aria-label="Select row"
+                      />
                     </TableCell>
-                  )}
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+
+                    {/* Coluna Ações - só aparece se actionsContent existir */}
+                    {actionsContent && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <div className="opacity-40 group-hover:opacity-0 transition-opacity duration-200">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </div>
+
+                          <div className="absolute gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex">
+                            {actionsContent(row.original)}
+                          </div>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell 
+                    colSpan={columns.length + (actionsContent ? 2 : 1)} 
+                    className="h-24 text-center"
+                  >
+                    Nenhum resultado.
+                  </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell 
-                  colSpan={columns.length + (actionsContent ? 2 : 1)} 
-                  className="h-24 text-center"
-                >
-                  Nenhum resultado.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        </DndContext>
       </div>
 
       <div className="flex items-center justify-between px-2 py-4">

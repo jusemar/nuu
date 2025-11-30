@@ -42,7 +42,8 @@ export function ModalityCard({
   isMainCard,
   onSelectMainCard
 }: ModalityCardProps) {
-  const isPromoActive = modalities[type as keyof typeof modalities].promo.active
+  const currentModality = modalities?.[type];
+ 
 
   return (
     <Card className={`border-gray-200 hover:border-gray-300 transition-colors ${
@@ -101,10 +102,11 @@ export function ModalityCard({
                 type="number"
                 placeholder="0.00"
                 step="0.01"
-                value={modalities[type as keyof typeof modalities].price}
+                value={currentModality?.price || ''}
                 onChange={(e) => updateModality(type, 'price', e.target.value)}
                 className="pl-8 text-sm h-10 border-gray-300 focus:border-blue-500"
               />
+
             </div>
           </div>
           
@@ -114,7 +116,7 @@ export function ModalityCard({
             </Label>
             <Input
               placeholder="Ex: 2-3 dias p/ entrega"
-              value={modalities[type as keyof typeof modalities].deliveryText}
+              value={currentModality?.deliveryText || ''}
               onChange={(e) => updateModality(type, 'deliveryText', e.target.value)}
               className="text-sm h-10 border-gray-300 focus:border-blue-500"
             />

@@ -14,6 +14,7 @@ import { useCategories } from '@/hooks/admin/queries/use-categories'
 import { useSlugGenerator } from '@/hooks/forms/useSlugGenerator'
 import { useSkuGenerator } from '@/hooks/forms/useSkuGenerator'
 import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
+import { StoreProductFlags } from "@/components/admin/store-product-flags"
 
 interface BasicTabProps {
   data: {
@@ -29,8 +30,9 @@ interface BasicTabProps {
     productType: string
     productCode: string
     ncmCode: string
-    images: UploadedImage[]
+    images?: UploadedImage[]
     cardShortText: string 
+    storeProductFlags: string[]
   }
   onChange: (updates: any) => void
 }
@@ -108,22 +110,38 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                 </div>
               </div>
 
+              <div className="space-y-2">
+
+               {/* 🆕 SEÇÕES DA LOJA - NOVA SEÇÃO */}
+              <StoreProductFlags 
+                value={data.storeProductFlags || []}
+                onChange={(flags) => onChange({ storeProductFlags: flags })}
+              />
+              </div>
+
+              </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>           
+
                <div className="space-y-2">
                 <Label htmlFor="cardShortText">Descrição Curta para Card</Label>
                 <div className="space-y-1">
                   <Input 
                     id="cardShortText"
-                    placeholder="Curta descrição para o card (máx. 60 caracteres)"
+                    placeholder="Breve descrição para o card do produto (máx. 80 caracteres)"
                     value={data.cardShortText || ''}
                     onChange={(e) => onChange({ cardShortText: e.target.value })}
-                    maxLength={60}
+                    maxLength={80}
                     className="text-sm"
                   />
-                  <div className="flex justify-between text-xs text-gray-500">                   
-                    <span>{data.cardShortText?.length || 0}/60</span>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Usado no card da loja</span>
+                    <span>{data.cardShortText?.length || 0}/80</span>
                   </div>
                 </div>
-            </div>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição *</Label>
@@ -136,11 +154,13 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
             </CardContent>
           </Card>
 
+
           {/* GALERIA DE IMAGENS */}
           <ProductImageGallery         
             onImagesChange={handleImagesChange}
             maxFiles={10}
           />
+        
         </div>
 
         {/* COLUNA LATERAL */}
@@ -188,6 +208,7 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                   </button>
                 </div>
               </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria *</Label>
@@ -237,8 +258,9 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
             <CardHeader>
               <CardTitle>Tags</CardTitle>
             </CardHeader>
+
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input 
                     placeholder="Digite uma tag" 
@@ -273,8 +295,21 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                   </div>
                 )}
               </div>
+
+             <div className="space-y-2 mt-4">
+              <p><Label htmlFor="ncmCode">Código NCM</Label></p>
+              <Input 
+                id="ncmCode" 
+                placeholder="8517.12.00" 
+                value={data.ncmCode}
+                onChange={(e) => onChange({ ncmCode: e.target.value })}
+                className="text-sm"
+              />              
+              </div>
+
             </CardContent>
           </Card>
+          
         </div>
       </div>
     </div>

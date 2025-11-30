@@ -15,6 +15,7 @@ export const productTable = pgTable("product", {
   cardShortText: text("card_short_text"),
   description: text().notNull(),
   brand: text("brand"),
+  storeProductFlags: text("store_product_flags").array().default([]),
   
   // Códigos
   sku: text("sku").notNull().default(sql`gen_random_uuid()`), // ← SEM .unique()

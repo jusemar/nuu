@@ -16,6 +16,7 @@ interface UpdateProductData {
   isActive?: boolean
   collection?: string
   tags?: string[]
+  storeProductFlags: string[]
   productType?: string
   productCode?: string
   ncmCode?: string
@@ -74,9 +75,12 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     if (data.productType !== undefined) updateFields.productType = data.productType
     if (data.productCode !== undefined) updateFields.productCode = data.productCode
     if (data.ncmCode !== undefined) updateFields.ncmCode = data.ncmCode
+    if (data.storeProductFlags !== undefined) updateFields.storeProductFlags = data.storeProductFlags
     if (data.metaTitle !== undefined) updateFields.metaTitle = data.metaTitle
     if (data.metaDescription !== undefined) updateFields.metaDescription = data.metaDescription
     if (data.canonicalUrl !== undefined) updateFields.canonicalUrl = data.canonicalUrl
+
+    if (data.storeProductFlags !== undefined) updateFields.storeProductFlags = data.storeProductFlags
 
     // Campos com transformação
     if (data.pricing?.costPrice !== undefined) {

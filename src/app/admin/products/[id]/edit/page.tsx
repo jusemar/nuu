@@ -29,29 +29,86 @@ export default function EditProductPage() {
   const [productData, setProductData] = useState<ProductFormData>(initialProductData)
 
   useEffect(() => {
-  if (productResponse?.success && productResponse.data) {
-    setProductData({
-      name: productResponse.data.name,
-      slug: productResponse.data.slug,
-      description: productResponse.data.description,
-      cardShortText: productResponse.data.cardShortText || '',
-      categoryId: productResponse.data.categoryId,
-      brand: productResponse.data.brand || '',
-      sku: productResponse.data.sku,
-      isActive: productResponse.data.isActive ?? true,
-      collection: productResponse.data.collection || '',
-      tags: productResponse.data.tags || [],
-      productType: productResponse.data.productType || '',
-      productCode: productResponse.data.productCode || '',
-      ncmCode: productResponse.data.ncmCode || '',
-      metaTitle: productResponse.data.metaTitle || '',
-      metaDescription: productResponse.data.metaDescription || '',
-      canonicalUrl: productResponse.data.canonicalUrl || '',
-      images: [] // ajuste conforme suas imagens
-    })
-  }
-}, [productResponse])
+    if (productResponse?.success && productResponse.data) {
+      const product = productResponse.data
+       console.log('Dados do produto:', Object.keys(product)) // ← DEBUG
+    console.log('Produto completo:', product) // ← DEBUG
+      
+      setProductData({
+        // Campos básicos
+        name: product.name || '',
+        slug: product.slug || '',
+        description: product.description || '',
+        cardShortText: product.cardShortText || '',
+        categoryId: product.categoryId || '',
+        brand: product.brand || '',
+        sku: product.sku || '',
+        isActive: product.isActive ?? true,
+        collection: product.collection || '',
+        tags: product.tags || [],
+        
+        // Store Product Flags (campo que estava faltando)
+        storeProductFlags: product.storeProductFlags || [],
+        
+        // Códigos do produto
+        productType: product.productType || '',
+        productCode: product.productCode || '',
+        ncmCode: product.ncmCode || '',
+        
+        // SEO (campos que estavam faltando)
+        metaTitle: product.metaTitle || '',
+        metaDescription: product.metaDescription || '',
+        canonicalUrl: product.canonicalUrl || '',
+        
+        // Dados de preços (estrutura que estava faltando)
+        pricing: product.pricing || {
+          costPrice: '',
+          modalities: {},
+          mainCardPriceType: ''
+        },
+        
+        // Dados de garantia (campos que estavam faltando)
+        warranty: {
+          period: product.warrantyPeriod?.toString() || '',
+          provider: product.warrantyProvider || '',
+          terms: ''
+        },
+        
+        // Imagens
+             images: Array.isArray(product.images)
+        ? product.images.map((img: any) => ({
+            id: String(img.id),
+            url: String(img.url ?? ""),
+            preview: String(img.url ?? img.preview ?? ""), // garantindo string
+            isPrimary: Boolean(img.isPrimary),
+            variantId: img.productVariantId
+              ? String(img.productVariantId)
+              : img.variantId
+              ? String(img.variantId)
+              : undefined,
+          }))
+        : [],
+        
+        // Campos de shipping (valores padrão)
+        shipping: {
+          weight: '',
+          length: '',
+          width: '',
+          height: '',
+          hasFreeShipping: false,
+          hasLocalPickup: false
+        },
+        
+        // Campos de vendedor (valores padrão)
+    /*    seller: {
+          sellerCode: product.sellerCode || '',
+          internalCode: product.internalCode || '',
+          sellerInfo: product.sellerInfo || ''
+        }*/
 
+      })
+    }
+  }, [productResponse])
 
   const tabs = [
     {

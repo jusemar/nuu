@@ -17,7 +17,7 @@ interface CreateProductData {
   ncmCode?: string
   collection?: string
   tags?: string[]
-  
+  storeProductFlags?: string[]
   pricing?: {
     costPrice?: string
     modalities?: any
@@ -28,11 +28,11 @@ interface CreateProductData {
     provider?: string
     terms?: string
   }
-  seo?: {
+  
     metaTitle?: string
     metaDescription?: string
     canonicalUrl?: string
-  }
+  
   
   images: Array<{
     url: string
@@ -44,7 +44,8 @@ interface CreateProductData {
 export async function createProduct(data: CreateProductData) {
   try {
     // 1. Criar o produto principal
-    const [product] = await db.insert(productTable).values({
+    const [product] = await db.insert(productTable).values({     
+      
       name: data.name,
       slug: data.slug,
       description: data.description,
@@ -55,18 +56,20 @@ export async function createProduct(data: CreateProductData) {
       productCode: data.productCode,
       ncmCode: data.ncmCode,
       collection: data.collection,
-      tags: data.tags,      
+      tags: data.tags, 
+      storeProductFlags: data.storeProductFlags || [],     
       cardShortText: data.cardShortText, 
       costPrice: data.pricing?.costPrice ? parseInt(data.pricing.costPrice) * 100 : null,
       warrantyPeriod: data.warranty?.period ? parseInt(data.warranty.period) : null,
       warrantyProvider: data.warranty?.provider,
-      metaTitle: data.seo?.metaTitle,
-      metaDescription: data.seo?.metaDescription,
-      canonicalUrl: data.seo?.canonicalUrl, 
+      metaTitle: data.metaTitle,
+      metaDescription: data.metaDescription,
+      canonicalUrl: data.canonicalUrl, 
       
       status: 'draft',
       isActive: true,
     }).returning()
+    console.log('Produto criado:', product);
 
     // 2. Adicionar imagens na galeria
     if (data.images.length > 0) {

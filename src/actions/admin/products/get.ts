@@ -17,6 +17,9 @@ export async function getProducts() {
         
         // Códigos
         sku: productTable.sku,
+
+         // Flags da loja
+        storeProductFlags: productTable.storeProductFlags,
         
         // Status
         status: productTable.status,

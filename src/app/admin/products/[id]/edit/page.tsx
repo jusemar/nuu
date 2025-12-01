@@ -31,8 +31,54 @@ export default function EditProductPage() {
   useEffect(() => {
     if (productResponse?.success && productResponse.data) {
       const product = productResponse.data
-       console.log('Dados do produto:', Object.keys(product)) // ← DEBUG
-    console.log('Produto completo:', product) // ← DEBUG
+      console.log('Modalidades do banco:', product.pricing?.modalities)
+      console.log('Produto completo:', product)
+      
+      // Função para mapear modalidades do banco para estrutura do frontend
+      const mapModalitiesFromDB = (dbModalities: any) => {
+      return {
+        stock: {
+          price: dbModalities?.stock?.price || '',
+          deliveryText: dbModalities?.stock?.deliveryText || '',
+          promo: {
+            active: dbModalities?.stock?.promo?.active || false,
+            type: dbModalities?.stock?.promo?.type || 'normal',
+            price: dbModalities?.stock?.promo?.price || '',
+            endDate: dbModalities?.stock?.promo?.endDate ? new Date(dbModalities.stock.promo.endDate) : undefined
+          }
+        },
+        preSale: {
+          price: dbModalities?.preSale?.price || '',
+          deliveryText: dbModalities?.preSale?.deliveryText || '',
+          promo: {
+            active: dbModalities?.preSale?.promo?.active || false,
+            type: dbModalities?.preSale?.promo?.type || 'normal',
+            price: dbModalities?.preSale?.promo?.price || '',
+            endDate: dbModalities?.preSale?.promo?.endDate ? new Date(dbModalities.preSale.promo.endDate) : undefined
+          }
+        },
+        dropshipping: {
+          price: dbModalities?.dropshipping?.price || '',
+          deliveryText: dbModalities?.dropshipping?.deliveryText || '',
+          promo: {
+            active: dbModalities?.dropshipping?.promo?.active || false,
+            type: dbModalities?.dropshipping?.promo?.type || 'normal',
+            price: dbModalities?.dropshipping?.promo?.price || '',
+            endDate: dbModalities?.dropshipping?.promo?.endDate ? new Date(dbModalities.dropshipping.promo.endDate) : undefined
+          }
+        },
+        orderBasis: {
+          price: dbModalities?.orderBasis?.price || '',
+          deliveryText: dbModalities?.orderBasis?.deliveryText || '',
+          promo: {
+            active: dbModalities?.orderBasis?.promo?.active || false,
+            type: dbModalities?.orderBasis?.promo?.type || 'normal',
+            price: dbModalities?.orderBasis?.promo?.price || '',
+            endDate: dbModalities?.orderBasis?.promo?.endDate ? new Date(dbModalities.orderBasis.promo.endDate) : undefined
+          }
+        }
+      }
+    }
       
       setProductData({
         // Campos básicos
@@ -61,10 +107,10 @@ export default function EditProductPage() {
         canonicalUrl: product.canonicalUrl || '',
         
         // Dados de preços (estrutura que estava faltando)
-        pricing: product.pricing || {
-          costPrice: '',
-          modalities: {},
-          mainCardPriceType: ''
+        pricing: {
+          costPrice: (product.pricing as any)?.costPrice || '',
+          modalities: mapModalitiesFromDB(product.pricing?.modalities),
+          mainCardPriceType: product.pricing?.mainCardPriceType || ''
         },
         
         // Dados de garantia (campos que estavam faltando)
@@ -75,19 +121,19 @@ export default function EditProductPage() {
         },
         
         // Imagens
-             images: Array.isArray(product.images)
-        ? product.images.map((img: any) => ({
-            id: String(img.id),
-            url: String(img.url ?? ""),
-            preview: String(img.url ?? img.preview ?? ""), // garantindo string
-            isPrimary: Boolean(img.isPrimary),
-            variantId: img.productVariantId
-              ? String(img.productVariantId)
-              : img.variantId
-              ? String(img.variantId)
-              : undefined,
-          }))
-        : [],
+        images: Array.isArray(product.images)
+          ? product.images.map((img: any) => ({
+              id: String(img.id),
+              url: String(img.url ?? ""),
+              preview: String(img.url ?? img.preview ?? ""),
+              isPrimary: Boolean(img.isPrimary),
+              variantId: img.productVariantId
+                ? String(img.productVariantId)
+                : img.variantId
+                ? String(img.variantId)
+                : undefined,
+            }))
+          : [],
         
         // Campos de shipping (valores padrão)
         shipping: {
@@ -100,12 +146,11 @@ export default function EditProductPage() {
         },
         
         // Campos de vendedor (valores padrão)
-    /*    seller: {
+        seller: {
           sellerCode: product.sellerCode || '',
           internalCode: product.internalCode || '',
           sellerInfo: product.sellerInfo || ''
-        }*/
-
+        }
       })
     }
   }, [productResponse])
@@ -147,6 +192,8 @@ export default function EditProductPage() {
 
   const handleUpdateProduct = async () => {    
     try {
+      console.log('Dados enviados para update:', JSON.stringify(productData, null, 2))
+      
       if (!productData.categoryId) {
         alert('Selecione uma categoria antes de salvar!')
         return

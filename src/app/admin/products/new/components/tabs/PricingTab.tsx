@@ -9,16 +9,29 @@ import { Package, Calendar, Clock } from "lucide-react"
 import { ModalityCard } from './pricing/ModalityCard'
 import { useSingleSelection } from '@/hooks/admin/forms/useSingleSelection'
 
+
 interface PricingTabProps {
   data: {
     pricing?: {
       costPrice?: string
-      modalities?: any
+      modalities?: {
+        [key: string]: {
+          price: string
+          deliveryText: string
+          promo: {
+            active: boolean
+            type: string
+            price: string
+            endDate?: Date
+          }
+        }
+      }
       mainCardPriceType?: string
     }
   }
   onChange: (updates: any) => void
 }
+
 
 export function PricingTab({ data, onChange }: PricingTabProps) {
   const pricingData = data.pricing || {}

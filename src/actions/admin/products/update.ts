@@ -1,4 +1,4 @@
-"use server"
+ "use server"
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/db"
@@ -26,7 +26,18 @@ interface UpdateProductData {
   
   pricing?: {
     costPrice?: string
-    modalities?: Record<string, any>
+    modalities?: {
+      [key: string]: {
+        price: string
+        deliveryText: string
+        promo: {
+          active: boolean
+          type: string
+          price: string
+          endDate?: Date
+        }
+      }
+    }
     mainCardPriceType?: string
   }
   warranty?: {
@@ -80,8 +91,6 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     if (data.metaDescription !== undefined) updateFields.metaDescription = data.metaDescription
     if (data.canonicalUrl !== undefined) updateFields.canonicalUrl = data.canonicalUrl
 
-    if (data.storeProductFlags !== undefined) updateFields.storeProductFlags = data.storeProductFlags
-
     // Campos com transformação
     if (data.pricing?.costPrice !== undefined) {
       updateFields.costPrice = data.pricing.costPrice ? 
@@ -109,17 +118,41 @@ export async function updateProduct(id: string, data: UpdateProductData) {
 
       const pricingEntries = Object.entries(data.pricing.modalities)
         .filter(([_, modality]) => modality.price)
-        .map(([type, modality]: [string, any]) => ({
-          productId: id,
-          type: type,
-          price: Math.round(parseFloat(modality.price) * 100),
-          deliveryDays: modality.deliveryText || '',
-          pricingModalDescription: modality.deliveryText || '',
-          mainCardPrice: data.pricing?.mainCardPriceType === type,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }))
+        .map(([type, modality]: [string, any]) => {
+          // Calcular duration a partir do endDate
+          let promoDuration = null;
+          let promoDurationUnit = null;
+          
+          if (modality.promo?.endDate) {
+            const now = new Date();
+            const endDate = new Date(modality.promo.endDate);
+            const diffHours = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60));
+            
+            if (diffHours > 0) {
+              promoDuration = diffHours;
+              promoDurationUnit = 'hours';
+            }
+          }
+
+          return {
+            productId: id,
+            type: type,
+            price: Math.round(parseFloat(modality.price) * 100),
+            deliveryDays: modality.deliveryText || '',
+            pricingModalDescription: modality.deliveryText || '',
+            mainCardPrice: data.pricing?.mainCardPriceType === type,
+            isActive: true,
+            // CAMPOS DE PROMOÇÃO
+            hasPromo: modality.promo?.active || false,
+            promoType: modality.promo?.type || 'normal',
+            promoPrice: modality.promo?.price ? Math.round(parseFloat(modality.promo.price) * 100) : null,
+            promoEndDate: modality.promo?.endDate || null, 
+            promoDuration: promoDuration,
+            promoDurationUnit: promoDurationUnit,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+        })
 
       if (pricingEntries.length > 0) {
         await db.insert(productPricingTable).values(pricingEntries)

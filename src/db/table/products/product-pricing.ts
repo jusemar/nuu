@@ -15,6 +15,7 @@ export const productPricingTable = pgTable("product_pricing", {
   hasPromo: boolean("has_promo").default(false),
   promoType: text("promo_type"), // 'normal', 'flash'
   promoPrice: integer("promo_price_in_cents"),
+  promoEndDate: timestamp("promo_end_date"),
   promoDuration: integer("promo_duration"),
   promoDurationUnit: text("promo_duration_unit"), // 'days', 'hours'
   isActive: boolean("is_active").default(true),

@@ -37,3 +37,42 @@ src/
         └── products/                  # **ROUTE HANDLERS** (apenas públicos/third-party)
             └── [id]/
                 └── route.ts           # API pública se necessário
+
+
+src/
+├── app/                  # Next.js App Router: rotas da LOJA
+│   ├── produtos/
+│   │   └── page.tsx      # Importa de features/product-card
+│   └── layout.tsx
+│
+├── admin/                # Next.js App Router: rotas do ADMIN (separado)
+│   ├── produtos/
+│   │   └── page.tsx      # Reusa features/product-card se for compartilhado
+│   └── layout.tsx
+│
+├── features/             # FSD: Features específicas (slices isolados)
+│   ├── product-card/     # Sua feature atual
+│   │   ├── components/
+│   │   │   └── ProductCard.tsx  # Dumb component
+│   │   ├── hooks/
+│   │   │   └── use-derived-product.ts  # Derived state + TanStack Query
+│   │   ├── types/
+│   │   │   └── product-card.types.ts
+│   │   └── index.ts      # Exporta tudo
+│   ├── cart/             # Outra feature (ex: para loja)
+│   │   ├── components/Cart.tsx
+│   │   └── hooks/useCart.ts  # Zustand + Query
+│   └── ...               # Mais features
+│
+├── entities/             # FSD: Modelos de domínio (ex: Product entity)
+│   └── product/
+│       ├── model.ts      # Tipos base
+│       └── lib/          # Validações
+│
+├── shared/               # FSD: Coisas globais/reutilizáveis
+│   ├── ui/               # Botões, modais (shadcn/ui)
+│   ├── lib/              # Utils, Zustand stores
+│   └── api/              # TanStack Query clients
+│
+└── types/                # Tipos globais
+    └── global.ts

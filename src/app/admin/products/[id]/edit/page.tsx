@@ -30,10 +30,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     if (productResponse?.success && productResponse.data) {
-      const product = productResponse.data
-      console.log('Modalidades do banco:', product.pricing?.modalities)
-      console.log('Produto completo:', product)
-      
+      const product = productResponse.data       
       // Função para mapear modalidades do banco para estrutura do frontend
       const mapModalitiesFromDB = (dbModalities: any) => {
       return {

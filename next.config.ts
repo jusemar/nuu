@@ -11,10 +11,19 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "fakestoreapi.com",
       },
-      // se quiser já deixar preparado para o futuro
       {
         protocol: "https",
         hostname: "via.placeholder.com",
+      },
+      // Adicione o Unsplash
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      // Ou para permitir todos do Unsplash
+      {
+        protocol: "https",
+        hostname: "*.unsplash.com",
       },
     ],
   },

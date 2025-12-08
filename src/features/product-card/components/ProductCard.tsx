@@ -157,7 +157,7 @@ export const ProductCard = ({
         <div className="space-y-2">
           {/* Linha com preço original e desconto */}
           {originalPrice && originalPrice > currentPrice && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-5">
               <p className="text-xs text-gray-400 line-through">
                 {formatPrice(originalPrice)}
               </p>
@@ -172,7 +172,7 @@ export const ProductCard = ({
 
           {/* Linha com preço atual, PIX e botão carrinho */}
           <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-5">
               <p 
                 className="text-xl font-bold tracking-tight text-gray-900"
                 itemProp="offers"
@@ -218,10 +218,9 @@ export const ProductCard = ({
 {hasFlashSale && (
   <span className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-800">
     <Zap className="h-3 w-3" />
-    Oferta Relâmpago
+    Promoção
   </span>
 )}
-
 
           </div>
         )}

@@ -24,7 +24,8 @@ const carousel: KeenSliderPlugin = (slider) => {
 };
 
 export const ProductCarousel = () => {
-  const [sliderRef] = useKeenSlider<HTMLDivElement>(
+  const [isHovering, setIsHovering] = useState(false);
+  const [sliderRef, sliderInstanceRef] = useKeenSlider<HTMLDivElement>(
     {
       loop: true,
       selector: '.carousel__cell',
@@ -34,21 +35,16 @@ export const ProductCarousel = () => {
     [carousel]
   );
 
-  const [isHovering, setIsHovering] = useState(false);
-  const [sliderInstance, setSliderInstance] = useState<any>(null);
-
-  // Configura auto-play
+  // Auto-play que pausa no hover
   useEffect(() => {
-    if (!sliderInstance || isHovering) return;
+    if (!sliderInstanceRef.current || isHovering) return;
 
     const interval = setInterval(() => {
-      if (sliderInstance) {
-        sliderInstance.next();
-      }
-    }, 3000);
+      sliderInstanceRef.current?.next();
+    }, 3000); // Gira a cada 3 segundos
 
     return () => clearInterval(interval);
-  }, [sliderInstance, isHovering]);
+  }, [sliderInstanceRef, isHovering]);
 
   const products = [
     { id: 1, title: 'iPhone 15 Pro', price: 'R$ 7.999', emoji: '📱' },
@@ -94,7 +90,7 @@ export const ProductCarousel = () => {
       </div>
 
       <div className="mt-8 text-sm text-gray-500">
-        {isHovering ? '⏸ Pausado' : '▶ Girando automaticamente'}
+        {isHovering ? '⏸ Pausado (mouse sobre)' : '▶ Girando automaticamente (3s)'}
       </div>
 
       <style jsx>{`

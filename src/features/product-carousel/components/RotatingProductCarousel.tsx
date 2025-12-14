@@ -23,7 +23,7 @@ const carousel: KeenSliderPlugin = (slider) => {
   slider.on('detailsChanged', rotate);
 };
 
-export const ProductCarousel = () => {
+export const RotatingProductCarousel = () => {
   const [isHovering, setIsHovering] = useState(false);
   const [sliderRef, sliderInstanceRef] = useKeenSlider<HTMLDivElement>(
     {
@@ -41,7 +41,7 @@ export const ProductCarousel = () => {
 
     const interval = setInterval(() => {
       sliderInstanceRef.current?.next();
-    }, 3000); // Gira a cada 3 segundos
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [sliderInstanceRef, isHovering]);
@@ -56,16 +56,13 @@ export const ProductCarousel = () => {
   ];
 
   return (
-    <div className="w-full py-12 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white">
-      <h2 className="text-3xl font-bold text-gray-900 mb-4">Novidades 3D</h2>
-      <p className="text-gray-600 mb-12">Arraste para girar • Passe o mouse para pausar</p>
-      
-      <div 
-        className="wrapper"
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-      >
-        <div className="scene">
+    <div className="w-full py-8">
+      <div className="wrapper">
+        <div 
+          className="scene"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+        >
           <div className="carousel keen-slider" ref={sliderRef}>
             {products.map((product) => (
               <div key={product.id} className="carousel__cell">
@@ -87,10 +84,6 @@ export const ProductCarousel = () => {
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="mt-8 text-sm text-gray-500">
-        {isHovering ? '⏸ Pausado (mouse sobre)' : '▶ Girando automaticamente (3s)'}
       </div>
 
       <style jsx>{`
@@ -125,4 +118,4 @@ export const ProductCarousel = () => {
   );
 };
 
-export default ProductCarousel;
+export default RotatingProductCarousel;

@@ -5,6 +5,9 @@ import Image from "next/image";
 import CategorySelector from "@/components/common/category-selector";
 import ProductCarousel from "@/components/common/product-carousel";
 import {Footer} from "@/components/common/footer";
+import  RotatingProductCarousel  from "@/features/product-carousel/components/RotatingProductCarousel";
+
+
 
 import ProductList from "@/components/common/product-list";
 import { db } from "@/db";
@@ -59,11 +62,13 @@ const Home = async () => {
           flashDealProduct={products[0]} 
           products={products}
           flashDealEndDate={flashDealEndDate}
-        />  
-        
+        />          
+
  
           <SectionTitle icon="star">Novidades</SectionTitle>
-          <ProductList products={newlyCreatedProducts} />
+
+          <RotatingProductCarousel/>
+        
 
      {/*     <div className="px-5">
           <CategorySelector categories={categories} />

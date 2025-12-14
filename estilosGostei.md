@@ -13,4 +13,10 @@
         </div>
       </Badge> -->
       https://www.shadcn.io/components/forms/minimal-tiptap
-      
+
+https://shadcnstudio.com/blocks/marketing-ui/hero-section  Hero 14, Hero 6, caminho de raio 
+https://shadcnstudio.com/blocks/ecommerce/product-category Product Category 10
+https://shadcnstudio.com/blocks/marketing-ui/app-integration  App Integration 9
+
+contabilidade
+https://flyonui.com/blocks/marketing-ui/team-section Team 5

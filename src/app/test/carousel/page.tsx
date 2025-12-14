@@ -99,20 +99,20 @@ export const ProductCard = ({
       itemType="https://schema.org/Product"
     >
       {/* Container da Imagem */}
-        <div className="relative aspect-[1/0.75] overflow-hidden bg-gray-50">
-          {/* Imagem do Produto */}
-          <div className="relative h-full w-full">
-            <Image
-              src={image}
-              alt={title}
-              fill
-              className="object-contain p-3 transition-transform duration-500 group-hover:scale-110"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              priority={false}
-              itemProp="image"
-            />
-          </div>
+      <div className="relative aspect-[1/0.75] overflow-hidden bg-gray-50">
+        {/* Imagem do Produto */}
+        <div className="relative h-full w-full">
+          <Image
+            src={image}
+            alt={title}
+            fill
+            className="object-contain p-3 transition-transform duration-500 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            priority={false}
+            itemProp="image"
+          />
         </div>
+      </div>
 
       {/* Conteúdo - ESPAÇO REDUZIDO no topo */}
       <div className="p-3 pt-1"> {/* Reduzido padding-top */}

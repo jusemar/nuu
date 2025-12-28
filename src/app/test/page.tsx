@@ -4,6 +4,7 @@ import ProductCarousel from '@/features/product-carousel/components/RotatingProd
 import { ProductCard } from "@/features/product-card/components/ProductCard";
 import { getProductsByFlag } from '@/features/products/actions/get-products-by-flag';
 import { useEffect, useState } from 'react';
+import DealsCarousel from '@/features/deals/components/DealsCarousel';
 
 export default function TestPage() {
   const [testProducts, setTestProducts] = useState<any[]>([]);
@@ -34,6 +35,9 @@ export default function TestPage() {
 
   
   return (
+
+    
+
     <div className="min-h-screen bg-gray-50 p-4">
       {/* PARTE ORIGINAL (mantida) */}
       <ProductCarousel /> 
@@ -106,6 +110,12 @@ export default function TestPage() {
           </div>
         )}
       </div>
+
+         <div className="mt-12 border-t pt-8">
+    <h2 className="text-2xl font-bold mb-6">🎯 Teste: DealsCarousel (UI)</h2>
+    <DealsCarousel />
+  </div>
+
     </div>
   );
 }

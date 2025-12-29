@@ -1,3 +1,6 @@
+para o designer trocar imagens de uma imagem usar whisk com nano banana
+
+
 <!--   <Badge 
         variant={value ? "default" : "secondary"}
         className={`

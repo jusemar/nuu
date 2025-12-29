@@ -32,6 +32,27 @@ export default function TestPage() {
     testAction();
   }, []);
 
+  // Novo estado para produtos com flag 'sale'
+const [saleProducts, setSaleProducts] = useState<any[]>([]);
+const [isLoadingSale, setIsLoadingSale] = useState(true);
+
+// Buscar produtos com flag 'sale'
+useEffect(() => {
+  async function loadSaleProducts() {
+    setIsLoadingSale(true);
+    try {
+      const products = await getProductsByFlag(['new']);
+      setSaleProducts(products);
+    } catch (error) {
+      console.error('Erro ao buscar produtos em oferta:', error);
+    } finally {
+      setIsLoadingSale(false);
+    }
+  }
+  
+  loadSaleProducts();
+}, []);
+
 
   
   return (
@@ -115,6 +136,48 @@ export default function TestPage() {
     <h2 className="text-2xl font-bold mb-6">🎯 Teste: DealsCarousel (UI)</h2>
     <DealsCarousel />
   </div>
+
+          {/* Seção com dados REAIS da flag 'sale' */}
+<div className="mt-12 border-t pt-8">
+  <h2 className="text-2xl font-bold mb-6">🔥 DealsCarousel com dados REAIS (flag 'sale')</h2>
+  
+  {isLoadingSale ? (
+    <p className="text-gray-500">Carregando produtos em oferta...</p>
+  ) : saleProducts.length === 0 ? (
+    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <p className="text-yellow-800 font-medium">⚠️ Nenhum produto com flag "sale"</p>
+      <p className="text-yellow-600 text-sm mt-1">
+        Adicione a flag "sale" no campo storeProductFlags de alguns produtos
+      </p>
+    </div>
+  ) : (
+    <DealsCarousel 
+      products={saleProducts.map(p => {
+        const priceNormal = p.mainPrice?.price ? p.mainPrice.price / 100 : 0;
+        const pricePromo = p.mainPrice?.promoPrice ? p.mainPrice.promoPrice / 100 : null;
+        const hasPromo = p.mainPrice?.hasPromo && pricePromo;
+        const discount = hasPromo && priceNormal > 0 
+          ? Math.round(((priceNormal - pricePromo) / priceNormal) * 100)
+          : undefined;
+
+        return {
+          id: p.id,
+          image: p.mainImage?.imageUrl || '/produto-sem-foto.webp',
+          title: p.name,
+          description: p.cardShortText,
+          currentPrice: hasPromo ? pricePromo : priceNormal,
+          originalPrice: hasPromo ? priceNormal : undefined,
+          discount: discount,
+          hasFreeShipping: p.hasFreeShipping,
+          hasFlashSale: hasPromo,
+          hasBestPrice: false,
+        };
+      })}
+      title="🔥 Ofertas Reais (Banco de Dados)"
+    />
+  )}
+</div>
+
 
     </div>
   );

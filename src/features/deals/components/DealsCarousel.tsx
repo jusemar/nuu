@@ -10,11 +10,12 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
+
 // No componente:
 <Carousel
   plugins={[
     Autoplay({
-      delay: 10000, // 7 segundos
+      delay: 20000, // 0 segundos
       stopOnInteraction: false,
     }),
   ]}
@@ -161,7 +162,7 @@ const DealsCarousel = ({
  <Carousel
   plugins={[
     Autoplay({
-      delay: 3000, // 3 segundos
+      delay: 7000, // 7 segundos
       stopOnInteraction: false,
     }),
   ]}

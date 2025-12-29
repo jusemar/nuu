@@ -1,13 +1,17 @@
 "use server";
 
 import { db } from "@/db";
-import { productTable, productVariantTable, productPricingTable } from "@/db/schema";
+import { 
+  productTable, 
+  productPricingTable, 
+  productGalleryImagesTable 
+} from "@/db/schema";
 import { sql } from "drizzle-orm";
 import { desc } from "drizzle-orm";
 
 export async function getProductsByFlag(flags: string[]) {
   try {
-    const allowedFlags = ['general', 'new'];
+    const allowedFlags = ['general', 'new', 'sale'];
     const filteredFlags = flags.filter(flag => allowedFlags.includes(flag));
     
     if (filteredFlags.length === 0) {
@@ -24,33 +28,31 @@ export async function getProductsByFlag(flags: string[]) {
           cardShortText: productTable.cardShortText,
           storeProductFlags: productTable.storeProductFlags,
           description: productTable.description,
+          hasFreeShipping: productTable.hasFreeShipping,
         },
-        // Preço principal (mainCardPrice = true)
+        // Imagem principal da galeria
+        mainImage: {
+          imageUrl: productGalleryImagesTable.imageUrl,
+          altText: productGalleryImagesTable.altText,
+        },
+        // Preço principal
         mainPrice: {
           price: productPricingTable.price,
           promoPrice: productPricingTable.promoPrice,
           hasPromo: productPricingTable.hasPromo,
           type: productPricingTable.type,
         },
-        // Variants
-        variants: sql<Array<typeof productVariantTable.$inferSelect>>`
-          array_agg(
-            json_build_object(
-              'id', ${productVariantTable.id},
-              'productId', ${productVariantTable.productId},
-              'name', ${productVariantTable.name},
-              'sku', ${productVariantTable.sku},
-              'imageUrl', ${productVariantTable.imageUrl},
-              'priceInCents', ${productVariantTable.priceInCents},
-              'isActive', ${productVariantTable.isActive},
-              'createdAt', ${productVariantTable.createdAt},
-              'updatedAt', ${productVariantTable.updatedAt}
-            )
-          ) as variants
-        `,
       })
       .from(productTable)
-      // LEFT JOIN com productPricingTable (apenas mainCardPrice = true)
+      // LEFT JOIN com productGalleryImagesTable (imagem primária)
+      .leftJoin(
+        productGalleryImagesTable,
+        sql`
+          ${productTable.id} = ${productGalleryImagesTable.productId}
+          AND ${productGalleryImagesTable.isPrimary} = true
+        `
+      )
+      // LEFT JOIN com productPricingTable (preço principal)
       .leftJoin(
         productPricingTable,
         sql`
@@ -58,21 +60,17 @@ export async function getProductsByFlag(flags: string[]) {
           AND ${productPricingTable.mainCardPrice} = true
         `
       )
-      .leftJoin(
-        productVariantTable,
-        sql`${productTable.id} = ${productVariantTable.productId}`
-      )
       .where(sql`
         ${productTable.storeProductFlags} && ARRAY[${sql.join(filteredFlags, sql`, `)}]::text[]
       `)
-      .groupBy(productTable.id, productPricingTable.id) // Inclui productPricingTable no groupBy
+      .groupBy(productTable.id, productGalleryImagesTable.id, productPricingTable.id)
       .orderBy(desc(productTable.createdAt));
 
     // Transformar resultado
-    return products.map(({ product, mainPrice, variants }) => ({
+    return products.map(({ product, mainImage, mainPrice }) => ({
       ...product,
-      mainPrice: mainPrice || null, // Pode ser null se não tiver preço principal
-      variants: variants || [],
+      mainImage: mainImage || null,
+      mainPrice: mainPrice || null,
     }));
   } catch (error) {
     console.error(`Erro ao buscar produtos com flags ${flags}:`, error);

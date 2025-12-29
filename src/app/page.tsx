@@ -17,7 +17,7 @@ import { get } from "http";
 import { getCategories } from "@/data/categories/get";
 import { BannerCarousel } from "@/components/ui/BannerCarousel";
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
-import { DealsGrid } from "@/components/common/deals-grid";
+import { DealsGrid } from "@/features/deals/components/DealsGrid";
 import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import ClientHeader from "@/components/layout/ClientHeader";
@@ -59,8 +59,7 @@ const Home = async () => {
         
         {/* 🎯 DEALS GRID COM DATA FIXA */}
         <DealsGrid 
-          flashDealProduct={products[0]} 
-          products={products}
+          flashDealProduct={products[0]}           
           flashDealEndDate={flashDealEndDate}
         />          
 

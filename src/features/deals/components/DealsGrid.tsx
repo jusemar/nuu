@@ -1,7 +1,10 @@
-import { getProductsByFlag } from '@/features/products/actions/get-products-by-flag';
+'use client';
+
+import { useProductsByFlag } from '@/features/products/api/queries/use-products-by-flag';
 import DealsCarousel from './DealsCarousel';
-import { FlashDealCard } from "@/components/common/flash-deal-card";
-import { productTable, productVariantTable } from '@/db/schema'; // Importe tipos se precisar
+import { FlashDealCard } from '@/components/common/flash-deal-card';
+import { productTable, productVariantTable } from '@/db/schema';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DealsGridProps {
   flashDealProduct: typeof productTable.$inferSelect & {
@@ -10,14 +13,35 @@ interface DealsGridProps {
   flashDealEndDate: string;
 }
 
-export const DealsGrid = async ({ 
+export const DealsGrid = ({ 
   flashDealProduct, 
   flashDealEndDate 
 }: DealsGridProps) => {
-  // Buscar produtos com flag 'sale'
-  const saleProducts = await getProductsByFlag(['new']);
+  // Usando TanStack Query com cache
+  const { data: saleProducts = [], isLoading, error } = useProductsByFlag(['new']);
 
-  // Converter produtos para formato do DealsCarousel
+  if (error) {
+    return (
+      <div className="px-4 mb-8 text-red-600">
+        Erro ao carregar ofertas: {error.message}
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 mb-8">
+        <div className="lg:col-span-1">
+          <Skeleton className="h-[400px] rounded-xl" />
+        </div>
+        <div className="lg:col-span-3">
+          <Skeleton className="h-[300px] rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  // Converter produtos
   const carouselProducts = saleProducts.map(p => {
     const priceNormal = p.mainPrice?.price ? p.mainPrice.price / 100 : 0;
     const pricePromo = p.mainPrice?.promoPrice ? p.mainPrice.promoPrice / 100 : null;
@@ -26,24 +50,22 @@ export const DealsGrid = async ({
       ? Math.round(((priceNormal - pricePromo) / priceNormal) * 100)
       : undefined;
 
-return {
-  id: p.id,
-  image: p.mainImage?.imageUrl || '/produto-sem-foto.webp',
-  title: p.name,
-  description: p.cardShortText || undefined,
-  currentPrice: hasPromo ? pricePromo! : priceNormal,
-  originalPrice: hasPromo ? priceNormal : undefined,
-  discount: discount,
-  hasFreeShipping: p.hasFreeShipping || false,
-  hasFlashSale: Boolean(hasPromo), // Garante boolean
-  hasBestPrice: false,
-};
-
+    return {
+      id: p.id,
+      image: p.mainImage?.imageUrl || '/produto-sem-foto.webp',
+      title: p.name,
+      description: p.cardShortText || undefined,
+      currentPrice: hasPromo ? pricePromo! : priceNormal,
+      originalPrice: hasPromo ? priceNormal : undefined,
+      discount: discount,
+      hasFreeShipping: p.hasFreeShipping || false,
+      hasFlashSale: Boolean(hasPromo),
+      hasBestPrice: false,
+    };
   });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 mb-8">
-      {/* Card de Oferta Relâmpago */}
       <div className="lg:col-span-1">
         <FlashDealCard 
           product={flashDealProduct} 
@@ -51,7 +73,6 @@ return {
         />
       </div>
       
-      {/* Carousel de Ofertas */}
       <div className="lg:col-span-3">
         <DealsCarousel 
           products={carouselProducts}

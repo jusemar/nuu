@@ -21,6 +21,7 @@ import { DealsGrid } from "@/features/deals/components/DealsGrid";
 import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import ClientHeader from "@/components/layout/ClientHeader";
+import FeaturedProductsCarousel from '@/features/featured-products-carousel/components/FeaturedProductsCarousel';
 
 const Home = async () => {
 
@@ -67,6 +68,7 @@ const Home = async () => {
           <SectionTitle icon="star">Novidades</SectionTitle>
 
           <RotatingProductCarousel/>
+          <FeaturedProductsCarousel />
         
 
      {/*     <div className="px-5">

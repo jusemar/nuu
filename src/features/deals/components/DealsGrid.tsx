@@ -68,7 +68,7 @@ export const DealsGrid = ({
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 mb-8">
       <div className="lg:col-span-1">
         <FlashDealCard 
-          product={flashDealProduct} 
+          product={flashDealProduct}  
           endDate={flashDealEndDate}
         />
       </div>

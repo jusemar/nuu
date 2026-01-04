@@ -1,3 +1,4 @@
+// FeaturedProductsCarousel.tsx
 'use client';
 
 import { useKeenSlider, KeenSliderPlugin } from 'keen-slider/react';
@@ -5,6 +6,14 @@ import 'keen-slider/keen-slider.min.css';
 import { useEffect, useState } from 'react';
 import FeaturedProductCard from './FeaturedProductCard';
 
+// ✅ IMPORTANDO O HOOK QUE CRIAMOS
+// O hook é responsável por buscar os dados dos produtos
+import { useFeaturedProducts } from '../hooks/useFeaturedProducts';
+
+/**
+ * Plugin do Keen Slider que cria o efeito 3D de rotação
+ * Essa parte é específica da biblioteca de carousel
+ */
 const carousel: KeenSliderPlugin = (slider) => {
   const z = 300;
   
@@ -25,7 +34,18 @@ const carousel: KeenSliderPlugin = (slider) => {
 };
 
 export const FeaturedProductsCarousel = () => {
+  // Estado para controlar se o mouse está sobre o carousel
   const [isHovering, setIsHovering] = useState(false);
+  
+  // ✅ USANDO O HOOK PARA BUSCAR OS DADOS
+  // O hook retorna 4 coisas:
+  // 1. products: array de produtos (vazio enquanto carrega)
+  // 2. isLoading: true quando está buscando dados
+  // 3. error: objeto de erro se algo der errado
+  // 4. refetch: função para buscar os dados novamente
+  const { products, isLoading, error } = useFeaturedProducts();
+  
+  // Configuração do carousel com Keen Slider
   const [sliderRef, sliderInstanceRef] = useKeenSlider<HTMLDivElement>(
     {
       loop: true,
@@ -36,7 +56,7 @@ export const FeaturedProductsCarousel = () => {
     [carousel]
   );
 
-  // Auto-play que pausa no hover
+  // Auto-play que pausa quando o mouse está sobre o carousel
   useEffect(() => {
     if (!sliderInstanceRef.current || isHovering) return;
 
@@ -47,74 +67,60 @@ export const FeaturedProductsCarousel = () => {
     return () => clearInterval(interval);
   }, [sliderInstanceRef, isHovering]);
 
-  // DADOS FICTÍCIOS DIRETO NO ARQUIVO - 5 PRODUTOS
-  const featuredProducts = [
-    {
-      id: '1',
-      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
-      title: 'Smart Watch Pro',
-      description: 'Relógio inteligente premium',
-      originalPrice: 899.90,
-      currentPrice: 699.90,
-      discount: 22,
-      hasFreeShipping: true,
-      isFeatured: true,
-      rating: 4.8,
-      reviewCount: 127,
-    },
-    {
-      id: '2',
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop',
-      title: 'Fone Bluetooth',
-      description: 'Cancelamento de ruído ativo',
-      originalPrice: 599.90,
-      currentPrice: 449.90,
-      hasFreeShipping: true,
-      isFeatured: true,
-      rating: 4.6,
-      reviewCount: 89,
-    },
-    {
-      id: '3',
-      image: 'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=400&h=400&fit=crop',
-      title: 'Caixa de Som',
-      description: 'À prova d\'água IPX7',
-      currentPrice: 329.90,
-      hasFreeShipping: false,
-      isFeatured: true,
-      rating: 4.7,
-      reviewCount: 56,
-    },
-    {
-      id: '4',
-      image: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop',
-      title: 'Tablet Pro 12.9"',
-      description: 'Tela Retina 256GB',
-      originalPrice: 4299.90,
-      currentPrice: 3799.90,
-      discount: 12,
-      hasFreeShipping: true,
-      isFeatured: true,
-      rating: 4.9,
-      reviewCount: 203,
-    },
-    {
-      id: '5',
-      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop',
-      title: 'Smartphone Flagship',
-      description: 'Câmera 108MP, 512GB',
-      originalPrice: 5999.90,
-      currentPrice: 4999.90,
-      discount: 17,
-      hasFreeShipping: true,
-      isFeatured: true,
-      rating: 4.8,
-      reviewCount: 312,
-    },
-  ];
+  // ✅ TRATAMENTO DE ESTADOS DO HOOK
+  
+  // Se está carregando, mostra mensagem de loading
+  if (isLoading) {
+    return (
+      <div className="w-full py-12 flex justify-center items-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando produtos em destaque...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Se deu erro, mostra mensagem de erro
+  if (error) {
+    return (
+      <div className="w-full py-12 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-red-800 font-semibold mb-2">Erro ao carregar produtos</h3>
+          <p className="text-red-600 text-sm">{error.message}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não há produtos (mesmo depois de carregar)
+  if (products.length === 0) {
+    return (
+      <div className="w-full py-12 text-center">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-yellow-800 font-semibold">Nenhum produto em destaque</h3>
+          <p className="text-yellow-600 text-sm mt-2">Volte mais tarde para ver nossas novidades</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ RENDERIZAÇÃO PRINCIPAL (quando tudo está ok)
   return (
     <div className="w-full py-12">
+      {/* Título da seção */}
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">Produtos em Destaque</h2>
+        <p className="text-gray-600">Descubra nossas seleções especiais que estão fazendo sucesso</p>
+      </div>
+
+      {/* Container do carousel 3D */}
       <div className="wrapper">
         <div 
           className="scene"
@@ -122,8 +128,13 @@ export const FeaturedProductsCarousel = () => {
           onMouseLeave={() => setIsHovering(false)}
         >
           <div className="carousel keen-slider" ref={sliderRef}>
-            {featuredProducts.map((product) => (
+            {/* ✅ MAPEANDO OS PRODUTOS DO HOOK
+                Agora usamos 'products' que veio do hook,
+                não mais o array fixo de dados fictícios */}
+            {products.map((product) => (
               <div key={product.id} className="carousel__cell">
+                {/* ✅ PASSANDO OS DADOS PARA O CARD
+                    Cada produto do array vai virar um FeaturedProductCard */}
                 <FeaturedProductCard {...product} />
               </div>
             ))}
@@ -131,6 +142,24 @@ export const FeaturedProductsCarousel = () => {
         </div>
       </div>
 
+      {/* Indicadores de navegação (pontinhos embaixo) */}
+      <div className="flex justify-center mt-8 space-x-3">
+        {products.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => sliderInstanceRef.current?.moveToIdx(index)}
+            className="w-3 h-3 rounded-full bg-gray-300 hover:bg-blue-600 transition-colors"
+            aria-label={`Ir para produto ${index + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* Instrução para o usuário */}
+      <p className="text-center text-gray-500 text-sm mt-6">
+        Passe o mouse sobre o carousel para pausar a rotação automática
+      </p>
+
+      {/* ✅ ESTILOS CSS INLINE (necessários para o efeito 3D) */}
       <style jsx>{`
         .wrapper {
           display: flex;

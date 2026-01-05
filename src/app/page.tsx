@@ -65,9 +65,57 @@ const Home = async () => {
         />          
 
  
-          <SectionTitle icon="star">Novidades</SectionTitle>        
-          <FeaturedProductsCarousel />
-        
+<div className="mb-10 mt-12">
+  <SectionTitle icon="star">Novidades</SectionTitle>
+</div>
+
+<div className="max-w-6xl mx-auto  mt-10 mb-32">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 items-stretch">
+    
+    {/* COLUNA ESQUERDA */}
+    <div className="lg:col-span-2 h-80"> {/* h-80 = 320px */}
+      <FeaturedProductsCarousel />
+    </div>
+    
+    {/* COLUNA DIREITA */}
+    <div className="flex flex-col gap-3 h-80"> {/* h-80 = 320px, gap-3 menor */}
+      
+      {/* BANNER 1 - Ainda mais compacto */}
+      <div className="flex-1 min-h-0">
+        <div className="h-full rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 p-3 text-white shadow-lg flex flex-col justify-center"> {/* rounded-xl (menor), p-3 (menor padding), justify-center */}
+          <div className="flex items-center gap-2 mb-2"> {/* gap-2 menor */}
+            <div className="bg-white/20 p-1.5 rounded-full"> {/* p-1.5 menor */}
+              <span className="text-lg">🚚</span> {/* text-lg menor */}
+            </div>
+            <div>
+              <h3 className="font-bold">Frete Grátis</h3> {/* Sem text-lg */}
+              <p className="text-blue-100 text-xs">Acima de R$ 99</p> {/* text-xs menor */}
+            </div>
+          </div>
+          <p className="text-xs">Entregas em todo Brasil</p> {/* text-xs, texto mais curto */}
+        </div>
+      </div>
+      
+      {/* BANNER 2 */}
+      <div className="flex-1 min-h-0">
+        <div className="h-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 p-3 text-white shadow-lg flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/20 p-1.5 rounded-full">
+              <span className="text-lg">🎁</span>
+            </div>
+            <div>
+              <h3 className="font-bold">Ofertas Exclusivas</h3>
+              <p className="text-amber-100 text-xs">Só para você</p>
+            </div>
+          </div>
+          <p className="text-xs">Ofertas personalizadas</p>
+        </div>
+      </div>
+      
+    </div>
+    
+  </div>
+</div>
 
      {/*     <div className="px-5">
           <CategorySelector categories={categories} />

@@ -13,7 +13,15 @@ export default {
           500: '#ef4444',
           600: '#dc2626',
         },
-      }
+      },
+      // 🔥 ADICIONE ESTA SEÇÃO:
+      screens: {
+        'sm': '640px',   // Mobile landscape
+        'md': '768px',   // Tablet portrait  
+        'lg': '1024px',  // Laptop pequeno / Tablet landscape
+        'xl': '1280px',  // Desktop médio
+        '2xl': '1536px', // Desktop grande (opcional)
+      },
     }
   },
   plugins: [],

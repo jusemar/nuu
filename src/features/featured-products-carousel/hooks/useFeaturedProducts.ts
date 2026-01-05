@@ -1,16 +1,45 @@
-// useFeaturedProducts.ts - VERSÃO CORRIGIDA COM ESTRUTURA REAL
+// useFeaturedProducts.ts - VERSÃO FINAL OTIMIZADA
 'use client';
 
 import { useProductsByFlag } from '@/features/products/api/queries/use-products-by-flag';
+import { UseQueryResult } from '@tanstack/react-query';
 
 /**
- * Interface baseada na estrutura REAL retornada por getProductsByFlag
+ * 🏷️ INTERFACE: Dados crus retornados do banco
+ * Baseada na estrutura REAL do getProductsByFlag.ts
+ * Cada propriedade corresponde ao que o banco retorna
+ */
+interface RawProductFromDB {
+  id: string;
+  name: string;                    // Nome do produto no banco
+  cardShortText?: string;          // Texto curto para card (opcional)
+  description?: string;            // Descrição completa (opcional)
+  storeProductFlags: string[];     // Array de flags: ['featured', 'sale', etc]
+  hasFreeShipping?: boolean;       // Frete grátis (opcional)
+  mainImage: {
+    imageUrl: string;              // URL da imagem principal
+    altText?: string;              // Texto alternativo (opcional)
+  } | null;                        // Pode ser null se não tiver imagem
+  mainPrice: {
+    price: number;                 // Preço normal EM CENTAVOS
+    promoPrice?: number;           // Preço promocional EM CENTAVOS (opcional)
+    hasPromo?: boolean;            // Tem promoção ativa?
+    type?: string;                 // Tipo de preço
+  } | null;                        // Pode ser null se não tiver preço
+}
+
+/**
+ * 🏷️ INTERFACE: Produto formatado para o componente FeaturedProductCard
+ * Esta interface DEVE estar sincronizada com FeaturedProductCardProps
  */
 export interface FeaturedProduct {
+  // 🔴 OBRIGATÓRIOS (o card não funciona sem):
   id: string;
   image: string;
   title: string;
   currentPrice: number;
+  
+  // 🟡 OPCIONAIS (o card tem valores padrão):
   description?: string;
   originalPrice?: number;
   discount?: number;
@@ -23,79 +52,91 @@ export interface FeaturedProduct {
 }
 
 /**
- * Tipo dos dados crus retornados pelo banco (baseado no getProductsByFlag)
- */
-interface RawProductFromDB {
-  id: string;
-  name: string;
-  cardShortText?: string;
-  description?: string;
-  storeProductFlags: string[];
-  hasFreeShipping?: boolean;
-  mainImage: {
-    imageUrl: string;
-    altText?: string;
-  } | null;
-  mainPrice: {
-    price: number;          // Em centavos
-    promoPrice?: number;    // Em centavos
-    hasPromo?: boolean;
-    type?: string;
-  } | null;
-}
-
-/**
- * Hook especializado para produtos em destaque
+ * 🎯 HOOK PRINCIPAL: useFeaturedProducts
+ * 
+ * 📦 RESPONSABILIDADE: Transformar dados do banco para a UI
+ * ✅ VANTAGENS DESTA ABORDAGEM:
+ * 1. Separação clara: dados brutos ≠ dados da UI
+ * 2. Manutenção fácil: muda só aqui se o banco mudar
+ * 3. Reutilização: outros componentes usam a mesma transformação
+ * 4. Testabilidade: fácil mockar dados
  */
 export const useFeaturedProducts = () => {
-  // Buscar produtos com flag 'featured'
-  const { data, isLoading, error, refetch } = useProductsByFlag(['featured', 'new', 'sale']);
+  // 🔄 PASSO 1: Buscar dados crus do banco
+  // useProductsByFlag já gerencia: cache, loading, error, retry
+  const queryResult = useProductsByFlag(['featured', 'new']) as UseQueryResult<RawProductFromDB[], Error>;
+  const { data, isLoading, error, refetch } = queryResult;
 
-  // Mapear dados do formato do banco para FeaturedProduct
-  const products: FeaturedProduct[] = (data as RawProductFromDB[] || []).map(product => {
-    // Preços (convertendo de centavos para reais)
+  // 🔄 PASSO 2: Transformar dados do banco para o formato da UI
+  const products: FeaturedProduct[] = (data || []).map(product => {
+    // 💰 CONVERSÃO DE PREÇOS: Banco usa centavos, UI usa reais
     const originalPriceInCents = product.mainPrice?.price || 0;
     const promoPriceInCents = product.mainPrice?.promoPrice;
+    const hasPromo = product.mainPrice?.hasPromo;
     
-    // Calcular desconto se houver promoção
-    const hasDiscount = product.mainPrice?.hasPromo && promoPriceInCents;
-    const discount = hasDiscount && originalPriceInCents > 0
-      ? Math.round(((originalPriceInCents - promoPriceInCents!) / originalPriceInCents) * 100)
-      : undefined;
+    // 🏷️ CALCULAR DESCONTO (se houver promoção)
+    let discount: number | undefined;
+    if (hasPromo && promoPriceInCents && originalPriceInCents > 0) {
+      discount = Math.round(
+        ((originalPriceInCents - promoPriceInCents) / originalPriceInCents) * 100
+      );
+    }
+    
+    // 💵 DETERMINAR PREÇO ATUAL: Promoção tem prioridade
+    const currentPriceInCents = hasPromo && promoPriceInCents 
+      ? promoPriceInCents 
+      : originalPriceInCents;
 
-    // Determinar preço atual
-    const currentPriceInCents = hasDiscount ? promoPriceInCents! : originalPriceInCents;
+    // 🖼️ TRATAMENTO DE IMAGEM: Fallback se não tiver
+    let imageUrl = '/images/product-placeholder.jpg';
+    if (product.mainImage?.imageUrl) {
+      // Se tiver base URL configurada, adiciona (ex: CDN)
+      const baseUrl = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || '';
+      imageUrl = `${baseUrl}${product.mainImage.imageUrl}`;
+    }
+
+    // 🏷️ VERIFICAR FLAGS: storeProductFlags é um array
+    const storeFlags = product.storeProductFlags || [];
     
     return {
+      // 📋 DADOS BÁSICOS
       id: product.id,
-      title: product.name,
+      title: product.name,  // Banco usa 'name', UI usa 'title'
+      
+      // 📝 DESCRIÇÃO: Texto curto do card tem prioridade
       description: product.cardShortText || product.description,
       
-      // Converter centavos para reais
-      currentPrice: currentPriceInCents / 100,
-      originalPrice: originalPriceInCents > 0 ? originalPriceInCents / 100 : undefined,
+      // 💰 PREÇOS (convertidos para reais)
+      currentPrice: currentPriceInCents / 100,  // ÷100 centavos → reais
+      originalPrice: originalPriceInCents > 0 
+        ? originalPriceInCents / 100 
+        : undefined,
       discount,
       
-      // Imagem
-      image: product.mainImage?.imageUrl || '/images/placeholder.jpg',
+      // 🖼️ IMAGEM (com fallback)
+      image: imageUrl,
       
-      // Flags
+      // 🚚 FRETE
       hasFreeShipping: product.hasFreeShipping || false,
-      isFeatured: true, // Sempre true pois filtramos por 'featured'
-      isExclusive: product.storeProductFlags.includes('exclusive'),
-      isTrending: product.storeProductFlags.includes('trending'),
       
-      // Ratings (adicionar depois se tiver no banco)
-      rating: undefined, // Não tem no select atual
-      reviewCount: undefined, // Não tem no select atual
+      // 🏷️ FLAGS ESPECIAIS
+      isFeatured: true,  // Sempre true, pois filtramos por 'featured'
+      isExclusive: storeFlags.includes('exclusive'),
+      isTrending: storeFlags.includes('trending'),
+      
+      // ⭐ AVALIAÇÕES (adicionar quando tiver no banco)
+      rating: undefined,
+      reviewCount: undefined,
     };
   });
 
+  // 📤 RETORNO FINAL: Mesma interface do hook anterior
   return {
-    products,
-    isLoading,
-    error,
+    products,        // Array formatado para a UI
+    isLoading,       // Estado de carregamento
+    error,           // Erro (se houver)
     refetch: async () => {
+      // 🔄 Função para recarregar dados manualmente
       await refetch();
     },
   };

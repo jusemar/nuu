@@ -5,6 +5,7 @@ import { ProductCard } from "@/features/product-card/components/ProductCard";
 import { getProductsByFlag } from '@/features/products/actions/get-products-by-flag';
 import { useEffect, useState } from 'react';
 import DealsCarousel from '@/features/deals/components/DealsCarousel';
+import { FeaturedProductCard } from './FeaturedProductCard/page';
 
 export default function TestPage() {
   const [testProducts, setTestProducts] = useState<any[]>([]);
@@ -80,7 +81,27 @@ useEffect(() => {
           onAddToCart={(id) => console.log('Carrinho:', id)}
           className="mx-auto"
         />
+        <FeaturedProductCard
+          id="featured-001"
+          image="https://images.unsplash.com/photo-1505740420928-5e560c06d30e"
+          title="Fones de Ouvido Premium Noise Cancelling"
+          description="Cancelamento ativo de ruído, bateria 30h, Bluetooth 5.3, som surround"
+          originalPrice={299.99}
+          currentPrice={199.99}
+          discount={33}
+          hasFreeShipping={true}
+          isFeatured={true}
+          isExclusive={false}
+          isTrending={false}
+          rating={4.8}
+          reviewCount={128}
+          isFavorite={false}
+          onToggleFavorite={(id) => console.log('Favorito:', id)}
+          onAddToCart={(id) => console.log('Carrinho:', id)}
+        />
       </div>
+
+     
 
       {/* SEÇÃO DE TESTE DA ACTION - NOVA */}
       <div className="mt-12 border-t pt-8 max-w-7xl mx-auto">

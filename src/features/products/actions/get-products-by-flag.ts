@@ -11,7 +11,7 @@ import { desc } from "drizzle-orm";
 
 export async function getProductsByFlag(flags: string[]) {
   try {
-    const allowedFlags = ['general', 'new', 'sale'];
+    const allowedFlags = ['general', 'new', 'sale', 'featured', 'bestseller'];
     const filteredFlags = flags.filter(flag => allowedFlags.includes(flag));
     
     if (filteredFlags.length === 0) {

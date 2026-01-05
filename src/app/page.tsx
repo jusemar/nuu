@@ -65,9 +65,7 @@ const Home = async () => {
         />          
 
  
-          <SectionTitle icon="star">Novidades</SectionTitle>
-
-          <RotatingProductCarousel/>
+          <SectionTitle icon="star">Novidades</SectionTitle>        
           <FeaturedProductsCarousel />
         
 

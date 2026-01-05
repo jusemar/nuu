@@ -114,12 +114,6 @@ export const FeaturedProductsCarousel = () => {
   // ✅ RENDERIZAÇÃO PRINCIPAL (quando tudo está ok)
   return (
     <div className="w-full py-12">
-      {/* Título da seção */}
-      <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold text-gray-900 mb-3">Produtos em Destaque</h2>
-        <p className="text-gray-600">Descubra nossas seleções especiais que estão fazendo sucesso</p>
-      </div>
-
       {/* Container do carousel 3D */}
       <div className="wrapper">
         <div 

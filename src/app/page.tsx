@@ -42,7 +42,7 @@ const Home = async () => {
         speed={60}
       />      
       <ClientHeader />
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-4 mt-10 mb-32">  
         <BannerCarousel 
           banners={[
             {
@@ -118,13 +118,15 @@ const Home = async () => {
   </div>
 </div>
 
-          <div className="px-5">
+        <div className="max-w-7xl mx-auto px-4 mt-10 mb-32">  
           <CategorySelector categories={categories} />
         </div>
     
 
-          <SectionTitle icon="flame">Destaque</SectionTitle>
+        <SectionTitle icon="flame">Destaque</SectionTitle>
+        <div className="max-w-7xl mx-auto px-4 mt-10 mb-32">  
           <ProductGridWithLoadMore />
+        </div>
 
       
           <Footer />       

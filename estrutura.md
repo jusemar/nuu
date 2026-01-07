@@ -155,7 +155,6 @@ nuu/
 
 
 
-
 Subcategorias (em tela separada):
 
 text
@@ -181,3 +180,23 @@ Fase 3: Sistema de tags global
 Fase 4: Associação categoria-tags
 
 
+
+useInfiniteQuery + fetchNextPage + pushState.
+
+Porque: useInfiniteQuery já tem fetchNextPage pronto, pushState você adiciona. Sem pageParam manual.
+
+ 
+ordenação na pagina home os grid de produtos.
+Mais vendidos
+Lançamentos
+Promoções (discount %)
+Relevância (score = views + sales)
+
+Exibir produtos no grid:
+Profissionais UX/UI usam:
+Desktop grande (≥1280px): 5-6 colunas
+Laptop (1024px): 4 colunas
+Tablet (768px): 3 colunas
+Mobile: 2 colunas
+Recomendação prática:
+grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6

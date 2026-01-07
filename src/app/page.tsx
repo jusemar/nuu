@@ -22,6 +22,7 @@ import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import ClientHeader from "@/components/layout/ClientHeader";
 import FeaturedProductsCarousel from '@/features/featured-products-carousel/components/FeaturedProductsCarousel';
+import { ProductGridWithLoadMore } from '@/features/product-grid-with-load-more/components/ProductGridWithLoadMore';
 
 const Home = async () => {
 
@@ -117,25 +118,15 @@ const Home = async () => {
   </div>
 </div>
 
-     {/*     <div className="px-5">
+          <div className="px-5">
           <CategorySelector categories={categories} />
         </div>
-
-       <div className="px-5">
-          <Image
-            src="/banner-02.png"
-            alt="Leve uma vida com estilo"
-            height={0}
-            width={0}
-            sizes="100vw"
-            className="h-auto w-full"
-          />
-        </div>*/}
+    
 
           <SectionTitle icon="flame">Destaque</SectionTitle>
-          <ProductList products={newlyCreatedProducts} />
+          <ProductGridWithLoadMore />
 
-        <ProductCarousel products={products} title="Mais vendidos" /> 
+      
           <Footer />       
         
       </div>

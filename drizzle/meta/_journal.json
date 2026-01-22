@@ -36,6 +36,13 @@
       "when": 1763097853385,
       "tag": "0004_many_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1769092287448,
+      "tag": "0005_modern_adam_warlock",
+      "breakpoints": true
     }
   ]
 }

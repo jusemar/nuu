@@ -1,14 +1,23 @@
-// src/data/categories/get.ts
-import { db } from "@/db";
-import { categoryTable } from "@/db/table"; // ou de onde estiver
-import "server-only"
+"use server"
 
-export const getCategories = async () => {
-    try {
-        const categories = await db.select().from(categoryTable);
-        return categories;
-    } catch (error) {
-        console.error("Erro ao buscar categorias:", error);
-        return [];
-    }
-};
+import { db } from "@/db"
+import { categoryTable } from "@/db/table/categories/categories"
+import { isNull } from "drizzle-orm"  // ← ADICIONAR ESTE IMPORT
+
+export async function getCategories() {
+  try {
+    // ANTES:
+    // const categories = await db.select().from(categoryTable)
+    
+    // DEPOIS (categorias raiz apenas):
+    const categories = await db
+      .select()
+      .from(categoryTable)
+      .where(isNull(categoryTable.parentId))  // ← FILTRA SÓ RAÍZ
+      .orderBy(categoryTable.orderIndex)      // ← ORDENA
+    
+    return categories
+  } catch (error) {
+    throw new Error("Erro ao buscar categorias")
+  }
+}

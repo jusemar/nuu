@@ -175,8 +175,16 @@ export const userRelations = relations(userTable, ({ many, one }) => ({
   orders: many(orderTable),
 }));
 
-export const categoryRelations = relations(categoryTable, ({ many }) => ({
+export const categoryRelations = relations(categoryTable, ({ many, one }) => ({
   products: many(productTable),
+  parent: one(categoryTable, {
+    fields: [categoryTable.parentId],
+    references: [categoryTable.id],
+    relationName: "categoryParent",
+  }),
+  children: many(categoryTable, {
+    relationName: "categoryChildren",
+  }),
 }));
 
 // RELAÇÕES PARA PRODUCT ATTRIBUTES

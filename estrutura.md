@@ -186,6 +186,17 @@ Fase 2: Tela de subcategorias com drag-and-drop
 Fase 3: Sistema de tags global
 Fase 4: Associação categoria-tags
 
+*Sobre categoria e subcategorias
+
+Resposta curta: Use marca APENAS como filtro. Para SEO, crie páginas institucionais das marcas separadas.
+
+Explicação rápida:
+
+Filtro: /colchoes?marca=ortobom (para navegação)
+
+Página SEO: /marcas/ortobom (descrição completa, todos produtos da marca, conteúdo rico)
+
+Produto: Continua na sua categoria normal
 
 
 useInfiniteQuery + fetchNextPage + pushState.

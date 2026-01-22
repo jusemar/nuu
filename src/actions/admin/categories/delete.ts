@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm"
 
 export async function deleteCategory(id: string) {
   try {
+    // 1. Verifica se existe
     const [category] = await db
       .select()
       .from(categoryTable)
@@ -14,28 +15,30 @@ export async function deleteCategory(id: string) {
       .limit(1)
 
     if (!category) {
-      return {
-        success: false,
-        message: "Categoria não encontrada"
+      return { success: false, message: "Categoria não encontrada" }
+    }
+
+    // 2. Verifica se tem subcategorias
+    const childCategories = await db
+      .select()
+      .from(categoryTable)
+      .where(eq(categoryTable.parentId, id))
+
+    if (childCategories.length > 0) {
+      return { 
+        success: false, 
+        message: "Não pode excluir: categoria possui subcategorias. Exclua ou mova as subcategorias primeiro." 
       }
     }
 
-    await db
-      .delete(categoryTable)
-      .where(eq(categoryTable.id, id))
+    // 3. Se não tem filhos, exclui
+    await db.delete(categoryTable).where(eq(categoryTable.id, id))
 
     revalidatePath("/admin/categories")
+    return { success: true, message: "Categoria excluída!" }
 
-    return {
-      success: true,
-      message: "Categoria deletada com sucesso!"
-    }
-
-  } catch (error: any) {
-    console.error("Erro ao deletar categoria:", error)
-    return {
-      success: false,
-      message: "Erro interno ao deletar categoria"
-    }
+  } catch (error) {
+    console.error("Erro:", error)
+    return { success: false, message: "Erro interno" }
   }
 }

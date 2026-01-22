@@ -218,3 +218,28 @@ Tablet (768px): 3 colunas
 Mobile: 2 colunas
 Recomendação prática:
 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6
+
+
+
+
+src/features/admin/categories/          ← APENAS ISSO!
+├── components/
+│   ├── CategoryForm/                  ← Seu formulário 3 colunas
+│   │   ├── CategoryForm.tsx
+│   │   ├── components/
+│   │   │   ├── BasicInfoCard.tsx      ← Coluna esquerda
+│   │   │   ├── SubcategoriesTree.tsx  ← Coluna central  
+│   │   │   ├── ActionsStatsCard.tsx   ← Coluna direita
+│   │   │   └── SubcategoryNode.tsx    ← Item da árvore
+│   │   └── utils/
+│   │       ├── category.types.ts
+│   │       └── category.helpers.ts
+│   ├── CategoryList/                  ← Lista de categorias
+│   │   └── CategoryList.tsx
+│   └── CategoryCard/                  ← Card da lista
+│       └── CategoryCard.tsx
+├── hooks/
+│   ├── useCategoryForm.ts
+│   └── useCategoryMutations.ts
+└── services/
+    └── admin-category.service.ts

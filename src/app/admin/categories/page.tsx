@@ -210,27 +210,37 @@ const saveChanges = () => {
     return <div>Carregando...</div>
   }
 
-  return (    
-    <div className="flex flex-1 flex-col gap-4">
-      <div className="flex items-center justify-between">
+  // SUBSTITUA APENAS O RETURN (a partir da linha "return (")
+return (    
+  <div className="space-y-8 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Categorias</h1>
-          <p className="text-muted-foreground">
-            {localCategories.length} categoria(s)
+          <h1 className="text-2xl font-bold text-gray-800">Categorias</h1>
+          <p className="text-gray-500 mt-1">
+            {localCategories.length} categoria(s) cadastrada(s)
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasChanges && (
             <>
-              <Button onClick={saveChanges} variant="default">
-                💾 Salvar
+              <Button 
+                onClick={saveChanges} 
+                variant="default"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                💾 Salvar Alterações
               </Button>
-              <Button onClick={cancelChanges} variant="outline">
-                ↩️ Cancelar
+              <Button 
+                onClick={cancelChanges} 
+                variant="outline"
+                className="border-gray-300 hover:bg-gray-50"
+              >
+                ↩️ Descartar
               </Button>
             </>
           )}
-          <Button asChild>
+          <Button asChild className="bg-blue-600 hover:bg-blue-700">
             <Link href="/admin/categories/new">
               <Plus className="w-4 h-4 mr-2" />
               Nova Categoria
@@ -238,12 +248,15 @@ const saveChanges = () => {
           </Button>
         </div>
       </div>
-      
+    </div>
+    
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <DataTable 
         columns={columns} 
         data={localCategories}
         onDeleteSelected={handleDeleteSelected}
       />
     </div>
-  )
+  </div>
+)
 }

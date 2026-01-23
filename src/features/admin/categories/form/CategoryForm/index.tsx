@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Save, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { useCategoryFormState } from "@/hooks/admin/mutations/categories/useCategoryFormState"
 import { useRouter } from "next/navigation"
@@ -9,8 +10,10 @@ import { useState, useEffect } from "react"
 import { BasicInfoCard } from "./BasicInfoCard"
 import { SubcategoriesCard, SubcategoryItem } from "./SubcategoriesCard"
 import { SidebarCards } from "./SidebarCards"
-import { Badge } from "@/components/ui/badge"
 import { useSlugGenerator } from "./hooks/useSlugGenerator"
+import { generateSubcategoryId } from "./utils/subcategory.helpers"
+import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory"
+import { updateSubcategoryName } from "./utils/updateSubcategory"
 
 export function CategoryForm() {
   const router = useRouter()
@@ -22,10 +25,9 @@ export function CategoryForm() {
     handleNameChange
   } = useCategoryFormState()
 
-   const { generateSlug } = useSlugGenerator()
+  const { generateSlug } = useSlugGenerator()
 
-
-  // Estado local para visualização
+  // Estado local para dados da categoria
   const [categoryData, setCategoryData] = useState({
     name: "",
     slug: "",
@@ -36,7 +38,7 @@ export function CategoryForm() {
     orderIndex: 1
   })
 
-  // Dados simples para subcategorias
+  // Estado para subcategorias (dados de exemplo)
   const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([
     { id: "1", name: "Por Material", level: 1, childrenCount: 2, expanded: true },
     { id: "2", name: "Molas", level: 2, parent: "1", childrenCount: 1, expanded: true },
@@ -47,11 +49,107 @@ export function CategoryForm() {
     { id: "7", name: "Queen", level: 2, parent: "5" },
   ])
 
+  // Estado para controlar itens expandidos na árvore
   const [expandedItems, setExpandedItems] = useState<string[]>(["1", "2"])
+  
+  // Contadores para meta tags (SEO)
   const [metaTitleCount, setMetaTitleCount] = useState(0)
   const [metaDescCount, setMetaDescCount] = useState(0)
 
-  // Sincronizar dados do hook com estado local
+  // ========== FUNÇÕES DE SUBCATEGORIAS ==========
+
+  /**
+   * Adiciona uma nova subcategoria de nível 1
+   */
+  const handleAddSubcategory = (name: string) => {
+    if (!name || name.trim() === '') return
+
+    const newSubcategory: SubcategoryItem = {
+      id: generateSubcategoryId(),
+      name: name.trim(),
+      level: 1,
+      expanded: false,
+      childrenCount: 0
+    }
+
+    setSubcategories(prev => [newSubcategory, ...prev])
+    setExpandedItems(prev => [...prev, newSubcategory.id])
+  }
+
+  /**
+   * Remove uma subcategoria e todos os seus filhos
+   */
+  const handleDeleteSubcategory = (id: string) => {
+    if (!window.confirm('Excluir esta subcategoria e todos os seus filhos?')) {
+      return
+    }
+
+    const { newList, deletedIds } = deleteSubcategoryWithDetails(id, subcategories)
+    setSubcategories(newList)
+    setExpandedItems(prev => prev.filter(item => !deletedIds.includes(item)))
+  }
+
+  /**
+* Atualiza o nome de uma subcategoria existente */
+const handleEditSubcategory = (id: string, newName: string) => {
+  try {
+    const updatedList = updateSubcategoryName(id, newName, subcategories)
+    setSubcategories(updatedList)
+  } catch (error) {
+    // Mostra erro para o usuário (pode ser toast/notification depois)
+    alert(error instanceof Error ? error.message : 'Erro ao atualizar subcategoria')
+  }
+}
+
+
+  /**
+   * Expande ou recolhe um item da árvore
+   */
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => 
+      prev.includes(id) 
+        ? prev.filter(item => item !== id)
+        : [...prev, id]
+    )
+  }
+
+  // ========== FUNÇÕES AUXILIARES ==========
+
+  /**
+   * Retorna classes de cor baseadas no nível
+   */
+  const getLevelColor = (level: number) => {
+    switch(level) {
+      case 1: return "text-blue-600 bg-blue-50 border-blue-200"
+      case 2: return "text-purple-600 bg-purple-50 border-purple-200"
+      case 3: return "text-green-600 bg-green-50 border-green-200"
+      case 4: return "text-yellow-600 bg-yellow-50 border-yellow-200"
+      default: return "text-gray-600 bg-gray-50"
+    }
+  }
+
+  /**
+   * Cria um badge colorido para indicar o nível
+   */
+  const getLevelBadge = (level: number) => {
+    const colors = {
+      1: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
+      2: { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" },
+      3: { bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
+      4: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" }
+    }
+    const color = colors[level as keyof typeof colors] || colors[1]
+    
+    return (
+      <Badge variant="outline" className={`${color.bg} ${color.text} ${color.border} text-xs`}>
+        Nível {level}
+      </Badge>
+    )
+  }
+
+  // ========== USE EFFECTS ==========
+
+  // Sincroniza dados do hook com estado local
   useEffect(() => {
     setCategoryData(prev => ({
       ...prev,
@@ -64,58 +162,25 @@ export function CategoryForm() {
     }))
   }, [originalFormData])
 
-  // Contadores de caracteres para meta tags
+  // Atualiza contadores de caracteres
   useEffect(() => {
     setMetaTitleCount(categoryData.metaTitle.length)
     setMetaDescCount(categoryData.metaDescription.length)
   }, [categoryData.metaTitle, categoryData.metaDescription])
 
-  // Função para expandir/recolher itens da árvore
-  const toggleExpand = (id: string) => {
-    setExpandedItems(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    )
-  }
+  // ========== CÁLCULOS ==========
 
-  // Função para obter cor baseada no nível
-  const getLevelColor = (level: number) => {
-  switch(level) {
-    case 1: return "text-blue-600 bg-blue-50 border-blue-200"
-    case 2: return "text-purple-600 bg-purple-50 border-purple-200"
-    case 3: return "text-green-600 bg-green-50 border-green-200"
-    case 4: return "text-yellow-600 bg-yellow-50 border-yellow-200"
-    default: return "text-gray-600 bg-gray-50"
-  }
-}
-
-  // Função para criar badge do nível
- const getLevelBadge = (level: number) => {
-  const colors = {
-    1: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
-    2: { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" },
-    3: { bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
-    4: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" }
-  }
-  const color = colors[level as keyof typeof colors] || colors[1]
-  
-  return (
-    <Badge variant="outline" className={`${color.bg} ${color.text} ${color.border} text-xs`}>
-      Nível {level}
-    </Badge>
-  )
-}
-
-  // Calcular estatísticas para a sidebar
   const totalSubcategories = subcategories.length
   const directSubcategories = subcategories.filter(s => s.level === 1).length
   const maxLevel = Math.max(...subcategories.map(s => s.level))
 
-  // Componente Progress Bar (pode ser movido para utils depois)
+  // ========== COMPONENTES AUXILIARES ==========
+
+  /**
+   * Barra de progresso para contadores de SEO
+   */
   const ProgressBar = ({ value, max = 100 }: { value: number; max?: number }) => {
     const percentage = Math.min((value / max) * 100, 100)
-    
     return (
       <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
         <div 
@@ -126,9 +191,11 @@ export function CategoryForm() {
     )
   }
 
+  // ========== RENDER ==========
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header com breadcrumb e ações */}
+      {/* Cabeçalho com breadcrumb */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -136,15 +203,13 @@ export function CategoryForm() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">
-                 Nova Categoria
-              </h1>
+              <h1 className="text-2xl font-bold">Nova Categoria</h1>
               <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                 <Link href="/admin" className="hover:text-gray-700">Admin</Link>
                 <ChevronRight className="h-3 w-3" />
                 <Link href="/admin/categories" className="hover:text-gray-700">Categorias</Link>
                 <ChevronRight className="h-3 w-3" />
-                <span className="font-medium">{categoryData.name ? "Editar" : "Nova"}</span>
+                <span className="font-medium">Nova</span>
               </div>
             </div>
           </div>
@@ -173,34 +238,28 @@ export function CategoryForm() {
       {/* Layout de 3 colunas */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* COLUNA ESQUERDA (33%) - Informações Básicas e SEO */}
+        {/* Coluna esquerda: Informações básicas (33%) */}
         <div className="lg:col-span-4 space-y-6">
-             <BasicInfoCard
-    data={categoryData}
-    onDataChange={(updates) => {
-      // SE ATUALIZAR O NOME, GERAR SLUG AUTOMATICAMENTE
-      if (updates.name !== undefined) {
-        const generatedSlug = generateSlug(updates.name)
-        updates = { ...updates, slug: generatedSlug }
-      }
-      
-      // Atualiza o estado local
-      setCategoryData(prev => ({ ...prev, ...updates }))
-      // Atualiza o estado principal
-      originalSetFormData((prev: any) => ({ ...prev, ...updates }))
-    }}
-    onSlugChange={(slug) => {
-      // Callback opcional para quando slug é editado manualmente
-      console.log('Slug editado manualmente:', slug)
-    }}
-    isLoading={isLoading}
-    metaTitleCount={metaTitleCount}
-    metaDescCount={metaDescCount}
-    ProgressBar={ProgressBar}
-  />
+          <BasicInfoCard
+            data={categoryData}
+            onDataChange={(updates) => {
+              if (updates.name !== undefined) {
+                const generatedSlug = generateSlug(updates.name)
+                updates = { ...updates, slug: generatedSlug }
+              }
+              
+              setCategoryData(prev => ({ ...prev, ...updates }))
+              originalSetFormData((prev: any) => ({ ...prev, ...updates }))
+            }}
+            onSlugChange={(slug) => {}}
+            isLoading={isLoading}
+            metaTitleCount={metaTitleCount}
+            metaDescCount={metaDescCount}
+            ProgressBar={ProgressBar}
+          />
         </div>
 
-        {/* COLUNA CENTRAL (42%) - Gerenciador de Subcategorias */}
+        {/* Coluna central: Subcategorias (42%) */}
         <div className="lg:col-span-5 space-y-6">
           <SubcategoriesCard
             subcategories={subcategories}
@@ -211,10 +270,13 @@ export function CategoryForm() {
             categoryName={categoryData.name}
             directSubcategories={directSubcategories}
             totalSubcategories={totalSubcategories}
+            onAddSubcategory={handleAddSubcategory}
+            onDeleteSubcategory={handleDeleteSubcategory}
+            onEditSubcategory={handleEditSubcategory}
           />
         </div>
 
-        {/* COLUNA DIREITA (25%) - Ações, Estrutura e Estatísticas */}
+        {/* Coluna direita: Estatísticas (25%) */}
         <div className="lg:col-span-3 space-y-6">
           <SidebarCards
             categoryData={categoryData}

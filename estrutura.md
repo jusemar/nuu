@@ -1,5 +1,5 @@
 
-Seu Modelo é: Feature-based (modular por domínio) — Next.js App Router.
+meu Modelo é: Feature-based (modular por domínio) — Next.js App Router.
 Tecnologias/padrões observados: Next.js (app/), TanStack Query, Drizzle (ORM), Better Auth (better-auth/react), Tailwind, Sonner (toasts), dnd-kit (drag & drop), React Context Providers.
 nuu/
 ├── src/
@@ -222,24 +222,20 @@ grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6
 
 
 
-src/features/admin/categories/          ← APENAS ISSO!
-├── components/
-│   ├── CategoryForm/                  ← Seu formulário 3 colunas
-│   │   ├── CategoryForm.tsx
-│   │   ├── components/
-│   │   │   ├── BasicInfoCard.tsx      ← Coluna esquerda
-│   │   │   ├── SubcategoriesTree.tsx  ← Coluna central  
-│   │   │   ├── ActionsStatsCard.tsx   ← Coluna direita
-│   │   │   └── SubcategoryNode.tsx    ← Item da árvore
-│   │   └── utils/
-│   │       ├── category.types.ts
-│   │       └── category.helpers.ts
-│   ├── CategoryList/                  ← Lista de categorias
-│   │   └── CategoryList.tsx
-│   └── CategoryCard/                  ← Card da lista
-│       └── CategoryCard.tsx
-├── hooks/
-│   ├── useCategoryForm.ts
-│   └── useCategoryMutations.ts
-└── services/
-    └── admin-category.service.ts
+src/features/admin/categories/
+├── components/                     ← REUTILIZÁVEIS (simples)
+│   ├── CategoryCard.tsx            ← Card básico
+│   └── CategoryList.tsx            ← Lista simples
+├── form/                           ← FORMULÁRIO COMPLEXO (isolado)
+│   ├── CategoryForm/               ← Pasta do componente principal
+│   │   ├── index.tsx               ← Exporta o CategoryForm
+│   │   ├── BasicInfoCard.tsx       ← Subcomponentes DO FORM
+│   │   ├── SubcategoriesTree.tsx
+│   │   ├── ActionsStatsCard.tsx
+│   │   └── SubcategoryNode.tsx
+│   └── utils/                      ← Utilitários DO FORM
+│       ├── category.types.ts
+│       └── category.helpers.ts
+├── hooks/                          ← Hooks da feature
+├── services/                       ← Services da feature
+└── types/                          ← Tipos da feature

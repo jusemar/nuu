@@ -10,6 +10,7 @@ import { BasicInfoCard } from "./BasicInfoCard"
 import { SubcategoriesCard, SubcategoryItem } from "./SubcategoriesCard"
 import { SidebarCards } from "./SidebarCards"
 import { Badge } from "@/components/ui/badge"
+import { useSlugGenerator } from "./hooks/useSlugGenerator"
 
 export function CategoryForm() {
   const router = useRouter()
@@ -20,6 +21,9 @@ export function CategoryForm() {
     handleSubmit,
     handleNameChange
   } = useCategoryFormState()
+
+   const { generateSlug } = useSlugGenerator()
+
 
   // Estado local para visualização
   const [categoryData, setCategoryData] = useState({
@@ -77,29 +81,31 @@ export function CategoryForm() {
 
   // Função para obter cor baseada no nível
   const getLevelColor = (level: number) => {
-    switch(level) {
-      case 1: return "text-blue-600 bg-blue-50 border-blue-200"
-      case 2: return "text-purple-600 bg-purple-50 border-purple-200"
-      case 3: return "text-gray-600 bg-gray-50 border-gray-200"
-      default: return "text-gray-600 bg-gray-50"
-    }
+  switch(level) {
+    case 1: return "text-blue-600 bg-blue-50 border-blue-200"
+    case 2: return "text-purple-600 bg-purple-50 border-purple-200"
+    case 3: return "text-green-600 bg-green-50 border-green-200"
+    case 4: return "text-yellow-600 bg-yellow-50 border-yellow-200"
+    default: return "text-gray-600 bg-gray-50"
   }
+}
 
   // Função para criar badge do nível
-  const getLevelBadge = (level: number) => {
-    const colors = {
-      1: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
-      2: { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" },
-      3: { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" }
-    }
-    const color = colors[level as keyof typeof colors] || colors[3]
-    
-    return (
-      <Badge variant="outline" className={`${color.bg} ${color.text} ${color.border} text-xs`}>
-        Nível {level}
-      </Badge>
-    )
+ const getLevelBadge = (level: number) => {
+  const colors = {
+    1: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
+    2: { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" },
+    3: { bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
+    4: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" }
   }
+  const color = colors[level as keyof typeof colors] || colors[1]
+  
+  return (
+    <Badge variant="outline" className={`${color.bg} ${color.text} ${color.border} text-xs`}>
+      Nível {level}
+    </Badge>
+  )
+}
 
   // Calcular estatísticas para a sidebar
   const totalSubcategories = subcategories.length
@@ -131,7 +137,7 @@ export function CategoryForm() {
             </Button>
             <div>
               <h1 className="text-2xl font-bold">
-                {categoryData.name ? `Editar: ${categoryData.name}` : "Nova Categoria"}
+                 Nova Categoria
               </h1>
               <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                 <Link href="/admin" className="hover:text-gray-700">Admin</Link>
@@ -169,16 +175,29 @@ export function CategoryForm() {
         
         {/* COLUNA ESQUERDA (33%) - Informações Básicas e SEO */}
         <div className="lg:col-span-4 space-y-6">
-          <BasicInfoCard
-             data={categoryData}
-            setCategoryData={setCategoryData}
-            originalSetFormData={originalSetFormData}
-            handleNameChange={handleNameChange}
-            isLoading={isLoading}
-            metaTitleCount={metaTitleCount}
-            metaDescCount={metaDescCount}
-            ProgressBar={ProgressBar}
-          />
+             <BasicInfoCard
+    data={categoryData}
+    onDataChange={(updates) => {
+      // SE ATUALIZAR O NOME, GERAR SLUG AUTOMATICAMENTE
+      if (updates.name !== undefined) {
+        const generatedSlug = generateSlug(updates.name)
+        updates = { ...updates, slug: generatedSlug }
+      }
+      
+      // Atualiza o estado local
+      setCategoryData(prev => ({ ...prev, ...updates }))
+      // Atualiza o estado principal
+      originalSetFormData((prev: any) => ({ ...prev, ...updates }))
+    }}
+    onSlugChange={(slug) => {
+      // Callback opcional para quando slug é editado manualmente
+      console.log('Slug editado manualmente:', slug)
+    }}
+    isLoading={isLoading}
+    metaTitleCount={metaTitleCount}
+    metaDescCount={metaDescCount}
+    ProgressBar={ProgressBar}
+  />
         </div>
 
         {/* COLUNA CENTRAL (42%) - Gerenciador de Subcategorias */}

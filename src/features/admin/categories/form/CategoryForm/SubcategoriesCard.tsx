@@ -5,9 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { SubcategoryNode } from "./SubcategoryNode"
+import { SortableSubcategoryNode } from "./SortableSubcategoryNode"
+import { DropZone } from "./DropZone" // ← NOVO IMPORT
 import { canCreateSubcategory } from "./utils/subcategory.helpers"
 import { useState } from "react"
+import { useSubcategoryDnD } from "./hooks/useSubcategoryDnD"
+import { 
+  SortableContext, 
+  verticalListSortingStrategy,
+  closestCorners // ← IMPORT ALTERADO
+} from '@dnd-kit/sortable'
+import {
+  DndContext,
+  DragOverlay,
+} from '@dnd-kit/core'
 
 export type SubcategoryItem = {
   id: string
@@ -28,8 +39,10 @@ interface SubcategoriesCardProps {
   directSubcategories: number
   totalSubcategories: number
   onAddSubcategory: (name: string) => void
-  onDeleteSubcategory: (id: string) => void 
+  onDeleteSubcategory: (id: string) => void
   onEditSubcategory: (id: string, newName: string) => void
+  onAddChildSubcategory: (parentId: string, name: string) => void
+  onReorderSubcategories: (newOrder: SubcategoryItem[]) => void
 }
 
 export function SubcategoriesCard({
@@ -43,10 +56,28 @@ export function SubcategoriesCard({
   totalSubcategories,
   onAddSubcategory,
   onDeleteSubcategory,
-   onEditSubcategory 
+  onEditSubcategory,
+  onAddChildSubcategory,
+  onReorderSubcategories
 }: SubcategoriesCardProps) {
   const [isCreatingNew, setIsCreatingNew] = useState(false)
   const [newSubcategoryName, setNewSubcategoryName] = useState("")
+
+  // Configuração do drag-and-drop
+  const {
+    activeId,
+    sensors,
+    handleDragStart,
+    handleDragOver, // ← RECEBENDO handleDragOver
+    handleDragEnd,
+    dropAnimation,
+    measuringConfig
+  } = useSubcategoryDnD(subcategories, onReorderSubcategories)
+
+  // IDs das subcategorias de nível 1 (para o SortableContext)
+  const rootSubcategoryIds = subcategories
+    .filter(item => !item.parent)
+    .map(item => item.id)
 
   const canCreate = canCreateSubcategory(categoryName)
 
@@ -61,6 +92,71 @@ export function SubcategoriesCard({
     setIsCreatingNew(false)
     setNewSubcategoryName("")
   }
+
+  // 🔽🔽🔽 FUNÇÃO PARA RENDERIZAR DROP ZONES 🔽🔽🔽
+  const renderDropZones = (items: SubcategoryItem[]) => {
+    const dropZones: React.ReactNode[] = []
+    
+    // Drop zone no início da lista (nível 1)
+    dropZones.push(
+      <DropZone
+        key="dropzone-start"
+        id="dropzone-start"
+        parentId={undefined}
+        index={0}
+        position="before"
+        isActive={!!activeId}
+      />
+    )
+    
+    // Drop zones entre cada item de nível 1
+    items.forEach((item, index) => {
+      dropZones.push(
+        <div key={`item-${item.id}`}>
+          {/* Drop zone antes do item */}
+          <DropZone
+            key={`dropzone-before-${item.id}`}
+            id={`dropzone-before-${item.id}`}
+            parentId={item.parent}
+            index={index}
+            position="before"
+            isActive={!!activeId}
+          />
+          
+          {/* Item renderizado */}
+          <SortableSubcategoryNode
+            item={item}
+            subcategories={subcategories}
+            expandedItems={expandedItems}
+            toggleExpand={toggleExpand}
+            getLevelColor={getLevelColor}
+            getLevelBadge={getLevelBadge}
+            onDeleteSubcategory={onDeleteSubcategory}
+            onEditSubcategory={onEditSubcategory}
+            onAddChildSubcategory={onAddChildSubcategory}
+          />
+          
+          {/* Drop zone depois do item */}
+          <DropZone
+            key={`dropzone-after-${item.id}`}
+            id={`dropzone-after-${item.id}`}
+            parentId={item.parent}
+            index={index + 1}
+            position="after"
+            isActive={!!activeId}
+          />
+        </div>
+      )
+    })
+    
+    return dropZones
+  }
+  // 🔼🔼🔼 FIM DA FUNÇÃO DE DROP ZONES 🔼🔼🔼
+
+  // Item sendo arrastado (para o overlay)
+  const activeItem = activeId 
+    ? subcategories.find(item => item.id === activeId)
+    : null
 
   return (
     <Card className="border-2">
@@ -165,25 +261,41 @@ export function SubcategoriesCard({
           </div>
         )}
 
-        {/* Árvore de subcategorias */}
-        <div className="space-y-1">
-          {subcategories
-            .filter(item => !item.parent)
-            .map(item => (
-              <div key={item.id}>
-                <SubcategoryNode
-                  item={item}
-                  subcategories={subcategories}
-                  expandedItems={expandedItems}
-                  toggleExpand={toggleExpand}
-                  getLevelColor={getLevelColor}
-                  getLevelBadge={getLevelBadge}
-                  onDeleteSubcategory={onDeleteSubcategory} 
-                 onEditSubcategory={onEditSubcategory}
-                />
+        {/* Contexto drag-and-drop */}
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver} // ← ADICIONADO
+          onDragEnd={handleDragEnd}
+          collisionDetection={closestCorners} // ← ALTERADO
+          measuring={measuringConfig}
+        >
+          {/* Área sortable para subcategorias de nível 1 */}
+          <SortableContext 
+            items={rootSubcategoryIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {/* 🔽🔽🔽 ÁRVORE COM DROP ZONES 🔽🔽🔽 */}
+            <div className="space-y-1">
+              {renderDropZones(subcategories.filter(item => !item.parent))}
+            </div>
+            {/* 🔼🔼🔼 FIM DA ÁRVORE COM DROP ZONES 🔼🔼🔼 */}
+          </SortableContext>
+
+          {/* Overlay do item sendo arrastado */}
+          <DragOverlay dropAnimation={dropAnimation}>
+            {activeItem && (
+              <div className="opacity-80 shadow-lg">
+                <div className={`flex items-center gap-2 p-3 rounded-lg border ${getLevelColor(activeItem.level)} bg-white`}>
+                  <GripVertical className="h-4 w-4 text-gray-400" />
+                  <Folder className="h-4 w-4 flex-shrink-0" />
+                  <span className="flex-1 font-medium truncate">{activeItem.name}</span>
+                  {getLevelBadge(activeItem.level)}
+                </div>
               </div>
-            ))}
-        </div>
+            )}
+          </DragOverlay>
+        </DndContext>
 
         {/* Mensagem de lista vazia */}
         {subcategories.length === 0 && !isCreatingNew && (

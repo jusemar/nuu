@@ -14,6 +14,7 @@ import { useSlugGenerator } from "./hooks/useSlugGenerator"
 import { generateSubcategoryId } from "./utils/subcategory.helpers"
 import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory"
 import { updateSubcategoryName } from "./utils/updateSubcategory"
+import { createChildSubcategory, calculateChildInsertPosition } from "./utils/createChildSubcategory"
 
 export function CategoryForm() {
   const router = useRouter()
@@ -101,6 +102,40 @@ const handleEditSubcategory = (id: string, newName: string) => {
   }
 }
 
+/**
+ * Adiciona uma subcategoria filha a uma subcategoria existente
+ */
+const handleAddChildSubcategory = (parentId: string, name: string) => {
+  try {
+    // Cria o objeto da nova subcategoria filha
+    const newChild = createChildSubcategory(parentId, name, subcategories)
+    
+    // Calcula onde inserir (logo após o pai, antes dos outros filhos)
+    const insertIndex = calculateChildInsertPosition(parentId, subcategories)
+    
+    // Insere na posição correta
+    const newList = [...subcategories]
+    newList.splice(insertIndex, 0, newChild)
+
+    
+    // Atualiza estado
+    setSubcategories(newList)
+    
+    // Expande o pai automaticamente para mostrar o novo filho
+    if (!expandedItems.includes(parentId)) {
+      setExpandedItems(prev => [...prev, parentId])
+    }
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro ao criar subcategoria filha'
+    alert(errorMessage)
+  }
+}
+
+
+const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
+  setSubcategories(newOrder)
+}
 
   /**
    * Expande ou recolhe um item da árvore
@@ -273,6 +308,8 @@ const handleEditSubcategory = (id: string, newName: string) => {
             onAddSubcategory={handleAddSubcategory}
             onDeleteSubcategory={handleDeleteSubcategory}
             onEditSubcategory={handleEditSubcategory}
+            onAddChildSubcategory={handleAddChildSubcategory}
+            onReorderSubcategories={handleReorderSubcategories}
           />
         </div>
 

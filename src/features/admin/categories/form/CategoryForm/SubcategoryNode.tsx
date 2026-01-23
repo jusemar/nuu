@@ -2,10 +2,10 @@
 
 import { ChevronRight, ChevronDown, GripVertical, Folder, Edit, Plus, Trash2, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input" // ← NOVO IMPORT
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { SubcategoryItem } from "./SubcategoriesCard"
-import { useState } from "react" // ← NOVO IMPORT
+import { useState } from "react"
 
 interface SubcategoryNodeProps {
   item: SubcategoryItem
@@ -15,7 +15,12 @@ interface SubcategoryNodeProps {
   getLevelColor: (level: number) => string
   getLevelBadge: (level: number) => React.ReactNode
   onDeleteSubcategory: (id: string) => void
-  onEditSubcategory: (id: string, newName: string) => void // ← NOVA PROP
+  onEditSubcategory: (id: string, newName: string) => void
+  onAddChildSubcategory: (parentId: string, name: string) => void
+  // 🔽🔽🔽 NOVAS PROPS PARA DRAG-AND-DROP 🔽🔽🔽
+  dragAttributes?: any
+  dragListeners?: any
+  isDragging?: boolean
 }
 
 export function SubcategoryNode({ 
@@ -26,10 +31,17 @@ export function SubcategoryNode({
   getLevelColor, 
   getLevelBadge,
   onDeleteSubcategory,
-  onEditSubcategory // ← RECEBER
+  onEditSubcategory,
+  onAddChildSubcategory,
+  // 🔽🔽🔽 RECEBENDO PROPS DE DRAG 🔽🔽🔽
+  dragAttributes,
+  dragListeners,
+  isDragging = false
 }: SubcategoryNodeProps) {
-  const [isEditing, setIsEditing] = useState(false) // ← ESTADO DE EDIÇÃO
-  const [editName, setEditName] = useState(item.name) // ← NOME EM EDIÇÃO
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(item.name)
+  const [isAddingChild, setIsAddingChild] = useState(false)
+  const [newChildName, setNewChildName] = useState("")
 
   const children = subcategories.filter(child => child.parent === item.id)
   const hasChildren = children.length > 0
@@ -40,7 +52,15 @@ export function SubcategoryNode({
     <div className={`absolute left-0 top-0 bottom-0 w-4 border-l border-b border-gray-300`}></div>
   ) : null
 
-  // 🔽🔽🔽 FUNÇÕES DE EDIÇÃO 🔽🔽🔽
+  // 🔽🔽🔽 ÍCONE DE ARRASTE CONECTADO AO DND 🔽🔽🔽
+  const DragHandle = () => (
+    <GripVertical 
+      className="h-4 w-4 text-gray-400 cursor-move hover:text-gray-600"
+      {...dragAttributes}
+      {...dragListeners}
+    />
+  )
+
   const handleStartEdit = () => {
     setIsEditing(true)
     setEditName(item.name)
@@ -57,16 +77,37 @@ export function SubcategoryNode({
     setIsEditing(false)
     setEditName(item.name)
   }
-  // 🔼🔼🔼 FIM DAS FUNÇÕES DE EDIÇÃO 🔼🔼🔼
+
+  const handleStartAddChild = () => {
+    setIsAddingChild(true)
+    setNewChildName("")
+    if (!isExpanded) {
+      toggleExpand(item.id)
+    }
+  }
+
+  const handleSaveChild = () => {
+    if (newChildName.trim()) {
+      onAddChildSubcategory(item.id, newChildName.trim())
+      setIsAddingChild(false)
+      setNewChildName("")
+    }
+  }
+
+  const handleCancelAddChild = () => {
+    setIsAddingChild(false)
+    setNewChildName("")
+  }
 
   const handleDelete = () => {
     onDeleteSubcategory(item.id)
   }
 
   return (
-    <div className={`relative ${indent}`}>
+    <div className={`relative ${indent} ${isDragging ? 'opacity-50' : ''}`}>
       {connector}
       
+      {/* ITEM PRINCIPAL */}
       <div className={`flex items-center gap-2 p-3 mb-1 rounded-lg border ${getLevelColor(item.level)} group hover:shadow-sm transition-all`}>
         <button 
           onClick={() => toggleExpand(item.id)}
@@ -84,11 +125,12 @@ export function SubcategoryNode({
           )}
         </button>
         
-        <GripVertical className="h-4 w-4 text-gray-400 cursor-move hover:text-gray-600" />
+        {/* ÍCONE DE ARRASTE CONECTADO */}
+        <DragHandle />
         
         <Folder className="h-4 w-4 flex-shrink-0" />
         
-        {/* 🔽🔽🔽 CONTEÚDO CONDICIONAL: TEXTO OU INPUT 🔽🔽🔽 */}
+        {/* CONTEÚDO CONDICIONAL */}
         {isEditing ? (
           <div className="flex-1 flex items-center gap-2">
             <Input
@@ -123,7 +165,6 @@ export function SubcategoryNode({
         ) : (
           <span className="flex-1 font-medium truncate">{item.name}</span>
         )}
-        {/* 🔼🔼🔼 FIM DO CONTEÚDO CONDICIONAL 🔼🔼🔼 */}
         
         <div className="flex items-center gap-2">
           {getLevelBadge(item.level)}
@@ -135,55 +176,94 @@ export function SubcategoryNode({
           )}
           
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {/* 🔽🔽🔽 BOTÃO EDITAR (AGORA FUNCIONAL) 🔽🔽🔽 */}
+            {/* BOTÃO EDITAR */}
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-7 w-7 text-blue-500 hover:text-blue-700"
               onClick={handleStartEdit}
               title="Editar nome"
-              disabled={isEditing}
+              disabled={isEditing || isAddingChild || isDragging}
             >
               <Edit className="h-3 w-3" />
             </Button>
             
-            {/* Botão Adicionar Filho (ainda não implementado) */}
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            {/* BOTÃO ADICIONAR FILHO */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7 text-green-500 hover:text-green-700"
+              onClick={handleStartAddChild}
+              title="Adicionar subcategoria filha"
+              disabled={isEditing || isAddingChild || isDragging || item.level >= 4}
+            >
               <Plus className="h-3 w-3" />
             </Button>
             
-            {/* Botão Excluir */}
+            {/* BOTÃO EXCLUIR */}
             <Button 
               variant="ghost" 
               size="icon" 
               className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
               onClick={handleDelete}
               title="Excluir esta subcategoria e todos os seus filhos"
-              disabled={isEditing}
+              disabled={isEditing || isAddingChild || isDragging}
             >
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
         </div>
       </div>
-      
-      {isExpanded && hasChildren && (
-        <div className="ml-6">
-          {children.map(child => (
-            <SubcategoryNode
-              key={child.id}
-              item={child}
-              subcategories={subcategories}
-              expandedItems={expandedItems}
-              toggleExpand={toggleExpand}
-              getLevelColor={getLevelColor}
-              getLevelBadge={getLevelBadge}
-              onDeleteSubcategory={onDeleteSubcategory}
-              onEditSubcategory={onEditSubcategory} // ← PASSANDO PARA FILHOS
+
+      {/* INPUT PARA ADICIONAR FILHO */}
+      {isAddingChild && (
+        <div className="ml-10 mb-2 mt-1 p-2 border border-dashed border-gray-300 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-gray-500 hover:text-red-500"
+              onClick={handleCancelAddChild}
+              title="Cancelar"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+            
+            <Input
+              autoFocus
+              value={newChildName}
+              onChange={(e) => setNewChildName(e.target.value)}
+              placeholder={`Digite o nome da subcategoria filha de "${item.name}"...`}
+              className="flex-1 h-8 text-sm border-gray-300"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newChildName.trim()) {
+                  handleSaveChild()
+                }
+                if (e.key === 'Escape') {
+                  handleCancelAddChild()
+                }
+              }}
             />
-          ))}
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-gray-500 hover:text-green-500"
+              disabled={!newChildName.trim()}
+              onClick={handleSaveChild}
+              title="Salvar"
+            >
+              <Check className="h-3 w-3" />
+            </Button>
+          </div>
+          <p className="text-xs text-gray-600 mt-1 ml-9">
+            Criando como nível {item.level + 1} • Pressione <kbd className="px-1 py-0.5 bg-gray-200 rounded">Enter</kbd> para salvar
+          </p>
         </div>
       )}
+      
+     
+     
     </div>
   )
 }

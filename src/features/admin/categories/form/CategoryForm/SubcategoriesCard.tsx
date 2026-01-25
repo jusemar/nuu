@@ -134,6 +134,7 @@ export function SubcategoriesCard({
             onDeleteSubcategory={onDeleteSubcategory}
             onEditSubcategory={onEditSubcategory}
             onAddChildSubcategory={onAddChildSubcategory}
+            activeDragId={activeId}
           />
           
           {/* Drop zone depois do item */}

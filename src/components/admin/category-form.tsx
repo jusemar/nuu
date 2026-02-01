@@ -47,18 +47,22 @@ export function CategoryForm() {
     orderIndex: 1
   })
 
-  // Dados simples para subcategorias
-  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([
-    { id: "1", name: "Por Material", level: 1, childrenCount: 2, expanded: true },
-    { id: "2", name: "Molas", level: 2, parent: "1", childrenCount: 1, expanded: true },
-    { id: "3", name: "Pocket Spring", level: 3, parent: "2" },
-    { id: "4", name: "Espuma", level: 2, parent: "1" },
-    { id: "5", name: "Por Tamanho", level: 1, childrenCount: 2 },
-    { id: "6", name: "Solteiro", level: 2, parent: "5" },
-    { id: "7", name: "Queen", level: 2, parent: "5" },
-  ])
+  // Dados simples para subcategorias (vazio para novo formulário)
+  // Nota: Havia dados de exemplo aqui (usados em protótipos). Removemos
+  // para que a tela de "Nova Categoria" inicie sempre vazia.
+  // Caso queira dados de exemplo para desenvolvimento, use a constante
+  // EXAMPLE_SUBCATEGORIES abaixo (descomentando quando necessário).
+  //
+  // const EXAMPLE_SUBCATEGORIES: SubcategoryItem[] = [
+  //   { id: "1", name: "Por Material", level: 1, childrenCount: 2, expanded: true },
+  //   { id: "2", name: "Molas", level: 2, parent: "1", childrenCount: 1, expanded: true },
+  //   { id: "3", name: "Pocket Spring", level: 3, parent: "2" },
+  // ]
+  
+  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([])
 
-  const [expandedItems, setExpandedItems] = useState<string[]>(["1", "2"])
+  // Nenhuma subcategoria expandida por padrão em novo formulário
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [metaTitleCount, setMetaTitleCount] = useState(0)
   const [metaDescCount, setMetaDescCount] = useState(0)
 

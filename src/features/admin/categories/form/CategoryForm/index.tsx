@@ -4,7 +4,6 @@ import { ArrowLeft, Save, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
-import { useCategoryFormState } from "@/hooks/admin/mutations/categories/useCategoryFormState"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { BasicInfoCard } from "./BasicInfoCard"
@@ -15,20 +14,16 @@ import { generateSubcategoryId } from "./utils/subcategory.helpers"
 import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory"
 import { updateSubcategoryName } from "./utils/updateSubcategory"
 import { createChildSubcategory, calculateChildInsertPosition } from "./utils/createChildSubcategory"
+import { useCreateCategory } from "../../hooks/useCreateCategory"
 
 export function CategoryForm() {
   const router = useRouter()
-  const { 
-    formData: originalFormData,  
-    setFormData: originalSetFormData, 
-    isLoading, 
-    handleSubmit,
-    handleNameChange
-  } = useCategoryFormState()
-
   const { generateSlug } = useSlugGenerator()
 
-  // Estado local para dados da categoria
+  // Hook para criar categoria
+  const createCategoryMutation = useCreateCategory()
+
+  // Estado da categoria
   const [categoryData, setCategoryData] = useState({
     name: "",
     slug: "",
@@ -39,32 +34,138 @@ export function CategoryForm() {
     orderIndex: 1
   })
 
-  // Estado para subcategorias (dados de exemplo)
-  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([
-    { id: "1", name: "Por Material", level: 1, childrenCount: 2, expanded: true },
-    { id: "2", name: "Molas", level: 2, parent: "1", childrenCount: 1, expanded: true },
-    { id: "3", name: "Pocket Spring", level: 3, parent: "2" },
-    { id: "4", name: "Espuma", level: 2, parent: "1" },
-    { id: "5", name: "Por Tamanho", level: 1, childrenCount: 2 },
-    { id: "6", name: "Solteiro", level: 2, parent: "5" },
-    { id: "7", name: "Queen", level: 2, parent: "5" },
-  ])
+  // Estado das subcategorias (INICIALMENTE VAZIO)
+  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([])
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Estado para controlar itens expandidos na árvore
-  const [expandedItems, setExpandedItems] = useState<string[]>(["1", "2"])
-  
-  // Contadores para meta tags (SEO)
-  const [metaTitleCount, setMetaTitleCount] = useState(0)
-  const [metaDescCount, setMetaDescCount] = useState(0)
+  // Função para salvar TUDO
+  const handleSubmit = async () => {
+    try {
+      setIsLoading(true)
 
-  // ========== FUNÇÕES DE SUBCATEGORIAS ==========
+      // 1. Cria a categoria principal
+      const categoryToCreate = {
+        name: categoryData.name,
+        slug: categoryData.slug,
+        description: categoryData.description || undefined,
+        isActive: categoryData.isActive,
+        metaTitle: categoryData.metaTitle || undefined,
+        metaDescription: categoryData.metaDescription || undefined,
+        orderIndex: categoryData.orderIndex
+      }
 
-  /**
-   * Adiciona uma nova subcategoria de nível 1
-   */
+      // Converte a lista plana de subcategorias do UI para a estrutura hierárquica
+      // esperada pelo serviço. A função gera slug, preserva ordem entre irmãos e
+      // aninha `children` recursivamente.
+      const hierarchicalSubcategories = convertFlatToHierarchical(subcategories)
+
+      // Cria a categoria principal e, opcionalmente, todas as subcategorias em
+      // uma única transação no servidor (método `createCategory` já implementado
+      // no service, utiliza transação Drizzle). Isso garante atomicidade.
+      const createdCategory = await createCategoryMutation.mutateAsync({
+        ...categoryToCreate,
+        subcategories: hierarchicalSubcategories
+      })
+
+      // Redireciona após sucesso
+      router.push(`/admin/categories/${createdCategory.id}`)
+      
+    } catch (error) {
+      console.error('Erro ao salvar:', error)
+      alert('Erro ao salvar categoria. Verifique o console.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Função para converter subcategorias da UI para API
+  const convertSubcategoriesToApiFormat = (
+    subcats: SubcategoryItem[], 
+    categoryId: string, 
+    parentId: string | null = null
+  ) => {
+    const requests: any[] = []
+    
+    const levelSubcats = subcats.filter(sub => 
+      parentId === null ? !sub.parent : sub.parent === parentId
+    )
+    
+    const sorted = [...levelSubcats].sort((a, b) => {
+      const indexA = subcats.indexOf(a)
+      const indexB = subcats.indexOf(b)
+      return indexA - indexB
+    })
+    
+    sorted.forEach((subcat, index) => {
+      const generatedSlug = subcat.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+
+      requests.push({
+        name: subcat.name,
+        slug: generatedSlug,
+        level: subcat.level,
+        parentId: parentId,
+        categoryId: categoryId,
+        orderIndex: index + 1,
+        isActive: true
+      })
+      
+      // Processa filhos
+      const children = subcats.filter(child => child.parent === subcat.id)
+      if (children.length > 0) {
+        const childRequests = convertSubcategoriesToApiFormat(subcats, categoryId, subcat.id)
+        requests.push(...childRequests)
+      }
+    })
+    
+    return requests
+  }
+
+  // === NOVA FUNÇÃO: converte lista plana do UI para estrutura hierárquica ===
+  // Produz objetos compatíveis com `HierarchicalSubcategory`:
+  // { name, slug, level, parentId?, orderIndex, isActive, children? }
+  const convertFlatToHierarchical = (subcats: SubcategoryItem[]) => {
+    // Função recursiva que monta nós a partir de um parentId
+    const build = (parentId: string | null) => {
+      const levelChildren = subcats
+        .filter(s => (parentId === null ? !s.parent : s.parent === parentId))
+        .sort((a, b) => subcats.indexOf(a) - subcats.indexOf(b))
+
+      return levelChildren.map((s, idx) => {
+        const generatedSlug = s.name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+
+        const node: any = {
+          name: s.name,
+          slug: generatedSlug,
+          level: s.level,
+          parentId: parentId === null ? undefined : parentId,
+          orderIndex: idx + 1,
+          isActive: true,
+        }
+
+        const children = build(s.id)
+        if (children.length > 0) node.children = children
+
+        return node
+      })
+    }
+
+    return build(null)
+  }
+
+  // Funções existentes do seu código (mantidas)
   const handleAddSubcategory = (name: string) => {
-    if (!name || name.trim() === '') return
-
+    if (!name.trim()) return
     const newSubcategory: SubcategoryItem = {
       id: generateSubcategoryId(),
       name: name.trim(),
@@ -72,74 +173,45 @@ export function CategoryForm() {
       expanded: false,
       childrenCount: 0
     }
-
     setSubcategories(prev => [newSubcategory, ...prev])
     setExpandedItems(prev => [...prev, newSubcategory.id])
   }
 
-  /**
-   * Remove uma subcategoria e todos os seus filhos
-   */
   const handleDeleteSubcategory = (id: string) => {
-    if (!window.confirm('Excluir esta subcategoria e todos os seus filhos?')) {
-      return
-    }
-
+    if (!window.confirm('Excluir esta subcategoria e todos os seus filhos?')) return
     const { newList, deletedIds } = deleteSubcategoryWithDetails(id, subcategories)
     setSubcategories(newList)
     setExpandedItems(prev => prev.filter(item => !deletedIds.includes(item)))
   }
 
-  /**
-* Atualiza o nome de uma subcategoria existente */
-const handleEditSubcategory = (id: string, newName: string) => {
-  try {
-    const updatedList = updateSubcategoryName(id, newName, subcategories)
-    setSubcategories(updatedList)
-  } catch (error) {
-    // Mostra erro para o usuário (pode ser toast/notification depois)
-    alert(error instanceof Error ? error.message : 'Erro ao atualizar subcategoria')
-  }
-}
-
-/**
- * Adiciona uma subcategoria filha a uma subcategoria existente
- */
-const handleAddChildSubcategory = (parentId: string, name: string) => {
-  try {
-    // Cria o objeto da nova subcategoria filha
-    const newChild = createChildSubcategory(parentId, name, subcategories)
-    
-    // Calcula onde inserir (logo após o pai, antes dos outros filhos)
-    const insertIndex = calculateChildInsertPosition(parentId, subcategories)
-    
-    // Insere na posição correta
-    const newList = [...subcategories]
-    newList.splice(insertIndex, 0, newChild)
-
-    
-    // Atualiza estado
-    setSubcategories(newList)
-    
-    // Expande o pai automaticamente para mostrar o novo filho
-    if (!expandedItems.includes(parentId)) {
-      setExpandedItems(prev => [...prev, parentId])
+  const handleEditSubcategory = (id: string, newName: string) => {
+    try {
+      const updatedList = updateSubcategoryName(id, newName, subcategories)
+      setSubcategories(updatedList)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Erro ao atualizar')
     }
-    
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Erro ao criar subcategoria filha'
-    alert(errorMessage)
   }
-}
 
+  const handleAddChildSubcategory = (parentId: string, name: string) => {
+    try {
+      const newChild = createChildSubcategory(parentId, name, subcategories)
+      const insertIndex = calculateChildInsertPosition(parentId, subcategories)
+      const newList = [...subcategories]
+      newList.splice(insertIndex, 0, newChild)
+      setSubcategories(newList)
+      if (!expandedItems.includes(parentId)) {
+        setExpandedItems(prev => [...prev, parentId])
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Erro ao criar')
+    }
+  }
 
-const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
-  setSubcategories(newOrder)
-}
+  const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
+    setSubcategories(newOrder)
+  }
 
-  /**
-   * Expande ou recolhe um item da árvore
-   */
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => 
       prev.includes(id) 
@@ -148,11 +220,6 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
     )
   }
 
-  // ========== FUNÇÕES AUXILIARES ==========
-
-  /**
-   * Retorna classes de cor baseadas no nível
-   */
   const getLevelColor = (level: number) => {
     switch(level) {
       case 1: return "text-blue-600 bg-blue-50 border-blue-200"
@@ -163,9 +230,6 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
     }
   }
 
-  /**
-   * Cria um badge colorido para indicar o nível
-   */
   const getLevelBadge = (level: number) => {
     const colors = {
       1: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
@@ -174,7 +238,6 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
       4: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-200" }
     }
     const color = colors[level as keyof typeof colors] || colors[1]
-    
     return (
       <Badge variant="outline" className={`${color.bg} ${color.text} ${color.border} text-xs`}>
         Nível {level}
@@ -182,55 +245,13 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
     )
   }
 
-  // ========== USE EFFECTS ==========
-
-  // Sincroniza dados do hook com estado local
-  useEffect(() => {
-    setCategoryData(prev => ({
-      ...prev,
-      name: originalFormData.name,
-      slug: originalFormData.slug,
-      description: originalFormData.description || "",
-      isActive: originalFormData.isActive,
-      metaTitle: originalFormData.metaTitle || "",
-      metaDescription: originalFormData.metaDescription || ""
-    }))
-  }, [originalFormData])
-
-  // Atualiza contadores de caracteres
-  useEffect(() => {
-    setMetaTitleCount(categoryData.metaTitle.length)
-    setMetaDescCount(categoryData.metaDescription.length)
-  }, [categoryData.metaTitle, categoryData.metaDescription])
-
-  // ========== CÁLCULOS ==========
-
   const totalSubcategories = subcategories.length
   const directSubcategories = subcategories.filter(s => s.level === 1).length
-  const maxLevel = Math.max(...subcategories.map(s => s.level))
-
-  // ========== COMPONENTES AUXILIARES ==========
-
-  /**
-   * Barra de progresso para contadores de SEO
-   */
-  const ProgressBar = ({ value, max = 100 }: { value: number; max?: number }) => {
-    const percentage = Math.min((value / max) * 100, 100)
-    return (
-      <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-blue-500 transition-all duration-300"
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    )
-  }
-
-  // ========== RENDER ==========
+  const maxLevel = Math.max(...subcategories.map(s => s.level), 0)
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Cabeçalho com breadcrumb */}
+      {/* Cabeçalho */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -261,7 +282,7 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
             <Button 
               size="sm"
               onClick={handleSubmit}
-              disabled={isLoading}
+              disabled={isLoading || !categoryData.name.trim()}
             >
               <Save className="h-4 w-4 mr-2" />
               {isLoading ? "Salvando..." : "Salvar"}
@@ -270,10 +291,9 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
         </div>
       </div>
 
-      {/* Layout de 3 colunas */}
+      {/* Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Coluna esquerda: Informações básicas (33%) */}
+        {/* Coluna esquerda */}
         <div className="lg:col-span-4 space-y-6">
           <BasicInfoCard
             data={categoryData}
@@ -282,19 +302,27 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
                 const generatedSlug = generateSlug(updates.name)
                 updates = { ...updates, slug: generatedSlug }
               }
-              
               setCategoryData(prev => ({ ...prev, ...updates }))
-              originalSetFormData((prev: any) => ({ ...prev, ...updates }))
             }}
-            onSlugChange={(slug) => {}}
+            onSlugChange={() => {}}
             isLoading={isLoading}
-            metaTitleCount={metaTitleCount}
-            metaDescCount={metaDescCount}
-            ProgressBar={ProgressBar}
+            metaTitleCount={categoryData.metaTitle.length}
+            metaDescCount={categoryData.metaDescription.length}
+            ProgressBar={({ value, max = 100 }) => {
+              const percentage = Math.min((value / max) * 100, 100)
+              return (
+                <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-300"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              )
+            }}
           />
         </div>
 
-        {/* Coluna central: Subcategorias (42%) */}
+        {/* Coluna central */}
         <div className="lg:col-span-5 space-y-6">
           <SubcategoriesCard
             subcategories={subcategories}
@@ -313,7 +341,7 @@ const handleReorderSubcategories = (newOrder: SubcategoryItem[]) => {
           />
         </div>
 
-        {/* Coluna direita: Estatísticas (25%) */}
+        {/* Coluna direita */}
         <div className="lg:col-span-3 space-y-6">
           <SidebarCards
             categoryData={categoryData}

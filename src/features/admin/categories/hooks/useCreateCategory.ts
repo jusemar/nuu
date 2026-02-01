@@ -21,10 +21,21 @@ import { toast } from 'sonner'
 import { categoryService } from '../services/categoryService'
 import { 
   Category, 
-  CreateCategoryRequest,
-  CategoryFormState 
+  CreateCategoryInput,
 } from '../types'
-import { categoryKeys, categoryDetailKeys } from './useCategoryList'
+import { categoryKeys } from './useCategoryList'
+import { useState } from 'react'
+
+// Tipo local para validação do formulário
+type CategoryFormState = {
+  name: string
+  slug: string
+  description?: string | null
+  isActive?: boolean
+  metaTitle?: string | null
+  metaDescription?: string | null
+  orderIndex?: number
+}
 
 /**
  * Configuração para toasts (Sonner)
@@ -88,12 +99,12 @@ function validateCategoryForm(data: CategoryFormState): string[] {
  * Hook principal para criação de categoria
  */
 export function useCreateCategory(
-  options?: UseMutationOptions<Category, Error, CreateCategoryRequest>
+  options?: UseMutationOptions<Category, Error, CreateCategoryInput>
 ) {
   const queryClient = useQueryClient()
   const router = useRouter()
   
-  return useMutation<Category, Error, CreateCategoryRequest>({
+  return useMutation<Category, Error, CreateCategoryInput, { previousCategories?: Category[] }>({
     mutationFn: async (categoryData) => {
       // Validação antes de enviar ao servidor
       const errors = validateCategoryForm(categoryData as CategoryFormState)
@@ -105,12 +116,13 @@ export function useCreateCategory(
       const dataToSend = {
         ...categoryData,
         userId: 'current-user-id', // TODO: Pegar do auth context
-        orderIndex: categoryData.orderIndex || 1,
-        isActive: categoryData.isActive !== undefined ? categoryData.isActive : true
+        orderIndex: (categoryData as any).orderIndex || 1,
+        isActive: (categoryData as any).isActive !== undefined ? (categoryData as any).isActive : true
       }
       
       return await categoryService.createCategory(dataToSend)
     },
+
     
     // Otimistic update: atualiza cache antes da resposta do servidor
     onMutate: async (newCategory) => {
@@ -149,8 +161,6 @@ export function useCreateCategory(
     onSuccess: (createdCategory, variables, context) => {
       // Invalida queries para forçar refetch com dados corretos
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: categoryDetailKeys.all })
-      
       // Atualiza cache com dados reais (substitui o otimista)
       queryClient.setQueryData<Category[]>(
         categoryKeys.lists(),
@@ -159,9 +169,9 @@ export function useCreateCategory(
         )
       )
       
-      // Adiciona ao cache individual
+      // Adiciona ao cache individual (detail)
       queryClient.setQueryData(
-        categoryDetailKeys.byId(createdCategory.id),
+        categoryKeys.detail(createdCategory.id),
         createdCategory
       )
       
@@ -182,8 +192,8 @@ export function useCreateCategory(
     // Em caso de erro
     onError: (error, variables, context) => {
       // Rollback: restaura estado anterior
-      if (context?.previousCategories) {
-        queryClient.setQueryData(categoryKeys.lists(), context.previousCategories)
+      if ((context as any)?.previousCategories) {
+        queryClient.setQueryData(categoryKeys.lists(), (context as any).previousCategories)
       }
       
       // Toast de erro
@@ -195,6 +205,7 @@ export function useCreateCategory(
       // Chama callback personalizado se fornecido
       options?.onError?.(error, variables, context)
     },
+
     
     // Sempre executa (sucesso ou erro)
     onSettled: (data, error, variables, context) => {
@@ -216,7 +227,7 @@ export function useCreateCategory(
  */
 export function useCreateCategoryWithRedirect(
   redirectTo?: string,
-  options?: UseMutationOptions<Category, Error, CreateCategoryRequest>
+  options?: UseMutationOptions<Category, Error, CreateCategoryInput>
 ) {
   const router = useRouter()
   const createMutation = useCreateCategory({
@@ -241,12 +252,12 @@ export function useCreateCategoryWithRedirect(
  * Hook para criação com confirmação (modal/dialog)
  */
 export function useCreateCategoryWithConfirmation(
-  options?: UseMutationOptions<Category, Error, CreateCategoryRequest>
+  options?: UseMutationOptions<Category, Error, CreateCategoryInput>
 ) {
   const createMutation = useCreateCategory(options)
   
   const createWithConfirmation = (
-    data: CreateCategoryRequest,
+    data: CreateCategoryInput,
     confirmationMessage = 'Tem certeza que deseja criar esta categoria?'
   ) => {
     if (window.confirm(confirmationMessage)) {
@@ -265,11 +276,11 @@ export function useCreateCategoryWithConfirmation(
  * Hook para criação em lote (múltiplas categorias)
  */
 export function useBatchCreateCategories(
-  options?: UseMutationOptions<Category[], Error, CreateCategoryRequest[]>
+  options?: UseMutationOptions<Category[], Error, CreateCategoryInput[]>
 ) {
   const queryClient = useQueryClient()
   
-  return useMutation<Category[], Error, CreateCategoryRequest[]>({
+  return useMutation<Category[], Error, CreateCategoryInput[], { previous?: Category[] }>({
     mutationFn: async (categoriesData) => {
       const createdCategories: Category[] = []
       
@@ -278,8 +289,8 @@ export function useBatchCreateCategories(
           const category = await categoryService.createCategory({
             ...data,
             userId: 'current-user-id',
-            orderIndex: data.orderIndex || 1,
-            isActive: data.isActive !== undefined ? data.isActive : true
+            orderIndex: (data as any).orderIndex || 1,
+            isActive: (data as any).isActive !== undefined ? (data as any).isActive : true
           })
           createdCategories.push(category)
         } catch (error) {
@@ -290,6 +301,7 @@ export function useBatchCreateCategories(
       
       return createdCategories
     },
+
     
     onMutate: async (categories) => {
       await queryClient.cancelQueries({ queryKey: categoryKeys.lists() })
@@ -298,12 +310,12 @@ export function useBatchCreateCategories(
       const optimisticCategories = categories.map((cat, index) => ({
         id: `temp-batch-${Date.now()}-${index}`,
         name: cat.name,
-        slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-        description: cat.description || null,
-        isActive: cat.isActive !== undefined ? cat.isActive : true,
-        metaTitle: cat.metaTitle || null,
-        metaDescription: cat.metaDescription || null,
-        orderIndex: cat.orderIndex || 1,
+        slug: (cat as any).slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+        description: (cat as any).description || null,
+        isActive: (cat as any).isActive !== undefined ? (cat as any).isActive : true,
+        metaTitle: (cat as any).metaTitle || null,
+        metaDescription: (cat as any).metaDescription || null,
+        orderIndex: (cat as any).orderIndex || 1,
         userId: 'current-user-id',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -326,8 +338,8 @@ export function useBatchCreateCategories(
     },
     
     onError: (error, variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(categoryKeys.lists(), context.previous)
+      if ((context as any)?.previous) {
+        queryClient.setQueryData(categoryKeys.lists(), (context as any).previous)
       }
       
       toast.error('Erro ao criar categorias em lote', {
@@ -342,29 +354,31 @@ export function useBatchCreateCategories(
  * Hook utilitário para validação em tempo real enquanto digita
  */
 export function useCategoryFormValidation() {
-  const [errors, setErrors] = useState<string[]>([])
+  // errors: map [fieldName] -> array de mensagens
+  const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   
   const validateField = (field: keyof CategoryFormState, value: any) => {
     const formState = { [field]: value } as any
-    const fieldErrors = validateCategoryForm(formState)
+    const fieldErrors = validateCategoryForm(formState as CategoryFormState)
     setErrors(prev => ({
       ...prev,
-      [field]: fieldErrors
+      [String(field)]: fieldErrors
     }))
   }
   
   const handleBlur = (field: keyof CategoryFormState) => {
-    setTouched(prev => ({ ...prev, [field]: true }))
+    setTouched(prev => ({ ...prev, [String(field)]: true }))
   }
   
   const getFieldError = (field: keyof CategoryFormState) => {
-    return touched[field] ? errors[field] : null
+    return touched[String(field)] ? errors[String(field)] ?? null : null
   }
   
   const validateAll = (formData: CategoryFormState) => {
     const allErrors = validateCategoryForm(formData)
-    setErrors(allErrors)
+    // Quando validateCategoryForm retorna array global, coloca em key '_all' para compatibilidade
+    setErrors({ _all: allErrors })
     setTouched(Object.keys(formData).reduce((acc, key) => ({
       ...acc,
       [key]: true
@@ -380,9 +394,7 @@ export function useCategoryFormValidation() {
     handleBlur,
     getFieldError,
     validateAll,
-    isValid: errors.length === 0,
+    isValid: (errors._all ? errors._all.length === 0 : Object.keys(errors).length === 0),
     isTouched: Object.values(touched).some(Boolean)
   }
 }
-
-import { useState } from 'react'

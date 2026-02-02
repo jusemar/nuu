@@ -60,18 +60,31 @@ export function CategoryForm() {
       // aninha `children` recursivamente.
       const hierarchicalSubcategories = convertFlatToHierarchical(subcategories)
 
-      // Cria a categoria principal e, opcionalmente, todas as subcategorias em
-      // uma única transação no servidor (método `createCategory` já implementado
-      // no service, utiliza transação Drizzle). Isso garante atomicidade.
-      const createdCategory = await createCategoryMutation.mutateAsync({
-        ...categoryToCreate,
-        subcategories: hierarchicalSubcategories
-      })
+  // === LOG PARA DEBUG ===
+  // Exibe no console o payload que será enviado ao servidor. Remova estes
+  // logs depois que confirmar o comportamento correto.
+  const payloadToSend = {
+    ...categoryToCreate,
+    subcategories: hierarchicalSubcategories
+  }
+  console.log('[DEBUG] category payload ->', payloadToSend)
 
-      // Redireciona após sucesso
-      router.push(`/admin/categories/${createdCategory.id}`)
-      
-    } catch (error) {
+  // Envia a requisição ao servidor e loga a resposta
+  let createdCategory
+  try {
+    createdCategory = await createCategoryMutation.mutateAsync(payloadToSend)
+    console.log('[DEBUG] server response ->', createdCategory)
+  } catch (err) {
+    console.error('[DEBUG] erro ao criar categoria ->', err)
+    throw err
+  }
+
+  // Informação adicional para ajudar no diagnóstico
+  if (!hierarchicalSubcategories || hierarchicalSubcategories.length === 0) {
+    console.log('[DEBUG] Nenhuma subcategoria enviada')
+  } else {
+    console.log(`[DEBUG] Enviadas ${hierarchicalSubcategories.length} subcategorias de nível 1 (verifique children recursivos)`)
+  }
       console.error('Erro ao salvar:', error)
       alert('Erro ao salvar categoria. Verifique o console.')
     } finally {

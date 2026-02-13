@@ -12,6 +12,7 @@ import { useDeleteCategory } from "@/hooks/admin/mutations/categories/useDeleteC
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { CategoryTreeTable } from '@/features/admin/categories/components/CategoryTreeTable'
 
 interface Category {
   id: string;
@@ -209,6 +210,7 @@ const saveChanges = () => {
   if (isLoading) {
     return <div>Carregando...</div>
   }
+   return <CategoryTreeTable />
 
   // SUBSTITUA APENAS O RETURN (a partir da linha "return (")
 return (    
@@ -259,4 +261,5 @@ return (
     </div>
   </div>
 )
+
 }

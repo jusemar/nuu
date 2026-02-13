@@ -67,25 +67,24 @@ export function CategoryForm() {
     ...categoryToCreate,
     subcategories: hierarchicalSubcategories
   }
-  console.log('[DEBUG] category payload ->', payloadToSend)
+ 
 
   // Envia a requisição ao servidor e loga a resposta
   let createdCategory
   try {
     createdCategory = await createCategoryMutation.mutateAsync(payloadToSend)
-    console.log('[DEBUG] server response ->', createdCategory)
+   
   } catch (err) {
-    console.error('[DEBUG] erro ao criar categoria ->', err)
+   
     throw err
   }
 
   // Informação adicional para ajudar no diagnóstico
   if (!hierarchicalSubcategories || hierarchicalSubcategories.length === 0) {
-    console.log('[DEBUG] Nenhuma subcategoria enviada')
+   
   } else {
-    console.log(`[DEBUG] Enviadas ${hierarchicalSubcategories.length} subcategorias de nível 1 (verifique children recursivos)`)
-  }
-      console.error('Erro ao salvar:', error)
+    
+  }      
       alert('Erro ao salvar categoria. Verifique o console.')
     } finally {
       setIsLoading(false)

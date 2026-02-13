@@ -2,23 +2,27 @@
 Estou criando uma loja virtual no Modelo de arquitetura: Feature-based (modular por domínio) — Next.js App Router.
 Tecnologias/padrões observados: Next.js (app/), TanStack Query, Drizzle (ORM), Better Auth (better-auth/react), Tailwind, Sonner (toasts), dnd-kit (drag & drop), React Context Providers.
 
-seguir estritamente minhas regras:
+você deve seguir estritamente minhas regras:
 
 Regras que estabelecidas:
 
-1) Nunca passar código sem primeiro informar o que deseja
+1) Nunca passar código sem primeiro informar sua opinião para eu primeiro aprovar.
 
-2) Passo a passo, 1 coisa de cada vez
+2) Depois que foi aprovado por mim passe as informações Passo a passo, 1 coisa de cada vez.
 
-3) Sempre informar caminho do arquivo
+3) Sempre que passar o código informar caminho do arquivo completo do arqquivo
 
-4) Aplicar melhores práticas de programadores sênior
+4) Aplicar melhores práticas de programadores sênior em next
+
 5) Aplicar melhores práticas de ux ui designer
-6) ao me fornecer códigos eles precisam está comentados para 
-facilitar outra pessoa que é iniciante como eu entender o que está acontecendo
 
-na página admin do meu site tem o menu categoria.
-Quando o menu categoria é clicado ele vai para página de categoria que tem o botão nova categoria. quando o botão nova categoria é clicado vai para a pagina de nova categoria. Esta página nova categoria eu cadastro uma categoria e suas subcategorias.
+6) Só me forneça códigos comentados de forma que outra pessoa que é iniciante possa entender fácil.
+
+Na página principal do admin do site tem o menu categoria.
+Quando estou na página categoria é exibido a lista de categoria na tabela. 
+Está tabela criada é um componente shadcn que estou usando.
+
+O que eu desejo fazer agora é exibir as subcategorias da categoria. Adicionar um icon de seta. Quando clicar nesta seta  será exibido abaixo os nomes das subcategorias e seus níveis.
 
 Entendendo o fluxo:
 
@@ -103,26 +107,17 @@ observação: eu usava uma outra estrura sem ser essa acima. Estou fazendo uma m
 
 Estou com 2 problemas para serem resolvidos.
 
-1) quando eu clico no botão nova categoria abre a página do formulário de nova categoria. Até aqui ok.
-O problema é que se é uma nova categoria deve aparecer sempre fácil a categoria e as subcategorias.
-A categoria está correta já vem vazio mas as subcategorias estão vindo já com esses valores preenchidos:
+1) Está funcionando hoje usando a arquitetura antiga sem a subcategoria exibindo. Precisa criar migrando para nova 
+arquitetura.
 
-Por Material
-Nível 1
-2
-Molas
-Nível 2
-1
-Pocket Spring
-Nível 3
-Espuma
-Nível 2
-Por Tamanho
 
-e o certo é vim sempre vazio por se tratar de uma nova subcategoria.
+2) quero que mantenha as funcionalidades que já existem e adicionar o recurso de exibir as subcategorias e o novo designer com boas práticas de ux ui melhorar o visual. Vou dar um exemplo de um código que eu peguei de um modelo de visual que gostei para inspira-lo.
 
-2) correção que precisa ser resolvido é que a categoria é salva no banco de dados mas as subcategorias nenhuma que adiciono está sendo salva.
+3) em cada linha adicione uma coluna de ação com icon de um lapís indicando que é para alterar.
 
 Observação: siga a rigor sempre as regras mencionadas acima. 
-Tem dois arquivos para analisar pois eu acredito que neles contém o erro e podemos encontrar para resolver o primeiro erro. Se precisar de algum arquivo após sua analise me solicita que lhe passo.
+O arquivo e caminho antigo é esse: src/app/admin/categories/page.tsx e o arquivo está em anexo.
+Quando você precisar de mais arquivos da arquitetura do antigo para analisar.
+
+Adicionei três arquivos para analisar sendo dois deles da tabela categoria que exibi as subcategorias Se precisar de algum arquivo após sua analise me solicita que eu lhe passo.
 Então qual primeiro passo a fazer?

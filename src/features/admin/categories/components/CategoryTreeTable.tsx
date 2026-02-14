@@ -615,7 +615,7 @@ export function CategoryTreeTable() {
         <Link href="/admin/categories/new">
           <Button className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 shadow-sm">
             <Plus className="w-4 h-4 mr-2" />
-            Nova
+            Nova Categoria
           </Button>
         </Link>
       </div>

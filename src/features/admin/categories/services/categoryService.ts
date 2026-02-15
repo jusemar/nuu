@@ -2,6 +2,7 @@
 
 import { db } from "@/db"
 import { categoryTable } from "@/db/table/categories/categories"
+import { eq } from 'drizzle-orm'
 
 // Tipo que representa uma categoria (igual ao que o componente espera)
 export type Category = {
@@ -11,6 +12,7 @@ export type Category = {
   level: number
   status: 'active' | 'inactive'  // O componente espera 'active' ou 'inactive'
   createdAt: string               // O componente espera string (data formatada)
+  updatedAt: string 
   deleted_at: string | null       // Para soft delete (se não tiver, deixa null)
   children?: Category[]
 }
@@ -26,6 +28,7 @@ export async function getAllCategories(): Promise<Category[]> {
         parentId: categoryTable.parentId,
         isActive: categoryTable.isActive,     // Nome real no banco é isActive
         createdAt: categoryTable.createdAt,
+        updatedAt: categoryTable.updatedAt,
         // Se não tem deleted_at, não seleciona
       })
       .from(categoryTable)
@@ -44,6 +47,7 @@ export async function getAllCategories(): Promise<Category[]> {
         status: cat.isActive ? 'active' : 'inactive',
         // Converte Date para string ISO
         createdAt: cat.createdAt.toISOString(),
+        updatedAt: cat.updatedAt.toISOString(),
         // Se não tem deleted_at no banco, deixa null
         deleted_at: null,
         level: 0, // Será calculado depois
@@ -77,5 +81,29 @@ export async function getAllCategories(): Promise<Category[]> {
   } catch (error) {
     console.error("Erro ao buscar categorias:", error)
     throw new Error("Erro ao buscar categorias")
+  }
+}
+
+// Função para excluir categoria (soft ou hard delete)
+export async function deleteCategory(id: string, type: 'soft' | 'hard'): Promise<void> {
+  try {
+    if (type === 'hard') {
+      // Hard delete: remove permanentemente
+      await db
+        .delete(categoryTable)
+        .where(eq(categoryTable.id, id))
+    } else {
+      // Soft delete: apenas marca como inativo
+      await db
+        .update(categoryTable)
+        .set({ 
+          isActive: false,
+          updatedAt: new Date()
+        })
+        .where(eq(categoryTable.id, id))
+    }
+  } catch (error) {
+    console.error("Erro ao excluir categoria:", error)
+    throw new Error("Erro ao excluir categoria")
   }
 }

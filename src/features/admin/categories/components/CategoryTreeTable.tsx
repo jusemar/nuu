@@ -1,3 +1,6 @@
+// Componente de tabela em árvore para exibir categorias com hierarquia
+// Usa shadcn/ui Table como base e adiciona funcionalidades de expansão, busca e paginação
+
 import React, { useState } from 'react'
 import {
   Table,
@@ -21,7 +24,7 @@ import {
   Filter,
   X,
   SlidersHorizontal,
-  Loader2 // Ícone de carregamento
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,21 +35,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
-import { DeleteCategoryModal } from './DeleteCategoryModal'
+import { Checkbox } from '@/components/ui/checkbox' // Para selecionar linhas
+import { cn } from '@/lib/utils' // Utilitário para combinar classes condicionalmente
+import { DeleteCategoryModal } from './DeleteCategoryModal' // Modal de exclusão
 import Link from 'next/link'
-// Import do hook que busca dados reais do banco
-import { useCategoryList } from '../hooks/useCategoryList'
-// Import do tipo Category vindo do service (para tipagem)
-import type { Category } from '../services/categoryService'
+import { useCategoryList } from '../hooks/useCategoryList' // Hook para buscar categorias
+import { useDeleteCategory } from '../hooks/useDeleteCategory' // 🔥 Hook para excluir categorias
+import type { Category } from '../services/categoryService' // Tipo Category
 
-// Função para filtrar categorias por texto (nome) - PERCORRE A ÁRVORE TODA
+// ============================================
+// FUNÇÕES AUXILIARES (FILTROS)
+// ============================================
+
+// Filtra categorias por texto (busca por nome) - percorre a árvore toda
 const filterCategoriesByText = (
   categories: Category[], 
   searchTerm: string
 ): Category[] => {
-  // Se não tem termo de busca, retorna todas
-  if (!searchTerm) return categories
+  if (!searchTerm) return categories // Se não tem busca, retorna todas
   
   return categories
     .map(cat => ({
@@ -64,13 +70,12 @@ const filterCategoriesByText = (
     })
 }
 
-// Função para filtrar categorias por status - PERCORRE A ÁRVORE TODA
+// Filtra categorias por status (ativo/inativo) - percorre a árvore toda
 const filterCategoriesByStatus = (
   categories: Category[], 
   filter: string
 ): Category[] => {
-  // Se filtro é 'all', retorna todas
-  if (filter === 'all') return categories
+  if (filter === 'all') return categories // Se filtro é 'all', retorna todas
   
   return categories
     .map(cat => ({
@@ -86,15 +91,19 @@ const filterCategoriesByStatus = (
     })
 }
 
-// Componente de badge de status (igual ao que você aprovou)
+// ============================================
+// COMPONENTES AUXILIARES
+// ============================================
+
+// Componente de badge de status (ativo/inativo)
 const StatusBadge = ({ status }: { status: 'active' | 'inactive' }) => {
   return (
     <span
       className={cn(
         'px-2 py-0.5 rounded-full text-xs font-medium border',
         status === 'active'
-          ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-          : 'bg-red-100 text-red-700 border-red-200'
+          ? 'bg-emerald-100 text-emerald-700 border-emerald-200' // Verde para ativo
+          : 'bg-red-100 text-red-700 border-red-200' // Vermelho para inativo
       )}
     >
       {status === 'active' ? 'Ativa' : 'Inativa'}
@@ -102,35 +111,48 @@ const StatusBadge = ({ status }: { status: 'active' | 'inactive' }) => {
   )
 }
 
-// Componente recursivo para renderizar cada linha da árvore
+// ============================================
+// COMPONENTE RECURSIVO DE LINHA (O CORAÇÃO DA TABELA)
+// ============================================
+
+// Componente que renderiza uma linha da categoria e suas subcategorias recursivamente
 const TreeRow = ({
-  category,
-  level = 0,
-  expandedItems,
-  toggleExpand,
-  onDeleteClick,
-  searchTerm
+  category,               // Dados da categoria atual
+  level = 0,               // Nível na hierarquia (0 = raiz, 1 = filho, etc)
+  expandedItems,           // Set com IDs das categorias expandidas
+  toggleExpand,            // Função para expandir/recolher
+  onDeleteClick,           // Função chamada ao clicar no botão excluir
+  searchTerm,              // Termo de busca para highlight
+  isSelected,              // Se a linha está selecionada (checkbox)
+  onSelectChange           // Função para alterar seleção
 }: {
-  category: Category  // Agora usa o tipo real, não o Mock
+  category: Category
   level?: number
   expandedItems: Set<string>
   toggleExpand: (id: string) => void
   onDeleteClick: (category: Category) => void
   searchTerm: string
+  isSelected?: boolean
+  onSelectChange?: (id: string, checked: boolean) => void
 }) => {
+  // Verifica se a categoria tem filhos (subcategorias)
   const hasChildren = category.children && category.children.length > 0
+  // Verifica se está expandido (filhos visíveis)
   const isExpanded = expandedItems.has(category.id)
   
-  // Destacar texto quando corresponder à busca (feedback visual)
+  // ============================================
+  // FUNÇÃO PARA DESTACAR O TEXTO DA BUSCA
+  // ============================================
   const highlightText = (text: string) => {
-    if (!searchTerm) return text
+    if (!searchTerm) return text // Se não tem busca, retorna o texto normal
     
+    // Divide o texto pelo termo de busca e destaca as partes que correspondem
     const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'))
     return (
       <>
         {parts.map((part, i) => 
           part.toLowerCase() === searchTerm.toLowerCase() ? (
-            <mark key={i} className="bg-yellow-200 px-0.5 rounded">{part}</mark>
+            <mark key={i} className="bg-yellow-200 px-0.5 rounded">{part}</mark> // Destaca em amarelo
           ) : (
             part
           )
@@ -139,8 +161,11 @@ const TreeRow = ({
     )
   }
 
-  // Função para determinar indentação (responsivo)
+  // ============================================
+  // INDENTAÇÃO RESPONSIVA
+  // ============================================
   const getIndentWidth = () => {
+    // Em mobile, indentação menor para economizar espaço
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       return level * 16
     }
@@ -156,13 +181,25 @@ const TreeRow = ({
       <TableRow
         className={cn(
           'transition-colors',
-          category.status === 'inactive' ? 'bg-red-50/30' : 'hover:bg-slate-50',
-          isExpanded && category.status === 'active' && 'bg-blue-50/50'
+          category.status === 'inactive' ? 'bg-red-50/30' : 'hover:bg-slate-50', // Fundo vermelho se inativo
+          isExpanded && category.status === 'active' && 'bg-blue-50/50' // Fundo azul se expandido
         )}
       >
+        {/* Checkbox de seleção (só aparece para categorias nível 0 - pais) */}
+        {level === 0 && (
+          <TableCell className="py-2.5 w-10">
+            <Checkbox 
+              checked={isSelected}
+              onCheckedChange={(checked) => onSelectChange?.(category.id, checked === true)}
+            />
+          </TableCell>
+        )}
+        {level > 0 && <TableCell className="py-2.5 w-10" />} {/* Espaço vazio para alinhar */}
+
+        {/* Coluna 1: Categoria (com ícone, nome e badges) */}
         <TableCell className="py-2.5">
           <div className="flex items-center gap-1.5 min-w-0">
-            {/* Espaço de indentação baseado no nível */}
+            {/* Indentação baseada no nível */}
             <div style={{ width: `${getIndentWidth()}px` }} />
             
             {/* Botão de expandir ou bullet point */}
@@ -175,23 +212,23 @@ const TreeRow = ({
                   isExpanded ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'
                 )}
                 onClick={() => toggleExpand(category.id)}
-                disabled={category.status === 'inactive'}
+                disabled={category.status === 'inactive'} // Não expande se inativo
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-3.5 w-3.5" /> // Seta para baixo quando expandido
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-3.5 w-3.5" /> // Seta para direita quando fechado
                 )}
               </Button>
             ) : (
-              <span className="w-5 text-center text-slate-400 flex-shrink-0 text-xs">•</span>
+              <span className="w-5 text-center text-slate-400 flex-shrink-0 text-xs">•</span> // Bullet para sem filhos
             )}
 
             {/* Ícone baseado no nível da categoria */}
             <div className={cn(
               'rounded p-0.5 flex-shrink-0',
-              level === 0 && 'bg-slate-100',
-              category.status === 'inactive' && 'opacity-50'
+              level === 0 && 'bg-slate-100', // Fundo cinza só para nível 0
+              category.status === 'inactive' && 'opacity-50' // Mais transparente se inativo
             )}>
               {level === 0 ? (
                 <Folder className={cn(
@@ -214,6 +251,7 @@ const TreeRow = ({
             {/* Nome da categoria e badges */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Nome com destaque da busca */}
                 <span
                   className={cn(
                     'font-medium truncate text-sm',
@@ -221,7 +259,7 @@ const TreeRow = ({
                     level === 1 && 'text-slate-700',
                     level === 2 && 'text-slate-600',
                     level === 3 && 'text-slate-500 text-xs',
-                    category.status === 'inactive' && 'line-through text-slate-500'
+                    category.status === 'inactive' && 'line-through text-slate-500' // Riscado se inativo
                   )}
                   title={category.name}
                 >
@@ -233,13 +271,12 @@ const TreeRow = ({
                   Nível {category.level}
                 </span>
 
-                {/* Badge de "Possui subcategorias" */}
+                {/* Badge de quantidade de subcategorias */}
                 {hasChildren && (
                   <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
-                    Possui sub
+                    {category.children?.length || 0} subs
                   </span>
-                )}              
-               
+                )}
               </div>
 
               {/* Data de exclusão (soft delete) */}
@@ -252,24 +289,35 @@ const TreeRow = ({
           </div>
         </TableCell>
 
-        {/* Coluna de data de criação (esconde em mobile) */}
+        {/* Coluna 2: Criado em */}
         <TableCell className="hidden sm:table-cell py-2.5">
           <span className="text-xs text-slate-500">
             {new Date(category.createdAt).toLocaleDateString('pt-BR')}
           </span>
         </TableCell>
 
-        {/* Coluna de status (esconde em tablet) */}
+        {/* Coluna 3: Última alteração */}
+        <TableCell className="hidden sm:table-cell py-2.5">
+          <span className="text-xs text-slate-500">
+            {category.updatedAt 
+              ? new Date(category.updatedAt).toLocaleDateString('pt-BR') + ' ' + 
+                new Date(category.updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              : '—' // Se não tem updatedAt, mostra traço
+            }
+          </span>
+        </TableCell>
+
+        {/* Coluna 4: Status */}
         <TableCell className="hidden md:table-cell py-2.5">
           <StatusBadge status={category.status} />
         </TableCell>
 
-        {/* Coluna de ações (sempre visível) */}
+        {/* Coluna 5: Ações (editar, excluir, restaurar) */}
         <TableCell className="text-right py-2.5">
           <div className="flex items-center justify-end gap-0.5">
             {category.status === 'active' ? (
               <>
-                {/* Botão Editar */}
+                {/* Botão Editar (lápis) */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -292,7 +340,7 @@ const TreeRow = ({
                   </svg>
                 </Button>
 
-                {/* Botão Excluir (desabilitado se tiver subcategorias) */}
+                {/* Botão Excluir (lixeira) */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -351,73 +399,95 @@ const TreeRow = ({
   )
 }
 
+// ============================================
 // COMPONENTE PRINCIPAL
+// ============================================
 export function CategoryTreeTable() {
   // Estados para controle da UI
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [showFilters, setShowFilters] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set()) // Itens expandidos
+  const [searchTerm, setSearchTerm] = useState('') // Termo de busca
+  const [statusFilter, setStatusFilter] = useState<string>('all') // Filtro de status
+  const [showFilters, setShowFilters] = useState(false) // Mostrar filtros avançados
   
-  // 🔥 DADOS REAIS DO BANCO VIA TANSTACK QUERY
-  const { data: categories, isLoading, error } = useCategoryList()
+  // Estados para paginação e seleção
+  const [pageIndex, setPageIndex] = useState(0) // Página atual
+  const [pageSize, setPageSize] = useState(10) // Itens por página
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({}) // Linhas selecionadas
+  
+  // 🔥 HOOKS DE DADOS
+  const { data: categories, isLoading, error } = useCategoryList() // Buscar categorias
+  const deleteCategory = useDeleteCategory() // Hook para excluir categorias
   
   // Estados para o modal de exclusão
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteModalType, setDeleteModalType] = useState<'ok' | 'blocked'>('ok')
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
 
-  // Função para expandir/recolher linhas
+  // ============================================
+  // FUNÇÕES DE MANIPULAÇÃO
+  // ============================================
+
+  // Alterna expansão de uma categoria
   const toggleExpand = (id: string) => {
     setExpandedItems((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
-        next.delete(id)
+        next.delete(id) // Se já está expandido, recolhe
       } else {
-        next.add(id)
+        next.add(id) // Se está recolhido, expande
       }
       return next
     })
   }
 
-  // Função para abrir modal de exclusão
+  // Abre modal de exclusão
   const handleDeleteClick = (category: Category) => {
     const hasChildren = category.children && category.children.length > 0
-    
     setCategoryToDelete(category)
-    
-    if (hasChildren) {
-      setDeleteModalType('blocked') // Modal bloqueado (tem subcategorias)
-    } else {
-      setDeleteModalType('ok') // Pode excluir
-    }
-    
+    setDeleteModalType(hasChildren ? 'blocked' : 'ok') // 'blocked' se tem filhos
     setDeleteModalOpen(true)
   }
 
-  // Função para confirmar exclusão
+  // 🔥 Confirma exclusão (chama a mutation)
   const handleConfirmDelete = (type: 'soft' | 'hard') => {
-    console.log(`Excluir categoria ${categoryToDelete?.id} com ${type} delete`)
+    if (categoryToDelete) {
+      deleteCategory.mutate({
+        id: categoryToDelete.id,
+        type: type
+      })
+    }
     setDeleteModalOpen(false)
-    // Aqui você chamará a mutation futuramente
   }
 
-  // Limpar todos os filtros
+  // Limpa todos os filtros
   const clearFilters = () => {
     setSearchTerm('')
     setStatusFilter('all')
   }
 
-  // Verificar se há filtros ativos
+  // Verifica se há filtros ativos
   const hasActiveFilters = searchTerm || statusFilter !== 'all'
 
-  // 🔥 FUNÇÕES PARA CONTAR CATEGORIAS RECURSIVAMENTE (dados reais)
+  // Alterna seleção de uma linha
+  const handleSelectRow = (id: string, checked: boolean) => {
+    setRowSelection(prev => ({
+      ...prev,
+      [id]: checked
+    }))
+  }
+
+  // ============================================
+  // FUNÇÕES DE CONTAGEM (RECURSIVAS)
+  // ============================================
+
+  // Conta total de categorias (percorre árvore)
   const countCategories = (cats: Category[] = []): number => {
     return cats.reduce((total, cat) => {
       return total + 1 + countCategories(cat.children)
     }, 0)
   }
 
+  // Conta categorias por status (percorre árvore)
   const countByStatus = (cats: Category[] = [], status: 'active' | 'inactive'): number => {
     return cats.reduce((total, cat) => {
       const match = cat.status === status ? 1 : 0
@@ -425,16 +495,42 @@ export function CategoryTreeTable() {
     }, 0)
   }
 
-  // 🔥 CONTAGENS BASEADAS NOS DADOS REAIS
+  // Totais para os badges dos filtros
   const totalCategories = countCategories(categories || [])
   const activeCount = countByStatus(categories || [], 'active')
   const inactiveCount = countByStatus(categories || [], 'inactive')
 
-  // 🔥 APLICAR FILTROS NOS DADOS REAIS
+  // ============================================
+  // APLICAÇÃO DOS FILTROS
+  // ============================================
+
+  // Primeiro filtra por status, depois por texto
   const filteredByStatus = filterCategoriesByStatus(categories || [], statusFilter)
   const filteredCategories = filterCategoriesByText(filteredByStatus, searchTerm)
 
-  // ESTADO DE CARREGAMENTO
+  // ============================================
+  // PAGINAÇÃO (APENAS PAIS - NÍVEL 0)
+  // ============================================
+
+  // Extrai apenas categorias pai (nível 0) para paginação
+  const parentCategories = filteredCategories.filter(cat => cat.level === 0)
+  
+  // Fatia os pais para a página atual
+  const paginatedParents = parentCategories.slice(
+    pageIndex * pageSize,
+    (pageIndex + 1) * pageSize
+  )
+  
+  // Calcula total de páginas
+  const pageCount = Math.ceil(parentCategories.length / pageSize)
+
+  // Conta linhas selecionadas
+  const selectedCount = Object.keys(rowSelection).length
+
+  // ============================================
+  // ESTADOS DE CARREGAMENTO E ERRO
+  // ============================================
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -446,7 +542,6 @@ export function CategoryTreeTable() {
     )
   }
 
-  // ESTADO DE ERRO
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -465,10 +560,12 @@ export function CategoryTreeTable() {
     )
   }
 
-  // RENDERIZAÇÃO PRINCIPAL (MESMO LAYOUT APROVADO)
+  // ============================================
+  // RENDERIZAÇÃO PRINCIPAL
+  // ============================================
   return (
     <div className="space-y-4 px-4 sm:px-6 lg:px-8">
-      {/* Header com título e botão Nova Categoria */}
+      {/* HEADER: Título e botão Nova Categoria */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Categorias</h1>
@@ -482,13 +579,11 @@ export function CategoryTreeTable() {
         </Link>
       </div>
 
-      {/* Barra de busca e filtros */}
+      {/* BARRA DE BUSCA E FILTROS */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-        
-        {/* Linha principal de busca */}
+        {/* Linha principal com busca e selects */}
         <div className="flex flex-col sm:flex-row gap-3">
-          
-          {/* Busca por Nome */}
+          {/* Input de busca */}
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -512,9 +607,9 @@ export function CategoryTreeTable() {
             </div>
           </div>
 
-          {/* Filtros em linha */}
+          {/* Controles de filtro */}
           <div className="flex items-center gap-2">
-            {/* Select de Status */}
+            {/* Select de status */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[130px] h-9">
                 <SelectValue placeholder="Status" />
@@ -526,7 +621,7 @@ export function CategoryTreeTable() {
               </SelectContent>
             </Select>
 
-            {/* Botão Filtros Avançados */}
+            {/* Botão para mostrar/ocultar filtros avançados */}
             <Button
               onClick={() => setShowFilters(!showFilters)}
               variant="outline"
@@ -542,7 +637,7 @@ export function CategoryTreeTable() {
               )}
             </Button>
 
-            {/* Botão Limpar Filtros */}
+            {/* Botão para limpar filtros (só aparece quando há filtros ativos) */}
             {hasActiveFilters && (
               <Button
                 onClick={clearFilters}
@@ -556,7 +651,7 @@ export function CategoryTreeTable() {
           </div>
         </div>
 
-        {/* Filtros Avançados (expandível) */}
+        {/* FILTROS AVANÇADOS (expandíveis) */}
         {showFilters && (
           <div className="mt-3 pt-3 border-t border-slate-200">
             <div className="flex items-center gap-4">
@@ -570,7 +665,7 @@ export function CategoryTreeTable() {
           </div>
         )}
 
-        {/* Contador de resultados */}
+        {/* CONTADOR DE RESULTADOS */}
         <div className="mt-3 pt-3 border-t border-slate-200">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-500">
@@ -592,17 +687,24 @@ export function CategoryTreeTable() {
         </div>
       </div>
 
-      {/* Tabela de categorias */}
+      {/* TABELA PRINCIPAL */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <Table>
+            {/* Cabeçalho da tabela */}
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
+                <TableHead className="w-10 py-3">
+                  <Checkbox /> {/* Checkbox para selecionar todos */}
+                </TableHead>
                 <TableHead className="font-semibold text-slate-700 py-3 min-w-[300px] sm:min-w-[350px] text-xs">
                   Categoria
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 py-3 hidden sm:table-cell text-xs">
                   Criado em
+                </TableHead>
+                <TableHead className="font-semibold text-slate-700 py-3 hidden sm:table-cell text-xs">
+                  Última alteração
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 py-3 hidden md:table-cell text-xs">
                   Status
@@ -613,10 +715,12 @@ export function CategoryTreeTable() {
               </TableRow>
             </TableHeader>
 
+            {/* Corpo da tabela */}
             <TableBody>
-              {filteredCategories.length === 0 ? (
+              {paginatedParents.length === 0 ? (
+                // Mensagem quando não há resultados
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center">
+                  <TableCell colSpan={6} className="py-8 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <FolderTree className="w-10 h-10 text-slate-300" />
                       <p className="text-slate-500 font-medium">Nenhuma categoria encontrada</p>
@@ -633,7 +737,8 @@ export function CategoryTreeTable() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCategories.map((category) => (
+                // Renderiza as categorias paginadas
+                paginatedParents.map((category) => (
                   <TreeRow
                     key={category.id}
                     category={category}
@@ -642,6 +747,8 @@ export function CategoryTreeTable() {
                     toggleExpand={toggleExpand}
                     onDeleteClick={handleDeleteClick}
                     searchTerm={searchTerm}
+                    isSelected={rowSelection[category.id]}
+                    onSelectChange={handleSelectRow}
                   />
                 ))
               )}
@@ -649,7 +756,65 @@ export function CategoryTreeTable() {
           </Table>
         </div>
 
-        {/* Legenda compacta */}
+        {/* FOOTER: Paginação e seleção */}
+        <div className="border-t border-slate-200 bg-white px-4 py-3 flex items-center justify-between">
+          {/* Contador de linhas selecionadas */}
+          <div className="text-sm text-slate-500">
+            {selectedCount} de {parentCategories.length} linha(s) selecionada(s)
+          </div>
+
+          {/* Controles de paginação */}
+          <div className="flex items-center gap-6">
+            {/* Dropdown de itens por página */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500">Linhas por página</span>
+              <Select 
+                value={pageSize.toString()} 
+                onValueChange={(value) => {
+                  setPageSize(Number(value))
+                  setPageIndex(0) // Volta para primeira página
+                }}
+              >
+                <SelectTrigger className="w-16 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Indicador de página atual */}
+            <span className="text-sm text-slate-500">
+              Página {pageIndex + 1} de {pageCount || 1}
+            </span>
+
+            {/* Botões de navegação */}
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setPageIndex(prev => Math.max(0, prev - 1))}
+                disabled={pageIndex === 0}
+              >
+                Anterior
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setPageIndex(prev => Math.min(pageCount - 1, prev + 1))}
+                disabled={pageIndex >= pageCount - 1}
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* LEGENDA: Explica os ícones para o usuário */}
         <div className="border-t border-slate-200 bg-slate-50/50 px-4 py-2">
           <div className="flex flex-wrap items-center gap-4 text-[10px] text-slate-500">
             <div className="flex items-center gap-1">
@@ -672,7 +837,7 @@ export function CategoryTreeTable() {
         </div>
       </div>
 
-      {/* Modal de exclusão */}
+      {/* MODAL DE EXCLUSÃO */}
       <DeleteCategoryModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -681,16 +846,16 @@ export function CategoryTreeTable() {
           id: categoryToDelete.id,
           name: categoryToDelete.name,
           level: categoryToDelete.level,
-          hasChildren: !!(categoryToDelete.children && categoryToDelete.children.length > 0), 
-          hasProducts: false, // Campo obrigatório
-          productsCount: 0,   // Campo obrigatório       
+          hasChildren: !!(categoryToDelete.children && categoryToDelete.children.length > 0),
+          hasProducts: false,
+          productsCount: 0,
           childrenCount: categoryToDelete.children?.length,
           subcategories: categoryToDelete.children?.map(c => c.name)
         } : null}
         type={deleteModalType}
       />
 
-      {/* Info Box compacta sobre Soft Delete */}
+      {/* INFO BOX: Explica soft delete */}
       <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3">
         <h3 className="font-medium text-blue-900 text-xs flex items-center gap-1 mb-1">
           💡 Soft Delete

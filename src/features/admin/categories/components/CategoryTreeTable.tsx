@@ -20,7 +20,8 @@ import {
   Plus,
   Filter,
   X,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Loader2 // Ícone de carregamento
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,245 +35,58 @@ import {
 import { cn } from '@/lib/utils'
 import { DeleteCategoryModal } from './DeleteCategoryModal'
 import Link from 'next/link'
+// Import do hook que busca dados reais do banco
+import { useCategoryList } from '../hooks/useCategoryList'
+// Import do tipo Category vindo do service (para tipagem)
+import type { Category } from '../services/categoryService'
 
-// Tipo mockado com campos de soft delete
-type MockCategory = {
-  id: string
-  name: string
-  parentId: string | null
-  level: 0 | 1 | 2 | 3
-  createdAt: string
-  deleted_at?: string | null
-  status: 'active' | 'inactive'
-  productCount?: number
-  children?: MockCategory[]
-}
-
-// Dados fictícios com status e soft delete
-const mockCategories: MockCategory[] = [
-  {
-    id: '1',
-    name: 'Produtos Naturais',
-    parentId: null,
-    level: 0,
-    createdAt: '2024-01-01',
-    status: 'active',
-    productCount: 45,
-    children: [
-      {
-        id: '2',
-        name: 'SEMENTE DE GIRASSOL',
-        parentId: '1',
-        level: 1,
-        createdAt: '2024-01-01',
-        status: 'active',
-        productCount: 12,
-        children: [
-          {
-            id: '3',
-            name: 'Embalagem 1kg',
-            parentId: '2',
-            level: 2,
-            createdAt: '2024-01-01',
-            status: 'active',
-            productCount: 5,
-            children: [
-              {
-                id: '4',
-                name: 'Pacote com 10 unidades',
-                parentId: '3',
-                level: 3,
-                createdAt: '2024-01-01',
-                status: 'inactive',
-                deleted_at: '2026-02-10',
-                productCount: 2,
-              }
-            ],
-          },
-          {
-            id: '5',
-            name: 'Embalagem 500g',
-            parentId: '2',
-            level: 2,
-            createdAt: '2024-01-01',
-            status: 'inactive',
-            deleted_at: '2026-02-05',
-            productCount: 7,
-          },
-        ],
-      },
-      {
-        id: '6',
-        name: 'PSYLLIUM HUSK',
-        parentId: '1',
-        level: 1,
-        createdAt: '2024-01-01',
-        status: 'active',
-        productCount: 8,
-      },
-      {
-        id: '7',
-        name: 'Mix Castanhas',
-        parentId: '1',
-        level: 1,
-        createdAt: '2024-01-01',
-        status: 'active',
-        productCount: 20,
-        children: [
-          {
-            id: '8',
-            name: 'Castanha do Pará',
-            parentId: '7',
-            level: 2,
-            createdAt: '2024-01-01',
-            status: 'active',
-            productCount: 6,
-          },
-          {
-            id: '9',
-            name: 'Castanha de Caju',
-            parentId: '7',
-            level: 2,
-            createdAt: '2024-01-01',
-            status: 'active',
-            productCount: 8,
-            children: [
-              {
-                id: '10',
-                name: 'Torrada sem sal',
-                parentId: '9',
-                level: 3,
-                createdAt: '2024-01-01',
-                status: 'active',
-                productCount: 3,
-              },
-              {
-                id: '11',
-                name: 'Crua',
-                parentId: '9',
-                level: 3,
-                createdAt: '2024-01-01',
-                status: 'active',
-                productCount: 5,
-              }
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: '12',
-    name: 'Eletrônicos',
-    parentId: null,
-    level: 0,
-    createdAt: '2024-01-01',
-    status: 'active',
-    productCount: 120,
-    children: [
-      {
-        id: '13',
-        name: 'Celulares',
-        parentId: '12',
-        level: 1,
-        createdAt: '2024-01-01',
-        status: 'active',
-        productCount: 45,
-        children: [
-          {
-            id: '14',
-            name: 'Smartphones',
-            parentId: '13',
-            level: 2,
-            createdAt: '2024-01-01',
-            status: 'active',
-            productCount: 30,
-            children: [
-              {
-                id: '15',
-                name: 'Android',
-                parentId: '14',
-                level: 3,
-                createdAt: '2024-01-01',
-                status: 'active',
-                productCount: 20,
-              },
-              {
-                id: '16',
-                name: 'iPhone',
-                parentId: '14',
-                level: 3,
-                createdAt: '2024-01-01',
-                status: 'inactive',
-                deleted_at: '2026-02-01',
-                productCount: 10,
-              }
-            ],
-          },
-          {
-            id: '17',
-            name: 'Tablets',
-            parentId: '13',
-            level: 2,
-            createdAt: '2024-01-01',
-            status: 'active',
-            productCount: 15,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: '18',
-    name: 'Roupas',
-    parentId: null,
-    level: 0,
-    createdAt: '2024-01-01',
-    status: 'inactive',
-    deleted_at: '2026-01-10',
-    productCount: 0,
-  },
-]
-
-// Função para filtrar categorias por texto (nome)
+// Função para filtrar categorias por texto (nome) - PERCORRE A ÁRVORE TODA
 const filterCategoriesByText = (
-  categories: MockCategory[], 
+  categories: Category[], 
   searchTerm: string
-): MockCategory[] => {
+): Category[] => {
+  // Se não tem termo de busca, retorna todas
   if (!searchTerm) return categories
   
   return categories
     .map(cat => ({
       ...cat,
+      // Chama recursivamente para os filhos
       children: cat.children ? filterCategoriesByText(cat.children, searchTerm) : undefined
     }))
     .filter(cat => {
+      // Verifica se o nome da categoria atual corresponde à busca
       const matchesName = cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+      // Verifica se algum filho corresponde (para manter pais de resultados)
       const hasMatchingChildren = cat.children && cat.children.length > 0
+      // Mantém a categoria se ela corresponde OU se tem filhos que correspondem
       return matchesName || hasMatchingChildren
     })
 }
 
-// Função para filtrar categorias por status
+// Função para filtrar categorias por status - PERCORRE A ÁRVORE TODA
 const filterCategoriesByStatus = (
-  categories: MockCategory[], 
+  categories: Category[], 
   filter: string
-): MockCategory[] => {
+): Category[] => {
+  // Se filtro é 'all', retorna todas
   if (filter === 'all') return categories
   
   return categories
     .map(cat => ({
       ...cat,
+      // Chama recursivamente para os filhos
       children: cat.children ? filterCategoriesByStatus(cat.children, filter) : undefined
     }))
     .filter(cat => {
+      // Filtra baseado no status
       if (filter === 'active') return cat.status === 'active'
       if (filter === 'inactive') return cat.status === 'inactive'
       return true
     })
 }
 
-// Componente de badge de status
+// Componente de badge de status (igual ao que você aprovou)
 const StatusBadge = ({ status }: { status: 'active' | 'inactive' }) => {
   return (
     <span
@@ -288,7 +102,7 @@ const StatusBadge = ({ status }: { status: 'active' | 'inactive' }) => {
   )
 }
 
-// Componente recursivo para renderizar cada linha
+// Componente recursivo para renderizar cada linha da árvore
 const TreeRow = ({
   category,
   level = 0,
@@ -297,17 +111,17 @@ const TreeRow = ({
   onDeleteClick,
   searchTerm
 }: {
-  category: MockCategory
+  category: Category  // Agora usa o tipo real, não o Mock
   level?: number
   expandedItems: Set<string>
   toggleExpand: (id: string) => void
-  onDeleteClick: (category: MockCategory) => void
+  onDeleteClick: (category: Category) => void
   searchTerm: string
 }) => {
   const hasChildren = category.children && category.children.length > 0
   const isExpanded = expandedItems.has(category.id)
   
-  // Destacar texto quando corresponder à busca
+  // Destacar texto quando corresponder à busca (feedback visual)
   const highlightText = (text: string) => {
     if (!searchTerm) return text
     
@@ -325,7 +139,7 @@ const TreeRow = ({
     )
   }
 
-  // Função para determinar indentação
+  // Função para determinar indentação (responsivo)
   const getIndentWidth = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       return level * 16
@@ -338,7 +152,7 @@ const TreeRow = ({
 
   return (
     <>
-      {/* Linha da categoria */}
+      {/* Linha da categoria atual */}
       <TableRow
         className={cn(
           'transition-colors',
@@ -348,10 +162,10 @@ const TreeRow = ({
       >
         <TableCell className="py-2.5">
           <div className="flex items-center gap-1.5 min-w-0">
-            {/* Indentação */}
+            {/* Espaço de indentação baseado no nível */}
             <div style={{ width: `${getIndentWidth()}px` }} />
             
-            {/* Botão de expandir ou bullet */}
+            {/* Botão de expandir ou bullet point */}
             {hasChildren ? (
               <Button
                 variant="ghost"
@@ -373,7 +187,7 @@ const TreeRow = ({
               <span className="w-5 text-center text-slate-400 flex-shrink-0 text-xs">•</span>
             )}
 
-            {/* Ícone baseado no nível */}
+            {/* Ícone baseado no nível da categoria */}
             <div className={cn(
               'rounded p-0.5 flex-shrink-0',
               level === 0 && 'bg-slate-100',
@@ -397,7 +211,7 @@ const TreeRow = ({
               )}
             </div>
 
-            {/* Nome da categoria */}
+            {/* Nome da categoria e badges */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span
@@ -424,17 +238,11 @@ const TreeRow = ({
                   <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
                     Possui sub
                   </span>
-                )}
-
-                {/* Badge de produtos */}
-                {category.productCount && category.productCount > 0 && (
-                  <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-                    {category.productCount} itens
-                  </span>
-                )}
+                )}              
+               
               </div>
 
-              {/* Data de exclusão */}
+              {/* Data de exclusão (soft delete) */}
               {category.deleted_at && (
                 <p className="text-[10px] text-red-600 mt-0.5">
                   Excluído: {new Date(category.deleted_at).toLocaleDateString('pt-BR')}
@@ -444,19 +252,19 @@ const TreeRow = ({
           </div>
         </TableCell>
 
-        {/* Coluna de data */}
+        {/* Coluna de data de criação (esconde em mobile) */}
         <TableCell className="hidden sm:table-cell py-2.5">
           <span className="text-xs text-slate-500">
             {new Date(category.createdAt).toLocaleDateString('pt-BR')}
           </span>
         </TableCell>
 
-        {/* Coluna de status */}
+        {/* Coluna de status (esconde em tablet) */}
         <TableCell className="hidden md:table-cell py-2.5">
           <StatusBadge status={category.status} />
         </TableCell>
 
-        {/* Coluna de ações */}
+        {/* Coluna de ações (sempre visível) */}
         <TableCell className="text-right py-2.5">
           <div className="flex items-center justify-end gap-0.5">
             {category.status === 'active' ? (
@@ -484,7 +292,7 @@ const TreeRow = ({
                   </svg>
                 </Button>
 
-                {/* Botão Excluir */}
+                {/* Botão Excluir (desabilitado se tiver subcategorias) */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -503,9 +311,11 @@ const TreeRow = ({
               </>
             ) : (
               <>
+                {/* Badge de inativo */}
                 <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-[10px] font-medium mr-1">
                   Inativa
                 </span>
+                {/* Botão Restaurar */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -521,7 +331,7 @@ const TreeRow = ({
         </TableCell>
       </TableRow>
 
-      {/* Renderiza filhos */}
+      {/* Renderiza os filhos recursivamente (se expandido) */}
       {hasChildren && isExpanded && category.status === 'active' && (
         <>
           {category.children!.map((child) => (
@@ -541,18 +351,23 @@ const TreeRow = ({
   )
 }
 
-// Componente principal
+// COMPONENTE PRINCIPAL
 export function CategoryTreeTable() {
+  // Estados para controle da UI
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showFilters, setShowFilters] = useState(false)
   
+  // 🔥 DADOS REAIS DO BANCO VIA TANSTACK QUERY
+  const { data: categories, isLoading, error } = useCategoryList()
+  
   // Estados para o modal de exclusão
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteModalType, setDeleteModalType] = useState<'ok' | 'blocked'>('ok')
-  const [categoryToDelete, setCategoryToDelete] = useState<MockCategory | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
 
+  // Função para expandir/recolher linhas
   const toggleExpand = (id: string) => {
     setExpandedItems((prev) => {
       const next = new Set(prev)
@@ -566,15 +381,15 @@ export function CategoryTreeTable() {
   }
 
   // Função para abrir modal de exclusão
-  const handleDeleteClick = (category: MockCategory) => {
+  const handleDeleteClick = (category: Category) => {
     const hasChildren = category.children && category.children.length > 0
     
     setCategoryToDelete(category)
     
     if (hasChildren) {
-      setDeleteModalType('blocked')
+      setDeleteModalType('blocked') // Modal bloqueado (tem subcategorias)
     } else {
-      setDeleteModalType('ok')
+      setDeleteModalType('ok') // Pode excluir
     }
     
     setDeleteModalOpen(true)
@@ -584,6 +399,7 @@ export function CategoryTreeTable() {
   const handleConfirmDelete = (type: 'soft' | 'hard') => {
     console.log(`Excluir categoria ${categoryToDelete?.id} com ${type} delete`)
     setDeleteModalOpen(false)
+    // Aqui você chamará a mutation futuramente
   }
 
   // Limpar todos os filtros
@@ -595,17 +411,63 @@ export function CategoryTreeTable() {
   // Verificar se há filtros ativos
   const hasActiveFilters = searchTerm || statusFilter !== 'all'
 
-  // Aplicar filtros
-  const filteredByStatus = filterCategoriesByStatus(mockCategories, statusFilter)
+  // 🔥 FUNÇÕES PARA CONTAR CATEGORIAS RECURSIVAMENTE (dados reais)
+  const countCategories = (cats: Category[] = []): number => {
+    return cats.reduce((total, cat) => {
+      return total + 1 + countCategories(cat.children)
+    }, 0)
+  }
+
+  const countByStatus = (cats: Category[] = [], status: 'active' | 'inactive'): number => {
+    return cats.reduce((total, cat) => {
+      const match = cat.status === status ? 1 : 0
+      return total + match + countByStatus(cat.children, status)
+    }, 0)
+  }
+
+  // 🔥 CONTAGENS BASEADAS NOS DADOS REAIS
+  const totalCategories = countCategories(categories || [])
+  const activeCount = countByStatus(categories || [], 'active')
+  const inactiveCount = countByStatus(categories || [], 'inactive')
+
+  // 🔥 APLICAR FILTROS NOS DADOS REAIS
+  const filteredByStatus = filterCategoriesByStatus(categories || [], statusFilter)
   const filteredCategories = filterCategoriesByText(filteredByStatus, searchTerm)
 
-  // Contar totais
-  const totalCategories = mockCategories.length
-  const activeCount = mockCategories.filter(c => c.status === 'active').length
-  const inactiveCount = mockCategories.filter(c => c.status === 'inactive').length
+  // ESTADO DE CARREGAMENTO
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-slate-500">Carregando categorias...</p>
+        </div>
+      </div>
+    )
+  }
 
+  // ESTADO DE ERRO
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3 text-red-600">
+          <p className="text-sm font-medium">Erro ao carregar categorias</p>
+          <p className="text-xs text-red-500">{error.message}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.reload()}
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // RENDERIZAÇÃO PRINCIPAL (MESMO LAYOUT APROVADO)
   return (
-    <div className="pace-y-4 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-4 px-4 sm:px-6 lg:px-8">
       {/* Header com título e botão Nova Categoria */}
       <div className="flex items-center justify-between">
         <div>
@@ -615,7 +477,7 @@ export function CategoryTreeTable() {
         <Link href="/admin/categories/new">
           <Button className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 shadow-sm">
             <Plus className="w-4 h-4 mr-2" />
-            Nova Categoria
+            Nova
           </Button>
         </Link>
       </div>
@@ -680,7 +542,7 @@ export function CategoryTreeTable() {
               )}
             </Button>
 
-            {/* Botão Limpar Filtros (só aparece quando tem filtros) */}
+            {/* Botão Limpar Filtros */}
             {hasActiveFilters && (
               <Button
                 onClick={clearFilters}
@@ -730,7 +592,7 @@ export function CategoryTreeTable() {
         </div>
       </div>
 
-      {/* Tabela */}
+      {/* Tabela de categorias */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
           <Table>
@@ -819,25 +681,24 @@ export function CategoryTreeTable() {
           id: categoryToDelete.id,
           name: categoryToDelete.name,
           level: categoryToDelete.level,
-          hasChildren: !!(categoryToDelete.children && categoryToDelete.children.length > 0),
-          hasProducts: !!(categoryToDelete.productCount && categoryToDelete.productCount > 0),
-          productsCount: categoryToDelete.productCount,
+          hasChildren: !!(categoryToDelete.children && categoryToDelete.children.length > 0), 
+          hasProducts: false, // Campo obrigatório
+          productsCount: 0,   // Campo obrigatório       
           childrenCount: categoryToDelete.children?.length,
           subcategories: categoryToDelete.children?.map(c => c.name)
         } : null}
         type={deleteModalType}
       />
 
-       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-          💡 Como funciona o Soft Delete
+      {/* Info Box compacta sobre Soft Delete */}
+      <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-3">
+        <h3 className="font-medium text-blue-900 text-xs flex items-center gap-1 mb-1">
+          💡 Soft Delete
         </h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• <strong>Excluir:</strong> Itens ficam inativos mas podem ser restaurados</li>
-          <li>• <strong>Filtros:</strong> Escolha visualizar ativas, inativas ou todas</li>
-          <li>• <strong>Restaurar:</strong> Categorias excluídas podem voltar a ficar ativas</li>
-          <li>• <strong>Categorias:</strong> Não podem ser excluídas se tiverem subcategorias</li>
-        </ul>
+        <p className="text-xs text-blue-800">
+          Exclusão reversível: itens ficam inativos e podem ser restaurados. 
+          Categorias com subcategorias não podem ser excluídas.
+        </p>
       </div>
     </div>
   )

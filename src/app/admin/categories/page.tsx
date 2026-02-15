@@ -210,7 +210,7 @@ const saveChanges = () => {
   if (isLoading) {
     return <div>Carregando...</div>
   }
-   return <CategoryTreeTable />
+   
 
   // SUBSTITUA APENAS O RETURN (a partir da linha "return (")
 return (    

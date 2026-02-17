@@ -1,13 +1,16 @@
 // src/app/api/admin/categories/route.ts
 import { NextResponse } from 'next/server';
-import { getCategories } from '@/data/categories/get';
 import { db } from '@/db';
 import { categoryTable } from '@/db/table/categories/categories';
 import { revalidatePath } from 'next/cache';
 
 export async function GET() {
   try {
-    const categories = await getCategories();
+    const categories = await db
+      .select()
+      .from(categoryTable)
+      .orderBy(categoryTable.orderIndex);
+
     return NextResponse.json(categories);
   } catch (error) {
     console.error('Erro na API de categorias (GET):', error);

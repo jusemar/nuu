@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteCategory } from '../services/categoryService'
+import { categoryService } from '../services/categoryService'
 import { categoryKeys } from './query-keys'
 import { toast } from 'sonner'
 
@@ -12,30 +12,46 @@ export function useDeleteCategory() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, type }: DeleteCategoryParams) => 
-      deleteCategory(id, type),
+    mutationFn: async ({ id, type }: DeleteCategoryParams) => {
+      console.log(`[useDeleteCategory.mutationFn] Iniciando mutação: ID=${id}, type=${type}`)
+      try {
+        const result = await categoryService.deleteCategory(id, type)
+        console.log('[useDeleteCategory.mutationFn] Mutação completada com sucesso:', result)
+        return result
+      } catch (error) {
+        console.error('[useDeleteCategory.mutationFn] Erro na mutação:', error)
+        throw error
+      }
+    },
     
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      console.log('[useDeleteCategory.onSuccess] Delete bem-sucedido para ID:', variables.id)
+      console.log('[useDeleteCategory.onSuccess] Invalidando queries...')
+      
       // Invalida a query para recarregar os dados
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() })
       
       // Mostra toast de sucesso
-      toast.success(
-        variables.type === 'soft' 
-          ? 'Categoria excluída com sucesso!'
-          : 'Categoria excluída permanentemente!',
-        {
-          style: {
-            backgroundColor: variables.type === 'soft' ? '#22c55e' : '#ef4444',
-            color: '#ffffff',
-          },
-        }
-      )
+      const message = variables.type === 'soft' 
+        ? 'Categoria marcada como inativa com sucesso!'
+        : 'Categoria excluída permanentemente!'
+      
+      console.log('[useDeleteCategory.onSuccess] Toast message:', message)
+      toast.success(message, {
+        style: {
+          backgroundColor: variables.type === 'soft' ? '#22c55e' : '#ef4444',
+          color: '#ffffff',
+        },
+      })
     },
     
     onError: (error) => {
+      console.error('[useDeleteCategory.onError] Erro na mutação:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      console.error('[useDeleteCategory.onError] Mensagem:', errorMessage)
+      
       toast.error('Erro ao excluir categoria', {
-        description: error.message,
+        description: errorMessage,
       })
     },
   })

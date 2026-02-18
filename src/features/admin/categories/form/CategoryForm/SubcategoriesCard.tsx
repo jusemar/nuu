@@ -12,8 +12,7 @@ import { useState } from "react"
 import { useSubcategoryDnD } from "./hooks/useSubcategoryDnD"
 import { 
   SortableContext, 
-  verticalListSortingStrategy,
-  closestCorners // ← IMPORT ALTERADO
+  verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import {
   DndContext,
@@ -268,7 +267,6 @@ export function SubcategoriesCard({
           onDragStart={handleDragStart}
           onDragOver={handleDragOver} // ← ADICIONADO
           onDragEnd={handleDragEnd}
-          collisionDetection={closestCorners} // ← ALTERADO
           measuring={measuringConfig}
         >
           {/* Área sortable para subcategorias de nível 1 */}

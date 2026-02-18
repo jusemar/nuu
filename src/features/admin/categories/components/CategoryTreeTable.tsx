@@ -34,6 +34,9 @@ import {
 import { cn } from '@/lib/utils'
 import { DeleteCategoryModal } from './DeleteCategoryModal'
 import Link from 'next/link'
+import { useDeleteCategory } from '../hooks/useDeleteCategory'
+import { useRestoreCategory } from '../hooks/useRestoreCategory'
+import { useQueryClient } from '@tanstack/react-query'
 
 // Tipo usado na árvore de categorias
 type TreeCategory = {
@@ -112,6 +115,7 @@ const TreeRow = ({
   expandedItems,
   toggleExpand,
   onDeleteClick,
+  onRestoreClick,
   searchTerm
 }: {
   category: TreeCategory
@@ -119,6 +123,7 @@ const TreeRow = ({
   expandedItems: Set<string>
   toggleExpand: (id: string) => void
   onDeleteClick: (category: TreeCategory) => void
+  onRestoreClick: (categoryId: string) => void
   searchTerm: string
 }) => {
   const hasChildren = category.children && category.children.length > 0
@@ -150,8 +155,8 @@ const TreeRow = ({
     return level * 24
   }
 
-  // Verifica se pode excluir (não pode se tiver filhos)
-  const canDelete = !hasChildren
+  // Verifica se pode excluir (não pode se tiver filhos E deve ser nível 0)
+  const canDelete = !hasChildren && level === 0
 
   return (
     <>
@@ -311,22 +316,18 @@ const TreeRow = ({
                   </svg>
                 </Button>
 
-                {/* Botão Excluir */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    'h-7 w-7 transition-colors',
-                    canDelete 
-                      ? 'text-slate-500 hover:text-red-600 hover:bg-red-50' 
-                      : 'text-slate-300 cursor-not-allowed'
-                  )}
-                  onClick={() => canDelete && onDeleteClick(category)}
-                  disabled={!canDelete}
-                  title={!canDelete ? 'Remova as subcategorias primeiro' : 'Excluir categoria'}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {/* Botão Excluir - Só aparece se não tiver subcategorias */}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => onDeleteClick(category)}
+                    title="Excluir categoria"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -337,7 +338,7 @@ const TreeRow = ({
                   variant="ghost"
                   size="sm"
                   className="h-7 text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center gap-1 px-2"
-                  onClick={() => console.log('Restaurar:', category.id)}
+                  onClick={() => onRestoreClick(category.id)}
                 >
                   <RotateCcw className="h-3 w-3" />
                   <span className="text-xs font-medium hidden sm:inline">Restaurar</span>
@@ -359,6 +360,7 @@ const TreeRow = ({
               expandedItems={expandedItems}
               toggleExpand={toggleExpand}
               onDeleteClick={onDeleteClick}
+              onRestoreClick={onRestoreClick}
               searchTerm={searchTerm}
             />
           ))}
@@ -387,6 +389,11 @@ export function CategoryTreeTable() {
   // Estados para paginação
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+
+  // Hook para deletar categoria
+  const { mutate: deleteCategory } = useDeleteCategory()
+  const { mutate: restoreCategory } = useRestoreCategory()
+  const queryClient = useQueryClient()
 
   const buildTreeFromFlat = (items: any[]): TreeCategory[] => {
     const map = new Map<string, TreeCategory>()
@@ -478,8 +485,80 @@ export function CategoryTreeTable() {
 
   // Função para confirmar exclusão
   const handleConfirmDelete = (type: 'soft' | 'hard') => {
-    console.log(`Excluir categoria ${categoryToDelete?.id} com ${type} delete`)
-    setDeleteModalOpen(false)
+    console.log(`[CategoryTreeTable.handleConfirmDelete] Iniciando delete, tipo: ${type}`)
+    console.log(`[CategoryTreeTable.handleConfirmDelete] Categoria:`, categoryToDelete)
+    
+    if (!categoryToDelete) {
+      console.warn('[CategoryTreeTable.handleConfirmDelete] Nenhuma categoria selecionada!')
+      return
+    }
+    
+    console.log(`[CategoryTreeTable.handleConfirmDelete] Chamando deleteCategory mutation com ID: ${categoryToDelete.id}`)
+    
+    deleteCategory(
+      { id: categoryToDelete.id, type },
+      {
+        onSuccess: (data) => {
+          console.log('[CategoryTreeTable.handleConfirmDelete] onSuccess - Delete realizado com sucesso:', data)
+          setDeleteModalOpen(false)
+          setCategoryToDelete(null)
+          console.log('[CategoryTreeTable.handleConfirmDelete] Modal e categoria fechados')
+          
+          // Recarrega as categorias
+          const load = async () => {
+            try {
+              console.log('[CategoryTreeTable.handleConfirmDelete] Carregando categorias atualizadas...')
+              const res = await fetch('/api/admin/categories')
+              if (!res.ok) throw new Error('Erro ao carregar categorias')
+              const data = await res.json()
+              console.log('[CategoryTreeTable.handleConfirmDelete] Categorias carregadas, construindo árvore...')
+              const tree = buildTreeFromFlat(data || [])
+              setCategories(tree)
+              console.log('[CategoryTreeTable.handleConfirmDelete] Árvore construída e estado atualizado')
+            } catch (error) {
+              console.error('[CategoryTreeTable.handleConfirmDelete] Erro ao recarregar categorias:', error)
+            }
+          }
+          load()
+        },
+        onError: (error: any) => {
+          console.error('[CategoryTreeTable.handleConfirmDelete] onError - Erro ao deletar:', error)
+          console.error('[CategoryTreeTable.handleConfirmDelete] Mensagem de erro:', error?.message)
+        }
+      }
+    )
+  }
+
+  // Função para restaurar uma categoria inativa
+  const handleRestoreClick = (categoryId: string) => {
+    console.log(`[CategoryTreeTable.handleRestoreClick] Iniciando restauração da categoria ID: ${categoryId}`)
+    
+    restoreCategory(categoryId, {
+      onSuccess: (data) => {
+        console.log('[CategoryTreeTable.handleRestoreClick] onSuccess - Categoria restaurada com sucesso:', data)
+        
+        // Recarrega as categorias
+        const load = async () => {
+          try {
+            console.log('[CategoryTreeTable.handleRestoreClick] Carregando categorias atualizadas...')
+            const res = await fetch('/api/admin/categories')
+            if (!res.ok) throw new Error('Erro ao carregar categorias')
+            const data = await res.json()
+            console.log('[CategoryTreeTable.handleRestoreClick] Categorias carregadas, construindo árvore...')
+            const tree = buildTreeFromFlat(data || [])
+            setCategories(tree)
+            console.log('[CategoryTreeTable.handleRestoreClick] Árvore construída e estado atualizado')
+          } catch (error) {
+            console.error('[CategoryTreeTable.handleRestoreClick] Erro ao recarregar categorias:', error)
+          }
+        }
+        load()
+      },
+      onError: (error: any) => {
+        console.error('[CategoryTreeTable.handleRestoreClick] onError - Erro ao restaurar:', error)
+        console.error('[CategoryTreeTable.handleRestoreClick] Mensagem de erro:', error?.message)
+      }
+    })
   }
 
   // Limpar todos os filtros
@@ -691,6 +770,7 @@ export function CategoryTreeTable() {
                     expandedItems={expandedItems}
                     toggleExpand={toggleExpand}
                     onDeleteClick={handleDeleteClick}
+                    onRestoreClick={handleRestoreClick}
                     searchTerm={searchTerm}
                   />
                 ))

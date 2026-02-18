@@ -42,6 +42,7 @@ type TreeCategory = {
   parentId: string | null
   level: 0 | 1 | 2 | 3
   createdAt: string
+  updatedAt: string
   deleted_at?: string | null
   status: 'active' | 'inactive'
   productCount?: number
@@ -117,7 +118,7 @@ const TreeRow = ({
   level?: number
   expandedItems: Set<string>
   toggleExpand: (id: string) => void
-  onDeleteClick: (category: MockCategory) => void
+  onDeleteClick: (category: TreeCategory) => void
   searchTerm: string
 }) => {
   const hasChildren = category.children && category.children.length > 0
@@ -260,11 +261,21 @@ const TreeRow = ({
           </div>
         </TableCell>
 
-        {/* Coluna de data */}
+        {/* Coluna de data criação */}
         <TableCell className="hidden sm:table-cell py-2.5">
           <span className="text-xs text-slate-500">
             {new Date(category.createdAt).toLocaleDateString('pt-BR')}
           </span>
+        </TableCell>
+
+        {/* Coluna de última alteração */}
+        <TableCell className="hidden md:table-cell py-2.5">
+          <div className="text-xs text-slate-500">
+            <div>{new Date(category.updatedAt).toLocaleDateString('pt-BR')}</div>
+            <div className="text-[10px] text-slate-400">
+              {new Date(category.updatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
         </TableCell>
 
         {/* Coluna de status */}
@@ -373,6 +384,10 @@ export function CategoryTreeTable() {
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
   const buildTreeFromFlat = (items: any[]): TreeCategory[] => {
     const map = new Map<string, TreeCategory>()
 
@@ -383,6 +398,7 @@ export function CategoryTreeTable() {
         parentId: item.parentId ?? null,
         level: (item.level ?? 0) as 0 | 1 | 2 | 3,
         createdAt: item.createdAt ?? '',
+        updatedAt: item.updatedAt ?? item.createdAt ?? '',
         deleted_at: null,
         status: item.isActive ? 'active' : 'inactive',
         productCount: undefined,
@@ -485,6 +501,17 @@ export function CategoryTreeTable() {
   const totalCategories = sourceCategories.length
   const activeCount = sourceCategories.filter(c => c.status === 'active').length
   const inactiveCount = sourceCategories.filter(c => c.status === 'inactive').length
+
+  // Lógica de paginação
+  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedCategories = filteredCategories.slice(startIndex, endIndex)
+
+  // Reset para página 1 quando filtros mudam
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, itemsPerPage])
 
   return (
     <div className="pace-y-4 px-4 sm:px-6 lg:px-8">
@@ -625,6 +652,9 @@ export function CategoryTreeTable() {
                   Criado em
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 py-3 hidden md:table-cell text-xs">
+                  Última alteração
+                </TableHead>
+                <TableHead className="font-semibold text-slate-700 py-3 hidden md:table-cell text-xs">
                   Status
                 </TableHead>
                 <TableHead className="font-semibold text-slate-700 py-3 text-right text-xs">
@@ -636,7 +666,7 @@ export function CategoryTreeTable() {
             <TableBody>
               {filteredCategories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center">
+                  <TableCell colSpan={5} className="py-8 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <FolderTree className="w-10 h-10 text-slate-300" />
                       <p className="text-slate-500 font-medium">Nenhuma categoria encontrada</p>
@@ -653,7 +683,7 @@ export function CategoryTreeTable() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCategories.map((category) => (
+                paginatedCategories.map((category) => (
                   <TreeRow
                     key={category.id}
                     category={category}
@@ -667,6 +697,68 @@ export function CategoryTreeTable() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Footer com Paginação */}
+        <div className="border-t border-slate-200 bg-white px-4 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Info de itens por página */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-600">Itens por página:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+                <SelectTrigger className="w-20 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Info de paginação */}
+            <div className="text-sm text-slate-600">
+              Mostrando <strong>{startIndex + 1}</strong> a <strong>{Math.min(endIndex, filteredCategories.length)}</strong> de <strong>{filteredCategories.length}</strong> resultado(s)
+            </div>
+
+            {/* Botões de navegação */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="h-9"
+              >
+                ← Anterior
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="h-9 w-9 p-0"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="h-9"
+              >
+                Próxima →
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Legenda compacta */}

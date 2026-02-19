@@ -15,23 +15,46 @@ import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory"
 import { updateSubcategoryName } from "./utils/updateSubcategory"
 import { createChildSubcategory, calculateChildInsertPosition } from "./utils/createChildSubcategory"
 import { useCreateCategory } from "../../hooks/useCreateCategory"
+import { useUpdateCategory } from "../../hooks/useUpdateCategory"
 
-export function CategoryForm() {
+interface CategoryFormProps {
+  initialData?: {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    isActive?: boolean
+    metaTitle?: string | null
+    metaDescription?: string | null
+    orderIndex?: number
+  }
+  isEditing?: boolean
+}
+
+export function CategoryForm({ initialData, isEditing = false }: CategoryFormProps) {
   const router = useRouter()
   const { generateSlug } = useSlugGenerator()
 
-  // Hook para criar categoria
+  // Hooks para criar ou atualizar categoria
   const createCategoryMutation = useCreateCategory()
+  const updateCategoryMutation = useUpdateCategory()
 
-  // Estado da categoria
+  // LOG: Verifica se está em modo edição e se tem ID
+  console.log('[CategoryForm] 🎯 Props recebidas:', { 
+    isEditing, 
+    hasInitialData: !!initialData,
+    categoryId: initialData?.id
+  })
+
+  // Estado da categoria - inicializa com initialData se fornecido
   const [categoryData, setCategoryData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    isActive: true,
-    metaTitle: "",
-    metaDescription: "",
-    orderIndex: 1
+    name: initialData?.name || "",
+    slug: initialData?.slug || "",
+    description: initialData?.description || "",
+    isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
+    metaTitle: initialData?.metaTitle || "",
+    metaDescription: initialData?.metaDescription || "",
+    orderIndex: initialData?.orderIndex || 1
   })
 
   // Estado das subcategorias (INICIALMENTE VAZIO)
@@ -39,12 +62,16 @@ export function CategoryForm() {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Função para salvar TUDO
+  // Função para salvar a categoria
   const handleSubmit = async () => {
     try {
       setIsLoading(true)
 
-      // 1. Cria a categoria principal
+      console.log('[CategoryForm.handleSubmit] 📝 Iniciando submit...')
+      console.log('[CategoryForm.handleSubmit] Modo:', isEditing ? 'EDIÇÃO' : 'CRIAÇÃO')
+      console.log('[CategoryForm.handleSubmit] ID categoria:', initialData?.id)
+
+      // Prepara os dados da categoria
       const categoryToCreate = {
         name: categoryData.name,
         slug: categoryData.slug,
@@ -55,37 +82,31 @@ export function CategoryForm() {
         orderIndex: categoryData.orderIndex
       }
 
-      // Converte a lista plana de subcategorias do UI para a estrutura hierárquica
-      // esperada pelo serviço. A função gera slug, preserva ordem entre irmãos e
-      // aninha `children` recursivamente.
+      // Converte subcategorias para estrutura hierárquica
       const hierarchicalSubcategories = convertFlatToHierarchical(subcategories)
 
-  // === LOG PARA DEBUG ===
-  // Exibe no console o payload que será enviado ao servidor. Remova estes
-  // logs depois que confirmar o comportamento correto.
-  const payloadToSend = {
-    ...categoryToCreate,
-    subcategories: hierarchicalSubcategories
-  }
- 
+      const payloadToSend = {
+        ...categoryToCreate,
+        subcategories: hierarchicalSubcategories
+      }
 
-  // Envia a requisição ao servidor e loga a resposta
-  let createdCategory
-  try {
-    createdCategory = await createCategoryMutation.mutateAsync(payloadToSend)
-   
-  } catch (err) {
-   
-    throw err
-  }
-
-  // Informação adicional para ajudar no diagnóstico
-  if (!hierarchicalSubcategories || hierarchicalSubcategories.length === 0) {
-   
-  } else {
-    
-  }      
-      alert('Erro ao salvar categoria. Verifique o console.')
+      // Usa a mutation apropriada (CREATE ou UPDATE)
+      if (isEditing && initialData?.id) {
+        // Modo edição: usa updateCategoryMutation
+        console.log('[CategoryForm.handleSubmit] ✏️ Usando UPDATE mutation para ID:', initialData.id)
+        await updateCategoryMutation.mutateAsync({
+          id: initialData.id,
+          data: payloadToSend
+        })
+      } else {
+        // Modo criação: usa createCategoryMutation
+        console.log('[CategoryForm.handleSubmit] ➕ Usando CREATE mutation')
+        await createCategoryMutation.mutateAsync(payloadToSend)
+      }
+      // Os mutations cuidam de toast, erro e redirect automaticamente
+    } catch (err) {
+      // Os mutations já tratam erros com toast, então apenas log aqui
+      console.error('[CategoryForm] Erro ao salvar:', err)
     } finally {
       setIsLoading(false)
     }
@@ -271,13 +292,17 @@ export function CategoryForm() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Nova Categoria</h1>
+              <h1 className="text-2xl font-bold">
+                {isEditing ? 'Editar Categoria' : 'Nova Categoria'}
+              </h1>
               <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                 <Link href="/admin" className="hover:text-gray-700">Admin</Link>
                 <ChevronRight className="h-3 w-3" />
                 <Link href="/admin/categories" className="hover:text-gray-700">Categorias</Link>
                 <ChevronRight className="h-3 w-3" />
-                <span className="font-medium">Nova</span>
+                <span className="font-medium">
+                  {isEditing ? categoryData.name : 'Nova'}
+                </span>
               </div>
             </div>
           </div>

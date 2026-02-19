@@ -106,6 +106,47 @@ export const categoryService = {
       console.error(`[categoryService.restoreCategory] Exceção:`, error)
       throw error
     }
+  },
+
+  /**
+   * Atualiza uma categoria existente via API
+   * @param id - ID da categoria
+   * @param data - Dados atualizados da categoria
+   */
+  async updateCategory(id: string, data: any) {
+    console.log(`[categoryService.updateCategory] 📝 Atualizando categoria ID: ${id}`)
+    
+    try {
+      const url = `/api/admin/categories/${id}`
+      console.log(`[categoryService.updateCategory] 📤 Fazendo requisição PATCH para: ${url}`)
+      
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+
+      console.log(`[categoryService.updateCategory] 📥 Status da resposta: ${res.status} ${res.statusText}`)
+
+      if (!res.ok) {
+        const text = await res.text()
+        console.error(`[categoryService.updateCategory] ❌ Erro na resposta:`, text)
+        throw new Error(text || `Erro HTTP ${res.status} ao atualizar categoria`)
+      }
+
+      const json = await res.json()
+      console.log(`[categoryService.updateCategory] ✅ Resposta JSON recebida:`, json)
+      
+      if (json && json.success && json.data) {
+        console.log(`[categoryService.updateCategory] 🎉 Atualização bem-sucedida para:`, json.data.name)
+        return json.data
+      }
+      
+      console.log(`[categoryService.updateCategory] ⚠️ Resposta sem sucesso:`, json)
+      return json
+    } catch (error) {
+      console.error(`[categoryService.updateCategory] ❌ Exceção:`, error)
+      throw error
+    }
   }
 }
-

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { categoryService } from '../services/categoryService'
+import { deleteCategoryServer } from '../services/categoryService.server'
 import { categoryKeys } from './query-keys'
 import { toast } from 'sonner'
 
@@ -15,8 +15,11 @@ export function useDeleteCategory() {
     mutationFn: async ({ id, type }: DeleteCategoryParams) => {
       console.log(`[useDeleteCategory.mutationFn] Iniciando mutação: ID=${id}, type=${type}`)
       try {
-        const result = await categoryService.deleteCategory(id, type)
-        console.log('[useDeleteCategory.mutationFn] Mutação completada com sucesso:', result)
+        const result = await deleteCategoryServer(id, type)
+        console.log('[useDeleteCategory.mutationFn] Mutação completada:', result)
+        if (!result.success) {
+          throw new Error(result.message)
+        }
         return result
       } catch (error) {
         console.error('[useDeleteCategory.mutationFn] Erro na mutação:', error)

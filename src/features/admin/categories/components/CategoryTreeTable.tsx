@@ -294,20 +294,20 @@ const TreeRow = ({
             {category.status === 'active' ? (
               <>
                 {/* Botão Editar */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
-                  onClick={() => console.log('Editar:', category.id)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+                <Link href={`/admin/categories/${category.id}`}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
@@ -315,6 +315,7 @@ const TreeRow = ({
                     <path d="m15 5 4 4" />
                   </svg>
                 </Button>
+                </Link>
 
                 {/* Botão Excluir - Só aparece se não tiver subcategorias */}
                 {canDelete && (

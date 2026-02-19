@@ -5,19 +5,18 @@ import { useCategoryDetail } from '../hooks/useCategoryDetail'
 import { CategoryForm } from '../form/CategoryForm'
 import { Loader2 } from 'lucide-react'
 
-// 🔥 VERIFIQUE: tem 'export default' aqui?
 export default function EditCategoryPage() {
   const params = useParams()
   const categoryId = params.id as string
 
-    console.log('EditCategoryPage - categoryId:', categoryId) // ← ADICIONE
-
+  console.log('[EditCategoryPage] 🚀 Montado com categoryId:', categoryId)
 
   const { data: category, isLoading, error } = useCategoryDetail(categoryId)
 
-  console.log('EditCategoryPage - category:', category) // ← ADICIONE
-  console.log('EditCategoryPage - isLoading:', isLoading) // ← ADICIONE
-  console.log('EditCategoryPage - error:', error) // ← ADICIONE
+  console.log('[EditCategoryPage] 📊 Estado:', { isLoading, hasCategory: !!category, hasError: !!error })
+  if (error) {
+    console.log('[EditCategoryPage] ❌ Erro:', error.message)
+  }
 
   if (isLoading) {
     return (
@@ -44,10 +43,11 @@ export default function EditCategoryPage() {
   }
 
   const formInitialData = {
+    id: category.id,
     name: category.name,
     slug: category.slug || '',
     description: category.description || '',
-    isActive: category.status === 'active',
+    isActive: category.isActive !== false,
     metaTitle: category.metaTitle || '',
     metaDescription: category.metaDescription || '',
     orderIndex: category.orderIndex,

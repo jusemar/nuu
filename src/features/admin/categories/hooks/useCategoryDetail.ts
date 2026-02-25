@@ -15,7 +15,7 @@
  */
 
 import { useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query'
-import { getCategoryByIdServer } from '../services/categoryService.server'
+import { categoryService } from '../services/categoryService'
 import { 
   CategoryWithSubcategories, 
   Category,
@@ -43,25 +43,19 @@ export function useCategoryDetail(
     queryKey: categoryDetailKeys.byId(id || ''),
     queryFn: async () => {
       if (!id) {
-        console.error('[useCategoryDetail] ❌ ID da categoria é necessário')
         throw new Error('ID da categoria é necessário')
       }
       
-      console.log('[useCategoryDetail] 🔍 Iniciando busca para ID:', id)
-      
       try {
-        console.log('[useCategoryDetail] 📡 Chamando getCategoryByIdServer')
-        const result = await getCategoryByIdServer(id)
+        const category = await categoryService.getCategoryWithSubcategories(id)
         
-        if (!result.success || !result.data) {
-          console.error('[useCategoryDetail] ❌ Erro na resposta do servidor:', result.message)
-          throw new Error(result.message || 'Falha ao carregar categoria')
+        if (!category) {
+          throw new Error('Categoria não encontrada')
         }
         
-        console.log('[useCategoryDetail] ✅ Categoria carregada:', result.data?.name)
-        return result.data
+        return category
       } catch (error) {
-        console.error(`[useCategoryDetail] ❌ Erro ao buscar categoria ${id}:`, error)
+        console.error(`Erro ao buscar categoria ${id}:`, error)
         if (error instanceof Error) {
           throw error
         }

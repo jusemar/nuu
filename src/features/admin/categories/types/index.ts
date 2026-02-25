@@ -26,18 +26,19 @@ export type HierarchicalSubcategory = SubcategoryBase & {
 export interface Category {
   id: string;
   name: string;
-  slug: string;           // OBRIGATÓRIO
+  slug: string;
   description?: string | null;
   isActive: boolean;
   metaTitle?: string | null;
   metaDescription?: string | null;
   orderIndex: number;
-  userId: string;
+  // ❌ userId REMOVIDO - não existe no banco
   createdAt: Date;
   updatedAt: Date;
-  // Contagem de subs (para listas)
+  parentId?: string | null;      // ← ADICIONE (estava faltando)
+  level?: number;                // ← ADICIONE (estava faltando)
+  imageUrl?: string | null;      // ← ADICIONE (estava faltando)
   subcategoriesCount?: number;
-  // Subs hierárquicas (quando buscamos detalhes completos)
   subcategories?: HierarchicalSubcategory[];
 }
 
@@ -84,6 +85,8 @@ export interface CategoryFilters {
   isActive?: boolean;
   sortBy?: keyof Category;
   sortOrder?: 'asc' | 'desc';
+  level?: number;       
+  parentId?: string | null; 
 }
 
 export interface PaginatedResponse<T> {

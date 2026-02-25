@@ -37,6 +37,7 @@ import Link from 'next/link'
 import { useDeleteCategory } from '../hooks/useDeleteCategory'
 import { useRestoreCategory } from '../hooks/useRestoreCategory'
 import { useQueryClient } from '@tanstack/react-query'
+import { useCategoryList } from '../hooks/useCategoryList' // ✅ NOVO HOOK IMPORTADO
 
 // Tipo usado na árvore de categorias
 type TreeCategory = {
@@ -51,8 +52,6 @@ type TreeCategory = {
   productCount?: number
   children?: TreeCategory[]
 }
-
-
 
 // Função para filtrar categorias por texto (nome)
 const filterCategoriesByText = (
@@ -294,20 +293,20 @@ const TreeRow = ({
             {category.status === 'active' ? (
               <>
                 {/* Botão Editar */}
-                <Link href={`/admin/categories/${category.id}`}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+                  onClick={() => console.log('Editar:', category.id)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
@@ -315,7 +314,6 @@ const TreeRow = ({
                     <path d="m15 5 4 4" />
                   </svg>
                 </Button>
-                </Link>
 
                 {/* Botão Excluir - Só aparece se não tiver subcategorias */}
                 {canDelete && (
@@ -383,9 +381,8 @@ export function CategoryTreeTable() {
   const [deleteModalType, setDeleteModalType] = useState<'ok' | 'blocked'>('ok')
   const [categoryToDelete, setCategoryToDelete] = useState<TreeCategory | null>(null)
 
-  const [categories, setCategories] = useState<TreeCategory[]>([])
-  const [isLoadingData, setIsLoadingData] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  // ✅ HOOK NOVO - substitui o fetch manual
+  const { data: categoriesData, isLoading: isLoadingData, error: loadError } = useCategoryList()
 
   // Estados para paginação
   const [currentPage, setCurrentPage] = useState(1)
@@ -396,10 +393,11 @@ export function CategoryTreeTable() {
   const { mutate: restoreCategory } = useRestoreCategory()
   const queryClient = useQueryClient()
 
-  const buildTreeFromFlat = (items: any[]): TreeCategory[] => {
+  // ✅ Função para converter dados do hook para TreeCategory
+  const convertToTreeCategory = (data: any[]): TreeCategory[] => {
     const map = new Map<string, TreeCategory>()
 
-    items.forEach((item) => {
+    data.forEach((item) => {
       map.set(item.id, {
         id: item.id,
         name: item.name,
@@ -433,29 +431,8 @@ export function CategoryTreeTable() {
     return roots
   }
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setIsLoadingData(true)
-        setLoadError(null)
-
-        const res = await fetch('/api/admin/categories')
-        if (!res.ok) throw new Error('Erro ao carregar categorias')
-
-        const data = await res.json()
-        const tree = buildTreeFromFlat(data || [])
-        setCategories(tree)
-      } catch (error: any) {
-        console.error('Erro ao carregar categorias (admin):', error)
-        setLoadError(error.message || 'Erro ao carregar categorias')
-        setCategories([])
-      } finally {
-        setIsLoadingData(false)
-      }
-    }
-
-    load()
-  }, [])
+  // ✅ Dados convertidos
+  const categories = categoriesData ? convertToTreeCategory(categoriesData) : []
 
   const toggleExpand = (id: string) => {
     setExpandedItems((prev) => {
@@ -486,45 +463,18 @@ export function CategoryTreeTable() {
 
   // Função para confirmar exclusão
   const handleConfirmDelete = (type: 'soft' | 'hard') => {
-    console.log(`[CategoryTreeTable.handleConfirmDelete] Iniciando delete, tipo: ${type}`)
-    console.log(`[CategoryTreeTable.handleConfirmDelete] Categoria:`, categoryToDelete)
-    
-    if (!categoryToDelete) {
-      console.warn('[CategoryTreeTable.handleConfirmDelete] Nenhuma categoria selecionada!')
-      return
-    }
-    
-    console.log(`[CategoryTreeTable.handleConfirmDelete] Chamando deleteCategory mutation com ID: ${categoryToDelete.id}`)
+    if (!categoryToDelete) return
     
     deleteCategory(
       { id: categoryToDelete.id, type },
       {
-        onSuccess: (data) => {
-          console.log('[CategoryTreeTable.handleConfirmDelete] onSuccess - Delete realizado com sucesso:', data)
+        onSuccess: () => {
           setDeleteModalOpen(false)
           setCategoryToDelete(null)
-          console.log('[CategoryTreeTable.handleConfirmDelete] Modal e categoria fechados')
-          
-          // Recarrega as categorias
-          const load = async () => {
-            try {
-              console.log('[CategoryTreeTable.handleConfirmDelete] Carregando categorias atualizadas...')
-              const res = await fetch('/api/admin/categories')
-              if (!res.ok) throw new Error('Erro ao carregar categorias')
-              const data = await res.json()
-              console.log('[CategoryTreeTable.handleConfirmDelete] Categorias carregadas, construindo árvore...')
-              const tree = buildTreeFromFlat(data || [])
-              setCategories(tree)
-              console.log('[CategoryTreeTable.handleConfirmDelete] Árvore construída e estado atualizado')
-            } catch (error) {
-              console.error('[CategoryTreeTable.handleConfirmDelete] Erro ao recarregar categorias:', error)
-            }
-          }
-          load()
+          queryClient.invalidateQueries({ queryKey: ['categories'] })
         },
         onError: (error: any) => {
-          console.error('[CategoryTreeTable.handleConfirmDelete] onError - Erro ao deletar:', error)
-          console.error('[CategoryTreeTable.handleConfirmDelete] Mensagem de erro:', error?.message)
+          console.error('[CategoryTreeTable] Erro ao deletar:', error)
         }
       }
     )
@@ -532,32 +482,12 @@ export function CategoryTreeTable() {
 
   // Função para restaurar uma categoria inativa
   const handleRestoreClick = (categoryId: string) => {
-    console.log(`[CategoryTreeTable.handleRestoreClick] Iniciando restauração da categoria ID: ${categoryId}`)
-    
     restoreCategory(categoryId, {
-      onSuccess: (data) => {
-        console.log('[CategoryTreeTable.handleRestoreClick] onSuccess - Categoria restaurada com sucesso:', data)
-        
-        // Recarrega as categorias
-        const load = async () => {
-          try {
-            console.log('[CategoryTreeTable.handleRestoreClick] Carregando categorias atualizadas...')
-            const res = await fetch('/api/admin/categories')
-            if (!res.ok) throw new Error('Erro ao carregar categorias')
-            const data = await res.json()
-            console.log('[CategoryTreeTable.handleRestoreClick] Categorias carregadas, construindo árvore...')
-            const tree = buildTreeFromFlat(data || [])
-            setCategories(tree)
-            console.log('[CategoryTreeTable.handleRestoreClick] Árvore construída e estado atualizado')
-          } catch (error) {
-            console.error('[CategoryTreeTable.handleRestoreClick] Erro ao recarregar categorias:', error)
-          }
-        }
-        load()
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
       },
       onError: (error: any) => {
-        console.error('[CategoryTreeTable.handleRestoreClick] onError - Erro ao restaurar:', error)
-        console.error('[CategoryTreeTable.handleRestoreClick] Mensagem de erro:', error?.message)
+        console.error('[CategoryTreeTable] Erro ao restaurar:', error)
       }
     })
   }
@@ -593,8 +523,38 @@ export function CategoryTreeTable() {
     setCurrentPage(1)
   }, [searchTerm, statusFilter, itemsPerPage])
 
+  // Estados de loading e erro
+  if (isLoadingData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <p className="text-sm text-slate-500">Carregando categorias...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3 text-red-600">
+          <p className="text-sm font-medium">Erro ao carregar categorias</p>
+          <p className="text-xs text-red-500">{loadError.message}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.reload()}
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="pace-y-4 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-4 px-4 sm:px-6 lg:px-8">
       {/* Header com título e botão Nova Categoria */}
       <div className="flex items-center justify-between">
         <div>

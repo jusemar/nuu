@@ -20,7 +20,7 @@ import {
   uuid, 
   boolean, 
   integer,
-  index  // ← FALTANDO ESTE IMPORT!
+  index  
 } from "drizzle-orm/pg-core";
 
 export const categoryTable = pgTable("category", {

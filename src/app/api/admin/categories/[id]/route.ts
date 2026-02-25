@@ -17,12 +17,7 @@ export async function DELETE(
 
     // Validar se a categoria existe
     const category = await db
-      .select({
-        id: categoryTable.id,
-        name: categoryTable.name,
-        parentId: categoryTable.parentId,
-        isActive: categoryTable.isActive
-      })
+      .select()
       .from(categoryTable)
       .where(eq(categoryTable.id, id))
       .limit(1)
@@ -48,11 +43,7 @@ export async function DELETE(
           updatedAt: new Date()
         })
         .where(eq(categoryTable.id, id))
-        .returning({
-          id: categoryTable.id,
-          name: categoryTable.name,
-          isActive: categoryTable.isActive
-        })
+        .returning()
 
       console.log(`[API DELETE] Restore completado para:`, result[0]?.name)
       return NextResponse.json({
@@ -64,7 +55,7 @@ export async function DELETE(
 
     // Verificar se tem subcategorias (apenas para soft/hard delete)
     const hasChildren = await db
-      .select({ id: categoryTable.id })
+      .select()
       .from(categoryTable)
       .where(eq(categoryTable.parentId, id))
       .limit(1)
@@ -89,11 +80,7 @@ export async function DELETE(
           updatedAt: new Date()
         })
         .where(eq(categoryTable.id, id))
-        .returning({
-          id: categoryTable.id,
-          name: categoryTable.name,
-          isActive: categoryTable.isActive
-        })
+        .returning()
 
       console.log(`[API DELETE] Soft delete completado para:`, result[0]?.name)
       return NextResponse.json({
@@ -107,10 +94,7 @@ export async function DELETE(
       const result = await db
         .delete(categoryTable)
         .where(eq(categoryTable.id, id))
-        .returning({
-          id: categoryTable.id,
-          name: categoryTable.name
-        })
+        .returning()
 
       console.log(`[API DELETE] Hard delete completado para:`, result[0]?.name)
       return NextResponse.json({
@@ -129,114 +113,6 @@ export async function DELETE(
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
     return NextResponse.json(
       { success: false, message: `Erro ao deletar categoria: ${errorMessage}` },
-      { status: 500 }
-    )
-  }
-}
-
-/**
- * Handler PATCH para atualizar categoria
- * Atualiza os dados básicos da categoria (nome, slug, descrição, etc)
- */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const { id } = params
-    const body = await request.json()
-
-    const {
-      name,
-      slug,
-      description,
-      isActive,
-      metaTitle,
-      metaDescription,
-      orderIndex
-    } = body || {}
-
-    console.log(`[API PATCH] Iniciando atualização para categoria ID: ${id}`)
-
-    // Validar se a categoria existe
-    const existingCategory = await db
-      .select({
-        id: categoryTable.id,
-        name: categoryTable.name
-      })
-      .from(categoryTable)
-      .where(eq(categoryTable.id, id))
-      .limit(1)
-
-    if (!existingCategory || existingCategory.length === 0) {
-      console.log(`[API PATCH] Categoria ID ${id} não encontrada`)
-      return NextResponse.json(
-        { success: false, message: 'Categoria não encontrada' },
-        { status: 404 }
-      )
-    }
-
-    console.log(`[API PATCH] Categoria encontrada:`, existingCategory[0].name)
-
-    // Preparar dados para atualização
-    const updateData: any = {
-      updatedAt: new Date()
-    }
-
-    if (name !== undefined && name !== null) {
-      updateData.name = name
-    }
-    if (slug !== undefined && slug !== null) {
-      updateData.slug = slug
-    }
-    if (description !== undefined) {
-      updateData.description = description
-    }
-    if (isActive !== undefined && isActive !== null) {
-      updateData.isActive = isActive
-    }
-    if (metaTitle !== undefined) {
-      updateData.metaTitle = metaTitle
-    }
-    if (metaDescription !== undefined) {
-      updateData.metaDescription = metaDescription
-    }
-    if (orderIndex !== undefined && orderIndex !== null) {
-      updateData.orderIndex = orderIndex
-    }
-
-    console.log(`[API PATCH] Dados para atualizar:`, updateData)
-
-    // Atualizar a categoria
-    const result = await db
-      .update(categoryTable)
-      .set(updateData)
-      .where(eq(categoryTable.id, id))
-      .returning({
-        id: categoryTable.id,
-        name: categoryTable.name,
-        slug: categoryTable.slug,
-        description: categoryTable.description,
-        isActive: categoryTable.isActive,
-        metaTitle: categoryTable.metaTitle,
-        metaDescription: categoryTable.metaDescription,
-        orderIndex: categoryTable.orderIndex,
-        createdAt: categoryTable.createdAt,
-        updatedAt: categoryTable.updatedAt
-      })
-
-    console.log(`[API PATCH] Categoria atualizada com sucesso:`, result[0]?.name)
-
-    return NextResponse.json({
-      success: true,
-      data: result[0],
-      message: 'Categoria atualizada com sucesso'
-    })
-  } catch (error) {
-    console.error('[API PATCH] Erro:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-    return NextResponse.json(
-      { success: false, message: `Erro ao atualizar categoria: ${errorMessage}` },
       { status: 500 }
     )
   }

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { restoreCategoryServer } from '../services/categoryService.server'
+import * as categoryService  from '../services/categoryService'
 import { categoryKeys } from './query-keys'
 import { toast } from 'sonner'
 
@@ -10,11 +10,8 @@ export function useRestoreCategory() {
     mutationFn: async (id: string) => {
       console.log(`[useRestoreCategory.mutationFn] Iniciando restauração: ID=${id}`)
       try {
-        const result = await restoreCategoryServer(id)
-        console.log('[useRestoreCategory.mutationFn] Restauração completada:', result)
-        if (!result.success) {
-          throw new Error(result.message)
-        }
+        const result = await categoryService.restoreCategory(id)
+        console.log('[useRestoreCategory.mutationFn] Restauração completada com sucesso:', result)
         return result
       } catch (error) {
         console.error('[useRestoreCategory.mutationFn] Erro na mutação:', error)

@@ -175,18 +175,15 @@ export function useCreateCategory(
         createdCategory
       )
       
-      // Toast de sucesso em VERDE
+      // Toast de sucesso
       toast.success(toastConfig.success.title, {
         description: toastConfig.success.description,
         duration: toastConfig.success.duration,
-        style: {
-          background: '#10b981',
-          color: '#ffffff'
+        action: {
+          label: 'Ver',
+          onClick: () => router.push(`/admin/categories/${createdCategory.id}`)
         }
       })
-      
-      // Redireciona para a lista de categorias
-      router.push('/admin/categories')
       
       // Chama callback personalizado se fornecido
       options?.onSuccess?.(createdCategory, variables, context)

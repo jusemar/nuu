@@ -4,7 +4,7 @@
 
 // Importa o componente de edição que está na nossa feature
 // O caminho @/ aponta para a pasta src/
-import EditCategoryPage from '@/features/admin/categories/routes/EditCategoryPage'
+import { EditCategoryPage } from '@/features/admin/categories/routes/EditCategoryPage'
 
 // Esta é a página que será renderizada quando alguém acessar a URL
 // O Next.js automaticamente passa o parâmetro id para o componente

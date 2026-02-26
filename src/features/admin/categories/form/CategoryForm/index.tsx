@@ -85,7 +85,7 @@ export function CategoryForm() {
   } else {
     
   }      
-      alert('Erro ao salvar categoria. Verifique o console.')
+    
     } finally {
       setIsLoading(false)
     }

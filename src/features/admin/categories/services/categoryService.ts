@@ -206,10 +206,13 @@ export async function createCategory(data: CreateCategoryInput) {
     if (data.subcategories?.length) {
       await insertSubcategories(data.subcategories, newCategory.id)
     }
-
-    return newCategory
+   
+    return {
+      ...newCategory,
+      orderIndex: newCategory.orderIndex ?? 1
+    }
   } catch (error) {
-    console.error('❌ [createCategory] Erro:', error)
+    
     throw new Error('Falha ao criar categoria')
   }
 }

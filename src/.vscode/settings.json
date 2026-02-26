@@ -1,18 +1,23 @@
 {
-    "eslint.workingDirectories": [
-        {
-            "mode": "auto"
-        }
-    ],
-    "eslint.validade":[
-        "javascript",
-        "javascriptreact",
-        "typescript",
-        "typescriptreact"
-    ],
-    "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "explicit"
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
     }
+  ],
+  "eslint.validade": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
 
-    
+  // Define o Prettier como formatador padrão
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Formata automaticamente ao salvar
+  "editor.formatOnSave": true,
+  // Formata automaticamente ao colar
+  "editor.formatOnPaste": true
 }

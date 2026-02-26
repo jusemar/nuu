@@ -50,7 +50,7 @@ async function insertSubcategories(subs: any[], parentId?: string) {
 // 1. BUSCAR TODAS AS CATEGORIAS (LISTAGEM)
 // =====================================================================
 export async function getAllCategories(): Promise<Category[]> {
-   console.log('🔍 [getAllCategories] Função executada')
+ 
   try {
     const categories = await db
       .select({
@@ -69,12 +69,7 @@ export async function getAllCategories(): Promise<Category[]> {
         updatedAt: categoryTable.updatedAt,
       })
       .from(categoryTable)
-      .orderBy(desc(categoryTable.updatedAt))
-
- console.log('📦 CATEGORIAS DO BANCO (ORDENADAS):')
-    categories.forEach((cat, index) => {
-      console.log(`${index + 1}. ${cat.name} - ${cat.updatedAt}`)
-    })   
+      .orderBy(desc(categoryTable.updatedAt))   
 
     // Converte os dados para o formato esperado pelo tipo Category
     return categories.map(cat => ({

@@ -27,14 +27,7 @@ export function useCategoryList(
     queryFn: async () => {
       try {
         // Busca categorias do banco (já ordenadas por updatedAt)
-        const categories = await getAllCategories()
-         console.log('Dados recebidos do service:', 
-      categories.map(c => ({ 
-        name: c.name, 
-        updatedAt: c.updatedAt 
-      }))
-    )
-        
+        const categories = await getAllCategories()        
         
         // Aplica filtros
         let filtered = [...categories]

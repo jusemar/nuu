@@ -339,11 +339,11 @@ const TreeRow = ({
             {category.status === "active" ? (
               <>
                 {/* Botão Editar */}
+                <Link href={`/admin/categories/${category.id}`}>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
-                  onClick={() => console.log("Editar:", category.id)}
+                  className="h-7 w-7 text-slate-500 hover:bg-blue-50 hover:text-blue-600"               
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -360,6 +360,7 @@ const TreeRow = ({
                     <path d="m15 5 4 4" />
                   </svg>
                 </Button>
+                </Link>
 
                 {/* Botão Excluir - Só aparece se não tiver subcategorias */}
                 {canDelete && (

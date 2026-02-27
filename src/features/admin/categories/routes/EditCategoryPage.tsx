@@ -47,7 +47,7 @@ export default function EditCategoryPage() {
     name: category.name,
     slug: category.slug || '',
     description: category.description || '',
-    isActive: category.status === 'active',
+    isActive: category.isActive,
     metaTitle: category.metaTitle || '',
     metaDescription: category.metaDescription || '',
     orderIndex: category.orderIndex,

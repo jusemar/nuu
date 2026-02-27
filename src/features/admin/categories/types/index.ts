@@ -31,8 +31,7 @@ export interface Category {
   isActive: boolean;
   metaTitle?: string | null;
   metaDescription?: string | null;
-  orderIndex: number;
-  // ❌ userId REMOVIDO - não existe no banco
+  orderIndex: number;  
   createdAt: Date;
   updatedAt: Date;
   parentId?: string | null;      // ← ADICIONE (estava faltando)

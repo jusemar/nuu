@@ -15,37 +15,63 @@ import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory"
 import { updateSubcategoryName } from "./utils/updateSubcategory"
 import { createChildSubcategory, calculateChildInsertPosition } from "./utils/createChildSubcategory"
 import { useCreateCategory } from "../../hooks/useCreateCategory"
+import { useUpdateCategory } from "../../hooks/useUpdateCategory" // ← Importar hook de edição
 
-export function CategoryForm() {
+// =====================================================================
+// PASSO 1: Definir as props que o componente pode receber
+// =====================================================================
+interface CategoryFormProps {
+  initialData?: {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    isActive?: boolean
+    metaTitle?: string | null
+    metaDescription?: string | null
+    orderIndex?: number
+  }
+  isEditing?: boolean
+}
+
+// =====================================================================
+// PASSO 2: Componente principal (agora recebendo props)
+// =====================================================================
+export function CategoryForm({ initialData, isEditing = false }: CategoryFormProps) {
   const router = useRouter()
   const { generateSlug } = useSlugGenerator()
 
-  // Hook para criar categoria
+  // Hooks para criar ou atualizar categoria
   const createCategoryMutation = useCreateCategory()
+  const updateCategoryMutation = useUpdateCategory() // ← Hook de edição
 
-  // Estado da categoria
+  // =====================================================================
+  // PASSO 3: Estado da categoria (agora usa initialData se existir)
+  // =====================================================================
   const [categoryData, setCategoryData] = useState({
-    name: "",
-    slug: "",
-    description: "",
-    isActive: true,
-    metaTitle: "",
-    metaDescription: "",
-    orderIndex: 1
+    name: initialData?.name || "",
+    slug: initialData?.slug || "",
+    description: initialData?.description || "",
+    isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
+    metaTitle: initialData?.metaTitle || "",
+    metaDescription: initialData?.metaDescription || "",
+    orderIndex: initialData?.orderIndex || 1
   })
 
-  // Estado das subcategorias (INICIALMENTE VAZIO)
+  // Estado das subcategorias
   const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([])
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Função para salvar TUDO
+  // =====================================================================
+  // PASSO 4: Função para salvar (agora decide entre criar ou editar)
+  // =====================================================================
   const handleSubmit = async () => {
     try {
       setIsLoading(true)
 
-      // 1. Cria a categoria principal
-      const categoryToCreate = {
+      // Prepara os dados da categoria
+      const categoryToSave = {
         name: categoryData.name,
         slug: categoryData.slug,
         description: categoryData.description || undefined,
@@ -55,94 +81,40 @@ export function CategoryForm() {
         orderIndex: categoryData.orderIndex
       }
 
-      // Converte a lista plana de subcategorias do UI para a estrutura hierárquica
-      // esperada pelo serviço. A função gera slug, preserva ordem entre irmãos e
-      // aninha `children` recursivamente.
+      // Converte subcategorias para estrutura hierárquica
       const hierarchicalSubcategories = convertFlatToHierarchical(subcategories)
 
-  // === LOG PARA DEBUG ===
-  // Exibe no console o payload que será enviado ao servidor. Remova estes
-  // logs depois que confirmar o comportamento correto.
-  const payloadToSend = {
-    ...categoryToCreate,
-    subcategories: hierarchicalSubcategories
-  }
- 
+      const payloadToSend = {
+        ...categoryToSave,
+        subcategories: hierarchicalSubcategories
+      }
 
-  // Envia a requisição ao servidor e loga a resposta
-  let createdCategory
-  try {
-    createdCategory = await createCategoryMutation.mutateAsync(payloadToSend)
-   
-  } catch (err) {
-   
-    throw err
-  }
+      // Decide qual mutation usar
+      if (isEditing && initialData?.id) {
+        // Modo edição: chama updateCategory
+        await updateCategoryMutation.mutateAsync({
+          id: initialData.id,
+          data: payloadToSend
+        })
+      } else {
+        // Modo criação: chama createCategory
+        await createCategoryMutation.mutateAsync(payloadToSend)
+      }
 
-  // Informação adicional para ajudar no diagnóstico
-  if (!hierarchicalSubcategories || hierarchicalSubcategories.length === 0) {
-   
-  } else {
-    
-  }      
-    
+      // Redireciona para a listagem após sucesso
+      router.push('/admin/categories')
+      
+    } catch (err) {
+      console.error('Erro ao salvar categoria:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Função para converter subcategorias da UI para API
-  const convertSubcategoriesToApiFormat = (
-    subcats: SubcategoryItem[], 
-    categoryId: string, 
-    parentId: string | null = null
-  ) => {
-    const requests: any[] = []
-    
-    const levelSubcats = subcats.filter(sub => 
-      parentId === null ? !sub.parent : sub.parent === parentId
-    )
-    
-    const sorted = [...levelSubcats].sort((a, b) => {
-      const indexA = subcats.indexOf(a)
-      const indexB = subcats.indexOf(b)
-      return indexA - indexB
-    })
-    
-    sorted.forEach((subcat, index) => {
-      const generatedSlug = subcat.name
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-
-      requests.push({
-        name: subcat.name,
-        slug: generatedSlug,
-        level: subcat.level,
-        parentId: parentId,
-        categoryId: categoryId,
-        orderIndex: index + 1,
-        isActive: true
-      })
-      
-      // Processa filhos
-      const children = subcats.filter(child => child.parent === subcat.id)
-      if (children.length > 0) {
-        const childRequests = convertSubcategoriesToApiFormat(subcats, categoryId, subcat.id)
-        requests.push(...childRequests)
-      }
-    })
-    
-    return requests
-  }
-
-  // === NOVA FUNÇÃO: converte lista plana do UI para estrutura hierárquica ===
-  // Produz objetos compatíveis com `HierarchicalSubcategory`:
-  // { name, slug, level, parentId?, orderIndex, isActive, children? }
+  // =====================================================================
+  // PASSO 5: Função para converter subcategorias (já existente)
+  // =====================================================================
   const convertFlatToHierarchical = (subcats: SubcategoryItem[]) => {
-    // Função recursiva que monta nós a partir de um parentId
     const build = (parentId: string | null) => {
       const levelChildren = subcats
         .filter(s => (parentId === null ? !s.parent : s.parent === parentId))
@@ -175,7 +147,9 @@ export function CategoryForm() {
     return build(null)
   }
 
-  // Funções existentes do seu código (mantidas)
+  // =====================================================================
+  // PASSO 6: Handlers de subcategoria (já existentes, mantidos iguais)
+  // =====================================================================
   const handleAddSubcategory = (name: string) => {
     if (!name.trim()) return
     const newSubcategory: SubcategoryItem = {
@@ -261,6 +235,9 @@ export function CategoryForm() {
   const directSubcategories = subcategories.filter(s => s.level === 1).length
   const maxLevel = Math.max(...subcategories.map(s => s.level), 0)
 
+  // =====================================================================
+  // PASSO 7: Renderização (agora com título dinâmico)
+  // =====================================================================
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Cabeçalho */}
@@ -271,13 +248,17 @@ export function CategoryForm() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Nova Categoria</h1>
+              <h1 className="text-2xl font-bold">
+                {isEditing ? 'Editar Categoria' : 'Nova Categoria'}
+              </h1>
               <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                 <Link href="/admin" className="hover:text-gray-700">Admin</Link>
                 <ChevronRight className="h-3 w-3" />
                 <Link href="/admin/categories" className="hover:text-gray-700">Categorias</Link>
                 <ChevronRight className="h-3 w-3" />
-                <span className="font-medium">Nova</span>
+                <span className="font-medium">
+                  {isEditing ? categoryData.name : 'Nova'}
+                </span>
               </div>
             </div>
           </div>
@@ -290,7 +271,9 @@ export function CategoryForm() {
             }`}>
               {categoryData.isActive ? '● Ativa' : '● Rascunho'}
             </div>
-            <Button variant="outline" size="sm">Cancelar</Button>
+            <Button variant="outline" size="sm" onClick={() => router.push('/admin/categories')}>
+              Cancelar
+            </Button>
             <Button 
               size="sm"
               onClick={handleSubmit}
@@ -303,7 +286,7 @@ export function CategoryForm() {
         </div>
       </div>
 
-      {/* Layout */}
+      {/* Layout (igual ao anterior) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Coluna esquerda */}
         <div className="lg:col-span-4 space-y-6">

@@ -1,18 +1,4 @@
-/**
- * Hook para carregar detalhes de uma categoria específica
- *
- * Responsabilidades:
- * - Buscar categoria por ID/Slug
- * - Carregar subcategorias aninhadas
- * - Gerenciar estado de loading/error
- * - Cache individual por categoria
- * - Pré-carregamento (prefetch)
- *
- * Casos de uso:
- * - Página de edição de categoria
- * - Preview de categoria
- * - Formulário com subcategorias
- */
+import { Category, HierarchicalSubcategory } from "../types";
 
 import {
   useQuery,
@@ -20,7 +6,6 @@ import {
   UseQueryOptions,
 } from "@tanstack/react-query";
 import { getCategoryById, getAllCategories } from '../services/categoryService'
-import { Category } from "../types";
 
 // Chaves de query específicas para detalhes
 export const categoryDetailKeys = {
@@ -40,15 +25,19 @@ export function useCategoryDetail(
   id: string | undefined,
   options?: UseQueryOptions<Category, Error>,
 ) {
+
+  
   return useQuery<Category, Error>({
     queryKey: categoryDetailKeys.byId(id || ""),
-    queryFn: async () => {
+    queryFn: async () => {      
       if (!id) {
         throw new Error("ID da categoria é necessário");
       }
 
       try {
         const category = await getCategoryById(id);
+         console.log('📦 Dados retornados do service:', category)
+        console.log('🔽 Subcategorias:', category?.subcategories)
 
         if (!category) {
           throw new Error("Categoria não encontrada");
@@ -124,38 +113,35 @@ export function useCategoryBySlug(
   });
 }
 
-
 /**
  * Hook específico para subcategorias de uma categoria
  * Útil quando só precisa das subcategorias, não dos dados da categoria
  */
 export function useCategorySubcategories(
   categoryId: string | undefined,
-  options?: UseQueryOptions<Category[], Error>,
+  options?: UseQueryOptions<HierarchicalSubcategory[], Error>
 ) {
-  return useQuery<Category[], Error>({
-    queryKey: categoryDetailKeys.subcategories(categoryId || ""),
+  return useQuery<HierarchicalSubcategory[], Error>({
+    queryKey: categoryDetailKeys.subcategories(categoryId || ''),
     queryFn: async () => {
       if (!categoryId) {
-        throw new Error("ID da categoria é necessário");
+        throw new Error('ID da categoria é necessário')
       }
-
+      
       try {
-        const category = await getCategoryById(categoryId);
-        return category?.subcategories || [];
+        const category = await getCategoryById(categoryId)
+        // ⚠️ category.subcategories é HierarchicalSubcategory[] (veio do service)
+        return category?.subcategories || []
       } catch (error) {
-        console.error(
-          `Erro ao buscar subcategorias da categoria ${categoryId}:`,
-          error,
-        );
-        throw new Error("Falha ao carregar subcategorias");
+        console.error(`Erro ao buscar subcategorias da categoria ${categoryId}:`, error)
+        throw new Error('Falha ao carregar subcategorias')
       }
     },
     enabled: !!categoryId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
-    ...options,
-  });
+    ...options
+  })
 }
 
 /**

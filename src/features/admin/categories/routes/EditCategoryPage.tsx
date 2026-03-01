@@ -5,20 +5,15 @@ import { useCategoryDetail } from '../hooks/useCategoryDetail'
 import { CategoryForm } from '../form/CategoryForm'
 import { Loader2 } from 'lucide-react'
 
-// 🔥 VERIFIQUE: tem 'export default' aqui?
 export default function EditCategoryPage() {
   const params = useParams()
   const categoryId = params.id as string
 
-    console.log('EditCategoryPage - categoryId:', categoryId) // ← ADICIONE
-
-
   const { data: category, isLoading, error } = useCategoryDetail(categoryId)
 
-  console.log('EditCategoryPage - category:', category) // ← ADICIONE
-  console.log('EditCategoryPage - isLoading:', isLoading) // ← ADICIONE
-  console.log('EditCategoryPage - error:', error) // ← ADICIONE
-
+  // ================================================================
+  // 1. ENQUANTO CARREGA
+  // ================================================================
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -30,6 +25,9 @@ export default function EditCategoryPage() {
     )
   }
 
+  // ================================================================
+  // 2. SE HOUVER ERRO
+  // ================================================================
   if (error || !category) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -43,6 +41,9 @@ export default function EditCategoryPage() {
     )
   }
 
+  // ================================================================
+  // 3. PREPARA DADOS PARA O FORMULÁRIO
+  // ================================================================
   const formInitialData = {
     name: category.name,
     slug: category.slug || '',
@@ -51,8 +52,16 @@ export default function EditCategoryPage() {
     metaTitle: category.metaTitle || '',
     metaDescription: category.metaDescription || '',
     orderIndex: category.orderIndex,
+    subcategories: category.subcategories || [] // Passa as subcategorias para o formulário
   }
 
+
+  console.log('🚀 Dados que vão para o formulário:', formInitialData)
+console.log('📦 Subcategorias que vão para o formulário:', category.subcategories)
+
+  // ================================================================
+  // 4. RENDERIZA O FORMULÁRIO COM OS DADOS
+  // ================================================================
   return (
     <div className="space-y-4 px-4 sm:px-6 lg:px-8">
       <div>

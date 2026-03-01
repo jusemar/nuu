@@ -19,6 +19,7 @@ import {
   DragOverlay,
 } from '@dnd-kit/core'
 
+
 export type SubcategoryItem = {
   id: string
   name: string
@@ -59,6 +60,8 @@ export function SubcategoriesCard({
   onAddChildSubcategory,
   onReorderSubcategories
 }: SubcategoriesCardProps) {
+
+   console.log('🔵 SubcategoriesCard recebeu:', subcategories)
   const [isCreatingNew, setIsCreatingNew] = useState(false)
   const [newSubcategoryName, setNewSubcategoryName] = useState("")
 

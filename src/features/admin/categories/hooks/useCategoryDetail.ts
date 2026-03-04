@@ -36,9 +36,7 @@ export function useCategoryDetail(
 
       try {
         const category = await getCategoryById(id);
-         console.log('📦 Dados retornados do service:', category)
-        console.log('🔽 Subcategorias:', category?.subcategories)
-
+         
         if (!category) {
           throw new Error("Categoria não encontrada");
         }

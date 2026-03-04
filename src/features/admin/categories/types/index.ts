@@ -34,9 +34,9 @@ export interface Category {
   orderIndex: number;  
   createdAt: Date;
   updatedAt: Date;
-  parentId?: string | null;      // ← ADICIONE (estava faltando)
-  level?: number;                // ← ADICIONE (estava faltando)
-  imageUrl?: string | null;      // ← ADICIONE (estava faltando)
+  parentId?: string | null;      
+  level?: number;               
+  imageUrl?: string | null;    
   subcategoriesCount?: number;
   subcategories?: HierarchicalSubcategory[];
 }

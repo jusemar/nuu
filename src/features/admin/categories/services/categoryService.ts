@@ -158,40 +158,63 @@ export async function getCategoryById(id: string): Promise<Category | null> {
       ORDER BY level, order_index;
     `)
 
-    console.log('📦 CTE retornou:', allSubs.rows.length, 'subcategorias')
-
     const category = mainCategory[0]
-    
-    return {
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      description: category.description,
-      parentId: category.parentId,
-      level: category.level ?? 0,
-      orderIndex: category.orderIndex ?? 1,
-      imageUrl: category.imageUrl,
-      metaTitle: category.metaTitle,
-      metaDescription: category.metaDescription,
-      isActive: category.isActive,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt,
-      subcategories: allSubs.rows.map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        slug: row.slug,
-        description: row.description,
-        parentId: row.parent_id,
-        level: row.level,
-        orderIndex: row.order_index,
-        imageUrl: row.image_url,
-        metaTitle: row.meta_title,
-        metaDescription: row.meta_description,
-        isActive: row.is_active,
-        createdAt: new Date(row.created_at),
-        updatedAt: new Date(row.updated_at),
-      }))
+
+// Cria um mapa de todos os itens para fácil acesso
+const itemMap = new Map()
+allSubs.rows.forEach((row: any) => {
+  itemMap.set(row.id, {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    parentId: row.parent_id,
+    level: row.level,
+    orderIndex: row.order_index,
+    imageUrl: row.image_url,
+    metaTitle: row.meta_title,
+    metaDescription: row.meta_description,
+    isActive: row.is_active,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    children: [] // Inicia com array vazio para os filhos
+  })
+})
+
+// Constrói a árvore: para cada item, coloca no children do pai
+const roots: any[] = []
+itemMap.forEach((item) => {
+  if (item.parentId) {
+    const parent = itemMap.get(item.parentId)
+    if (parent) {
+      parent.children.push(item)
+    } else {
+      // Se não encontrar o pai, considera como raiz (fallback)
+      roots.push(item)
     }
+  } else {
+    roots.push(item)
+  }
+})
+
+return {
+  id: category.id,
+  name: category.name,
+  slug: category.slug,
+  description: category.description,
+  parentId: category.parentId,
+  level: category.level ?? 0,
+  orderIndex: category.orderIndex ?? 1,
+  imageUrl: category.imageUrl,
+  metaTitle: category.metaTitle,
+  metaDescription: category.metaDescription,
+  isActive: category.isActive,
+  createdAt: category.createdAt,
+  updatedAt: category.updatedAt,
+  subcategories: roots // ← AGORA É UMA ÁRVORE!
+}
+    
+
   } catch (error) {
     console.error('❌ [getCategoryById] Erro:', error)
     throw new Error('Falha ao carregar categoria')
@@ -229,9 +252,11 @@ export async function createCategory(data: CreateCategoryInput) {
       orderIndex: newCategory.orderIndex ?? 1,
     };
   } catch (error) {
-    throw new Error("Falha ao criar categoria");
-  }
+  console.error('❌ [createCategory] Erro detalhado:', error)
+  throw new Error(`Falha ao criar categoria: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
 }
+}
+
 
 // =====================================================================
 // 4. ATUALIZAR CATEGORIA EXISTENTE

@@ -261,33 +261,55 @@ export async function createCategory(data: CreateCategoryInput) {
 // =====================================================================
 // 4. ATUALIZAR CATEGORIA EXISTENTE
 // =====================================================================
-export async function updateCategory(id: string, data: UpdateCategoryInput) {
+export async function updateCategory(id: string, data: UpdateCategoryInput) {eu vou 
+  
   try {
+    // =================================================================
+    // PASSO 1: Atualiza a categoria principal
+    // =================================================================
     const updateData: any = {
-      updatedAt: new Date(),
-    };
+      updatedAt: new Date() // Sempre atualiza a data de modificação
+    }
 
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.slug !== undefined) updateData.slug = data.slug;
-    if (data.description !== undefined)
-      updateData.description = data.description;
-    if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle;
-    if (data.metaDescription !== undefined)
-      updateData.metaDescription = data.metaDescription;
-    if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex;
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.slug !== undefined) updateData.slug = data.slug
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.isActive !== undefined) updateData.isActive = data.isActive
+    if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle
+    if (data.metaDescription !== undefined) updateData.metaDescription = data.metaDescription
+    if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex
 
     await db
       .update(categoryTable)
       .set(updateData)
-      .where(eq(categoryTable.id, id));
+      .where(eq(categoryTable.id, id))
 
-    return { success: true };
+    // =================================================================
+    // PASSO 2: Se houver subcategorias, substitui as antigas pelas novas
+    // =================================================================
+    if (data.subcategories) {
+      // 2.1: Deleta TODAS as subcategorias antigas desta categoria
+      await db
+        .delete(categoryTable)
+        .where(eq(categoryTable.parentId, id))
+
+      // 2.2: Insere as novas subcategorias (usando a mesma função do create)
+      if (data.subcategories.length > 0) {
+        await insertSubcategories(data.subcategories, id)
+      }
+    }
+
+    console.log('🟢 [updateCategory] Categoria e subcategorias atualizadas com sucesso!')
+    return { success: true }
+    
   } catch (error) {
-    console.error("❌ [updateCategory] Erro:", error);
-    throw new Error("Falha ao atualizar categoria");
+    console.error('❌ [updateCategory] Erro:', error)
+    throw new Error('Falha ao atualizar categoria')
   }
 }
+
+
+
 
 // =====================================================================
 // 5. EXCLUIR CATEGORIA (SOFT OU HARD DELETE)

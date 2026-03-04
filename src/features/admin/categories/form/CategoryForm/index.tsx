@@ -68,9 +68,9 @@ export function CategoryForm({
   // Dentro do CategoryForm, após os useState existentes, adicione:
 
   useEffect(() => {
-    console.log("🟡 useEffect rodou! initialData:", initialData);
+   
     if (initialData?.subcategories) {
-      console.log("🟢 Tem subcategorias!", initialData.subcategories);
+    
       const converted = convertHierarchicalToFlat(initialData.subcategories);
       setSubcategories(converted);
     } else {
@@ -94,9 +94,8 @@ export function CategoryForm({
         childrenCount: item.children?.length || 0,
       };
 
-      flat.push(flatItem);
-      
-      console.log('📦 Processando item:', item.name, 'filhos:', item.children)
+      flat.push(flatItem);      
+    
 
       if (item.children?.length) {
         const childrenFlat = convertHierarchicalToFlat(
@@ -119,7 +118,8 @@ export function CategoryForm({
   // PASSO 4: Função para salvar (agora decide entre criar ou editar)
   // =====================================================================
   const handleSubmit = async () => {
-    try {
+
+        try {
       setIsLoading(true);
 
       // Prepara os dados da categoria

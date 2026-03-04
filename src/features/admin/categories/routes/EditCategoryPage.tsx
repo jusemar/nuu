@@ -45,6 +45,7 @@ export default function EditCategoryPage() {
   // 3. PREPARA DADOS PARA O FORMULÁRIO
   // ================================================================
   const formInitialData = {
+     id: category.id,
     name: category.name,
     slug: category.slug || '',
     description: category.description || '',
@@ -52,12 +53,8 @@ export default function EditCategoryPage() {
     metaTitle: category.metaTitle || '',
     metaDescription: category.metaDescription || '',
     orderIndex: category.orderIndex,
-    subcategories: category.subcategories || [] // Passa as subcategorias para o formulário
+    subcategories: category.subcategories || [] 
   }
-
-
-  console.log('🚀 Dados que vão para o formulário:', formInitialData)
-console.log('📦 Subcategorias que vão para o formulário:', category.subcategories)
 
   // ================================================================
   // 4. RENDERIZA O FORMULÁRIO COM OS DADOS

@@ -261,7 +261,7 @@ export async function createCategory(data: CreateCategoryInput) {
 // =====================================================================
 // 4. ATUALIZAR CATEGORIA EXISTENTE
 // =====================================================================
-export async function updateCategory(id: string, data: UpdateCategoryInput) {eu vou 
+export async function updateCategory(id: string, data: UpdateCategoryInput) {
   
   try {
     // =================================================================

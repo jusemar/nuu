@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Search, ShoppingCart, User, Menu, Bell, HelpCircle, X, Zap, TrendingUp, Tag } from 'lucide-react';
 import { useHeader } from '../hooks/useHeader';
 import { useState } from 'react';
-import { NavigationDrawer } from './NavigationDrawer';
+import { NavigationDrawer } from '../../store/menu/components/NavigationDrawer';
 
 export interface HeaderProps {
   // Props podem ser adicionadas depois
@@ -28,7 +28,7 @@ export const Header = ({}: HeaderProps) => {
               className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
               aria-label="Menu"
             >
-              <Menu size={24} className="text-gray-700" />
+              <Menu size={24} className="text-gray-700" /> 
             </button>
 
             {/* Logo */}

@@ -189,7 +189,7 @@ export default function EditProductPage() {
 
   const handleUpdateProduct = async () => {    
     try {
-      console.log('Dados enviados para update:', JSON.stringify(productData, null, 2))
+   
       
       if (!productData.categoryId) {
         alert('Selecione uma categoria antes de salvar!')

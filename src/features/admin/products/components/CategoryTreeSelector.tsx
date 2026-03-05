@@ -5,22 +5,16 @@
 // Ele permite que o usuário navegue por categorias e subcategorias
 // de forma hierárquica, expandindo e recolhendo os níveis.
 //
-// ARQUITETURA: Feature-based (modular por domínio)
-// TECNOLOGIAS: Next.js, TanStack Query, Tailwind, TypeScript
-//
-// COMO FUNCIONA:
-// 1. O usuário clica no campo para abrir o modal
-// 2. As categorias são carregadas do banco via hook useCategoryList (lista plana)
-// 3. A função buildTreeFromFlat converte a lista plana em árvore
-// 4. O usuário navega clicando nos chevrons para expandir/recolher
-// 5. Ao clicar em uma categoria, ela é selecionada e o modal fecha
-// 6. O caminho completo é exibido no campo e no badge de confirmação
-// 7. A busca filtra as categorias em tempo real enquanto o usuário digita
+// FUNCIONALIDADES:
+// - Selecionar categoria via modal com árvore expansível
+// - Busca em tempo real filtrando as categorias
+// - Inicialização com categoria pré-selecionada (para edição)
+// - Exibição do caminho completo da categoria selecionada
 // =====================================================================
 
 "use client"
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { ChevronRight, ChevronDown, Tag, X, Check, Search, FolderTree, Folder } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,38 +24,28 @@ import { useCategoryList } from '@/features/admin/categories/hooks/useCategoryLi
 // TIPO: CategoryTreeSelectorProps
 // =====================================================================
 // Define as props que o componente recebe:
-// - value: ID da categoria selecionada (opcional)
+// - value: ID da categoria selecionada (usado na edição)
 // - onChange: Função chamada quando uma categoria é selecionada
 // =====================================================================
 interface CategoryTreeSelectorProps {
   value?: string | null
-  onChange?: (categoryId: string, categoryPath: any[]) => void
+  onChange?: (categoryId: string, categoryPath?: any[]) => void
 }
 
 export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorProps) {
   // =====================================================================
   // ESTADOS DO COMPONENTE
   // =====================================================================
-  // isOpen: Controla se o modal está aberto ou fechado
-  // selected: Categoria atualmente selecionada
-  // expandedItems: Conjunto de IDs das categorias que estão expandidas
-  // path: Caminho completo da categoria selecionada (para exibir no breadcrumb)
-  // searchTerm: Termo digitado na busca
-  // =====================================================================
-  const [isOpen, setIsOpen] = useState(false)
-  const [selected, setSelected] = useState<any>(null)
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
-  const [path, setPath] = useState<any[]>([])
-  const [searchTerm, setSearchTerm] = useState('')
+  const [isOpen, setIsOpen] = useState(false)              // Controle do modal
+  const [selected, setSelected] = useState<any>(null)      // Categoria atualmente selecionada
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set()) // Itens expandidos
+  const [path, setPath] = useState<any[]>([])              // Caminho da categoria selecionada
+  const [searchTerm, setSearchTerm] = useState('')         // Termo de busca
 
   // =====================================================================
   // HOOK: useCategoryList
   // =====================================================================
   // Busca todas as categorias do banco (retorna LISTA PLANA)
-  // O hook retorna:
-  // - data: Array de categorias (sem hierarquia)
-  // - isLoading: Estado de carregamento
-  // - error: Erro, se houver
   // =====================================================================
   const { data: categories, isLoading } = useCategoryList()
 
@@ -69,8 +53,7 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
   // FILTRO DE BUSCA
   // =====================================================================
   // Filtra as categorias que contêm o termo de busca no nome.
-  // Usa useMemo para evitar recálculos desnecessários a cada renderização.
-  // O filtro é case-insensitive (ignora maiúsculas/minúsculas).
+  // Usa useMemo para evitar recálculos desnecessários.
   // =====================================================================
   const filteredCategories = useMemo(() => {
     if (!categories) return []
@@ -138,30 +121,26 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
   }, [filteredCategories])
 
   // =====================================================================
-  // FUNÇÃO: toggleExpand
+  // FUNÇÃO AUXILIAR: findCategoryById
   // =====================================================================
-  // Alterna o estado de expansão de uma categoria.
-  // Funciona igual ao CategoryTreeTable:
-  // - Se o ID já está no Set, remove (recolhe)
-  // - Se não está, adiciona (expande)
+  // Percorre a árvore recursivamente para encontrar uma categoria pelo ID.
+  // Usada na edição para localizar a categoria pré-selecionada.
   // =====================================================================
-  const toggleExpand = (id: string) => {
-    setExpandedItems((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id) // Recolhe
-      } else {
-        next.add(id)    // Expande
+  const findCategoryById = (cats: any[], id: string): any | null => {
+    for (const cat of cats) {
+      if (cat.id === id) return cat
+      if (cat.children) {
+        const found = findCategoryById(cat.children, id)
+        if (found) return found
       }
-      return next
-    })
+    }
+    return null
   }
 
   // =====================================================================
-  // FUNÇÃO: findPath
+  // FUNÇÃO AUXILIAR: findPath
   // =====================================================================
-  // Função recursiva que encontra o caminho completo até uma categoria.
-  // Retorna um array com todas as categorias no caminho (da raiz até a selecionada).
+  // Encontra o caminho completo até uma categoria (array com todos os pais).
   // Exemplo: [Eletrônicos, Informática, Notebooks]
   // =====================================================================
   const findPath = (cats: any[], id: string, currentPath: any[] = []): any[] | null => {
@@ -177,13 +156,54 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
   }
 
   // =====================================================================
+  // EFEITO: Inicializar seleção na edição
+  // =====================================================================
+  // Quando o componente recebe um value (ID da categoria) e os dados da
+  // árvore estão carregados, este efeito localiza a categoria correspondente
+  // e atualiza os estados selected e path.
+  //
+  // Isso garante que na página de edição a categoria já apareça selecionada.
+  // =====================================================================
+  useEffect(() => {
+    // Só executa se:
+    // 1. Tem um value válido
+    // 2. A árvore já foi carregada (treeData com itens)
+    if (value && treeData.length > 0) {
+      // Procura a categoria na árvore pelo ID
+      const category = findCategoryById(treeData, value)
+      
+      if (category) {
+        // Se encontrou, atualiza o estado selected
+        setSelected(category)
+        
+        // Calcula o caminho completo para exibir no breadcrumb
+        const fullPath = findPath(treeData, value) || []
+        setPath(fullPath)
+      }
+    }
+  }, [value, treeData]) // Só executa quando value ou treeData mudarem
+
+  // =====================================================================
+  // FUNÇÃO: toggleExpand
+  // =====================================================================
+  // Alterna o estado de expansão de uma categoria.
+  // =====================================================================
+  const toggleExpand = (id: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id) // Recolhe
+      } else {
+        next.add(id)    // Expande
+      }
+      return next
+    })
+  }
+
+  // =====================================================================
   // FUNÇÃO: handleSelect
   // =====================================================================
-  // Chamada quando o usuário clica em uma categoria.
-  // 1. Atualiza o estado 'selected' com a categoria escolhida
-  // 2. Encontra o caminho completo e salva no estado 'path'
-  // 3. Fecha o modal
-  // 4. Chama a função onChange (se existir) passando o ID e o caminho
+  // Chamada quando o usuário clica em uma categoria no modal.
   // =====================================================================
   const handleSelect = (category: any) => {
     setSelected(category)
@@ -201,10 +221,7 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
   // =====================================================================
   // FUNÇÃO: handleClear
   // =====================================================================
-  // Limpa a seleção atual:
-  // - Remove a categoria selecionada
-  // - Limpa o caminho
-  // - Chama onChange com valores vazios
+  // Limpa a seleção atual.
   // =====================================================================
   const handleClear = () => {
     setSelected(null)
@@ -217,16 +234,7 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
   // =====================================================================
   // COMPONENTE: Tree (recursivo)
   // =====================================================================
-  // Este componente renderiza a árvore de categorias de forma recursiva.
-  // 
-  // COMO FUNCIONA:
-  // 1. Recebe um array de categorias (items) e a profundidade atual (depth)
-  // 2. Para cada categoria, verifica se tem filhos (hasChildren)
-  // 3. Se tem filhos, mostra o botão de expandir/recolher
-  // 4. A indentação é controlada pela profundidade (depth * 20px)
-  // 5. Se a categoria está expandida, renderiza os filhos chamando a si mesmo
-  // 
-  // IGUAL ao TreeRow do CategoryTreeTable, mas adaptado para o seletor
+  // Renderiza a árvore de categorias de forma recursiva.
   // =====================================================================
   const Tree = ({ items, depth = 0 }: { items: any[], depth?: number }) => {
     return (
@@ -247,10 +255,9 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
                     : 'hover:bg-slate-50 border-2 border-transparent'
                   }
                 `}
-                // Indentação baseada no nível (igual ao CategoryTreeTable)
                 style={{ marginLeft: `${depth * 20}px` }}
               >
-                {/* Botão de expandir - só aparece se tiver filhos */}
+                {/* Botão de expandir */}
                 {hasChildren ? (
                   <button 
                     onClick={() => toggleExpand(item.id)} 
@@ -262,35 +269,30 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
                     }
                   </button>
                 ) : (
-                  // Espaço vazio para alinhar itens sem filhos
                   <div className="w-5" />
                 )}
                 
-                {/* Conteúdo da categoria - clicável para selecionar */}
+                {/* Conteúdo da categoria */}
                 <button 
                   onClick={() => handleSelect(item)} 
                   className="flex-1 flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-2">
-                    {/* Ícone: pasta para categorias com filhos, tag para sem filhos */}
                     {hasChildren ? (
                       <Folder className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-amber-500'}`} />
                     ) : (
                       <Tag className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
                     )}
-                    {/* Nome da categoria */}
                     <span className={`text-sm font-medium ${isSelected ? 'text-blue-700' : 'text-slate-700'}`}>
                       {item.name}
                     </span>
-                    {/* Badge de nível */}
                     <span className="text-xs text-slate-400">Nível {item.level}</span>
                   </div>
-                  {/* Check visível quando a categoria está selecionada */}
                   {isSelected && <Check className="w-5 h-5 text-blue-600" />}
                 </button>
               </div>
 
-              {/* Renderiza os filhos recursivamente (se expandido) */}
+              {/* Renderiza os filhos recursivamente */}
               {hasChildren && isExpanded && (
                 <div className="mt-1">
                   <Tree items={item.children} depth={depth + 1} />
@@ -305,8 +307,6 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
 
   // =====================================================================
   // ESTADO DE CARREGAMENTO
-  // =====================================================================
-  // Enquanto as categorias estão sendo carregadas, mostra um placeholder
   // =====================================================================
   if (isLoading) {
     return (
@@ -329,13 +329,13 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
           Categoria *
         </label>
         
-        {/* Botão que abre o modal - mostra a categoria selecionada ou placeholder */}
+        {/* Botão que abre o modal */}
         <button
           onClick={() => setIsOpen(true)}
           className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg text-left hover:border-blue-500 hover:bg-blue-50/50 transition-all group bg-white"
         >
           {selected ? (
-            // Se há categoria selecionada, mostra o nome e o caminho
+            // Com categoria selecionada
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderTree className="w-5 h-5 text-blue-600" />
@@ -349,7 +349,7 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
               <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600" />
             </div>
           ) : (
-            // Placeholder quando nenhuma categoria está selecionada
+            // Sem categoria selecionada
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-slate-500">
                 <FolderTree className="w-5 h-5" />
@@ -360,7 +360,7 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
           )}
         </button>
 
-        {/* Badge de confirmação - mostra a categoria selecionada em destaque */}
+        {/* Badge de confirmação */}
         {selected && (
           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start justify-between gap-2">
@@ -371,7 +371,6 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
                     Categoria Selecionada
                   </span>
                 </div>
-                {/* Breadcrumb com o caminho completo */}
                 <div className="text-xs text-blue-700 space-y-0.5">
                   {path.map((cat, idx) => (
                     <div key={cat.id} className="flex items-center gap-1">
@@ -381,7 +380,6 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
                   ))}
                 </div>
               </div>
-              {/* Botão para limpar a seleção */}
               <button
                 onClick={handleClear}
                 className="p-1 hover:bg-blue-200 rounded transition-colors"
@@ -419,7 +417,7 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
               </button>
             </div>
 
-            {/* CAMPO DE BUSCA - AGORA FUNCIONAL */}
+            {/* CAMPO DE BUSCA */}
             <div className="p-4 border-b border-slate-200">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -431,7 +429,6 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
                   className="w-full pl-10 pr-4 py-3"
                   autoFocus
                 />
-                {/* Botão para limpar a busca */}
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
@@ -443,10 +440,9 @@ export function CategoryTreeSelector({ value, onChange }: CategoryTreeSelectorPr
               </div>
             </div>
 
-            {/* ÁRVORE DE CATEGORIAS (scrollável) */}
+            {/* ÁRVORE DE CATEGORIAS */}
             <div className="flex-1 overflow-y-auto p-4">
               {treeData.length === 0 ? (
-                // Mensagem quando nenhuma categoria corresponde à busca
                 <div className="text-center py-8 text-slate-500">
                   Nenhuma categoria encontrada para "{searchTerm}"
                 </div>

@@ -2,7 +2,7 @@
 
 import { db } from "@/db"
 import { productTable, categoryTable } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, desc } from "drizzle-orm"
 
 export async function getProducts() {
   try {
@@ -40,7 +40,7 @@ export async function getProducts() {
       })
       .from(productTable)
       .leftJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
-      .orderBy(productTable.updatedAt)
+      .orderBy(desc(productTable.updatedAt))
 
     return products
   } catch (error) {

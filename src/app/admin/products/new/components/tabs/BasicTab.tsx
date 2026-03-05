@@ -15,6 +15,7 @@ import { useSlugGenerator } from '@/hooks/forms/useSlugGenerator'
 import { useSkuGenerator } from '@/hooks/forms/useSkuGenerator'
 import { ProductImageGallery, UploadedImage } from "../image-upload/ProductImageGallery"
 import { StoreProductFlags } from "@/components/admin/store-product-flags"
+import { CategoryTreeSelector } from '@/features/admin/products/components/CategoryTreeSelector'
 
 interface BasicTabProps {
   data: {
@@ -211,6 +212,14 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
 
 
               <div className="space-y-2">
+
+                <div className="space-y-2"> 
+  <CategoryTreeSelector 
+    value={data.categoryId}
+    onChange={(categoryId) => onChange({ categoryId })}
+  />
+</div>
+
                 <Label htmlFor="category">Categoria *</Label>
                 <Select 
                   value={data.categoryId} 

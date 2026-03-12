@@ -1,6 +1,8 @@
+// src/features/store/menu/components/NavigationDrawer.tsx
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { ChevronRight, Folder, Tag } from 'lucide-react';
 import { useMenuCategories } from '../hooks/useMenuCategories';
 import { useHeader } from '@/features/header/hooks/useHeader';
@@ -12,13 +14,13 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from '@/components/ui/sheet';
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-} from "@/components/ui/drawer";
+} from '@/components/ui/drawer';
 
 interface NavigationDrawerProps {
   isOpen: boolean;
@@ -28,18 +30,17 @@ interface NavigationDrawerProps {
 // =====================================================================
 // COMPONENTE RECURSIVO: CategoryTree
 // =====================================================================
-// Renderiza a árvore de categorias com boas práticas de UX:
-// - Seta só aparece se tiver filhos
-// - Ícones diferentes para pastas e itens
-// - Indentação clara
-// - Feedback visual no hover
+// Regras de navegação:
+// - Nível 0 (raiz)              → expande no sheet, NÃO redireciona
+// - Nível 1 (subcategoria)       → redireciona para PLP
+// - Nível 2 (filha do nível 1)   → redireciona para PLP
 // =====================================================================
-const CategoryTree = ({ 
-  categories, 
+const CategoryTree = ({
+  categories,
   depth = 0,
-  onItemClick 
-}: { 
-  categories: any[]; 
+  onItemClick,
+}: {
+  categories: any[];
   depth?: number;
   onItemClick?: () => void;
 }) => {
@@ -59,77 +60,118 @@ const CategoryTree = ({
     });
   };
 
+  // Função que decide o que fazer ao clicar no item
+  const handleItemClick = (
+    e: React.MouseEvent,
+    category: any,
+    currentDepth: number
+  ) => {
+    // Nível 0 (raiz) com filhos → apenas expande, não redireciona
+    if (currentDepth === 0 && category.children?.length > 0) {
+      e.preventDefault();      // impede o Link de navegar
+      toggleExpand(category.id, e);
+      return;
+    }
+
+    // Para níveis 1, 2 ou qualquer item sem filhos → redireciona
+    // O onItemClick fecha o menu após a navegação (boa prática)
+    if (onItemClick) {
+      // Pequeno delay para dar tempo de ver o feedback visual
+      setTimeout(() => onItemClick(), 100);
+    }
+    // O Link do Next cuidará da navegação
+  };
+
   return (
     <div className="space-y-1">
       {categories.map((category) => {
         const hasChildren = category.children && category.children.length > 0;
         const isExpanded = expandedItems.has(category.id);
+        const isRootLevel = depth === 0;
 
-        return (
-          <div key={category.id} className="select-none">
-            {/* Container da linha */}
-            <div
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
-                "hover:bg-gray-100 group cursor-pointer",
-                depth === 0 && "font-medium"
-              )}
-              style={{ marginLeft: `${depth * 20}px` }}
-            >
-              {/* Botão de expandir - só aparece se tiver filhos */}
-              {hasChildren ? (
-                <button
-                  onClick={(e) => toggleExpand(category.id, e)}
-                  className="p-1 hover:bg-gray-200 rounded-md transition-colors flex-shrink-0"
-                  aria-label={isExpanded ? "Recolher" : "Expandir"}
-                >
-                  <ChevronRight
-                    size={16}
-                    className={cn(
-                      "text-gray-500 transition-transform duration-200",
-                      isExpanded && "rotate-90"
-                    )}
-                  />
-                </button>
-              ) : (
-                // Espaço vazio para alinhar itens sem botão
-                <div className="w-6 flex-shrink-0" />
-              )}
+        // Define se o item deve ser um Link ou um botão de expansão
+        const shouldRenderAsLink =
+          !(isRootLevel && hasChildren); // apenas raiz com filhos não vira link
 
-              {/* Link da categoria */}
-              <a
-                href={`/categoria/${category.slug}`}
-                onClick={onItemClick}
-                className="flex-1 flex items-center gap-2 text-gray-700 hover:text-gray-900"
+        const content = (
+          <div
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 rounded-lg transition-all',
+              'hover:bg-gray-100 group cursor-pointer',
+              depth === 0 && 'font-medium',
+              // feedback visual para raiz que só expande
+              isRootLevel && hasChildren && 'cursor-default'
+            )}
+            style={{ marginLeft: `${depth * 20}px` }}
+          >
+            {/* Botão de expandir (só para raiz com filhos) */}
+            {hasChildren ? (
+              <button
+                onClick={(e) => toggleExpand(category.id, e)}
+                className="p-1 hover:bg-gray-200 rounded-md transition-colors flex-shrink-0"
+                aria-label={isExpanded ? 'Recolher' : 'Expandir'}
               >
-                {/* Ícone: pasta para categorias com filhos, tag para sem filhos */}
-                {hasChildren ? (
-                  <Folder 
-                    size={16} 
-                    className="text-amber-500 flex-shrink-0" 
-                  />
-                ) : (
-                  <Tag 
-                    size={16} 
-                    className="text-slate-400 flex-shrink-0" 
-                  />
-                )}
-                
-                {/* Nome da categoria */}
-                <span className="text-sm truncate">
-                  {category.name}
+                <ChevronRight
+                  size={16}
+                  className={cn(
+                    'text-gray-500 transition-transform duration-200',
+                    isExpanded && 'rotate-90'
+                  )}
+                />
+              </button>
+            ) : (
+              <div className="w-6 flex-shrink-0" />
+            )}
+
+            {/* Ícone e nome da categoria */}
+            <div className="flex-1 flex items-center gap-2 text-gray-700">
+              {hasChildren ? (
+                <Folder size={16} className="text-amber-500 flex-shrink-0" />
+              ) : (
+                <Tag size={16} className="text-slate-400 flex-shrink-0" />
+              )}
+              <span className="text-sm truncate">{category.name}</span>
+              {hasChildren && (
+                <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">
+                  {category.children.length}
                 </span>
-
-                {/* Badge com quantidade de filhos (opcional - boa prática) */}
-                {hasChildren && (
-                  <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">
-                    {category.children.length}
-                  </span>
-                )}
-              </a>
+              )}
             </div>
+          </div>
+        );
 
-            {/* Subcategorias (renderizadas recursivamente) */}
+        // Se for para renderizar como Link (todos exceto raiz com filhos)
+        if (shouldRenderAsLink) {
+          return (
+            <div key={category.id}>
+              <Link
+                href={`/category/${category.slug}`}
+                onClick={(e) => handleItemClick(e, category, depth)}
+                className="block"
+              >
+                {content}
+              </Link>
+
+              {/* Subcategorias (se expandidas) */}
+              {hasChildren && isExpanded && (
+                <div className="mt-1">
+                  <CategoryTree
+                    categories={category.children}
+                    depth={depth + 1}
+                    onItemClick={onItemClick}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Caso contrário (raiz com filhos) → só expande, sem Link
+        return (
+          <div key={category.id}>
+            <div onClick={(e) => toggleExpand(category.id, e)}>{content}</div>
+
+            {/* Subcategorias (se expandidas) */}
             {hasChildren && isExpanded && (
               <div className="mt-1">
                 <CategoryTree
@@ -153,9 +195,6 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
   const { isMobile } = useHeader();
   const { data: categories, isLoading, error } = useMenuCategories();
 
-  // =====================================================================
-  // CONTEÚDO DO MENU
-  // =====================================================================
   const MenuContent = () => {
     if (isLoading) {
       return (
@@ -187,18 +226,11 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
 
     return (
       <div className="overflow-y-auto h-full pb-8">
-        <CategoryTree 
-          categories={categories} 
-          depth={0}
-          onItemClick={onClose}
-        />
+        <CategoryTree categories={categories} depth={0} onItemClick={onClose} />
       </div>
     );
   };
 
-  // =====================================================================
-  // VERSÃO MOBILE: Drawer
-  // =====================================================================
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={onClose}>
@@ -216,9 +248,6 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
     );
   }
 
-  // =====================================================================
-  // VERSÃO DESKTOP: Sheet
-  // =====================================================================
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="left" className="w-80 sm:w-96 p-0">

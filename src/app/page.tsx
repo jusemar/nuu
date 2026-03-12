@@ -19,6 +19,8 @@ import ClientHeader from "@/components/layout/ClientHeader";
 import FeaturedProductsCarousel from "@/features/featured-products-carousel/components/FeaturedProductsCarousel";
 import { ProductGridWithLoadMore } from "@/features/product-grid-with-load-more/components/ProductGridWithLoadMore";
 import { Header } from '@/features/header';
+import { Nav } from "react-day-picker";
+import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 
 const Home = async () => {
   const [products, newlyCreatedProducts, categories] = await Promise.all([
@@ -36,7 +38,9 @@ const Home = async () => {
         speed={60}
       />
 
-      <ClientHeader />
+
+       {/*<Navbar08 />*/}
+     {/*  <ClientHeader />*/}
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 mt-6 mb-32">

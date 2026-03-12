@@ -12,9 +12,7 @@ import { useProductsInfinite } from '../hooks/useInfiniteProducts';
  * O banco retorna dados em um formato, mas o componente de card precisa de outro formato
  */
 function formatProductForCard(product: any) {
-  // DEBUG: Verificar o que vem do banco
-  console.log('Product mainImage:', product.mainImage);
-
+ 
   // 💰 CONVERSÃO DE PREÇOS: Banco armazena em centavos
   const originalPriceInCents = product.mainPrice?.price;
   const promoPriceInCents = product.mainPrice?.promoPrice;

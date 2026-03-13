@@ -22,61 +22,61 @@ import { SeoTab } from '../../new/components/tabs/SeoTab'
 export default function EditProductPage() {
   const params = useParams()
   const productId = params.id as string
-  
+
   const { data: productResponse, isLoading } = useProductId(productId)
   const updateProductMutation = useUpdateProduct()
-  
+
   const [productData, setProductData] = useState<ProductFormData>(initialProductData)
 
   useEffect(() => {
     if (productResponse?.success && productResponse.data) {
-      const product = productResponse.data       
+      const product = productResponse.data
       // Função para mapear modalidades do banco para estrutura do frontend
       const mapModalitiesFromDB = (dbModalities: any) => {
-      return {
-        stock: {
-          price: dbModalities?.stock?.price || '',
-          deliveryText: dbModalities?.stock?.deliveryText || '',
-          promo: {
-            active: dbModalities?.stock?.promo?.active || false,
-            type: dbModalities?.stock?.promo?.type || 'normal',
-            price: dbModalities?.stock?.promo?.price || '',
-            endDate: dbModalities?.stock?.promo?.endDate ? new Date(dbModalities.stock.promo.endDate) : undefined
-          }
-        },
-        preSale: {
-          price: dbModalities?.preSale?.price || '',
-          deliveryText: dbModalities?.preSale?.deliveryText || '',
-          promo: {
-            active: dbModalities?.preSale?.promo?.active || false,
-            type: dbModalities?.preSale?.promo?.type || 'normal',
-            price: dbModalities?.preSale?.promo?.price || '',
-            endDate: dbModalities?.preSale?.promo?.endDate ? new Date(dbModalities.preSale.promo.endDate) : undefined
-          }
-        },
-        dropshipping: {
-          price: dbModalities?.dropshipping?.price || '',
-          deliveryText: dbModalities?.dropshipping?.deliveryText || '',
-          promo: {
-            active: dbModalities?.dropshipping?.promo?.active || false,
-            type: dbModalities?.dropshipping?.promo?.type || 'normal',
-            price: dbModalities?.dropshipping?.promo?.price || '',
-            endDate: dbModalities?.dropshipping?.promo?.endDate ? new Date(dbModalities.dropshipping.promo.endDate) : undefined
-          }
-        },
-        orderBasis: {
-          price: dbModalities?.orderBasis?.price || '',
-          deliveryText: dbModalities?.orderBasis?.deliveryText || '',
-          promo: {
-            active: dbModalities?.orderBasis?.promo?.active || false,
-            type: dbModalities?.orderBasis?.promo?.type || 'normal',
-            price: dbModalities?.orderBasis?.promo?.price || '',
-            endDate: dbModalities?.orderBasis?.promo?.endDate ? new Date(dbModalities.orderBasis.promo.endDate) : undefined
+        return {
+          stock: {
+            price: dbModalities?.stock?.price || '',
+            deliveryText: dbModalities?.stock?.deliveryText || '',
+            promo: {
+              active: dbModalities?.stock?.promo?.active || false,
+              type: dbModalities?.stock?.promo?.type || 'normal',
+              price: dbModalities?.stock?.promo?.price || '',
+              endDate: dbModalities?.stock?.promo?.endDate ? new Date(dbModalities.stock.promo.endDate) : undefined
+            }
+          },
+          preSale: {
+            price: dbModalities?.preSale?.price || '',
+            deliveryText: dbModalities?.preSale?.deliveryText || '',
+            promo: {
+              active: dbModalities?.preSale?.promo?.active || false,
+              type: dbModalities?.preSale?.promo?.type || 'normal',
+              price: dbModalities?.preSale?.promo?.price || '',
+              endDate: dbModalities?.preSale?.promo?.endDate ? new Date(dbModalities.preSale.promo.endDate) : undefined
+            }
+          },
+          dropshipping: {
+            price: dbModalities?.dropshipping?.price || '',
+            deliveryText: dbModalities?.dropshipping?.deliveryText || '',
+            promo: {
+              active: dbModalities?.dropshipping?.promo?.active || false,
+              type: dbModalities?.dropshipping?.promo?.type || 'normal',
+              price: dbModalities?.dropshipping?.promo?.price || '',
+              endDate: dbModalities?.dropshipping?.promo?.endDate ? new Date(dbModalities.dropshipping.promo.endDate) : undefined
+            }
+          },
+          orderBasis: {
+            price: dbModalities?.orderBasis?.price || '',
+            deliveryText: dbModalities?.orderBasis?.deliveryText || '',
+            promo: {
+              active: dbModalities?.orderBasis?.promo?.active || false,
+              type: dbModalities?.orderBasis?.promo?.type || 'normal',
+              price: dbModalities?.orderBasis?.promo?.price || '',
+              endDate: dbModalities?.orderBasis?.promo?.endDate ? new Date(dbModalities.orderBasis.promo.endDate) : undefined
+            }
           }
         }
       }
-    }
-      
+
       setProductData({
         // Campos básicos
         name: product.name || '',
@@ -89,49 +89,45 @@ export default function EditProductPage() {
         isActive: product.isActive ?? true,
         collection: product.collection || '',
         tags: product.tags || [],
-        
+
         // Store Product Flags (campo que estava faltando)
         storeProductFlags: product.storeProductFlags || [],
-        
+
         // Códigos do produto
         productType: product.productType || '',
         productCode: product.productCode || '',
         ncmCode: product.ncmCode || '',
-        
+
         // SEO (campos que estavam faltando)
         metaTitle: product.metaTitle || '',
         metaDescription: product.metaDescription || '',
         canonicalUrl: product.canonicalUrl || '',
-        
+
         // Dados de preços (estrutura que estava faltando)
         pricing: {
           costPrice: (product.pricing as any)?.costPrice || '',
           modalities: mapModalitiesFromDB(product.pricing?.modalities),
           mainCardPriceType: product.pricing?.mainCardPriceType || ''
         },
-        
+
         // Dados de garantia (campos que estavam faltando)
         warranty: {
           period: product.warrantyPeriod?.toString() || '',
           provider: product.warrantyProvider || '',
           terms: ''
         },
-        
-        // Imagens
+
+        // Imagens da galeria principal (vindas da tabela product_gallery_images)
         images: Array.isArray(product.images)
           ? product.images.map((img: any) => ({
-              id: String(img.id),
-              url: String(img.url ?? ""),
-              preview: String(img.url ?? img.preview ?? ""),
-              isPrimary: Boolean(img.isPrimary),
-              variantId: img.productVariantId
-                ? String(img.productVariantId)
-                : img.variantId
-                ? String(img.variantId)
-                : undefined,
-            }))
+            id: String(img.id),
+            url: String(img.url ?? ""),
+            preview: String(img.url ?? img.preview ?? ""),
+            isPrimary: Boolean(img.isPrimary),
+          }))
           : [],
-        
+
+
         // Campos de shipping (valores padrão)
         shipping: {
           weight: '',
@@ -141,7 +137,7 @@ export default function EditProductPage() {
           hasFreeShipping: false,
           hasLocalPickup: false
         },
-        
+
         // Campos de vendedor (valores padrão)
         seller: {
           sellerCode: product.sellerCode || '',
@@ -156,51 +152,51 @@ export default function EditProductPage() {
     {
       name: '📝 Básico',
       value: 'basic',
-      component: <BasicTab 
-        data={productData} 
-        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))} 
+      component: <BasicTab
+        data={productData}
+        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({ ...prev, ...updates }))}
       />
     },
     {
       name: '💲 Preços',
-      value: 'pricing', 
-      component: <PricingTab 
+      value: 'pricing',
+      component: <PricingTab
         data={productData}
-        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
+        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({ ...prev, ...updates }))}
       />
     },
     {
       name: '🛡️ Garantia',
       value: 'warranty',
-      component: <WarrantyTab 
+      component: <WarrantyTab
         data={productData}
-        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
+        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({ ...prev, ...updates }))}
       />
     },
     {
       name: '🔍 SEO',
       value: 'seo',
-      component: <SeoTab 
+      component: <SeoTab
         data={productData}
-        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
+        onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({ ...prev, ...updates }))}
       />
     }
   ]
 
-  const handleUpdateProduct = async () => {    
+  const handleUpdateProduct = async () => {
     try {
-   
-      
+
+
       if (!productData.categoryId) {
         alert('Selecione uma categoria antes de salvar!')
         return
       }
-      
+
       await updateProductMutation.mutateAsync({
         id: productId,
         data: productData
       })
-      
+
     } catch (error) {
       console.error('Erro ao atualizar produto:', error)
     }
@@ -257,14 +253,14 @@ export default function EditProductPage() {
               <p className="text-muted-foreground">{productData.name}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm">
               <Eye className="w-4 h-4 mr-2" />
               Preview
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={handleUpdateProduct}
               disabled={updateProductMutation.isPending}
             >

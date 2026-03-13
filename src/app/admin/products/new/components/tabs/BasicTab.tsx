@@ -184,6 +184,7 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
           <ProductImageGallery
             onImagesChange={handleImagesChange}
             maxFiles={10}
+            initialImages={data.images}
           />
         </div>
 

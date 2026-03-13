@@ -3,13 +3,10 @@
 import { useProductsByFlag } from '@/features/products/api/queries/use-products-by-flag';
 import DealsCarousel from './DealsCarousel';
 import { FlashDealCard } from '@/components/common/flash-deal-card';
-import { productTable, productVariantTable } from '@/db/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DealsGridProps {
-  flashDealProduct: typeof productTable.$inferSelect & {
-    variants: (typeof productVariantTable.$inferSelect)[];
-  };
+  flashDealProduct: any;  // Produto com galleryImages e pricing
   flashDealEndDate: string;
 }
 

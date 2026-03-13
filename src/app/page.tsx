@@ -8,7 +8,7 @@ import RotatingProductCarousel from "@/features/product-carousel/components/Rota
 import ProductList from "@/components/common/product-list";
 import { db } from "@/db";
 import { productTable } from "@/db/schema";
-import { getNewlyCreatedProducts, getProductsWithVariants } from "@/data/products/get";
+import { getProducts, getNewProducts } from "@/features/store/products/service/getProducts";
 import { getCategories } from "@/data/categories/get";
 import { BannerCarousel } from "@/components/ui/BannerCarousel";
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
@@ -24,8 +24,8 @@ import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 
 const Home = async () => {
   const [products, newlyCreatedProducts, categories] = await Promise.all([
-    getProductsWithVariants(),
-    getNewlyCreatedProducts(),
+    getProducts(),
+    getNewProducts(),
     getCategories(),
   ]);
 

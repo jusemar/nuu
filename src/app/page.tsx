@@ -1,27 +1,108 @@
-import { desc } from "drizzle-orm";
-import Image from "next/image";
-
-import { CategorySelector } from "@/features/category-selector/components/CategorySkeleton";
-import ProductCarousel from "@/components/common/product-carousel";
-import { Footer } from "@/components/common/footer";
-import RotatingProductCarousel from "@/features/product-carousel/components/RotatingProductCarousel";
-import ProductList from "@/components/common/product-list";
-import { db } from "@/db";
-import { productTable } from "@/db/schema";
 import { getProducts, getNewProducts } from "@/features/store/products/service/getProducts";
 import { getCategories } from "@/data/categories/get";
-import { BannerCarousel } from "@/components/ui/BannerCarousel";
+
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
+import { Header } from "@/features/header";
+import { BannerCarousel } from "@/components/ui/BannerCarousel";
 import { DealsGrid } from "@/features/deals/components/DealsGrid";
-import { InfoCards } from "@/components/common/info-cards";
-import SectionTitle from "@/components/common/section-title";
-import ClientHeader from "@/components/layout/ClientHeader";
+import { CategorySelector } from "@/features/category-selector/components/CategorySkeleton";
 import FeaturedProductsCarousel from "@/features/featured-products-carousel/components/FeaturedProductsCarousel";
 import { ProductGridWithLoadMore } from "@/features/product-grid-with-load-more/components/ProductGridWithLoadMore";
-import { Header } from '@/features/header';
-import { Nav } from "react-day-picker";
-import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
+import { InfoCards } from "@/components/common/info-cards";
+import SectionTitle from "@/components/common/section-title";
+import { Footer } from "@/components/common/footer";
 
+// ─── Constantes da página ────────────────────────────────────────────────────
+const FLASH_DEAL_END_DATE = "2025-09-28T11:02:00";
+
+const BANNERS = [
+  {
+    mobileSrc: "/banner-promocao.webp",
+    desktopSrc: "/banner-promocao.webp",
+    alt: "Promoção Especial Do Rocha",
+  },
+  {
+    mobileSrc: "/banner-promocao.webp",
+    desktopSrc: "/banner-promocao.webp",
+    alt: "Ofertas Exclusivas",
+  },
+];
+
+// ─── Info Cards — alinhados ao design system (Azul + Âmbar + Teal) ──────────
+const INFO_CARDS = [
+  {
+    icon: "🚚",
+    title: "Entrega Rápida",
+    description: "Entregamos em até 48h para SP e capitais",
+    link: "Ver zonas de entrega",
+    // azul — primária
+    bg: "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/30",
+    border: "border-[#BFDBFE] dark:border-blue-900/30",
+    iconBg: "bg-[#EFF6FF] dark:bg-blue-900/30",
+    linkColor: "text-[#0C447C] dark:text-blue-400",
+    divider: "border-[#EFF6FF] dark:border-blue-900/20",
+  },
+  {
+    icon: "💳",
+    title: "Pagamento Seguro",
+    description: "Parcelamos em até 12x sem juros no cartão",
+    link: "Métodos de pagamento",
+    // teal — sucesso
+    bg: "from-white to-[#F0FDFA] dark:from-gray-900 dark:to-teal-950/30",
+    border: "border-[#99F6E4] dark:border-teal-900/30",
+    iconBg: "bg-[#F0FDFA] dark:bg-teal-900/30",
+    linkColor: "text-[#0F766E] dark:text-teal-400",
+    divider: "border-[#F0FDFA] dark:border-teal-900/20",
+  },
+  {
+    icon: "⭐",
+    title: "Garantia Estendida",
+    description: "12 meses de garantia em todos os produtos",
+    link: "Saiba mais",
+    // âmbar — destaque
+    bg: "from-white to-[#FFFBEB] dark:from-gray-900 dark:to-amber-950/30",
+    border: "border-[#FDE68A] dark:border-amber-900/30",
+    iconBg: "bg-[#FFFBEB] dark:bg-amber-900/30",
+    linkColor: "text-[#B45309] dark:text-amber-400",
+    divider: "border-[#FFFBEB] dark:border-amber-900/20",
+  },
+  {
+    icon: "🛟",
+    title: "Suporte 24/7",
+    description: "Atendimento via chat, WhatsApp e telefone",
+    link: "Fale conosco",
+    // azul secundário
+    bg: "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/30",
+    border: "border-[#BFDBFE] dark:border-blue-900/30",
+    iconBg: "bg-[#EFF6FF] dark:bg-blue-900/30",
+    linkColor: "text-[#0C447C] dark:text-blue-400",
+    divider: "border-[#EFF6FF] dark:border-blue-900/20",
+  },
+];
+
+// ─── Mini banners laterais — alinhados ao design system ──────────────────────
+const SIDE_BANNERS = [
+  {
+    icon: "🚚",
+    title: "Frete Grátis",
+    subtitle: "Acima de R$ 299",
+    description: "Entregas em todo Brasil",
+    // azul primário
+    bg: "from-[#0C447C] to-[#1E3A8A]",
+    subtitleColor: "text-blue-200",
+  },
+  {
+    icon: "🎁",
+    title: "Ofertas Exclusivas",
+    subtitle: "Só para você",
+    description: "Cupom PRIMEIRA10 — 10% off",
+    // âmbar
+    bg: "from-[#EF9F27] to-[#B45309]",
+    subtitleColor: "text-amber-100",
+  },
+];
+
+// ─── COMPONENT ───────────────────────────────────────────────────────────────
 const Home = async () => {
   const [products, newlyCreatedProducts, categories] = await Promise.all([
     getProducts(),
@@ -29,162 +110,140 @@ const Home = async () => {
     getCategories(),
   ]);
 
-  const flashDealEndDate = "2025-09-28T11:02:00";
-
   return (
     <>
+      {/* ── Marquee topo ── */}
       <MarqueeBanner
-        text="&nbsp;🚚 Frete Grátis acima de R$ 100&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;🎁 10% off na primeira compra &nbsp;&nbsp;&nbsp;&nbsp; •&nbsp;⭐ Produtos com garantia &nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo Brasil &nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
+        text="&nbsp;🚚 Frete Grátis acima de R$ 299&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;•&nbsp;🎁 10% off na primeira compra&nbsp;&nbsp;&nbsp;&nbsp;•&nbsp;⭐ Produtos com garantia&nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo Brasil&nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
         speed={60}
       />
 
-
-       {/*<Navbar08 />*/}
-     {/*  <ClientHeader />*/}
+      {/* ── Header ── */}
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 mt-6 mb-32">
-        {/* Banner Carousel limpo e profissional */}
-        <div className="mb-10 rounded-xl overflow-hidden">
-          <BannerCarousel
-            banners={[
-              {
-                mobileSrc: "/banner-promocao.webp",
-                desktopSrc: "/banner-promocao.webp",
-                alt: "Promoção Especial Do Rocha",
-              },
-              {
-                mobileSrc: "/banner-promocao.webp",
-                desktopSrc: "/banner-promocao.webp",
-                alt: "Ofertas Exclusivas",
-              },
-            ]}
-          />
-        </div>
+      {/* ── Conteúdo principal ── */}
+      <main className="max-w-7xl mx-auto px-4 mt-6 mb-32">
 
-        {/* INFO CARDS PROFISSIONAIS - QUARTO PASSO */}
-        <div className="mb-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            {/* Card 1 - Entrega */}
-            <div className="group relative bg-gradient-to-br from-white to-blue-50 dark:from-gray-900 dark:to-blue-950/30 rounded-2xl p-5 lg:p-6 border border-blue-100 dark:border-blue-900/30 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-              <div className="absolute top-4 right-4 w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="text-xl">🚚</span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Entrega Rápida</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Entregamos em até 48h para SP</p>
-              <div className="pt-3 border-t border-blue-50 dark:border-blue-900/20">
-                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Ver zonas de entrega →</span>
-              </div>
-            </div>
+        {/* ── 1. Banner carousel ── */}
+        <section aria-label="Banners promocionais" className="mb-10 rounded-2xl overflow-hidden shadow-elevation">
+          <BannerCarousel banners={BANNERS} />
+        </section>
 
-            {/* Card 2 - Pagamento */}
-            <div className="group relative bg-gradient-to-br from-white to-emerald-50 dark:from-gray-900 dark:to-emerald-950/30 rounded-2xl p-5 lg:p-6 border border-emerald-100 dark:border-emerald-900/30 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-              <div className="absolute top-4 right-4 w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="text-xl">💳</span>
+        {/* ── 2. Info cards — confiança e conversão ── */}
+        <section aria-label="Diferenciais" className="mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+            {INFO_CARDS.map((card) => (
+              <div
+                key={card.title}
+                className={`
+                  group relative bg-gradient-to-br ${card.bg}
+                  rounded-2xl p-5 lg:p-6
+                  border ${card.border}
+                  shadow-sm hover:shadow-elevation
+                  transition-all duration-300 hover:-translate-y-1
+                `}
+              >
+                <div
+                  className={`
+                    absolute top-4 right-4 w-10 h-10 ${card.iconBg}
+                    rounded-full flex items-center justify-center
+                    group-hover:scale-110 transition-transform duration-300
+                  `}
+                >
+                  <span className="text-xl" role="img" aria-hidden="true">{card.icon}</span>
+                </div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">
+                  {card.title}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 leading-relaxed">
+                  {card.description}
+                </p>
+                <div className={`pt-3 border-t ${card.divider}`}>
+                  <span className={`text-xs font-semibold ${card.linkColor} cursor-pointer`}>
+                    {card.link} →
+                  </span>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Pagamento Seguro</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Parcelamos em até 12x sem juros</p>
-              <div className="pt-3 border-t border-emerald-50 dark:border-emerald-900/20">
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Métodos de pagamento →</span>
-              </div>
-            </div>
-
-            {/* Card 3 - Garantia */}
-            <div className="group relative bg-gradient-to-br from-white to-amber-50 dark:from-gray-900 dark:to-amber-950/30 rounded-2xl p-5 lg:p-6 border border-amber-100 dark:border-amber-900/30 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-              <div className="absolute top-4 right-4 w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="text-xl">⭐</span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Garantia Estendida</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">12 meses de garantia em todos produtos</p>
-              <div className="pt-3 border-t border-amber-50 dark:border-amber-900/20">
-                <span className="text-xs font-medium text-amber-600 dark:text-amber-400">Saiba mais →</span>
-              </div>
-            </div>
-
-            {/* Card 4 - Suporte */}
-            <div className="group relative bg-gradient-to-br from-white to-purple-50 dark:from-gray-900 dark:to-purple-950/30 rounded-2xl p-5 lg:p-6 border border-purple-100 dark:border-purple-900/30 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-              <div className="absolute top-4 right-4 w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="text-xl">🛟</span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Suporte 24/7</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Atendimento via chat, WhatsApp e telefone</p>
-              <div className="pt-3 border-t border-purple-50 dark:border-purple-900/20">
-                <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Fale conosco →</span>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
+        </section>
 
-        {/* O componente InfoCards original continua funcionando, apenas oculto */}
-        <div className="hidden">
+        {/* InfoCards original preservado e oculto para não quebrar dependências */}
+        <div className="hidden" aria-hidden="true">
           <InfoCards />
         </div>
 
-        <DealsGrid
-          flashDealProduct={products[0]}
-          flashDealEndDate={flashDealEndDate}
-        />
+        {/* ── 3. Deals / Flash sale ── */}
+        <section aria-label="Ofertas em destaque" className="mb-12">
+          <DealsGrid
+            flashDealProduct={products[0]}
+            flashDealEndDate={FLASH_DEAL_END_DATE}
+          />
+        </section>
 
-        <div className="mb-10 mt-12">
-          <SectionTitle icon="star">Novidades</SectionTitle>
-        </div>
+        {/* ── 4. Novidades — carousel + mini banners ── */}
+        <section aria-label="Novidades" className="mb-32">
+          <div className="mb-8">
+            <SectionTitle icon="star">Novidades</SectionTitle>
+          </div>
 
-        <div className="max-w-6xl mx-auto mt-10 mb-32">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 items-stretch">
-            <div className="lg:col-span-2 h-80">
-              <FeaturedProductsCarousel />
-            </div>
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
 
-            <div className="flex flex-col gap-3 h-80">
-              <div className="flex-1 min-h-0">
-                <div className="h-full rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 p-3 text-white shadow-lg flex flex-col justify-center">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-white/20 p-1.5 rounded-full">
-                      <span className="text-lg">🚚</span>
-                    </div>
-                    <div>
-                      <h3 className="font-bold">Frete Grátis</h3>
-                      <p className="text-blue-100 text-xs">Acima de R$ 99</p>
-                    </div>
-                  </div>
-                  <p className="text-xs">Entregas em todo Brasil</p>
-                </div>
+              {/* Carousel de produtos em destaque */}
+              <div className="lg:col-span-2 h-80">
+                <FeaturedProductsCarousel />
               </div>
 
-              <div className="flex-1 min-h-0">
-                <div className="h-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 p-3 text-white shadow-lg flex flex-col justify-center">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-white/20 p-1.5 rounded-full">
-                      <span className="text-lg">🎁</span>
-                    </div>
-                    <div>
-                      <h3 className="font-bold">Ofertas Exclusivas</h3>
-                      <p className="text-amber-100 text-xs">Só para você</p>
+              {/* Mini banners laterais — design system */}
+              <div className="flex flex-col gap-4 h-80">
+                {SIDE_BANNERS.map((banner) => (
+                  <div key={banner.title} className="flex-1 min-h-0">
+                    <div
+                      className={`
+                        h-full rounded-2xl bg-gradient-to-br ${banner.bg}
+                        p-4 text-white shadow-elevation
+                        flex flex-col justify-center
+                        cursor-pointer hover:opacity-95 transition-opacity
+                      `}
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-white/20 p-2 rounded-full flex-shrink-0">
+                          <span className="text-lg" role="img" aria-hidden="true">{banner.icon}</span>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm leading-tight">{banner.title}</h3>
+                          <p className={`text-xs ${banner.subtitleColor}`}>{banner.subtitle}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-white/80 leading-relaxed">{banner.description}</p>
                     </div>
                   </div>
-                  <p className="text-xs">Ofertas personalizadas</p>
-                </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* ✅ CATEGORY SELECTOR */}
-        <div className="mx-auto px-4 mt-10 mb-32">
+        {/* ── 5. Categorias ── */}
+        <section aria-label="Categorias" className="mb-32">
           <CategorySelector
             categories={categories}
             isLoading={!categories?.length}
           />
-        </div>
+        </section>
 
-        <SectionTitle icon="flame">Destaque</SectionTitle>
-
-        <div className="max-w-7xl mx-auto px-4 mt-10 mb-32">
+        {/* ── 6. Grade de produtos em destaque ── */}
+        <section aria-label="Produtos em destaque" className="mb-32">
+          <div className="mb-8">
+            <SectionTitle icon="flame">Destaque</SectionTitle>
+          </div>
           <ProductGridWithLoadMore />
-        </div>
+        </section>
 
+        {/* ── Footer ── */}
         <Footer />
-      </div>
+      </main>
     </>
   );
 };

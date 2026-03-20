@@ -60,7 +60,7 @@ export default function NewProductPage() {
       onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
     />
   },
- /* {
+  {
     name: '🎨 Variantes',
     value: 'variants',
     component: <VariantsTab />
@@ -72,7 +72,7 @@ export default function NewProductPage() {
       data={productData}
       onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
     />
-  },*/
+  },
   {
     name: '🔍 SEO',
     value: 'seo',

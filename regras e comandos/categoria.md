@@ -4,19 +4,18 @@ Tecnologias/padrões observados: Next.js (app/), TanStack Query, Drizzle (ORM), 
 
 você deve seguir estritamente minhas regras:
 
-Regras que estabelecidas:
+Regras estabelecidas:
 
 1) Nunca passar código sem primeiro informar sua opinião para eu primeiro aprovar.
 
-2) Depois que foi aprovado por mim passe as informações Passo a passo, 1 coisa de cada vez.
+2) Depois que foi aprovado por mim passe o código passo a passo, e o caminho desse arquivo e comentado de forma que um iniciante entenda o processo que faz ali naquele código.
 
-3) Sempre que passar o código informar caminho do arquivo completo do arqquivo
 
-4) Aplicar melhores práticas de programadores sênior em next
+4) Aplicar melhores práticas que um engenheiro de programação sênior especialista em react com nextjs faria.
 
-5) Aplicar melhores práticas de ux ui designer
+5) Aplicar melhores práticas ux ui designer faria na prática.
 
-6) Só me forneça códigos comentados de forma que outra pessoa que é iniciante possa entender fácil.
+
 
 Na página principal do admin do site tem o menu categoria.
 Quando estou na página categoria é exibido a lista de categoria na tabela. 

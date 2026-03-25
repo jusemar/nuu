@@ -2,75 +2,118 @@ import Link from 'next/link';
 
 export const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Logo e Descrição */}
+    <footer style={{ background: '#0C447C' }} className="text-white">
+
+      {/* ── Corpo principal ── */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+
+          {/* Marca + descrição */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="text-2xl">
-                <svg width='1em' height='1em' viewBox='0 0 324 323' fill='currentColor'>
-                  <rect
-                    x='88.1023'
-                    y='144.792'
-                    width='151.802'
-                    height='36.5788'
-                    rx='18.2894'
-                    transform='rotate(-38.5799 88.1023 144.792)'
-                    fill='currentColor'
-                  />
-                  <rect
-                    x='85.3459'
-                    y='244.537'
-                    width='151.802'
-                    height='36.5788'
-                    rx='18.2894'
-                    transform='rotate(-38.5799 85.3459 244.537)'
-                    fill='currentColor'
-                  />
-                </svg>
+            <div className="flex items-center gap-2.5 mb-4">
+              {/* Ícone logo */}
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+              >
+                <span className="text-white font-bold text-sm tracking-tight select-none">DR</span>
               </div>
-              <span className="text-xl font-bold">Do Rocha</span>
+              <span className="text-xl font-bold tracking-tight">Do Rocha</span>
             </div>
-            <p className="text-gray-400 text-sm">
-              Sua loja confiável para produtos de qualidade com entrega em todo Brasil.
+
+            <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              Sua loja confiável para produtos de qualidade com entrega em todo o Brasil.
+              Garantia, segurança e atendimento humano em cada compra.
             </p>
+
+            {/* Selos de confiança */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { icon: '🔒', label: 'Compra segura' },
+                { icon: '🚚', label: 'Frete grátis +R$299' },
+                { icon: '⭐', label: 'Garantia 12 meses' },
+              ].map(selo => (
+                <span
+                  key={selo.label}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.9)' }}
+                >
+                  <span>{selo.icon}</span>
+                  {selo.label}
+                </span>
+              ))}
+            </div>
           </div>
 
           {/* Empresa */}
           <div>
-            <h3 className="font-semibold mb-4">Empresa</h3>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/sobre" className="hover:text-white transition-colors">Sobre</Link></li>
-              <li><Link href="/fale-conosco" className="hover:text-white transition-colors">Fale Conosco</Link></li>
-              <li><Link href="/fornecedor" className="hover:text-white transition-colors">Fornecedor</Link></li>
-              <li><Link href="/entregas" className="hover:text-white transition-colors">Entregas</Link></li>
-              <li><Link href="/garantias" className="hover:text-white transition-colors">Garantias</Link></li>
+            <h3
+              className="text-xs font-bold uppercase tracking-widest mb-4"
+              style={{ color: '#EF9F27' }} /* âmbar — destaque */
+            >
+              Empresa
+            </h3>
+            <ul className="space-y-2.5 text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {[
+                { href: '/sobre',        label: 'Sobre nós'   },
+                { href: '/fale-conosco', label: 'Fale Conosco'},
+                { href: '/fornecedor',   label: 'Fornecedor'  },
+                { href: '/entregas',     label: 'Entregas'    },
+                { href: '/garantias',    label: 'Garantias'   },
+              ].map(link => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Ajuda */}
           <div>
-            <h3 className="font-semibold mb-4">Ajuda</h3>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/termos" className="hover:text-white transition-colors">Termos de Serviço</Link></li>
-              <li><Link href="/devolucao" className="hover:text-white transition-colors">Política de Devolução</Link></li>
-              <li><Link href="/reembolso" className="hover:text-white transition-colors">Política de Reembolso</Link></li>
+            <h3
+              className="text-xs font-bold uppercase tracking-widest mb-4"
+              style={{ color: '#EF9F27' }}
+            >
+              Ajuda
+            </h3>
+            <ul className="space-y-2.5 text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>
+              {[
+                { href: '/termos',    label: 'Termos de Serviço'      },
+                { href: '/devolucao', label: 'Política de Devolução'  },
+                { href: '/reembolso', label: 'Política de Reembolso'  },
+              ].map(link => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
+      </div>
 
-        {/* Rodapé inferior */}
-        <div className="border-t border-gray-700 mt-8 pt-6 text-center">
-          <div className="text-sm text-gray-400">
-            <span>© 2025 Do Rocha · </span>
-            <span 
-              className="hover:text-white transition-colors cursor-help"
-              title="31 99430-4473"
-            >
-              Desenvolvido por : Junior Rocha
-            </span>
-          </div>
+      {/* ── Rodapé inferior ── */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            © 2025 Do Rocha. Todos os direitos reservados.
+          </span>
+          <span
+            className="text-xs hover:text-white transition-colors cursor-help"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+            title="31 99430-4473"
+          >
+            Desenvolvido por Junior Rocha
+          </span>
         </div>
       </div>
     </footer>

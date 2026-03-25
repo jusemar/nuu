@@ -1,127 +1,256 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, ShoppingCart, User, Menu, Bell, HelpCircle, X, Zap, TrendingUp, Tag } from 'lucide-react';
+import {
+  Search,
+  ShoppingCart,
+  User,
+  Menu,
+  Bell,
+  HelpCircle,
+  Zap,
+  TrendingUp,
+  Tag,
+} from 'lucide-react';
 import { useHeader } from '../hooks/useHeader';
 import { useState } from 'react';
 import { NavigationDrawer } from '../../store/menu/components/NavigationDrawer';
 
-export interface HeaderProps {
-  // Props podem ser adicionadas depois
-}
+// ─── Design system tokens (espelham o globals.css) ───────────────────────────
+const DS = {
+  primary:      '#0C447C',
+  primaryHover: '#1E3A8A',
+  primaryLight: '#EFF6FF',
+  accent:       '#EF9F27',
+  success:      '#14B8A6',
+  text:         '#1F2937',
+  muted:        '#6B7280',
+  border:       '#E5E7EB',
+  bg:           '#F8F8F6',
+  danger:       '#DC2626',
+};
+
+export interface HeaderProps {}
 
 export const Header = ({}: HeaderProps) => {
   const { isMobile } = useHeader();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white">    
+    <header className="sticky top-0 z-50 w-full bg-white" style={{ borderBottom: `1px solid ${DS.border}` }}>
 
-      {/* Main Header */}
-      <div className="border-b border-gray-200">
-        <div className="container mx-auto px-4 md:px-6 py-4">
-          <div className="flex h-14 items-center justify-between gap-4">
-            {/* Mobile Menu Button - ABRE DRAWER */}
+      {/* ── Barra principal ── */}
+      <div style={{ borderBottom: `1px solid ${DS.border}` }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="flex h-16 items-center justify-between gap-4">
+
+            {/* Botão menu mobile */}
             <button
               onClick={() => setIsDrawerOpen(true)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition flex-shrink-0"
-              aria-label="Menu"
+              className="md:hidden p-2 rounded-lg transition flex-shrink-0"
+              style={{ color: DS.muted }}
+              onMouseEnter={e => (e.currentTarget.style.background = DS.primaryLight)}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              aria-label="Abrir menu"
             >
-              <Menu size={24} className="text-gray-700" /> 
+              <Menu size={22} />
             </button>
 
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-sm">
-                <span className="text-white font-bold text-sm">DR</span>
+            <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 hover:opacity-85 transition-opacity">
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0"
+                style={{ background: DS.primary }}
+              >
+                <span className="text-white font-bold text-sm tracking-tight select-none">DR</span>
               </div>
-              <div className="hidden md:block">
-                <h1 className="font-bold text-lg text-gray-900 leading-tight">Do Rocha</h1>
-                <p className="text-xs text-gray-500">Sua loja</p>
+              <div className="hidden md:block leading-tight">
+                <span className="block font-bold text-[17px] leading-none" style={{ color: DS.text }}>
+                  Do Rocha
+                </span>
+                <span className="block text-[11px]" style={{ color: DS.muted }}>
+                  Sua loja
+                </span>
               </div>
             </Link>
 
-            {/* Search Bar */}
+            {/* Busca */}
             <div className="flex-grow max-w-xl">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                  style={{ color: DS.muted }}
+                />
                 <input
                   type="search"
                   placeholder="Buscar produtos..."
-                  className="w-full pl-10 pr-4 py-2.5 text-sm text-gray-700 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg outline-none transition"
+                  style={{
+                    background: DS.bg,
+                    border: `1.5px solid ${DS.border}`,
+                    color: DS.text,
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.border = `1.5px solid ${DS.primary}`;
+                    e.currentTarget.style.background = '#fff';
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.border = `1.5px solid ${DS.border}`;
+                    e.currentTarget.style.background = DS.bg;
+                  }}
                 />
               </div>
             </div>
 
-            {/* Right Actions */}
-            <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-              {/* Notification */}
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition relative hidden sm:block" aria-label="Notificações">
-                <Bell size={20} className="text-gray-700" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            {/* Ações direita */}
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+
+              {/* Notificações */}
+              <button
+                className="p-2 rounded-lg transition relative hidden sm:flex items-center justify-center"
+                style={{ color: DS.muted }}
+                onMouseEnter={e => (e.currentTarget.style.background = DS.primaryLight)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                aria-label="Notificações"
+              >
+                <Bell size={19} />
+                <span
+                  className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+                  style={{ background: DS.danger }}
+                />
               </button>
 
-              {/* Help */}
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition hidden sm:block" aria-label="Ajuda">
-                <HelpCircle size={20} className="text-gray-700" />
+              {/* Ajuda */}
+              <button
+                className="p-2 rounded-lg transition hidden sm:flex items-center justify-center"
+                style={{ color: DS.muted }}
+                onMouseEnter={e => (e.currentTarget.style.background = DS.primaryLight)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                aria-label="Ajuda"
+              >
+                <HelpCircle size={19} />
               </button>
 
-              {/* Cart */}
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition relative" aria-label="Carrinho">
-                <ShoppingCart size={20} className="text-gray-700" />
-                <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">0</span>
+              {/* Carrinho */}
+              <button
+                className="p-2 rounded-lg transition relative flex items-center justify-center"
+                style={{ color: DS.muted }}
+                onMouseEnter={e => (e.currentTarget.style.background = DS.primaryLight)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                aria-label="Carrinho"
+              >
+                <ShoppingCart size={19} />
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                  style={{ background: DS.danger }}
+                >
+                  
+                </span>
               </button>
 
-              {/* User */}
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition hidden md:block" aria-label="Conta">
-                <User size={20} className="text-gray-700" />
+              {/* Conta — desktop */}
+              <button
+                className="p-2 rounded-lg transition hidden md:flex items-center justify-center"
+                style={{ color: DS.muted }}
+                onMouseEnter={e => (e.currentTarget.style.background = DS.primaryLight)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                aria-label="Minha conta"
+              >
+                <User size={19} />
               </button>
 
-              {/* Mobile User */}
-              <Link href="/login" className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition">
-                <User size={20} className="text-gray-700" />
+              {/* Conta — mobile */}
+              <Link
+                href="/login"
+                className="md:hidden p-2 rounded-lg transition flex items-center justify-center"
+                style={{ color: DS.muted }}
+              >
+                <User size={19} />
               </Link>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Desktop Navigation - CORRIGIDO */}
+      {/* ── Navegação desktop ── */}
       {!isMobile && (
-        <nav className="border-t border-slate-100 bg-slate-50">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center gap-6 py-3 text-sm font-medium">
-              {/* Botão Hamburger para Categorias (abre drawer) */}
+        <nav
+          className="hidden md:block"
+          style={{ background: DS.primaryLight, borderBottom: `1px solid ${DS.border}` }}
+        >
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex items-center gap-1 py-2 text-sm font-medium overflow-x-auto scrollbar-none">
+
+              {/* Categorias */}
               <button
                 onClick={() => setIsDrawerOpen(true)}
-                className="text-gray-700 hover:text-teal-600 cursor-pointer transition-colors flex items-center gap-1.5"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition whitespace-nowrap"
+                style={{ color: DS.primary }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#DBEAFE')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 aria-label="Abrir categorias"
               >
-                <Menu className="w-4 h-4 text-gray-600" />
-                Categorias
+                <Menu className="w-4 h-4" />
+                <span className="font-semibold">Categorias</span>
               </button>
-              
-              <Link href="/ofertas-do-dia" className="text-gray-700 hover:text-teal-600 cursor-pointer transition-colors flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-500" />
+
+              <span style={{ color: DS.border }} className="select-none">|</span>
+
+              {/* Ofertas do Dia — âmbar */}
+              <Link
+                href="/ofertas-do-dia"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition whitespace-nowrap"
+                style={{ color: DS.text }}
+                onMouseEnter={e => (e.currentTarget.style.color = DS.primary)}
+                onMouseLeave={e => (e.currentTarget.style.color = DS.text)}
+              >
+                <Zap className="w-4 h-4" style={{ color: DS.accent }} />
                 Ofertas do Dia
               </Link>
-              
-              <Link href="/mais-vendidos" className="text-gray-700 hover:text-teal-600 cursor-pointer transition-colors flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-rose-500" />
+
+              {/* Mais Vendidos — teal */}
+              <Link
+                href="/mais-vendidos"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition whitespace-nowrap"
+                style={{ color: DS.text }}
+                onMouseEnter={e => (e.currentTarget.style.color = DS.primary)}
+                onMouseLeave={e => (e.currentTarget.style.color = DS.text)}
+              >
+                <TrendingUp className="w-4 h-4" style={{ color: DS.success }} />
                 Mais Vendidos
               </Link>
-              
-              <Link href="/lancamentos" className="text-gray-700 hover:text-teal-600 cursor-pointer transition-colors">
+
+              {/* Lançamentos */}
+              <Link
+                href="/lancamentos"
+                className="px-3 py-1.5 rounded-md transition whitespace-nowrap"
+                style={{ color: DS.text }}
+                onMouseEnter={e => (e.currentTarget.style.color = DS.primary)}
+                onMouseLeave={e => (e.currentTarget.style.color = DS.text)}
+              >
                 Lançamentos
               </Link>
-              
-              <Link href="/marcas" className="text-gray-700 hover:text-teal-600 cursor-pointer transition-colors">
+
+              {/* Marcas */}
+              <Link
+                href="/marcas"
+                className="px-3 py-1.5 rounded-md transition whitespace-nowrap"
+                style={{ color: DS.text }}
+                onMouseEnter={e => (e.currentTarget.style.color = DS.primary)}
+                onMouseLeave={e => (e.currentTarget.style.color = DS.text)}
+              >
                 Marcas
               </Link>
-              
-              <Link href="/black-friday" className="text-rose-600 font-bold cursor-pointer flex items-center gap-1.5 hover:text-rose-700">
-                <Tag className="w-4 h-4 text-rose-600" />
+
+              {/* Black Friday — destaque especial */}
+              <Link
+                href="/black-friday"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold transition whitespace-nowrap ml-auto"
+                style={{ color: DS.danger }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+              >
+                <Tag className="w-4 h-4" />
                 Black Friday
               </Link>
             </div>
@@ -129,33 +258,10 @@ export const Header = ({}: HeaderProps) => {
         </nav>
       )}
 
-      {/* Mobile Menu (antigo - pode remover se não for usar) */}
-      {isMenuOpen && isMobile && (
-        <div className="border-t border-gray-200 bg-white">
-          <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
-            <Link href="/produtos" className="py-2 text-gray-700 hover:text-blue-600 transition font-medium">
-              Produtos
-            </Link>
-            <Link href="/categorias" className="py-2 text-gray-700 hover:text-blue-600 transition font-medium">
-              Categorias
-            </Link>
-            <Link href="/ofertas" className="py-2 text-gray-700 hover:text-blue-600 transition font-medium">
-              Ofertas
-            </Link>
-            <Link href="/sobre" className="py-2 text-gray-700 hover:text-blue-600 transition font-medium">
-              Sobre
-            </Link>
-            <Link href="/login" className="py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-center mt-2">
-              Entrar
-            </Link>
-          </nav>
-        </div>
-      )}
-
-      {/* Navigation Drawer - FUNCIONA EM TODAS AS TELAS */}
-      <NavigationDrawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
+      {/* Navigation Drawer — funciona em todas as telas, não alterado */}
+      <NavigationDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
       />
     </header>
   );

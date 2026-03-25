@@ -11,9 +11,9 @@ Regras estabelecidas:
 2) Depois que foi aprovado por mim passe o código passo a passo, e o caminho desse arquivo e comentado de forma que um iniciante entenda o processo que faz ali naquele código.
 
 
-4) Aplicar melhores práticas que um engenheiro de programação sênior especialista em react com nextjs faria.
+3) Aplicar melhores práticas que um engenheiro de programação sênior especialista em react com nextjs faria.
 
-5) Aplicar melhores práticas ux ui designer faria na prática.
+4) Aplicar melhores práticas ux ui designer faria na prática.
 
 
 

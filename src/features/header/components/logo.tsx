@@ -2,19 +2,42 @@ import Link from 'next/link';
 
 interface LogoProps {
   className?: string;
+  /** Exibe o nome da loja ao lado do ícone. Padrão: true */
+  showName?: boolean;
+  /** Variante de cor: 'default' usa o azul primário, 'white' para uso em fundos escuros */
+  variant?: 'default' | 'white';
 }
 
-export const Logo = ({ className = '' }: LogoProps) => {
+export const Logo = ({
+  className = '',
+  showName = true,
+  variant = 'default',
+}: LogoProps) => {
+  const nameColor = variant === 'white' ? 'text-white' : 'text-[#1F2937]';
+  const subColor  = variant === 'white' ? 'text-white/70' : 'text-[#6B7280]';
+
   return (
-    <Link 
-      href="/" 
-      className={`flex items-center space-x-2 text-primary hover:opacity-80 transition-opacity ${className}`}
+    <Link
+      href="/"
+      className={`flex items-center gap-2.5 hover:opacity-85 transition-opacity ${className}`}
+      aria-label="Do Rocha — página inicial"
     >
-      {/* Logo SVG placeholder - depois substituímos pelo seu logo real */}
-      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-        <span className="text-white font-bold text-sm">DR</span>
+      {/* Ícone — azul primário do design system */}
+      <div className="w-9 h-9 bg-[#0C447C] rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+        <span className="text-white font-bold text-sm tracking-tight select-none">DR</span>
       </div>
-      <span className="font-bold text-xl hidden sm:inline-block">Do Rocha</span>
+
+      {/* Nome */}
+      {showName && (
+        <div className="hidden sm:block leading-tight">
+          <span className={`block font-bold text-[17px] leading-none ${nameColor}`}>
+            Do Rocha
+          </span>
+          <span className={`block text-[11px] font-normal ${subColor}`}>
+            Sua loja
+          </span>
+        </div>
+      )}
     </Link>
   );
 };

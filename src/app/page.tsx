@@ -12,97 +12,92 @@ import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import { Footer } from "@/components/common/footer";
 
-// ─── Constantes da página ────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 const FLASH_DEAL_END_DATE = "2025-09-28T11:02:00";
 
 const BANNERS = [
   {
-    mobileSrc: "/banner-promocao.webp",
+    mobileSrc:  "/banner-promocao.webp",
     desktopSrc: "/banner-promocao.webp",
     alt: "Promoção Especial Do Rocha",
   },
   {
-    mobileSrc: "/banner-promocao.webp",
+    mobileSrc:  "/banner-promocao.webp",
     desktopSrc: "/banner-promocao.webp",
     alt: "Ofertas Exclusivas",
   },
 ];
 
-// ─── Info Cards — alinhados ao design system (Azul + Âmbar + Teal) ──────────
+// Info cards — azul primário, teal (sucesso) e âmbar (destaque)
+// seguem o design system: #0C447C · #14B8A6 · #EF9F27
 const INFO_CARDS = [
   {
     icon: "🚚",
     title: "Entrega Rápida",
-    description: "Entregamos em até 48h para SP e capitais",
+    description: "Entregamos em até 48h para SP e principais capitais",
     link: "Ver zonas de entrega",
-    // azul — primária
-    bg: "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/30",
-    border: "border-[#BFDBFE] dark:border-blue-900/30",
-    iconBg: "bg-[#EFF6FF] dark:bg-blue-900/30",
+    bg:        "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/20",
+    border:    "border-[#BFDBFE] dark:border-blue-900/30",
+    iconBg:    "bg-[#EFF6FF] dark:bg-blue-900/30",
     linkColor: "text-[#0C447C] dark:text-blue-400",
-    divider: "border-[#EFF6FF] dark:border-blue-900/20",
+    divider:   "border-[#DBEAFE] dark:border-blue-900/20",
   },
   {
     icon: "💳",
     title: "Pagamento Seguro",
     description: "Parcelamos em até 12x sem juros no cartão",
-    link: "Métodos de pagamento",
-    // teal — sucesso
-    bg: "from-white to-[#F0FDFA] dark:from-gray-900 dark:to-teal-950/30",
-    border: "border-[#99F6E4] dark:border-teal-900/30",
-    iconBg: "bg-[#F0FDFA] dark:bg-teal-900/30",
+    link: "Ver métodos de pagamento",
+    bg:        "from-white to-[#F0FDFA] dark:from-gray-900 dark:to-teal-950/20",
+    border:    "border-[#99F6E4] dark:border-teal-900/30",
+    iconBg:    "bg-[#F0FDFA] dark:bg-teal-900/30",
     linkColor: "text-[#0F766E] dark:text-teal-400",
-    divider: "border-[#F0FDFA] dark:border-teal-900/20",
+    divider:   "border-[#CCFBF1] dark:border-teal-900/20",
   },
   {
     icon: "⭐",
     title: "Garantia Estendida",
     description: "12 meses de garantia em todos os produtos",
     link: "Saiba mais",
-    // âmbar — destaque
-    bg: "from-white to-[#FFFBEB] dark:from-gray-900 dark:to-amber-950/30",
-    border: "border-[#FDE68A] dark:border-amber-900/30",
-    iconBg: "bg-[#FFFBEB] dark:bg-amber-900/30",
+    bg:        "from-white to-[#FFFBEB] dark:from-gray-900 dark:to-amber-950/20",
+    border:    "border-[#FDE68A] dark:border-amber-900/30",
+    iconBg:    "bg-[#FFFBEB] dark:bg-amber-900/30",
     linkColor: "text-[#B45309] dark:text-amber-400",
-    divider: "border-[#FFFBEB] dark:border-amber-900/20",
+    divider:   "border-[#FEF3C7] dark:border-amber-900/20",
   },
   {
     icon: "🛟",
     title: "Suporte 24/7",
     description: "Atendimento via chat, WhatsApp e telefone",
     link: "Fale conosco",
-    // azul secundário
-    bg: "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/30",
-    border: "border-[#BFDBFE] dark:border-blue-900/30",
-    iconBg: "bg-[#EFF6FF] dark:bg-blue-900/30",
+    bg:        "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/20",
+    border:    "border-[#BFDBFE] dark:border-blue-900/30",
+    iconBg:    "bg-[#EFF6FF] dark:bg-blue-900/30",
     linkColor: "text-[#0C447C] dark:text-blue-400",
-    divider: "border-[#EFF6FF] dark:border-blue-900/20",
+    divider:   "border-[#DBEAFE] dark:border-blue-900/20",
   },
 ];
 
-// ─── Mini banners laterais — alinhados ao design system ──────────────────────
+// Mini banners laterais — design system: azul primário e âmbar
 const SIDE_BANNERS = [
   {
     icon: "🚚",
     title: "Frete Grátis",
     subtitle: "Acima de R$ 299",
-    description: "Entregas em todo Brasil",
-    // azul primário
+    description: "Entregas em todo o Brasil",
     bg: "from-[#0C447C] to-[#1E3A8A]",
     subtitleColor: "text-blue-200",
   },
   {
     icon: "🎁",
-    title: "Ofertas Exclusivas",
-    subtitle: "Só para você",
-    description: "Cupom PRIMEIRA10 — 10% off",
-    // âmbar
+    title: "Primeira Compra",
+    subtitle: "10% de desconto",
+    description: "Use o cupom PRIMEIRA10 no checkout",
     bg: "from-[#EF9F27] to-[#B45309]",
     subtitleColor: "text-amber-100",
   },
 ];
 
-// ─── COMPONENT ───────────────────────────────────────────────────────────────
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
   const [products, newlyCreatedProducts, categories] = await Promise.all([
     getProducts(),
@@ -112,26 +107,26 @@ const Home = async () => {
 
   return (
     <>
-      {/* ── Marquee topo ── */}
+      {/* ── 1. Marquee ── */}
       <MarqueeBanner
-        text="&nbsp;🚚 Frete Grátis acima de R$ 299&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;•&nbsp;🎁 10% off na primeira compra&nbsp;&nbsp;&nbsp;&nbsp;•&nbsp;⭐ Produtos com garantia&nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo Brasil&nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
+        text="&nbsp;🚚 Frete Grátis acima de R$ 299&nbsp;&nbsp;&nbsp;•&nbsp;🎁 10% off na primeira compra — use PRIMEIRA10&nbsp;&nbsp;&nbsp;•&nbsp;⭐ Garantia em todos os produtos&nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo o Brasil&nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
         speed={60}
       />
 
-      {/* ── Header ── */}
+      {/* ── 2. Header ── */}
       <Header />
 
-      {/* ── Conteúdo principal ── */}
-      <main className="max-w-7xl mx-auto px-4 mt-6 mb-32">
+      {/* ── 3. Conteúdo ── */}
+      <main className="max-w-7xl mx-auto px-4 mt-6 mb-16 space-y-16">
 
-        {/* ── 1. Banner carousel ── */}
-        <section aria-label="Banners promocionais" className="mb-10 rounded-2xl overflow-hidden shadow-elevation">
+        {/* Banner carousel */}
+        <section aria-label="Banners promocionais" className="rounded-2xl overflow-hidden shadow-elevation">
           <BannerCarousel banners={BANNERS} />
         </section>
 
-        {/* ── 2. Info cards — confiança e conversão ── */}
-        <section aria-label="Diferenciais" className="mb-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
+        {/* Info cards — confiança e conversão */}
+        <section aria-label="Diferenciais da loja">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {INFO_CARDS.map((card) => (
               <div
                 key={card.title}
@@ -143,6 +138,7 @@ const Home = async () => {
                   transition-all duration-300 hover:-translate-y-1
                 `}
               >
+                {/* Ícone flutuante */}
                 <div
                   className={`
                     absolute top-4 right-4 w-10 h-10 ${card.iconBg}
@@ -152,10 +148,11 @@ const Home = async () => {
                 >
                   <span className="text-xl" role="img" aria-hidden="true">{card.icon}</span>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1.5">
+
+                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1.5 pr-12">
                   {card.title}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 leading-relaxed">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
                   {card.description}
                 </p>
                 <div className={`pt-3 border-t ${card.divider}`}>
@@ -168,80 +165,77 @@ const Home = async () => {
           </div>
         </section>
 
-        {/* InfoCards original preservado e oculto para não quebrar dependências */}
+        {/* InfoCards original preservado oculto — não remover */}
         <div className="hidden" aria-hidden="true">
           <InfoCards />
         </div>
 
-        {/* ── 3. Deals / Flash sale ── */}
-        <section aria-label="Ofertas em destaque" className="mb-12">
+        {/* Deals / Flash sale */}
+        <section aria-label="Ofertas em destaque">
           <DealsGrid
             flashDealProduct={products[0]}
             flashDealEndDate={FLASH_DEAL_END_DATE}
           />
         </section>
 
-        {/* ── 4. Novidades — carousel + mini banners ── */}
-        <section aria-label="Novidades" className="mb-32">
+        {/* Novidades — carousel + mini banners */}
+        <section aria-label="Novidades">
           <div className="mb-8">
-            <SectionTitle icon="star">Novidades</SectionTitle>
+            <SectionTitle icon="star">Chegou agora</SectionTitle>
           </div>
 
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+            {/* Carousel de destaque */}
+            <div className="lg:col-span-2 h-80">
+              <FeaturedProductsCarousel />
+            </div>
 
-              {/* Carousel de produtos em destaque */}
-              <div className="lg:col-span-2 h-80">
-                <FeaturedProductsCarousel />
-              </div>
-
-              {/* Mini banners laterais — design system */}
-              <div className="flex flex-col gap-4 h-80">
-                {SIDE_BANNERS.map((banner) => (
-                  <div key={banner.title} className="flex-1 min-h-0">
-                    <div
-                      className={`
-                        h-full rounded-2xl bg-gradient-to-br ${banner.bg}
-                        p-4 text-white shadow-elevation
-                        flex flex-col justify-center
-                        cursor-pointer hover:opacity-95 transition-opacity
-                      `}
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="bg-white/20 p-2 rounded-full flex-shrink-0">
-                          <span className="text-lg" role="img" aria-hidden="true">{banner.icon}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm leading-tight">{banner.title}</h3>
-                          <p className={`text-xs ${banner.subtitleColor}`}>{banner.subtitle}</p>
-                        </div>
+            {/* Mini banners — design system */}
+            <div className="flex flex-col gap-4 h-80">
+              {SIDE_BANNERS.map((banner) => (
+                <div key={banner.title} className="flex-1 min-h-0">
+                  <div
+                    className={`
+                      h-full rounded-2xl bg-gradient-to-br ${banner.bg}
+                      p-4 text-white shadow-elevation
+                      flex flex-col justify-center
+                      cursor-pointer hover:opacity-95 transition-opacity
+                    `}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-white/20 p-2 rounded-full flex-shrink-0">
+                        <span className="text-lg" role="img" aria-hidden="true">{banner.icon}</span>
                       </div>
-                      <p className="text-xs text-white/80 leading-relaxed">{banner.description}</p>
+                      <div>
+                        <p className="font-bold text-sm leading-tight">{banner.title}</p>
+                        <p className={`text-xs ${banner.subtitleColor}`}>{banner.subtitle}</p>
+                      </div>
                     </div>
+                    <p className="text-xs text-white/80 leading-relaxed">{banner.description}</p>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ── 5. Categorias ── */}
-        <section aria-label="Categorias" className="mb-32">
+        {/* Categorias */}
+        <section aria-label="Categorias">
           <CategorySelector
             categories={categories}
             isLoading={!categories?.length}
           />
         </section>
 
-        {/* ── 6. Grade de produtos em destaque ── */}
-        <section aria-label="Produtos em destaque" className="mb-32">
+        {/* Produtos em destaque */}
+        <section aria-label="Produtos em destaque">
           <div className="mb-8">
-            <SectionTitle icon="flame">Destaque</SectionTitle>
+            <SectionTitle icon="flame">Os mais queridos</SectionTitle>
           </div>
           <ProductGridWithLoadMore />
         </section>
 
-        {/* ── Footer ── */}
+        {/* Footer */}
         <Footer />
       </main>
     </>

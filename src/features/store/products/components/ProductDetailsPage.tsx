@@ -17,6 +17,8 @@ import { ProductTabs } from './product-tabs';
 import { UpsellSection } from './upsell-section';
 import { produto, modalidades, transportadoras, parcelamentos, cuponsValidos, FRETE_GRATIS_MIN } from '../constants/mockData';
 import type { Modalidade } from '../types/product.types';
+import { Header } from '@/features/header';
+import { Footer } from '@/components/common/footer';
 
 export function ProductDetail() {
   // Estados globais da página
@@ -46,14 +48,7 @@ export function ProductDetail() {
     <div className="min-h-screen bg-surface-bg font-sans text-text-primary">
       
       {/* HEADER E BREADCRUMB (você vai substituir pelos seus) */}
-      <header className="bg-white border-b border-surface-border sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <span className="font-extrabold text-lg text-primary">AETHER<span className="text-text-hint font-normal text-xs ml-1">store</span></span>
-          <button className="relative bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold">
-            Carrinho {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-danger text-white text-[9px] font-bold w-4 h-4 rounded-full">{cartCount}</span>}
-          </button>
-        </div>
-      </header>
+      <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
         <div className="flex gap-1.5 text-xs text-text-hint">
@@ -85,6 +80,7 @@ export function ProductDetail() {
               descricao={produto.descricao}
               cores={produto.cores}
               tamanhos={produto.tamanhos}
+              modalidades={modalidades}
             />
           </div>
 
@@ -121,10 +117,7 @@ export function ProductDetail() {
 
       </main>
 
-      {/* FOOTER (você vai substituir pelo seu) */}
-      <footer className="border-t border-surface-border bg-white mt-10 py-6 text-center text-xs text-text-hint">
-        © 2025 Aether Store
-      </footer>
+      <Footer />
 
       {/* MODAL DE PAGAMENTO */}
       <PaymentModal

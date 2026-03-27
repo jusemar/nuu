@@ -3,9 +3,11 @@
 import { Heart, ShoppingCart, Sparkles, Truck, Zap, Star, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface FeaturedProductCardProps {
   id: string;
+  slug?: string;
   image: string;
   title: string;
   description?: string;
@@ -27,6 +29,7 @@ interface FeaturedProductCardProps {
 
 export const FeaturedProductCard = ({
   id,
+  slug,
   image,
   title,
   description,
@@ -45,6 +48,7 @@ export const FeaturedProductCard = ({
   className = '',
   isLoading = false,
 }: FeaturedProductCardProps) => {
+  const router = useRouter();
   const [internalIsFavorite, setInternalIsFavorite] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   
@@ -80,6 +84,11 @@ export const FeaturedProductCard = ({
     setTimeout(() => setIsAddingToCart(false), 300);
   };
 
+  const navigateToProduct = () => {
+    if (!slug) return;
+    router.push(`/product/${slug}`);
+  };
+
   if (isLoading) {
     return (
       <div 
@@ -99,10 +108,20 @@ export const FeaturedProductCard = ({
 
   return (
     <article 
-      className={`group relative w-full max-w-[280px] overflow-hidden rounded-2xl bg-gradient-to-b from-white to-gray-50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-100 ${className}`}
+      className={`group relative w-full max-w-[280px] overflow-hidden rounded-2xl bg-gradient-to-b from-white to-gray-50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border border-gray-100 ${slug ? 'cursor-pointer' : ''} ${className}`}
       data-product-id={id}
       itemScope
       itemType="https://schema.org/Product"
+      onClick={navigateToProduct}
+      onKeyDown={(event) => {
+        if (!slug) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigateToProduct();
+        }
+      }}
+      role={slug ? 'link' : undefined}
+      tabIndex={slug ? 0 : undefined}
     >
       {/* Badge DESTAQUE no topo */}
       {isFeatured && (
@@ -162,7 +181,10 @@ export const FeaturedProductCard = ({
           
           {/* Botão de Favorito */}
           <button
-            onClick={handleToggleFavorite}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleToggleFavorite();
+            }}
             className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
               isFavorite 
                 ? 'text-red-500 bg-red-50' 
@@ -246,7 +268,10 @@ export const FeaturedProductCard = ({
             
             {/* Botão Carrinho - com gradiente roxo */}
             <button
-              onClick={handleAddToCart}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleAddToCart();
+              }}
               disabled={isAddingToCart}
               className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white transition-all duration-300 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
                 isAddingToCart ? 'scale-95' : 'hover:scale-105 active:scale-95'

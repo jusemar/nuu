@@ -42,6 +42,7 @@ function formatProductForCard(product: any) {
 
   return {
     id: product.id,
+    slug: product.slug,
     image: imageUrl,
     title: product.name,
     description: product.cardShortText || product.description || '',

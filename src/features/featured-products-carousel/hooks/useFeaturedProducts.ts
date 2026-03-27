@@ -11,6 +11,7 @@ import { UseQueryResult } from '@tanstack/react-query';
  */
 interface RawProductFromDB {
   id: string;
+  slug: string;
   name: string;                    // Nome do produto no banco
   cardShortText?: string;          // Texto curto para card (opcional)
   description?: string;            // Descrição completa (opcional)
@@ -35,6 +36,7 @@ interface RawProductFromDB {
 export interface FeaturedProduct {
   // 🔴 OBRIGATÓRIOS (o card não funciona sem):
   id: string;
+  slug: string;
   image: string;
   title: string;
   currentPrice: number;
@@ -101,6 +103,7 @@ export const useFeaturedProducts = () => {
     return {
       // 📋 DADOS BÁSICOS
       id: product.id,
+      slug: product.slug,
       title: product.name,  // Banco usa 'name', UI usa 'title'
       
       // 📝 DESCRIÇÃO: Texto curto do card tem prioridade

@@ -1,24 +1,80 @@
 // ==========================================
+// TIPOS HÍBRIDOS: Reais do DB + Mock temporário
+// ==========================================
+// Estratégia: MVP - Subir com dados reais essenciais, mockar o resto
+// Reais: produto base, preços, imagens da galeria
+// Mock: avaliações, upsell, frete, cupons (implementar depois)
+
+// ==========================================
 // TIPOS BÁSICOS (Enums do projeto)
 // ==========================================
 
-/** Modalidades de compra disponíveis */
-export type Modalidade = "estoque" | "prevenda" | "drop" | "fabrica";
+/** Modalidades de compra disponíveis - vem do DB (product_pricing.type) */
+export type Modalidade = "stock" | "pre_sale" | "dropshipping" | "order_basis";
 
-/** Abas de navegação na página de detalhes */
+/** Abas de navegação na página de detalhes - apenas UI */
 export type Aba = "descricao" | "especificacoes" | "avaliacoes" | "entrega";
 
-/** Cores disponíveis para o produto */
+/** Cores disponíveis para o produto - MOCK (futuro: variants) */
 export type Cor = "preto" | "branco" | "azul" | "vermelho";
 
-/** Tamanhos de calçados (BR) */
+/** Tamanhos de calçados (BR) - MOCK (futuro: variants) */
 export type Tamanho = "38" | "39" | "40" | "41" | "42" | "43" | "44";
 
 // ==========================================
-// INTERFACES DE DADOS
+// INTERFACES DE DADOS REAIS (do Drizzle Schema)
 // ==========================================
 
-/** Uma avaliação de cliente */
+/**
+ * Produto base - mapeia 1:1 com productTable do Drizzle
+ * Campos obrigatórios que vêm do banco de dados
+ */
+export interface ProdutoReal {
+  id: string;                    // uuid do DB
+  name: string;                  // nome do produto
+  slug: string;                  // URL amigável (único)
+  description: string;           // descrição completa
+  brand: string | null;         // marca (ex: "Nike")
+  sku: string;                   // código SKU
+  cardShortText: string | null;  // texto curto para cards
+  status: string;                // 'draft' | 'published' | 'archived'
+  isActive: boolean;             // se está ativo no site
+  createdAt: Date;               // data de criação
+  updatedAt: Date;               // data de atualização
+}
+
+/**
+ * Imagem da galeria - mapeia productGalleryImagesTable
+ * Ordenada por sortOrder, uma é primária (destaque)
+ */
+export interface ImagemGaleria {
+  id: string;           // uuid da imagem
+  imageUrl: string;     // URL pública da imagem
+  altText: string | null; // texto alternativo (SEO)
+  isPrimary: boolean;   // true = imagem principal (capa)
+  sortOrder: number;    // ordem de exibição (0, 1, 2...)
+}
+
+/**
+ * Preço por modalidade - mapeia productPricingTable
+ * Cada produto pode ter até 4 modalidades: stock, pre_sale, dropshipping, order_basis
+ */
+export interface PrecoModalidade {
+  type: Modalidade;           // tipo da modalidade
+  price: number;              // preço em centavos (ex: 67991 = R$ 679,91)
+  pricingModalDescription: string | null; // descrição (ex: "Estoque Próprio")
+  deliveryDays: string | null; // prazo de entrega (ex: "5 dias úteis")
+  hasPromo: boolean;          // se tem promoção ativa
+  promoPrice: number | null;  // preço promocional em centavos
+  promoEndDate: Date | null;  // quando a promo expira
+  isActive: boolean;          // se esta modalidade está ativa
+}
+
+// ==========================================
+// INTERFACES MOCK (serão substituídas depois)
+// ==========================================
+
+/** Avaliação de cliente - MOCK (futuro: reviewsTable) */
 export interface Avaliacao {
   nome: string;           // Nome do cliente
   data: string;           // Data formatada (ex: "12 Mar 2025")
@@ -28,13 +84,13 @@ export interface Avaliacao {
   cor: string;            // Cor de fundo do avatar
 }
 
-/** Especificação técnica do produto */
+/** Especificação técnica - MOCK (futuro: productAttributeTable) */
 export interface Especificacao {
   label: string;          // Nome da espec (ex: "Material")
   valor: string;          // Valor (ex: "Couro")
 }
 
-/** Item para venda cruzada (compre junto) */
+/** Item para venda cruzada (compre junto) - MOCK (futuro: upsellTable) */
 export interface UpsellItem {
   nome: string;
   preco: string;          // Formatado (ex: "R$ 89,90")
@@ -42,45 +98,7 @@ export interface UpsellItem {
   tag: string | null;     // "Mais vendido", "Novo", etc
 }
 
-/** Dados completos de um produto */
-export interface Produto {
-  nome: string;
-  marca: string;
-  sku: string;
-  vendedor: string;
-  vendedorRating: number; // Percentual (ex: 98)
-  descricao: string;
-  imagens: string[];      // Array de URLs
-  cores: Record<Cor, string>; // { preto: "#1a1a1a", ... }
-  tamanhos: Tamanho[];
-  rating: number;         // Média (ex: 4.8)
-  totalAvaliacoes: number;
-  estoque: number;        // Quantidade disponível
-  especificacoes: Especificacao[];
-  avaliacoes: Avaliacao[];
-  upsell: UpsellItem[];
-}
-
-// ==========================================
-// INTERFACES DE NEGÓCIO (Modalidades, Frete, etc)
-// ==========================================
-
-/** Configuração de cada modalidade de preço */
-export interface ModalidadeInfo {
-  label: string;          // Nome exibido (ex: "Estoque Próprio")
-  badge: string;          // Texto do selo (ex: "Entrega rápida")
-  badgeBg: string;        // Cor de fundo do selo
-  badgeColor: string;     // Cor do texto do selo
-  precoNormal: string;    // Preço no cartão (ex: "R$ 799,90")
-  precoParc: string;      // Parcelamento (ex: "3x de R$ 253,97")
-  precoPix: string;       // Preço no PIX (ex: "R$ 679,91")
-  prazo: string;          // Prazo de entrega
-  envia: string;          // Quem envia (ex: "Sport Elite Store")
-  garantia: string;       // Tempo de garantia
-  icon: string;           // Emoji ou ícone
-}
-
-/** Transportadora disponível para entrega */
+/** Transportadora de entrega - MOCK (futuro: shippingTable) */
 export interface Transportadora {
   nome: string;
   prazo: string;          // "5 dias úteis"
@@ -88,7 +106,7 @@ export interface Transportadora {
   destaque: boolean;      // Se é a recomendada
 }
 
-/** Opção de parcelamento no cartão */
+/** Opção de parcelamento - MOCK (calculado no frontend) */
 export interface Parcelamento {
   parcelas: number;
   valor: string;          // Valor da parcela (ex: "R$ 266,63")
@@ -96,19 +114,77 @@ export interface Parcelamento {
   semJuros: boolean;      // Se é sem juros
 }
 
-/** Cupom de desconto aplicado */
+/** Cupom de desconto - MOCK (futuro: couponsTable) */
 export interface Cupom {
   desconto: number;       // Percentual (ex: 10)
   label: string;          // Descrição (ex: "10% de desconto...")
   code: string;           // Código digitado (ex: "PRIMEIRA10")
 }
 
+/** Informações visuais de cada modalidade de preço para a UI */
+export interface ModalidadeInfo {
+  label: string;           // Nome exibido (ex: "Estoque Próprio")
+  badge: string;           // Texto do badge (ex: "Entrega rápida")
+  badgeBg: string;         // Cor de fundo do badge (hex)
+  badgeColor: string;      // Cor do texto do badge (hex)
+  precoNormal: string;     // Preço cartão formatado (ex: "R$ 799,90")
+  precoParc: string;       // Parcelamento (ex: "3x de R$ 253,97 sem juros")
+  precoPix: string;        // Preço PIX formatado (ex: "R$ 679,91")
+  prazo: string;           // Prazo de entrega (ex: "2 a 5 dias úteis")
+  envia: string;           // Quem envia (ex: "Sport Elite Store")
+  garantia: string;        // Período de garantia (ex: "12 meses")
+  icon: string;            // Emoji/ícone (ex: "🏪")
+}
+
 // ==========================================
-// TIPOS DE ESTADO (useState)
+// INTERFACE COMPLETA (união Real + Mock)
+// ==========================================
+
+/**
+ * Produto completo para a página de detalhes
+ * Combina dados reais do DB + mocks temporários
+ * 
+ * Quando implementar novas tabelas:
+ * 1. Criar interface Real (ex: AvaliacaoReal)
+ * 2. Substituir no campo mockado abaixo
+ * 3. Atualizar o service para buscar do DB
+ */
+export interface Produto {
+  // === DADOS REAIS (do banco) ===
+  id: string;
+  nome: string;           // name do DB
+  slug: string;
+  marca: string;          // brand do DB (fallback: "")
+  sku: string;
+  descricao: string;      // description do DB
+  imagens: ImagemGaleria[]; // gallery images do DB
+  precos: PrecoModalidade[]; // pricing do DB
+
+  // === DADOS MOCK (implementar depois) ===
+  rating: number;         // Média de avaliações (futuro: reviewsTable)
+  totalAvaliacoes: number; // Contagem de reviews (futuro)
+  vendedor: string;       // Info do vendedor (futuro: sellerTable)
+  vendedorRating: number; // Nota do vendedor (futuro)
+  cores: Record<Cor, string>; // Cores disponíveis (futuro: variants)
+  tamanhos: Tamanho[];    // Tamanhos (futuro: variants)
+  estoque: number;        // Quantidade (futuro: inventoryTable)
+  especificacoes: Especificacao[]; // Ficha técnica (futuro: attributes)
+  avaliacoes: Avaliacao[]; // Reviews (futuro: reviewsTable)
+  upsell: UpsellItem[];   // Compre junto (futuro: upsellTable)
+}
+
+// ==========================================
+// TIPOS DE ESTADO (useState dos componentes)
 // ==========================================
 
 /** Estado do cupom no componente */
-export type CupomState = 
+export type CupomState =
   | { status: 'idle' }           // Nenhum cupom
   | { status: 'applied'; data: Cupom }  // Cupom válido aplicado
   | { status: 'error'; message: string }; // Cupom inválido
+
+/** Modalidade selecionada pelo usuário */
+export type ModalidadeSelecionada = {
+  modalidade: Modalidade;
+  dados: PrecoModalidade;
+};

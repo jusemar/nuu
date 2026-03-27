@@ -24,6 +24,7 @@ export async function getProductsByFlag(flags: string[]) {
         // Campos do produto
         product: {
           id: productTable.id,
+          slug: productTable.slug,
           name: productTable.name,
           cardShortText: productTable.cardShortText,
           storeProductFlags: productTable.storeProductFlags,

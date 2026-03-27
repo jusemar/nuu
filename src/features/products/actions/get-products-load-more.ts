@@ -24,6 +24,7 @@ export async function getProductsLoadMore(page: number = 1) {
         // === DADOS DO PRODUTO PRINCIPAL ===
         product: {
           id: productTable.id,
+          slug: productTable.slug,
           name: productTable.name,
           cardShortText: productTable.cardShortText, // Texto curto que aparece no card
           storeProductFlags: productTable.storeProductFlags, // Array de flags (ex: ['general', 'new'])

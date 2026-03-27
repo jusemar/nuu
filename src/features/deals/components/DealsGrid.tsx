@@ -49,6 +49,7 @@ export const DealsGrid = ({
 
     return {
       id: p.id,
+      slug: p.slug,
       image: p.mainImage?.imageUrl || '/produto-sem-foto.webp',
       title: p.name,
       description: p.cardShortText || undefined,

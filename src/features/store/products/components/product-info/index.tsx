@@ -8,8 +8,8 @@
 'use client'; // Precisa ser client component porque usa useState (estados)
 
 import { useState, useRef } from 'react'; // Hooks do React para estado e referências
-import type { Cor, Tamanho, Modalidade } from '../../types/product.types'; // Tipos TypeScript
-import { modalidades } from '../../constants/mockData'; // Dados das modalidades de preço
+import type { Cor, Tamanho, Modalidade, ModalidadeInfo } from '../../types/product.types'; // Tipos TypeScript
+// modalidades agora vem via props (dados reais do banco)
 import { ChatVendedor } from '../chat-vendedor';
 import { Stars } from '@/components/ui/stars';
 
@@ -28,6 +28,7 @@ interface ProductInfoProps {
   cores: Record<Cor, string>; // Objeto com cores: { preto: "#1a1a1a", ... }
   tamanhos: Tamanho[];       // Array de tamanhos: ["38", "39", ...]
   corInicial?: Cor;          // Cor que começa selecionada (opcional, padrão: preto)
+  modalidades?: Record<string, ModalidadeInfo>; // Modalidades de preço (vem do banco)
 }
 
 // ==========================================
@@ -51,31 +52,35 @@ export function ProductInfo({
   cores,
   tamanhos,
   corInicial = 'preto',
+  modalidades,  // Recebe modalidades via props (dados reais)
 }: ProductInfoProps) {
-  
+
   // -----------------------------------------
   // ESTADOS (useState) - "Memória" do componente
   // -----------------------------------------
-  
+
   // Estado da cor selecionada (começa com a corInicial ou "preto")
   const [corSel, setCorSel] = useState<Cor>(corInicial);
-  
+
   // Estado do tamanho selecionado (começa null = nenhum selecionado)
   const [tamSel, setTamSel] = useState<Tamanho | null>(null);
-  
-  // Estado da modalidade de preço selecionada (começa com "estoque")
-  const [modalidadeSel, setModalidadeSel] = useState<Modalidade>('estoque');
-  
+
+  const modalidadesMap = modalidades ?? {};
+  const modalidadeKeys = Object.keys(modalidadesMap) as Modalidade[];
+
+  // Estado da modalidade de preço selecionada (começa com a primeira disponível)
+  const [modalidadeSel, setModalidadeSel] = useState<Modalidade>(() => modalidadeKeys[0] ?? 'stock');
+
   // Estado que controla se o dropdown de modalidades está aberto
   const [modalidadeOpen, setModalidadeOpen] = useState(false);
-  
+
   // useRef = referência para guardar o timer do hover (evita bugs de mouse rápido)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // -----------------------------------------
   // DADOS AUXILIARES
   // -----------------------------------------
-  
+
   // Descrição de cada tamanho em centímetros (para mostrar ao lado do tamanho)
   const tamDesc: Record<Tamanho, string> = {
     '38': '23.5cm',
@@ -90,7 +95,7 @@ export function ProductInfo({
   // -----------------------------------------
   // FUNÇÕES DE EVENTO (HANDLERS)
   // -----------------------------------------
-  
+
   // Quando mouse ENTRA na área de modalidade (desktop)
   // Espera 150ms antes de abrir (evita abrir sem querer)
   function handleModHoverEnter() {
@@ -117,14 +122,18 @@ export function ProductInfo({
   }
 
   // Pega os dados da modalidade atualmente selecionada
-  const mod = modalidades[modalidadeSel];
+  const mod = modalidadesMap[modalidadeSel] ?? modalidadesMap[modalidadeKeys[0]];
+
+  if (!mod) {
+    return null;
+  }
 
   // ==========================================
   // RENDER (o que aparece na tela)
   // ==========================================
   return (
     <div className="flex flex-col gap-4">
-      
+
       {/* -----------------------------------------
           LINHA 1: MARCA + SKU
           Ex: AETHER  •  SKU: ATH-RUN-PRX-42
@@ -196,7 +205,7 @@ export function ProductInfo({
             {corSel}
           </span>
         </div>
-        
+
         {/* Botões de cor */}
         <div className="flex gap-2">
           {(Object.keys(cores) as Cor[]).map((cor) => (
@@ -204,11 +213,10 @@ export function ProductInfo({
               key={cor}
               onClick={() => setCorSel(cor)} // Clica = muda cor selecionada
               title={cor}
-              className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all flex-shrink-0 ${
-                corSel === cor
+              className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all flex-shrink-0 ${corSel === cor
                   ? 'outline outline-2 outline-primary outline-offset-2' // Selecionado: borda azul
                   : '' // Não selecionado: sem outline
-              }`}
+                }`}
               style={{
                 backgroundColor: cores[cor], // Cor de fundo = cor do produto
                 borderColor:
@@ -238,20 +246,19 @@ export function ProductInfo({
             Guia de tamanhos
           </a>
         </div>
-        
+
         {/* Botões de tamanho */}
         <div className="flex gap-1.5 flex-wrap">
           {tamanhos.map((t) => (
             <button
               key={t}
               onClick={() => t !== '40' && setTamSel(t)} // Clica = seleciona (exceto 40)
-              className={`min-w-[42px] h-[38px] border-[1.5px] bg-white rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center px-2 ${
-                tamSel === t
+              className={`min-w-[42px] h-[38px] border-[1.5px] bg-white rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center px-2 ${tamSel === t
                   ? 'border-primary bg-primary text-white' // Selecionado: azul
                   : t === '40'
-                  ? 'opacity-35 cursor-not-allowed line-through border-surface-border text-text-primary' // 40: desabilitado
-                  : 'border-surface-border text-text-primary hover:border-primary-mid' // Normal
-              }`}
+                    ? 'opacity-35 cursor-not-allowed line-through border-surface-border text-text-primary' // 40: desabilitado
+                    : 'border-surface-border text-text-primary hover:border-primary-mid' // Normal
+                }`}
             >
               {t}
             </button>
@@ -280,7 +287,7 @@ export function ProductInfo({
 
         {/* Container com eventos de mouse (hover desktop) */}
         <div onMouseEnter={handleModHoverEnter} onMouseLeave={handleModHoverLeave}>
-          
+
           {/* CARD DA MODALIDADE SELECIONADA */}
           <div
             className="border-[1.5px] border-primary rounded-xl p-3 bg-white flex items-center gap-2.5 cursor-pointer transition-all hover:border-primary-mid shadow-[0_0_0_1px_#0C447C]"
@@ -329,10 +336,10 @@ export function ProductInfo({
           {/* DROPDOWN: Outras modalidades (aparece quando modalidadeOpen = true) */}
           {modalidadeOpen && (
             <div className="flex flex-col gap-1.5 mt-2 animate-[slideDown_0.2s_ease]">
-              {(Object.keys(modalidades) as Modalidade[])
+              {modalidadeKeys
                 .filter((k) => k !== modalidadeSel) // Mostra todas EXCETO a selecionada
                 .map((key) => {
-                  const m = modalidades[key];
+                  const m = modalidadesMap[key];
                   return (
                     <div
                       key={key}
@@ -382,15 +389,15 @@ export function ProductInfo({
           CHAT COM VENDEDOR
           Bloco com ícone, status online e botão
           ----------------------------------------- */}
-      <ChatVendedor 
-  vendedorNome={vendedor}
-  status="online"
-  tempoResposta="Responde em minutos"
-  onClick={() => {
-    // Aqui você abre o chat real, modal, ou redireciona
-    console.log('Abrir chat com:', vendedor);
-  }}
-/>
+      <ChatVendedor
+        vendedorNome={vendedor}
+        status="online"
+        tempoResposta="Responde em minutos"
+        onClick={() => {
+          // Aqui você abre o chat real, modal, ou redireciona
+          console.log('Abrir chat com:', vendedor);
+        }}
+      />
     </div>
   );
 }

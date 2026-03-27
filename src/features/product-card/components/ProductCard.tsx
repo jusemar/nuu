@@ -3,9 +3,11 @@
 import { Heart, ShoppingCart, Sparkles, Truck, Zap } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface ProductCardProps {
   id: string;
+  slug?: string;
   image: string;
   title: string;
   description?: string;
@@ -24,6 +26,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({
   id,
+  slug,
   image,
   title,
   description,
@@ -39,6 +42,7 @@ export const ProductCard = ({
   className = '',
   isLoading = false,
 }: ProductCardProps) => {
+  const router = useRouter();
   const [internalIsFavorite, setInternalIsFavorite] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   
@@ -74,6 +78,11 @@ export const ProductCard = ({
     setTimeout(() => setIsAddingToCart(false), 300);
   };
 
+  const navigateToProduct = () => {
+    if (!slug) return;
+    router.push(`/product/${slug}`);
+  };
+
   if (isLoading) {
     return (
       <div 
@@ -93,26 +102,35 @@ export const ProductCard = ({
 
   return (
     <article 
-      className={`group relative w-full max-w-[280px] overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${className}`}
+      className={`group relative w-full max-w-[280px] overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${slug ? 'cursor-pointer' : ''} ${className}`}
       data-product-id={id}
       itemScope
       itemType="https://schema.org/Product"
+      onClick={navigateToProduct}
+      onKeyDown={(event) => {
+        if (!slug) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          navigateToProduct();
+        }
+      }}
+      role={slug ? 'link' : undefined}
+      tabIndex={slug ? 0 : undefined}
     >
       {/* Container da Imagem */}
-        <div className="relative aspect-[1/0.75] overflow-hidden bg-gray-50">
-          {/* Imagem do Produto */}
-          <div className="relative h-full w-full">
-            <Image
-              src={image}
-              alt={title}
-              fill
-              className="object-contain p-3 transition-transform duration-500 group-hover:scale-110"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-              priority={false}
-              itemProp="image"
-            />
-          </div>
+      <div className="relative aspect-[1/0.75] overflow-hidden bg-gray-50">
+        <div className="relative h-full w-full">
+          <Image
+            src={image}
+            alt={title}
+            fill
+            className="object-contain p-3 transition-transform duration-500 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            priority={false}
+            itemProp="image"
+          />
         </div>
+      </div>
 
       {/* Conteúdo - ESPAÇO REDUZIDO no topo */}
       <div className="p-3 pt-1"> {/* Reduzido padding-top */}
@@ -126,7 +144,10 @@ export const ProductCard = ({
           </h3>
           {/* Botão de Favorito - AO LADO DO TÍTULO como estava */}
           <button
-            onClick={handleToggleFavorite}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleToggleFavorite();
+            }}
             className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 ${
               isFavorite 
                 ? 'text-red-500 bg-red-50' 
@@ -192,7 +213,10 @@ export const ProductCard = ({
             
             {/* Botão Carrinho - AZUL */}
             <button
-              onClick={handleAddToCart}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleAddToCart();
+              }}
               disabled={isAddingToCart}
               className={`flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white transition-all duration-300 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
                 isAddingToCart ? 'scale-95' : 'hover:scale-105 active:scale-95'

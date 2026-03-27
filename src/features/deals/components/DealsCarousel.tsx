@@ -31,6 +31,7 @@ import Autoplay from "embla-carousel-autoplay";
 // Tipo para os dados mock (formato que ProductCard espera)
 interface DealProduct {
   id: string;
+  slug?: string;
   image: string;
   title: string;
   description?: string;

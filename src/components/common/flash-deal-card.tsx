@@ -5,11 +5,13 @@ import { CountdownTimer } from "@/components/ui/countdown-timer";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import { formatCentsToBRL } from "@/helpers/money";
+import Link from "next/link";
 
 // Interface atualizada: usa galleryImages e pricing em vez de variants
 interface FlashDealCardProps {
   product: {
     name: string;
+    slug: string;
     description: string | null;
     galleryImages: Array<{
       imageUrl: string;
@@ -33,8 +35,9 @@ export const FlashDealCard = ({ product, endDate }: FlashDealCardProps) => {
     || product.pricing?.[0];
 
   return (
-    <Card className="bg-gradient-to-br from-red-500 to-orange-500 border-0 overflow-hidden">
-      <CardContent className="p-0">
+    <Link href={`/product/${product.slug}`} className="block">
+      <Card className="bg-gradient-to-br from-red-500 to-orange-500 border-0 overflow-hidden">
+        <CardContent className="p-0">
         {/* Badge no topo da imagem */}
         <div className="relative">
           {primaryImage?.imageUrl ? (
@@ -79,7 +82,8 @@ export const FlashDealCard = ({ product, endDate }: FlashDealCardProps) => {
             <CountdownTimer targetDate={endDate} />
           </div>
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
 };

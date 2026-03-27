@@ -41,6 +41,14 @@ interface CreateProductData {
   }>
 }
 
+function toPlainText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 export async function createProduct(data: CreateProductData) {
   try {
     // 1. Criar o produto principal
@@ -48,7 +56,7 @@ export async function createProduct(data: CreateProductData) {
       
       name: data.name,
       slug: data.slug,
-      description: data.description,
+      description: toPlainText(data.description),
       categoryId: data.categoryId,
       brand: data.brand,
       sku: data.sku,

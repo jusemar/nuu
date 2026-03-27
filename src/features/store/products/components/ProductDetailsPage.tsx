@@ -20,7 +20,21 @@ import type { Modalidade } from '../types/product.types';
 import { Header } from '@/features/header';
 import { Footer } from '@/components/common/footer';
 
-export function ProductDetail() {
+interface ProductDetailProps {
+  product: {
+    name: string;
+    sku: string;
+    description: string;
+    cardShortText: string | null;
+    galleryImages?: Array<{
+      imageUrl: string;
+      isPrimary?: boolean | null;
+      sortOrder?: number;
+    }>;
+  };
+}
+
+export function ProductDetail({ product }: ProductDetailProps) {
   // Estados globais da página
   const [modalPgto, setModalPgto] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -34,6 +48,14 @@ export function ProductDetail() {
   const precoPixBase = parseFloat(mod.precoPix.replace('R$ ', '').replace(',', '.'));
   const descontoPix = Math.round((1 - precoPixBase / parseFloat(mod.precoNormal.replace('R$ ', '').replace(',', '.'))) * 100);
   const precoFinalPix = cupomAplicado ? precoPixBase * (1 - cupomAplicado.desconto / 100) : precoPixBase;
+  const productShortDescription = product.cardShortText?.trim() || product.description;
+  const productLongDescription = product.description;
+  const productImages = (product.galleryImages ?? [])
+    .slice()
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((image) => image.imageUrl)
+    .filter(Boolean);
+  const galleryImages = productImages.length > 0 ? productImages : produto.imagens;
 
   // Handlers
   const aplicarCupom = (codigo: string) => {
@@ -52,7 +74,7 @@ export function ProductDetail() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5">
         <div className="flex gap-1.5 text-xs text-text-hint">
-          <span>Home / Tênis / Corrida / <span className="text-primary font-semibold">{produto.nome}</span></span>
+          <span>Home / Tênis / Corrida / <span className="text-primary font-semibold">{product.name}</span></span>
         </div>
       </div>
 
@@ -64,20 +86,20 @@ export function ProductDetail() {
           
           {/* COLUNA 1: GALERIA */}
           <div className="order-1">
-            <ProductGallery imagens={produto.imagens} isLancamento={true} />
+            <ProductGallery imagens={galleryImages} isLancamento={true} />
           </div>
 
           {/* COLUNA 2: INFO DO PRODUTO */}
           <div className="order-2">
             <ProductInfo
-              nome={produto.nome}
+              nome={product.name}
               marca={produto.marca}
-              sku={produto.sku}
+              sku={product.sku}
               rating={produto.rating}
               totalAvaliacoes={produto.totalAvaliacoes}
               vendedor={produto.vendedor}
               vendedorRating={produto.vendedorRating}
-              descricao={produto.descricao}
+              descricao={productShortDescription}
               cores={produto.cores}
               tamanhos={produto.tamanhos}
               modalidades={modalidades}
@@ -104,7 +126,7 @@ export function ProductDetail() {
 
         {/* ABAS (Descrição, Especificações, Avaliações, Entrega) */}
         <ProductTabs
-          descricao={produto.descricao}
+          descricao={productLongDescription}
           especificacoes={produto.especificacoes}
           avaliacoes={produto.avaliacoes}
           rating={produto.rating}

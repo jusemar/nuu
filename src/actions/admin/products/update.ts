@@ -52,6 +52,14 @@ interface UpdateProductData {
   }>
 }
 
+function toPlainText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 export async function updateProduct(id: string, data: UpdateProductData) {
   try {
     const [existingProduct] = await db
@@ -75,7 +83,7 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     // Apenas adiciona campos que foram explicitamente enviados
     if (data.name !== undefined) updateFields.name = data.name
     if (data.slug !== undefined) updateFields.slug = data.slug
-    if (data.description !== undefined) updateFields.description = data.description
+    if (data.description !== undefined) updateFields.description = toPlainText(data.description)
     if (data.cardShortText !== undefined) updateFields.cardShortText = data.cardShortText
     if (data.categoryId !== undefined) updateFields.categoryId = data.categoryId
     if (data.brand !== undefined) updateFields.brand = data.brand

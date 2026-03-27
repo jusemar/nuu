@@ -57,15 +57,6 @@ export function ProductTabs({
         {abaAtiva === 'descricao' && (
           <div className="flex flex-col gap-3 animate-[fadeUp_0.3s_ease]">
             <p className="text-sm text-text-muted leading-relaxed">{descricao}</p>
-            <p className="text-sm text-text-muted leading-relaxed">
-              O <strong className="text-text-primary">Aether Run Pro X</strong> foi desenvolvido em parceria com atletas de elite. Com tecnologia <strong className="text-text-primary">AetherFoam v3</strong>, cada passada é amortecida com precisão milimétrica.
-            </p>
-            <p className="text-sm text-text-muted leading-relaxed">
-              A placa de carbono integrada oferece retorno de energia para superar seus limites, enquanto o cabedal em <strong className="text-text-primary">Flyknit Pro</strong> garante ventilação e ajuste perfeitos.
-            </p>
-            <p className="text-sm text-text-muted leading-relaxed">
-              Ideal do treino leve à competição de alto nível.
-            </p>
           </div>
         )}
 

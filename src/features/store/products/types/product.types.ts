@@ -121,21 +121,6 @@ export interface Cupom {
   code: string;           // Código digitado (ex: "PRIMEIRA10")
 }
 
-/** Informações visuais de cada modalidade de preço para a UI */
-export interface ModalidadeInfo {
-  label: string;           // Nome exibido (ex: "Estoque Próprio")
-  badge: string;           // Texto do badge (ex: "Entrega rápida")
-  badgeBg: string;         // Cor de fundo do badge (hex)
-  badgeColor: string;      // Cor do texto do badge (hex)
-  precoNormal: string;     // Preço cartão formatado (ex: "R$ 799,90")
-  precoParc: string;       // Parcelamento (ex: "3x de R$ 253,97 sem juros")
-  precoPix: string;        // Preço PIX formatado (ex: "R$ 679,91")
-  prazo: string;           // Prazo de entrega (ex: "2 a 5 dias úteis")
-  envia: string;           // Quem envia (ex: "Sport Elite Store")
-  garantia: string;        // Período de garantia (ex: "12 meses")
-  icon: string;            // Emoji/ícone (ex: "🏪")
-}
-
 // ==========================================
 // INTERFACE COMPLETA (união Real + Mock)
 // ==========================================
@@ -158,8 +143,8 @@ export interface Produto {
   sku: string;
   descricao: string;      // description do DB
   imagens: ImagemGaleria[]; // gallery images do DB
-  precos: PrecoModalidade[]; // pricing do DB
-
+  precos: PrecoModalidade[]; // pricing do DB - NOVO: array de modalidades
+  
   // === DADOS MOCK (implementar depois) ===
   rating: number;         // Média de avaliações (futuro: reviewsTable)
   totalAvaliacoes: number; // Contagem de reviews (futuro)
@@ -178,7 +163,7 @@ export interface Produto {
 // ==========================================
 
 /** Estado do cupom no componente */
-export type CupomState =
+export type CupomState = 
   | { status: 'idle' }           // Nenhum cupom
   | { status: 'applied'; data: Cupom }  // Cupom válido aplicado
   | { status: 'error'; message: string }; // Cupom inválido

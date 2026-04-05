@@ -1,41 +1,51 @@
 // ==========================================
-// COMPONENTE: ProductInfo
+// COMPONENTE: ProductInfo (ATUALIZADO - ESTADO GLOBAL)
 // ==========================================
 // Responsabilidade: Mostrar informações do produto (coluna do meio)
-// Recebe: Dados do produto (nome, descrição, cores, tamanhos, etc)
-// Estados: Cor selecionada, tamanho selecionado, modalidade de preço
+//
+// O QUE MUDOU:
+//   - Removido estado interno de modalidade (useState local)
+//   - Agora recebe modalidade do pai via props (estado global)
+//   - Quando clica em modalidade, chama callback do pai (onTrocarModalidade)
+//   - Integrado com PricingModalities (componente filho)
+//
+// FLUXO:
+//   1. Recebe modalidadesDisponiveis, modalidadeAtiva, onTrocarModalidade do pai
+//   2. Renderiza PricingModalities com essas props
+//   3. Clique no PricingModalities → chama onTrocarModalidade → pai atualiza → BuyBox atualiza
 
-'use client'; // Precisa ser client component porque usa useState (estados)
+'use client';
 
-import { useState, useRef } from 'react'; // Hooks do React para estado e referências
-import type { Cor, Tamanho, Modalidade, ModalidadeInfo } from '../../types/product.types'; // Tipos TypeScript
-// modalidades agora vem via props (dados reais do banco)
+import { useState } from 'react';
+import type { Cor, Tamanho, PrecoModalidade, Modalidade } from '../../types/product.types';
+import { PricingModalities } from '../PricingModalities';
 import { ChatVendedor } from '../chat-vendedor';
 import { Stars } from '@/components/ui/stars';
 
 // ==========================================
-// INTERFACE DAS PROPS (o que o componente recebe)
+// INTERFACE ATUALIZADA (estado global)
 // ==========================================
 interface ProductInfoProps {
-  nome: string;              // Nome do produto ex: "Aether Run Pro X"
-  marca: string;             // Marca ex: "AETHER"
-  sku: string;               // Código SKU ex: "ATH-RUN-PRX-42"
-  rating: number;            // Nota de avaliação ex: 4.8
-  totalAvaliacoes: number;   // Quantidade de avaliações ex: 2341
-  vendedor: string;          // Nome do vendedor
-  vendedorRating: number;    // % de avaliações positivas do vendedor
-  descricao: string;         // Descrição completa do produto
-  cores: Record<Cor, string>; // Objeto com cores: { preto: "#1a1a1a", ... }
-  tamanhos: Tamanho[];       // Array de tamanhos: ["38", "39", ...]
-  corInicial?: Cor;          // Cor que começa selecionada (opcional, padrão: preto)
-  modalidades?: Record<string, ModalidadeInfo>; // Modalidades de preço (vem do banco)
+  // Dados básicos do produto
+  nome: string;
+  marca: string;
+  sku: string;
+  rating: number;
+  totalAvaliacoes: number;
+  vendedor: string;
+  vendedorRating: number;
+  descricao: string;
+  cores: Record<Cor, string>;
+  tamanhos: Tamanho[];
+  corInicial?: Cor;
+  
+  // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
+  // Antes: ProductInfo gerenciava sozinho (estado local)
+  // Agora: Recebe do ProductDetailsPage (orquestrador)
+  modalidadesDisponiveis: PrecoModalidade[];  // Todas as modalidades do DB
+  modalidadeAtiva: PrecoModalidade;           // Qual está selecionada agora
+  onTrocarModalidade: (tipo: Modalidade) => void; // Callback para trocar
 }
-
-// ==========================================
-// COMPONENTE AUXILIAR: Estrelas de avaliação
-// ==========================================
-// Mostra 5 estrelas, preenchendo conforme a nota (rating)
-
 
 // ==========================================
 // COMPONENTE PRINCIPAL
@@ -52,36 +62,25 @@ export function ProductInfo({
   cores,
   tamanhos,
   corInicial = 'preto',
-  modalidades,  // Recebe modalidades via props (dados reais)
+  // === NOVAS PROPS (estado global) ===
+  modalidadesDisponiveis,
+  modalidadeAtiva,
+  onTrocarModalidade,
 }: ProductInfoProps) {
 
   // -----------------------------------------
-  // ESTADOS (useState) - "Memória" do componente
+  // ESTADOS LOCAIS (mantidos - não afetam outros componentes)
   // -----------------------------------------
-
-  // Estado da cor selecionada (começa com a corInicial ou "preto")
+  // Cor selecionada (independente por produto)
   const [corSel, setCorSel] = useState<Cor>(corInicial);
-
-  // Estado do tamanho selecionado (começa null = nenhum selecionado)
+  
+  // Tamanho selecionado
   const [tamSel, setTamSel] = useState<Tamanho | null>(null);
-
-  const modalidadesMap = modalidades ?? {};
-  const modalidadeKeys = Object.keys(modalidadesMap) as Modalidade[];
-
-  // Estado da modalidade de preço selecionada (começa com a primeira disponível)
-  const [modalidadeSel, setModalidadeSel] = useState<Modalidade>(() => modalidadeKeys[0] ?? 'stock');
-
-  // Estado que controla se o dropdown de modalidades está aberto
-  const [modalidadeOpen, setModalidadeOpen] = useState(false);
-
-  // useRef = referência para guardar o timer do hover (evita bugs de mouse rápido)
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // -----------------------------------------
   // DADOS AUXILIARES
   // -----------------------------------------
-
-  // Descrição de cada tamanho em centímetros (para mostrar ao lado do tamanho)
+  // Descrição de cada tamanho em centímetros
   const tamDesc: Record<Tamanho, string> = {
     '38': '23.5cm',
     '39': '24.5cm',
@@ -93,50 +92,13 @@ export function ProductInfo({
   };
 
   // -----------------------------------------
-  // FUNÇÕES DE EVENTO (HANDLERS)
+  // RENDER
   // -----------------------------------------
-
-  // Quando mouse ENTRA na área de modalidade (desktop)
-  // Espera 150ms antes de abrir (evita abrir sem querer)
-  function handleModHoverEnter() {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => setModalidadeOpen(true), 150);
-  }
-
-  // Quando mouse SAI da área de modalidade (desktop)
-  // Espera 200ms antes de fechar (evita fechar sem querer)
-  function handleModHoverLeave() {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => setModalidadeOpen(false), 200);
-  }
-
-  // Seleciona uma modalidade e fecha o dropdown
-  function selecionarModalidade(key: Modalidade) {
-    setModalidadeSel(key);
-    setModalidadeOpen(false);
-  }
-
-  // Alterna aberto/fechado no mobile (click)
-  function toggleModalidadeMobile() {
-    setModalidadeOpen((o) => !o);
-  }
-
-  // Pega os dados da modalidade atualmente selecionada
-  const mod = modalidadesMap[modalidadeSel] ?? modalidadesMap[modalidadeKeys[0]];
-
-  if (!mod) {
-    return null;
-  }
-
-  // ==========================================
-  // RENDER (o que aparece na tela)
-  // ==========================================
   return (
     <div className="flex flex-col gap-4">
 
       {/* -----------------------------------------
           LINHA 1: MARCA + SKU
-          Ex: AETHER  •  SKU: ATH-RUN-PRX-42
           ----------------------------------------- */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] font-bold text-text-hint tracking-widest uppercase">
@@ -148,7 +110,6 @@ export function ProductInfo({
 
       {/* -----------------------------------------
           LINHA 2: NOME DO PRODUTO
-          Ex: Aether Run Pro X
           ----------------------------------------- */}
       <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-text-primary">
         {nome}
@@ -156,7 +117,6 @@ export function ProductInfo({
 
       {/* -----------------------------------------
           LINHA 3: RATING + AVALIAÇÕES + VENDEDOR
-          ★★★★★ 4.8  2.341 avaliações  •  Vendido por Sport Elite Store  98% positivo
           ----------------------------------------- */}
       <div className="flex items-center gap-2.5 flex-wrap">
         <Stars rating={rating} size="lg" />
@@ -176,9 +136,7 @@ export function ProductInfo({
         </span>
       </div>
 
-      {/* -----------------------------------------
-          DIVISOR (linha cinza horizontal)
-          ----------------------------------------- */}
+      {/* DIVISOR */}
       <div className="h-px bg-surface-border w-full" />
 
       {/* -----------------------------------------
@@ -186,17 +144,13 @@ export function ProductInfo({
           ----------------------------------------- */}
       <p className="text-[13px] text-text-muted leading-relaxed">{descricao}</p>
 
-      {/* -----------------------------------------
-          DIVISOR
-          ----------------------------------------- */}
+      {/* DIVISOR */}
       <div className="h-px bg-surface-border w-full" />
 
       {/* -----------------------------------------
           SELETOR DE COR
-          Mostra círculos coloridos. Clicar muda a cor selecionada.
           ----------------------------------------- */}
       <div>
-        {/* Título + cor atual */}
         <div className="flex items-center gap-2 mb-2.5">
           <span className="text-xs font-bold text-text-primary uppercase tracking-wider">
             Cor
@@ -206,21 +160,20 @@ export function ProductInfo({
           </span>
         </div>
 
-        {/* Botões de cor */}
         <div className="flex gap-2">
           {(Object.keys(cores) as Cor[]).map((cor) => (
             <button
               key={cor}
-              onClick={() => setCorSel(cor)} // Clica = muda cor selecionada
+              onClick={() => setCorSel(cor)}
               title={cor}
-              className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all flex-shrink-0 ${corSel === cor
-                  ? 'outline outline-2 outline-primary outline-offset-2' // Selecionado: borda azul
-                  : '' // Não selecionado: sem outline
-                }`}
+              className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all flex-shrink-0 ${
+                corSel === cor
+                  ? 'outline outline-2 outline-primary outline-offset-2'
+                  : ''
+              }`}
               style={{
-                backgroundColor: cores[cor], // Cor de fundo = cor do produto
-                borderColor:
-                  cores[cor] === '#f5f5f0' ? '#D1D5DB' : cores[cor], // Branco tem borda cinza
+                backgroundColor: cores[cor],
+                borderColor: cores[cor] === '#f5f5f0' ? '#D1D5DB' : cores[cor],
               }}
             />
           ))}
@@ -229,10 +182,8 @@ export function ProductInfo({
 
       {/* -----------------------------------------
           SELETOR DE TAMANHO
-          Botões 38, 39, 40, 41... O 40 está desabilitado (indisponível)
           ----------------------------------------- */}
       <div>
-        {/* Título + tamanho em cm (se selecionado) */}
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-text-primary uppercase tracking-wider">
@@ -247,18 +198,18 @@ export function ProductInfo({
           </a>
         </div>
 
-        {/* Botões de tamanho */}
         <div className="flex gap-1.5 flex-wrap">
           {tamanhos.map((t) => (
             <button
               key={t}
-              onClick={() => t !== '40' && setTamSel(t)} // Clica = seleciona (exceto 40)
-              className={`min-w-[42px] h-[38px] border-[1.5px] bg-white rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center px-2 ${tamSel === t
-                  ? 'border-primary bg-primary text-white' // Selecionado: azul
+              onClick={() => t !== '40' && setTamSel(t)}
+              className={`min-w-[42px] h-[38px] border-[1.5px] bg-white rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center px-2 ${
+                tamSel === t
+                  ? 'border-primary bg-primary text-white'
                   : t === '40'
-                    ? 'opacity-35 cursor-not-allowed line-through border-surface-border text-text-primary' // 40: desabilitado
-                    : 'border-surface-border text-text-primary hover:border-primary-mid' // Normal
-                }`}
+                  ? 'opacity-35 cursor-not-allowed line-through border-surface-border text-text-primary'
+                  : 'border-surface-border text-text-primary hover:border-primary-mid'
+              }`}
             >
               {t}
             </button>
@@ -269,132 +220,34 @@ export function ProductInfo({
         </div>
       </div>
 
-      {/* -----------------------------------------
-          DIVISOR
-          ----------------------------------------- */}
+      {/* DIVISOR */}
       <div className="h-px bg-surface-border w-full" />
 
       {/* -----------------------------------------
-          MODALIDADE DE PREÇO
-          Card que mostra a modalidade atual. Hover/click abre outras opções.
+          MODALIDADE DE PREÇO (ATUALIZADO - ESTADO GLOBAL)
           ----------------------------------------- */}
-      <div>
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="text-xs font-bold text-text-primary uppercase tracking-wider">
-            Modalidade de preço
-          </span>
-        </div>
+      {/* 
+        ANTES: ProductInfo tinha estado interno e renderizava seu próprio seletor
+        AGORA: Usa PricingModalities com props do pai (estado global)
+        RESULTADO: Clique aqui atualiza o BuyBox (coluna 3) automaticamente
+      */}
+      <PricingModalities
+        modalidades={modalidadesDisponiveis}
+        modalidadeAtiva={modalidadeAtiva}
+        onSelecionarModalidade={onTrocarModalidade}
+      />
 
-        {/* Container com eventos de mouse (hover desktop) */}
-        <div onMouseEnter={handleModHoverEnter} onMouseLeave={handleModHoverLeave}>
-
-          {/* CARD DA MODALIDADE SELECIONADA */}
-          <div
-            className="border-[1.5px] border-primary rounded-xl p-3 bg-white flex items-center gap-2.5 cursor-pointer transition-all hover:border-primary-mid shadow-[0_0_0_1px_#0C447C]"
-            onClick={toggleModalidadeMobile} // Click no mobile alterna
-          >
-            <span className="text-xl">{mod.icon}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-[13px]">{mod.label}</span>
-                <span
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  style={{ background: mod.badgeBg, color: mod.badgeColor }}
-                >
-                  {mod.badge}
-                </span>
-              </div>
-              <div className="text-[11px] text-text-hint mt-0.5">
-                🚚 {mod.prazo} · 🛡️ {mod.garantia} · por {mod.envia}
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <div className="text-[13px] font-bold text-text-primary">
-                {mod.precoPix}
-              </div>
-              <div className="text-[10px] text-success-dark font-semibold">
-                no PIX
-              </div>
-            </div>
-            {/* Setinha que gira quando aberto */}
-            <div
-              className="text-text-hint text-xs ml-1 transition-transform duration-200"
-              style={{ transform: modalidadeOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-            >
-              ▾
-            </div>
-          </div>
-
-          {/* HINT: Instrução para usuário (desktop vs mobile) */}
-          <div className="hidden md:flex text-[11px] text-text-hint items-center gap-1 mt-1.5 select-none">
-            <span>↕</span> Passe o mouse para ver outras modalidades
-          </div>
-          <div className="flex md:hidden text-[11px] text-text-hint items-center gap-1 mt-1.5 select-none">
-            <span>↕</span> Toque para ver outras modalidades de preço
-          </div>
-
-          {/* DROPDOWN: Outras modalidades (aparece quando modalidadeOpen = true) */}
-          {modalidadeOpen && (
-            <div className="flex flex-col gap-1.5 mt-2 animate-[slideDown_0.2s_ease]">
-              {modalidadeKeys
-                .filter((k) => k !== modalidadeSel) // Mostra todas EXCETO a selecionada
-                .map((key) => {
-                  const m = modalidadesMap[key];
-                  return (
-                    <div
-                      key={key}
-                      className="border-[1.5px] border-surface-border rounded-xl p-3 bg-white flex items-center gap-2.5 cursor-pointer transition-all hover:border-primary-mid hover:bg-primary-light"
-                      onClick={() => selecionarModalidade(key)} // Clica = seleciona
-                    >
-                      <span className="text-lg">{m.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-[13px]">{m.label}</span>
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                            style={{ background: m.badgeBg, color: m.badgeColor }}
-                          >
-                            {m.badge}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-text-hint mt-0.5">
-                          🚚 {m.prazo} · 🛡️ {m.garantia}
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="font-extrabold text-sm text-text-primary">
-                          {m.precoPix}{' '}
-                          <span className="text-[10px] text-text-muted font-medium">
-                            PIX
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-text-muted">
-                          {m.precoNormal} cartão
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* -----------------------------------------
-          DIVISOR
-          ----------------------------------------- */}
+      {/* DIVISOR */}
       <div className="h-px bg-surface-border w-full" />
 
       {/* -----------------------------------------
           CHAT COM VENDEDOR
-          Bloco com ícone, status online e botão
           ----------------------------------------- */}
       <ChatVendedor
         vendedorNome={vendedor}
         status="online"
         tempoResposta="Responde em minutos"
         onClick={() => {
-          // Aqui você abre o chat real, modal, ou redireciona
           console.log('Abrir chat com:', vendedor);
         }}
       />

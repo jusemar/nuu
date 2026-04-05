@@ -1,8 +1,19 @@
 // ==========================================
-// ORQUESTRADOR: ProductDetailsPage (COM DADOS REAIS)
+// ORQUESTRADOR: ProductDetailsPage (CORRIGIDO - ESTADO GLOBAL)
 // ==========================================
 // Responsabilidade: Juntar todos os componentes da página de produto
-// Agora com dados reais de preços vindos do banco
+// 
+// O QUE MUDOU:
+//   - Removido seletor de teste da coluna 3 (era duplicado)
+//   - Estado de modalidade elevado para cá (orquestrador)
+//   - ProductInfo e BuyBox compartilham o MESMO estado via props
+//   - Quando clica em uma modalidade no ProductInfo, BuyBox atualiza automaticamente
+//
+// FLUXO DE DADOS:
+//   1. Hook useProductPricing gerencia o estado
+//   2. ProductDetailsPage passa o estado para ProductInfo (coluna 2)
+//   3. Mesmo estado passado para BuyBox (coluna 3)
+//   4. Clique no ProductInfo → chama onTrocarModalidade → hook atualiza → BuyBox recebe novo preço
 
 "use client";
 
@@ -25,7 +36,7 @@ import {
   cuponsValidos,
 } from "../constants/mockData";
 
-import type { PrecoModalidade, ModalidadeInfo } from "../types/product.types";
+import type { PrecoModalidade, Modalidade } from "../types/product.types";
 
 // ==========================================
 // INTERFACE DAS PROPS
@@ -53,6 +64,8 @@ interface ProductDetailProps {
 // ==========================================
 // FUNÇÃO UTILITÁRIA: Formatar centavos → R$
 // ==========================================
+// Recebe: número em centavos (ex: 5151)
+// Retorna: string formatada (ex: "R$ 51,51")
 function formatarPreco(centavos: number): string {
   const reais = centavos / 100;
   return reais.toLocaleString("pt-BR", {
@@ -62,83 +75,20 @@ function formatarPreco(centavos: number): string {
 }
 
 // ==========================================
-// FUNÇÃO: Converter dados reais para o formato do ProductInfo
-// ==========================================
-// Motivo: O ProductInfo espera um formato específico com ícones, cores, etc.
-// Os dados reais do banco (PrecoModalidade) são convertidos para ModalidadeInfo
-function formatarModalidadesParaProductInfo(
-  precos: PrecoModalidade[]
-): Record<string, ModalidadeInfo> {
-  // Configurações visuais por tipo de modalidade
-  const configPorTipo: Record<string, { icon: string; badge: string; badgeBg: string; badgeColor: string }> = {
-    stock: {
-      icon: "🏭",
-      badge: "Estoque Próprio",
-      badgeBg: "#E8F5E9",
-      badgeColor: "#2E7D32",
-    },
-    pre_sale: {
-      icon: "⏳",
-      badge: "Pré-venda",
-      badgeBg: "#FFF3E0",
-      badgeColor: "#ED6C02",
-    },
-    dropshipping: {
-      icon: "📦",
-      badge: "Dropshipping",
-      badgeBg: "#E3F2FD",
-      badgeColor: "#0288D1",
-    },
-    order_basis: {
-      icon: "📋",
-      badge: "Sob Encomenda",
-      badgeBg: "#F3E5F5",
-      badgeColor: "#7B1FA2",
-    },
-  };
-
-  const resultado: Record<string, ModalidadeInfo> = {};
-
-  // Percorre cada preço real do banco e converte
-  precos.forEach((preco) => {
-    // Pega a configuração visual baseada no tipo (stock, pre_sale, etc)
-    const config = configPorTipo[preco.type] || configPorTipo.stock;
-
-    // Preço atual: usa promoção se estiver ativa
-    const precoAtual = preco.hasPromo && preco.promoPrice
-      ? preco.promoPrice
-      : preco.price;
-
-    // Preço do cartão (simula acréscimo de 15% - futuro virá do banco)
-    const precoCartao = Math.round(precoAtual * 1.15);
-
-    // Monta o objeto no formato que o ProductInfo espera
-    resultado[preco.type] = {
-      icon: config.icon,
-      label: preco.pricingModalDescription || preco.type,
-      badge: config.badge,
-      badgeBg: config.badgeBg,
-      badgeColor: config.badgeColor,
-      precoPix: formatarPreco(precoAtual),
-      precoNormal: formatarPreco(precoCartao),
-      prazo: preco.deliveryDays || "Consulte prazo",
-      garantia: "12 meses", // Mock - futuro virá do banco
-      envia: "Brasil", // Mock - futuro virá do banco
-    };
-  });
-
-  return resultado;
-}
-
-// ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
 export function ProductDetail({ product }: ProductDetailProps) {
+  
   // -----------------------------------------
-  // ESTADOS GLOBAIS
+  // ESTADOS GLOBAIS DA PÁGINA
   // -----------------------------------------
+  // modalPgto: controla se o modal de pagamento está aberto
   const [modalPgto, setModalPgto] = useState(false);
+  
+  // cartCount: quantidade de itens no carrinho (simulação)
   const [cartCount, setCartCount] = useState(0);
+  
+  // cupomAplicado: cupom de desconto ativo (ainda mock)
   const [cupomAplicado, setCupomAplicado] = useState<null | {
     desconto: number;
     label: string;
@@ -146,29 +96,27 @@ export function ProductDetail({ product }: ProductDetailProps) {
   }>(null);
 
   // -----------------------------------------
-  // HOOK: Preços e modalidades (para o BuyBox)
+  // HOOK: Gerenciamento de preços e modalidades (ESTADO GLOBAL)
   // -----------------------------------------
+  // Este hook é a FONTE ÚNICA DA VERDADE para preços
+  // Ele mantém qual modalidade está ativa e calcula os preços formatados
   const {
-    modalidadeAtiva,
-    modalidadesDisponiveis,
-    selecionarModalidade,
-    precoPixFormatado,
-    precoNormalFormatado,
-    precoParceladoFormatado,
-    descontoPix,
-    prazoEntrega,
+    modalidadeAtiva,           // Objeto da modalidade selecionada (ex: stock)
+    modalidadesDisponiveis,    // Array com todas as modalidades ativas do DB
+    selecionarModalidade,      // Função para trocar de modalidade
+    precoPixFormatado,         // "R$ 51,51" (preço atual formatado)
+    precoNormalFormatado,      // "R$ 59,24" (preço no cartão)
+    precoParceladoFormatado,   // "3x de R$ 17,17" (parcelamento)
+    descontoPix,               // 13 (% de desconto PIX)
+    prazoEntrega,              // "imediato" (prazo da modalidade ativa)
   } = useProductPricing(product.pricing || []);
 
   // -----------------------------------------
-  // CONVERTER dados reais para o formato do ProductInfo
+  // IMAGENS: Processamento e ordenação
   // -----------------------------------------
-  const modalidadesReaisFormatadas = formatarModalidadesParaProductInfo(
-    product.pricing || []
-  );
-
-  // -----------------------------------------
-  // IMAGENS (formato que funciona)
-  // -----------------------------------------
+  // 1. Filtra imagens sem URL
+  // 2. Ordena por sortOrder (converte string para number se necessário)
+  // 3. Extrai apenas as URLs (strings) para o ProductGallery
   const productImages = (product.galleryImages || [])
     .filter((img) => img.imageUrl && img.imageUrl.trim() !== "")
     .sort((a, b) => {
@@ -184,37 +132,46 @@ export function ProductDetail({ product }: ProductDetailProps) {
     })
     .map((img) => img.imageUrl);
 
+  // Fallback: se não tiver imagens no DB, usa mock temporário
   const galleryImages =
     productImages.length > 0 ? productImages : produto.imagens;
 
   // -----------------------------------------
-  // DESCRIÇÕES
+  // DESCRIÇÕES: Curta e longa
   // -----------------------------------------
+  // Descrição curta: usa cardShortText se existir, senão description
   const productShortDescription =
     product.cardShortText?.trim() || product.description;
+  
+  // Descrição longa: sempre a description completa (para abas)
   const productLongDescription = product.description;
 
   // -----------------------------------------
-  // HANDLERS
+  // HANDLERS: Ações do usuário
   // -----------------------------------------
+  
+  // Aplica cupom de desconto (ainda mock - futuro: validar no backend)
   function aplicarCupom(codigo: string) {
     if (cuponsValidos[codigo]) {
       setCupomAplicado({ ...cuponsValidos[codigo], code: codigo });
     }
   }
 
+  // Remove cupom aplicado
   function removerCupom() {
     setCupomAplicado(null);
   }
 
   // -----------------------------------------
-  // RENDER
+  // RENDER: Composição dos componentes
   // -----------------------------------------
   return (
     <div className="bg-surface-bg text-text-primary min-h-screen font-sans">
+      
+      {/* HEADER: Navegação principal do site */}
       <Header />
 
-      {/* BREADCRUMB */}
+      {/* BREADCRUMB: Indica onde o usuário está (Home > Categoria > Produto) */}
       <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6">
         <div className="text-text-hint flex gap-1.5 text-xs">
           <span>
@@ -226,16 +183,30 @@ export function ProductDetail({ product }: ProductDetailProps) {
         </div>
       </div>
 
+      {/* CONTEÚDO PRINCIPAL: Grid de 3 colunas */}
       <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 xl:grid-cols-[420px_1fr_320px]">
-          {/* COLUNA 1: GALERIA */}
+          
+          {/* ==========================================
+              COLUNA 1: GALERIA DE IMAGENS
+              Recebe: array de URLs (strings)
+              ========================================== */}
           <div className="order-1">
-            <ProductGallery imagens={galleryImages} isLancamento={true} />
+            <ProductGallery 
+              imagens={galleryImages} 
+              isLancamento={true} 
+            />
           </div>
 
-          {/* COLUNA 2: INFO (AGORA COM DADOS REAIS DE PREÇOS) */}
+          {/* ==========================================
+              COLUNA 2: INFORMAÇÕES DO PRODUTO
+              NOVO: Recebe estado GLOBAL de modalidades do hook
+              Antes: ProductInfo tinha estado interno (não comunicava com BuyBox)
+              Agora: Compartilha o mesmo estado do BuyBox via props
+              ========================================== */}
           <div className="order-2">
             <ProductInfo
+              // Dados básicos do produto
               nome={product.name}
               marca={product.brand || produto.marca}
               sku={product.sku}
@@ -246,81 +217,45 @@ export function ProductDetail({ product }: ProductDetailProps) {
               descricao={productShortDescription}
               cores={produto.cores}
               tamanhos={produto.tamanhos}
-              modalidades={modalidadesReaisFormatadas} // ← DADOS REAIS CONVERTIDOS
+              
+              // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
+              // Antes: ProductInfo gerenciava sozinho (estado local)
+              // Agora: Recebe do pai e comunica mudanças via callback
+              modalidadesDisponiveis={modalidadesDisponiveis}  // Array de modalidades
+              modalidadeAtiva={modalidadeAtiva}                // Qual está selecionada
+              onTrocarModalidade={selecionarModalidade}       // Função para trocar
             />
           </div>
 
-          {/* COLUNA 3: SELETOR + BUY BOX */}
+          {/* ==========================================
+              COLUNA 3: BUY BOX (CAIXA DE COMPRA)
+              Recebe: Mesmo estado global da coluna 2
+              Resultado: Quando clica no ProductInfo, BuyBox atualiza automaticamente
+              ========================================== */}
           <div className="order-3 hidden xl:block">
-            {/* SELETOR DE MODALIDADES (básico - para teste) */}
-            {modalidadesDisponiveis.length > 0 && (
-              <div className="border-surface-border mb-4 rounded-2xl border bg-white p-4">
-                <div className="text-text-primary mb-3 text-xs font-semibold">
-                  Escolha a modalidade:
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {modalidadesDisponiveis.map((mod) => (
-                    <button
-                      key={mod.type}
-                      onClick={() => selecionarModalidade(mod.type)}
-                      className={`flex items-center justify-between rounded-xl border p-3 text-left transition-all ${
-                        modalidadeAtiva.type === mod.type
-                          ? "border-primary bg-primary-light"
-                          : "border-surface-border hover:border-primary-mid"
-                      } `}
-                    >
-                      <div>
-                        <div className="text-text-primary text-xs font-bold">
-                          {mod.pricingModalDescription || mod.type}
-                        </div>
-                        <div className="text-text-muted text-[10px]">
-                          Prazo: {mod.deliveryDays || "Consulte prazo"}
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="text-text-primary text-sm font-extrabold">
-                          {mod.hasPromo && mod.promoPrice
-                            ? formatarPreco(mod.promoPrice)
-                            : formatarPreco(mod.price)}
-                        </div>
-                        {mod.hasPromo && mod.promoPrice && (
-                          <div className="text-text-hint text-[10px] line-through">
-                            {formatarPreco(mod.price)}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="border-surface-border mt-3 border-t pt-3">
-                  <div className="text-text-muted text-[11px]">
-                    Selecionado:
-                    <span className="text-primary ml-1 font-semibold">
-                      {modalidadeAtiva.pricingModalDescription ||
-                        modalidadeAtiva.type}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* BUY BOX */}
+            
+            {/* BuyBox: Caixa de compra com preço, frete, cupom, botões */}
             <BuyBox
+              // Preços da modalidade ATIVA (formatados pelo hook)
               precoPix={precoPixFormatado}
               precoNormal={precoNormalFormatado}
               precoParc={precoParceladoFormatado}
               descontoPix={descontoPix}
               prazoEntrega={prazoEntrega}
+              
+              // Dados mock (ainda não no banco)
               estoque={produto.estoque}
               transportadoras={transportadoras}
+              
+              // Cupom e callbacks
               cupomAplicado={cupomAplicado}
               onAplicarCupom={aplicarCupom}
               onRemoverCupom={removerCupom}
               onAddToCart={(qty) => setCartCount((c) => c + qty)}
               onShowPaymentOptions={() => setModalPgto(true)}
+              
+              // === SELETOR DE MODALIDADES INTEGRADO (NOVO) ===
+              // Permite trocar modalidade diretamente no BuyBox também
               modalidades={modalidadesDisponiveis}
               modalidadeAtiva={modalidadeAtiva}
               onTrocarModalidade={selecionarModalidade}
@@ -328,21 +263,41 @@ export function ProductDetail({ product }: ProductDetailProps) {
           </div>
         </div>
 
-        {/* ABAS */}
+        {/* ==========================================
+            ABAS: Descrição, Especificações, Avaliações
+            ========================================== */}
         <ProductTabs
           descricao={productLongDescription}
           especificacoes={produto.especificacoes}
           avaliacoes={produto.avaliacoes}
           rating={produto.rating}
           totalAvaliacoes={produto.totalAvaliacoes}
-          modalidades={modalidadesReaisFormatadas} // ← TAMBÉM ATUALIZADO
+          // Passa modalidades reais para a aba de preços (se existir)
+          modalidades={modalidadesDisponiveis.reduce((acc, mod) => {
+            acc[mod.type] = {
+              icon: mod.type === 'stock' ? '🏭' : mod.type === 'pre_sale' ? '⏳' : mod.type === 'dropshipping' ? '📦' : '📋',
+              label: mod.pricingModalDescription || mod.type,
+              badge: mod.type === 'stock' ? 'Estoque Próprio' : mod.type === 'pre_sale' ? 'Pré-venda' : mod.type === 'dropshipping' ? 'Dropshipping' : 'Sob Encomenda',
+              badgeBg: mod.type === 'stock' ? '#E8F5E9' : mod.type === 'pre_sale' ? '#FFF3E0' : mod.type === 'dropshipping' ? '#E3F2FD' : '#F3E5F5',
+              badgeColor: mod.type === 'stock' ? '#2E7D32' : mod.type === 'pre_sale' ? '#ED6C02' : mod.type === 'dropshipping' ? '#0288D1' : '#7B1FA2',
+              precoPix: formatarPreco(mod.hasPromo && mod.promoPrice ? mod.promoPrice : mod.price),
+              precoNormal: formatarPreco(Math.round((mod.hasPromo && mod.promoPrice ? mod.promoPrice : mod.price) * 1.15)),
+              prazo: mod.deliveryDays || 'Consulte prazo',
+              garantia: '12 meses',
+              envia: 'Brasil',
+            };
+            return acc;
+          }, {} as Record<string, any>)}
         />
 
+        {/* COMPRE JUNTO: Produtos relacionados */}
         <UpsellSection produtos={produto.upsell} />
       </main>
 
+      {/* FOOTER: Rodapé do site */}
       <Footer />
 
+      {/* MODAL DE PAGAMENTO: Opções de parcelamento */}
       <PaymentModal
         isOpen={modalPgto}
         onClose={() => setModalPgto(false)}

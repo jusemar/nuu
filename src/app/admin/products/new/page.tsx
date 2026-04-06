@@ -11,7 +11,7 @@ import { ProductFormData, initialProductData } from './data/product-form-data'
 // Import das abas
 import { BasicTab } from './components/tabs/BasicTab'
 import { PricingTab } from './components/tabs/PricingTab'
-import { ShippingTab } from './components/tabs/ShippingTab'
+import { ShippingTab } from '../../../../features/admin/products/components/ShippingTab'
 import { WarrantyTab } from './components/tabs/WarrantyTab'
 import { VariantsTab } from './components/tabs/VariantsTab'
 import { SellerTab } from './components/tabs/SellerTab'
@@ -44,14 +44,14 @@ export default function NewProductPage() {
       onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
     />
   },
- /* {
+  {
     name: '🚚 Frete',
     value: 'shipping',
     component: <ShippingTab 
       data={productData}
       onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
     />
-  },*/
+  },
    {
     name: '🛡️ Garantia',
     value: 'warranty',

@@ -13,7 +13,7 @@ import { useParams } from "next/navigation"
 // Import das abas
 import { BasicTab } from '../../new/components/tabs/BasicTab'
 import { PricingTab } from '../../new/components/tabs/PricingTab'
-import { ShippingTab } from '../../new/components/tabs/ShippingTab'
+import { ShippingTab } from '../../../../../features/admin/products/components/ShippingTab'
 import { WarrantyTab } from '../../new/components/tabs/WarrantyTab'
 import { VariantsTab } from '../../new/components/tabs/VariantsTab'
 import { SellerTab } from '../../new/components/tabs/SellerTab'
@@ -165,6 +165,14 @@ export default function EditProductPage() {
         onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({ ...prev, ...updates }))}
       />
     },
+    {
+        name: '🚚 Frete',
+        value: 'shipping',
+        component: <ShippingTab 
+          data={productData}
+          onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
+        />
+      },
     {
       name: '🛡️ Garantia',
       value: 'warranty',

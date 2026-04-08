@@ -1,6 +1,7 @@
 
 meu Modelo é: Feature-based (modular por domínio) — Next.js App Router.
 Tecnologias/padrões observados: Next.js (app/), TanStack Query, Drizzle (ORM), Better Auth (better-auth/react), Tailwind, Sonner (toasts), dnd-kit (drag & drop), React Context Providers.
+
 nuu/
 ├── src/
 │   ├── app/

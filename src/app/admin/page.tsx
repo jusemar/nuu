@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { AdminSidebar } from "@/components/admin/sidebar"
+import { AdminSidebar } from "@/features/admin/layout/sidebar"
 import { AdminHeader } from "@/components/admin/header"
 import { SectionCards } from "@/components/ui/section-cards"
 import { ChartAreaInteractive } from "@/components/ui/chart-area-interactive"

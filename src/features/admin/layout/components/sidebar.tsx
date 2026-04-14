@@ -94,7 +94,7 @@ const menuData = [
         ],
       },
       { id: 'methods', label: 'Entregas | Frete', href: '/admin/logistics/modalidades-entrega', icon: 'Truck' },
-      { id: 'suppliers', label: 'Fornecedores', href: '/admin/logistics/suppliers', icon: 'Store' },
+      { id: 'suppliers', label: 'Fornecedores', href: '/admin/logistics/fornecedores', icon: 'Store' },
     ],
   },
   

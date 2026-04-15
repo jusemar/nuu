@@ -6,6 +6,7 @@
  * - Toggle ativar/desativar
  * - Indicador de bairros específicos
  * - Métodos de entrega disponíveis
+ * - LINK para gerenciar bairros/rotas
  */
 
 'use client';
@@ -19,7 +20,8 @@ import {
   ToggleLeft,
   ToggleRight,
   MapPin,
-  ArrowLeft
+  ArrowLeft,
+  Navigation
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +50,24 @@ export function CitiesPage({ stateUf, stateName }: CitiesPageProps) {
     transportadora: 'Transportadora',
     fornecedor: 'Fornecedor',
     retirada: 'Retirada',
+  };
+
+  /**
+   * Formata preço para exibição
+   */
+  const formatarPreco = (valor?: number) => {
+    if (valor === undefined || valor === null) return '-';
+    if (valor === 0) return 'Grátis';
+    return `R$ ${valor.toFixed(2).replace('.', ',')}`;
+  };
+
+  /**
+   * Formata prazo para exibição
+   */
+  const formatarPrazo = (min: number, max: number) => {
+    if (min === 0 && max === 0) return 'Hoje';
+    if (min === max) return `${min} dias`;
+    return `${min} a ${max} dias`;
   };
 
   return (
@@ -133,15 +153,18 @@ export function CitiesPage({ stateUf, stateName }: CitiesPageProps) {
                   </div>
                 </div>
 
-                {/* Bairros */}
+                {/* Bairros - ALTERADO: mostra contagem e link */}
                 <div className="col-span-2 text-center">
-                  {city.neighborhoodsCount > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                  {city.bairrosCount > 0 ? (
+                    <a 
+                      href={`/admin/logistics/bairros?cidade=${encodeURIComponent(city.name)}&uf=${city.stateUf}`}
+                      className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
                       <MapPin className="h-3 w-3" />
-                      {city.neighborhoodsCount} bairros
-                    </span>
+                      {city.bairrosCount} {city.bairrosCount === 1 ? 'bairro' : 'bairros'}
+                    </a>
                   ) : (
-                    <span className="text-sm text-gray-400">Cidade toda</span>
+                    <span className="text-sm text-gray-400">-</span>
                   )}
                 </div>
 
@@ -178,15 +201,28 @@ export function CitiesPage({ stateUf, stateName }: CitiesPageProps) {
                   </button>
                 </div>
 
-                {/* Ações */}
-                <div className="col-span-2 text-right">
+                {/* Ações - ALTERADO: adiciona botão Bairros */}
+                <div className="col-span-2 text-right flex items-center justify-end gap-1">
+                  {/* NOVO: Botão Bairros */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                    asChild
+                  >
+                    <a href={`/admin/logistics/bairros?cidade=${encodeURIComponent(city.name)}&uf=${city.stateUf}`}>
+                      <Navigation className="h-4 w-4 mr-1" />
+                      Bairros
+                    </a>
+                  </Button>
+                  
                   {city.neighborhoodsCount > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                     >
-                      Bairros
+                      Detalhes
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   )}

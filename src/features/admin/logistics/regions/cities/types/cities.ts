@@ -23,4 +23,9 @@ export interface City {
   
   /** Quando foi adicionada */
   createdAt: Date;
+   /** NOVO: Quantidade de bairros com rotas configuradas */
+  bairrosCount: number;
+  
+  /** NOVO: Se a cidade tem slots de entrega configurados */
+  slotsConfigurados: boolean;
 }

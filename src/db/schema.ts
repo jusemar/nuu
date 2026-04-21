@@ -1,4 +1,6 @@
+
 // src/db/schema.ts
+
 import { relations } from "drizzle-orm";
 import {
   boolean,
@@ -10,7 +12,10 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Importar tabelas dos arquivos separados
+// ============================================
+// IMPORTS DAS TABELAS EXISTENTES
+// ============================================
+
 import { categoryTable } from './table/categories/categories';
 import { productVariantTable } from './table/products/product-variants';
 import { productTable } from './table/products/products';
@@ -20,7 +25,30 @@ import { productAttributeTable } from './table/products/product-attributes';
 import { productVariantImageTable } from './table/products/variant-images';
 import { productGalleryImagesTable } from './table/products/product-gallery-images';
 
-// TABELAS EXISTENTES (mantenha as que já estão aqui)
+// ============================================
+// IMPORTS DAS TABELAS DE LOGÍSTICA (NOVOS)
+// ============================================
+
+// Regiões (Estados, Cidades, Bairros)
+import { states } from './table/logistics/states/states';
+import { cities } from './table/logistics/cities/cities';
+import { neighborhoods } from './table/logistics/neighborhoods/neighborhoods';
+
+// Modalidades e Fornecedores
+import { deliveryMethods } from './table/logistics/deliveryMethods/deliveryMethods';
+import { suppliers } from './table/logistics/suppliers/suppliers';
+
+// Tabelas de junção (Produto ↔ Logística)
+import { productDeliveryMethodsTable } from './table/logistics/productDeliveryMethods.ts/productDeliveryMethods';
+import { productSuppliersTable } from './table/logistics/productSuppliers/productSuppliers';
+
+// Rotas de entrega própria (NOVO)
+import { deliveryRoutes, deliveryRouteSlots } from './table/logistics/deliveryRoutes/deliveryRoutes';
+
+// ============================================
+// TABELAS EXISTENTES (mantidas como estavam)
+// ============================================
+
 export const userTable = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -165,7 +193,10 @@ export const orderItemTable = pgTable("order_item", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// RELAÇÕES CENTRALIZADAS
+// ============================================
+// RELAÇÕES EXISTENTES (mantidas como estavam)
+// ============================================
+
 export const userRelations = relations(userTable, ({ many, one }) => ({
   shippingAddresses: many(shippingAddressTable),
   cart: one(cartTable, {
@@ -187,7 +218,6 @@ export const categoryRelations = relations(categoryTable, ({ many, one }) => ({
   }),
 }));
 
-// RELAÇÕES PARA PRODUCT ATTRIBUTES
 export const productAttributeRelations = relations(productAttributeTable, ({ one }) => ({
   product: one(productTable, {
     fields: [productAttributeTable.productId],
@@ -195,7 +225,6 @@ export const productAttributeRelations = relations(productAttributeTable, ({ one
   }),
 }));
 
-// RELAÇÕES PARA PRODUCT IMAGES
 export const productImageRelations = relations(productImageTable, ({ one }) => ({
   productVariant: one(productVariantTable, {
     fields: [productImageTable.productVariantId],
@@ -203,7 +232,6 @@ export const productImageRelations = relations(productImageTable, ({ one }) => (
   }),
 }));
 
-// RELAÇÕES PARA VARIANT IMAGES
 export const productVariantImageRelations = relations(productVariantImageTable, ({ one }) => ({
   variant: one(productVariantTable, {
     fields: [productVariantImageTable.variantId],
@@ -211,7 +239,6 @@ export const productVariantImageRelations = relations(productVariantImageTable, 
   }),
 }));
 
-// RELAÇÕES PARA PRODUCT VARIANTS
 export const productVariantRelations = relations(
   productVariantTable,
   ({ one, many }) => ({
@@ -226,7 +253,10 @@ export const productVariantRelations = relations(
   }),
 );
 
-// RELAÇÕES PARA PRODUCTS
+// ============================================
+// RELAÇÕES DE PRODUTOS (ATUALIZADA COM LOGÍSTICA)
+// ============================================
+
 export const productRelations = relations(productTable, ({ one, many }) => ({
   category: one(categoryTable, {
     fields: [productTable.categoryId],
@@ -236,6 +266,10 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   attributes: many(productAttributeTable),
   pricing: many(productPricingTable),
   galleryImages: many(productGalleryImagesTable),
+  
+  // NOVOS: Relações de logística
+  deliveryMethods: many(productDeliveryMethodsTable),
+  suppliers: many(productSuppliersTable),
 }));
 
 export const shippingAddressRelations = relations(
@@ -313,7 +347,109 @@ export const productGalleryImagesRelations = relations(productGalleryImagesTable
   }),
 }));
 
+// ============================================
+// NOVAS RELAÇÕES DE LOGÍSTICA
+// ============================================
+
+/**
+ * Relações de Estados
+ * Um estado tem muitas cidades
+ */
+export const statesRelations = relations(states, ({ many }) => ({
+  cities: many(cities),
+}));
+
+/**
+ * Relações de Cidades
+ * Uma cidade pertence a um estado e tem muitos bairros
+ */
+export const citiesRelations = relations(cities, ({ one, many }) => ({
+  state: one(states, {
+    fields: [cities.stateUf],
+    references: [states.uf],
+  }),
+  neighborhoods: many(neighborhoods),
+}));
+
+/**
+ * Relações de Bairros
+ * Um bairro pertence a uma cidade
+ */
+export const neighborhoodsRelations = relations(neighborhoods, ({ one }) => ({
+  city: one(cities, {
+    fields: [neighborhoods.cityId],
+    references: [cities.id],
+  }),
+}));
+
+/**
+ * Relações de Modalidades de Entrega
+ * Uma modalidade pode estar em muitos produtos
+ */
+export const deliveryMethodsRelations = relations(deliveryMethods, ({ many }) => ({
+  productLinks: many(productDeliveryMethodsTable),
+}));
+
+/**
+ * Relações de Fornecedores
+ * Um fornecedor pode ter muitos produtos
+ */
+export const suppliersRelations = relations(suppliers, ({ many }) => ({
+  productLinks: many(productSuppliersTable),
+}));
+
+/**
+ * Relações de Produto ↔ Modalidades (tabela de junção)
+ */
+export const productDeliveryMethodsRelations = relations(productDeliveryMethodsTable, ({ one }) => ({
+  product: one(productTable, {
+    fields: [productDeliveryMethodsTable.productId],
+    references: [productTable.id],
+  }),
+  deliveryMethod: one(deliveryMethods, {
+    fields: [productDeliveryMethodsTable.deliveryMethodId],
+    references: [deliveryMethods.id],
+  }),
+}));
+
+/**
+ * Relações de Produto ↔ Fornecedores (tabela de junção)
+ */
+export const productSuppliersRelations = relations(productSuppliersTable, ({ one }) => ({
+  product: one(productTable, {
+    fields: [productSuppliersTable.productId],
+    references: [productTable.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [productSuppliersTable.supplierId],
+    references: [suppliers.id],
+  }),
+}));
+
+/**
+ * Relações de Rotas de Entrega
+ * Uma rota tem muitos slots de entrega (1:N)
+ */
+export const deliveryRoutesRelations = relations(deliveryRoutes, ({ many }) => ({
+  slots: many(deliveryRouteSlots),
+}));
+
+/**
+ * Relações de Slots de Rotas
+ * Cada slot pertence a uma única rota (N:1)
+ */
+export const deliveryRouteSlotsRelations = relations(deliveryRouteSlots, ({ one }) => ({
+  route: one(deliveryRoutes, {
+    fields: [deliveryRouteSlots.routeId],
+    references: [deliveryRoutes.id],
+  }),
+}));
+
+// ============================================
 // RE-EXPORTAR TODAS AS TABELAS PARA O SCHEMA
+// ============================================
+
+// Tabelas existentes
 export { categoryTable } from './table/categories/categories';
 export { productTable } from './table/products/products';
 export { productVariantTable } from './table/products/product-variants';
@@ -322,3 +458,15 @@ export { productPricingTable } from './table/products/product-pricing';
 export { productAttributeTable } from './table/products/product-attributes';
 export { productVariantImageTable } from './table/products/variant-images';
 export { productGalleryImagesTable } from './table/products/product-gallery-images';
+
+// Tabelas de logística
+export { states } from './table/logistics/states/states';
+export { cities } from './table/logistics/cities/cities';
+export { neighborhoods } from './table/logistics/neighborhoods/neighborhoods';
+export { deliveryMethods } from './table/logistics/deliveryMethods/deliveryMethods';
+export { suppliers } from './table/logistics/suppliers/suppliers';
+export { productDeliveryMethodsTable } from './table/logistics/productDeliveryMethods.ts/productDeliveryMethods';
+export { productSuppliersTable } from './table/logistics/productSuppliers/productSuppliers';
+
+// Rotas de entrega própria 
+export { deliveryRoutes, deliveryRouteSlots } from './table/logistics/deliveryRoutes/deliveryRoutes';

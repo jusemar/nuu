@@ -6,7 +6,7 @@
 
 import { pgTable, varchar, boolean, timestamp, serial, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { states } from '../state/state';
+import { states } from '../states/states';
 
 /**
  * Tabela de cidades

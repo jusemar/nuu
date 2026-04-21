@@ -3,6 +3,10 @@ acesso ao neon console : http://local.drizzle.studio
 npx drizzle-kit push 
 npx drizzle-kit studio
 
+Commit atual (backup): Rode npx drizzle-kit generate agora para salvar estado atual
+Aplicar schemas novos: Depois rode npx drizzle-kit push das novas tabelas
+npx drizzle-kit migrate --rollback  # Volta última migration
+
 
 Hook:
 
@@ -23,9 +27,5 @@ Ex: createCategory, updateCategory
 Resumo: Hook = frontend, Server Action = backend 🎯
 
 
-Texto padrão para novo chat quando começar a programar
-
-Se você precisar de algum arquivo para analisar melhor para encontrar a solução do erro me peça que te passo.
-Regra absoluta: 1) nunca me passa um codigo sem me passar a informação do que deseja primeiro. Depois que eu analisar sua decisão e aprovar sua sugestão aí sim daremos o próximo passo. 
-2 ) sempre passo a passo 1 coisa de cada vez. Não me passe várias alterações somente um arquivo por vez.  3) sempre que me passar arquivo para criar ou alterar precisa me informar o caminho desse arquivo. 
-4 ) aplica as melhores e mais atuais e modernas práticas para programação em next usadas pelos programadores seniors.
+Regra do Next.js App Router:
+Toda rota acessível via URL deve estar dentro da pasta src/app/. A pasta src/features/ é para componentes, hooks, utilitários, lógica de negócio — não para páginas.

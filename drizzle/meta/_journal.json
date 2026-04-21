@@ -43,6 +43,20 @@
       "when": 1769092287448,
       "tag": "0005_modern_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776706540521,
+      "tag": "0006_chubby_colleen_wing",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776797155035,
+      "tag": "0007_swift_toad_men",
+      "breakpoints": true
     }
   ]
 }

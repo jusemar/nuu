@@ -1,4 +1,3 @@
-
 // src/db/schema.ts
 
 import { relations } from "drizzle-orm";
@@ -16,34 +15,52 @@ import {
 // IMPORTS DAS TABELAS EXISTENTES
 // ============================================
 
-import { categoryTable } from './table/categories/categories';
-import { productVariantTable } from './table/products/product-variants';
-import { productTable } from './table/products/products';
-import { productImageTable } from './table/products/product-images';
-import { productPricingTable } from './table/products/product-pricing';
-import { productAttributeTable } from './table/products/product-attributes';
-import { productVariantImageTable } from './table/products/variant-images';
-import { productGalleryImagesTable } from './table/products/product-gallery-images';
+import { categoryTable } from "./table/categories/categories";
+import { productVariantTable } from "./table/products/product-variants";
+import { productTable } from "./table/products/products";
+import { productImageTable } from "./table/products/product-images";
+import { productPricingTable } from "./table/products/product-pricing";
+import { productAttributeTable } from "./table/products/product-attributes";
+import { productVariantImageTable } from "./table/products/variant-images";
+import { productGalleryImagesTable } from "./table/products/product-gallery-images";
 
 // ============================================
 // IMPORTS DAS TABELAS DE LOGÍSTICA (NOVOS)
 // ============================================
 
 // Regiões (Estados, Cidades, Bairros)
-import { states } from './table/logistics/states/states';
-import { cities } from './table/logistics/cities/cities';
-import { neighborhoods } from './table/logistics/neighborhoods/neighborhoods';
+import { states } from "./table/logistics/states/states";
+import { cities } from "./table/logistics/cities/cities";
+import { neighborhoods } from "./table/logistics/neighborhoods/neighborhoods";
 
 // Modalidades e Fornecedores
-import { deliveryMethods } from './table/logistics/deliveryMethods/deliveryMethods';
-import { suppliers } from './table/logistics/suppliers/suppliers';
+import { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
+import { suppliers } from "./table/logistics/suppliers/suppliers";
 
 // Tabelas de junção (Produto ↔ Logística)
-import { productDeliveryMethodsTable } from './table/logistics/productDeliveryMethods.ts/productDeliveryMethods';
-import { productSuppliersTable } from './table/logistics/productSuppliers/productSuppliers';
+import { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
+import { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
 
-// Rotas de entrega própria (NOVO)
-import { deliveryRoutes, deliveryRouteSlots } from './table/logistics/deliveryRoutes/deliveryRoutes';
+// Rotas de entrega própria (ANTIGO - será removido)
+import {
+  deliveryRoutes,
+  deliveryRouteSlots,
+} from "./table/logistics/deliveryRoutes/deliveryRoutes";
+
+// Shipping - Novo sistema de 3 níveis (NOVO - substitui rotas)
+import {
+  shippingRegions,
+  regioBairros,
+  bairrosAvulsos,
+  cepsEspecificos,
+  shippingRegionSlots,
+  shippingBairroAvulsoSlots,
+  shippingRegionsRelations,
+  regioBairrosRelations,
+  bairrosAvulsosRelations,
+  shippingRegionSlotsRelations,
+  shippingBairroAvulsoSlotsRelations,
+} from "./table/logistics/shipping";
 
 // ============================================
 // TABELAS EXISTENTES (mantidas como estavam)
@@ -218,26 +235,35 @@ export const categoryRelations = relations(categoryTable, ({ many, one }) => ({
   }),
 }));
 
-export const productAttributeRelations = relations(productAttributeTable, ({ one }) => ({
-  product: one(productTable, {
-    fields: [productAttributeTable.productId],
-    references: [productTable.id],
+export const productAttributeRelations = relations(
+  productAttributeTable,
+  ({ one }) => ({
+    product: one(productTable, {
+      fields: [productAttributeTable.productId],
+      references: [productTable.id],
+    }),
   }),
-}));
+);
 
-export const productImageRelations = relations(productImageTable, ({ one }) => ({
-  productVariant: one(productVariantTable, {
-    fields: [productImageTable.productVariantId],
-    references: [productVariantTable.id],
+export const productImageRelations = relations(
+  productImageTable,
+  ({ one }) => ({
+    productVariant: one(productVariantTable, {
+      fields: [productImageTable.productVariantId],
+      references: [productVariantTable.id],
+    }),
   }),
-}));
+);
 
-export const productVariantImageRelations = relations(productVariantImageTable, ({ one }) => ({
-  variant: one(productVariantTable, {
-    fields: [productVariantImageTable.variantId],
-    references: [productVariantTable.id],
+export const productVariantImageRelations = relations(
+  productVariantImageTable,
+  ({ one }) => ({
+    variant: one(productVariantTable, {
+      fields: [productVariantImageTable.variantId],
+      references: [productVariantTable.id],
+    }),
   }),
-}));
+);
 
 export const productVariantRelations = relations(
   productVariantTable,
@@ -266,7 +292,7 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   attributes: many(productAttributeTable),
   pricing: many(productPricingTable),
   galleryImages: many(productGalleryImagesTable),
-  
+
   // NOVOS: Relações de logística
   deliveryMethods: many(productDeliveryMethodsTable),
   suppliers: many(productSuppliersTable),
@@ -333,19 +359,25 @@ export const orderItemRelations = relations(orderItemTable, ({ one }) => ({
   }),
 }));
 
-export const productPricingRelations = relations(productPricingTable, ({ one }) => ({
-  product: one(productTable, {
-    fields: [productPricingTable.productId],
-    references: [productTable.id],
+export const productPricingRelations = relations(
+  productPricingTable,
+  ({ one }) => ({
+    product: one(productTable, {
+      fields: [productPricingTable.productId],
+      references: [productTable.id],
+    }),
   }),
-}));
+);
 
-export const productGalleryImagesRelations = relations(productGalleryImagesTable, ({ one }) => ({
-  product: one(productTable, {
-    fields: [productGalleryImagesTable.productId],
-    references: [productTable.id],
+export const productGalleryImagesRelations = relations(
+  productGalleryImagesTable,
+  ({ one }) => ({
+    product: one(productTable, {
+      fields: [productGalleryImagesTable.productId],
+      references: [productTable.id],
+    }),
   }),
-}));
+);
 
 // ============================================
 // NOVAS RELAÇÕES DE LOGÍSTICA
@@ -386,9 +418,12 @@ export const neighborhoodsRelations = relations(neighborhoods, ({ one }) => ({
  * Relações de Modalidades de Entrega
  * Uma modalidade pode estar em muitos produtos
  */
-export const deliveryMethodsRelations = relations(deliveryMethods, ({ many }) => ({
-  productLinks: many(productDeliveryMethodsTable),
-}));
+export const deliveryMethodsRelations = relations(
+  deliveryMethods,
+  ({ many }) => ({
+    productLinks: many(productDeliveryMethodsTable),
+  }),
+);
 
 /**
  * Relações de Fornecedores
@@ -401,72 +436,118 @@ export const suppliersRelations = relations(suppliers, ({ many }) => ({
 /**
  * Relações de Produto ↔ Modalidades (tabela de junção)
  */
-export const productDeliveryMethodsRelations = relations(productDeliveryMethodsTable, ({ one }) => ({
-  product: one(productTable, {
-    fields: [productDeliveryMethodsTable.productId],
-    references: [productTable.id],
+export const productDeliveryMethodsRelations = relations(
+  productDeliveryMethodsTable,
+  ({ one }) => ({
+    product: one(productTable, {
+      fields: [productDeliveryMethodsTable.productId],
+      references: [productTable.id],
+    }),
+    deliveryMethod: one(deliveryMethods, {
+      fields: [productDeliveryMethodsTable.deliveryMethodId],
+      references: [deliveryMethods.id],
+    }),
   }),
-  deliveryMethod: one(deliveryMethods, {
-    fields: [productDeliveryMethodsTable.deliveryMethodId],
-    references: [deliveryMethods.id],
-  }),
-}));
+);
 
 /**
  * Relações de Produto ↔ Fornecedores (tabela de junção)
  */
-export const productSuppliersRelations = relations(productSuppliersTable, ({ one }) => ({
-  product: one(productTable, {
-    fields: [productSuppliersTable.productId],
-    references: [productTable.id],
+export const productSuppliersRelations = relations(
+  productSuppliersTable,
+  ({ one }) => ({
+    product: one(productTable, {
+      fields: [productSuppliersTable.productId],
+      references: [productTable.id],
+    }),
+    supplier: one(suppliers, {
+      fields: [productSuppliersTable.supplierId],
+      references: [suppliers.id],
+    }),
   }),
-  supplier: one(suppliers, {
-    fields: [productSuppliersTable.supplierId],
-    references: [suppliers.id],
-  }),
-}));
+);
 
 /**
  * Relações de Rotas de Entrega
  * Uma rota tem muitos slots de entrega (1:N)
  */
-export const deliveryRoutesRelations = relations(deliveryRoutes, ({ many }) => ({
-  slots: many(deliveryRouteSlots),
-}));
+export const deliveryRoutesRelations = relations(
+  deliveryRoutes,
+  ({ many }) => ({
+    slots: many(deliveryRouteSlots),
+  }),
+);
 
 /**
  * Relações de Slots de Rotas
  * Cada slot pertence a uma única rota (N:1)
  */
-export const deliveryRouteSlotsRelations = relations(deliveryRouteSlots, ({ one }) => ({
-  route: one(deliveryRoutes, {
-    fields: [deliveryRouteSlots.routeId],
-    references: [deliveryRoutes.id],
+export const deliveryRouteSlotsRelations = relations(
+  deliveryRouteSlots,
+  ({ one }) => ({
+    route: one(deliveryRoutes, {
+      fields: [deliveryRouteSlots.routeId],
+      references: [deliveryRoutes.id],
+    }),
   }),
-}));
+);
 
 // ============================================
 // RE-EXPORTAR TODAS AS TABELAS PARA O SCHEMA
 // ============================================
 
 // Tabelas existentes
-export { categoryTable } from './table/categories/categories';
-export { productTable } from './table/products/products';
-export { productVariantTable } from './table/products/product-variants';
-export { productImageTable } from './table/products/product-images';
-export { productPricingTable } from './table/products/product-pricing';
-export { productAttributeTable } from './table/products/product-attributes';
-export { productVariantImageTable } from './table/products/variant-images';
-export { productGalleryImagesTable } from './table/products/product-gallery-images';
+export { categoryTable } from "./table/categories/categories";
+export { productTable } from "./table/products/products";
+export { productVariantTable } from "./table/products/product-variants";
+export { productImageTable } from "./table/products/product-images";
+export { productPricingTable } from "./table/products/product-pricing";
+export { productAttributeTable } from "./table/products/product-attributes";
+export { productVariantImageTable } from "./table/products/variant-images";
+export { productGalleryImagesTable } from "./table/products/product-gallery-images";
 
 // Tabelas de logística
-export { states } from './table/logistics/states/states';
-export { cities } from './table/logistics/cities/cities';
-export { neighborhoods } from './table/logistics/neighborhoods/neighborhoods';
-export { deliveryMethods } from './table/logistics/deliveryMethods/deliveryMethods';
-export { suppliers } from './table/logistics/suppliers/suppliers';
-export { productDeliveryMethodsTable } from './table/logistics/productDeliveryMethods.ts/productDeliveryMethods';
-export { productSuppliersTable } from './table/logistics/productSuppliers/productSuppliers';
+export { states } from "./table/logistics/states/states";
+export { cities } from "./table/logistics/cities/cities";
+export { neighborhoods } from "./table/logistics/neighborhoods/neighborhoods";
+export { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
+export { suppliers } from "./table/logistics/suppliers/suppliers";
+export { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
+export { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
 
-// Rotas de entrega própria 
-export { deliveryRoutes, deliveryRouteSlots } from './table/logistics/deliveryRoutes/deliveryRoutes';
+// Rotas de entrega própria (ANTIGO)
+export {
+  deliveryRoutes,
+  deliveryRouteSlots,
+} from "./table/logistics/deliveryRoutes/deliveryRoutes";
+
+// Shipping - Novo sistema 3 níveis (NOVO)
+export {
+  shippingRegions,
+  regioBairros,
+  bairrosAvulsos,
+  cepsEspecificos,
+  shippingRegionSlots,
+  shippingBairroAvulsoSlots,
+  type ShippingRegion,
+  type NewShippingRegion,
+  type RegioBairro,
+  type NewRegioBairro,
+  type BairroAvulso,
+  type NewBairroAvulso,
+  type CepEspecifico,
+  type NewCepEspecifico,
+  type ShippingRegionSlot,
+  type NewShippingRegionSlot,
+  type ShippingBairroAvulsoSlot,
+  type NewShippingBairroAvulsoSlot,
+} from "./table/logistics/shipping";
+
+// Relations de Shipping
+export {
+  shippingRegionsRelations,
+  regioBairrosRelations,
+  bairrosAvulsosRelations,
+  shippingRegionSlotsRelations,
+  shippingBairroAvulsoSlotsRelations,
+} from "./table/logistics/shipping";

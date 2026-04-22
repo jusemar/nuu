@@ -1,76 +1,124 @@
 /**
  * SERVICE statesService - Comunicação com API de estados
- * 
- * Por enquanto usa dados mockados. Depois substitui por chamadas reais à API.
+ *
+ * Usa Drizzle ORM para buscar dados reais do banco.
  */
+"use server";
 
-import type { State } from '../types/states';
+import { db } from "@/db";
+import { states } from "@/db/table/logistics/states/states";
+import { cities } from "@/db/table/logistics/cities/cities";
+import { eq, sql } from "drizzle-orm";
+import type { State } from "../types/states";
 
 /**
- * Dados mockados - simulam resposta do banco de dados
- */
-const mockStates: State[] = [
-  { uf: 'SP', name: 'São Paulo', isActive: true, citiesCount: 645, createdAt: new Date('2024-01-15') },
-  { uf: 'RJ', name: 'Rio de Janeiro', isActive: true, citiesCount: 92, createdAt: new Date('2024-02-20') },
-  { uf: 'MG', name: 'Minas Gerais', isActive: false, citiesCount: 0, createdAt: new Date('2024-03-10') },
-  { uf: 'RS', name: 'Rio Grande do Sul', isActive: true, citiesCount: 497, createdAt: new Date('2024-04-05') },
-  { uf: 'PR', name: 'Paraná', isActive: false, citiesCount: 0, createdAt: new Date('2024-05-12') },
-];
-
-/**
- * Simula delay de rede (1 segundo)
- */
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Busca todos os estados
+ * Busca todos os estados com contagem de cidades
  */
 export async function getStates(): Promise<State[]> {
-  await delay(1000);
-  return [...mockStates];
+  const statesData = await db.query.states.findMany({
+    orderBy: (states, { asc }) => [asc(states.name)],
+  });
+
+  const statesWithCount = await Promise.all(
+    statesData.map(async (state) => {
+      const citiesCountResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(cities)
+        .where(eq(cities.stateUf, state.uf));
+
+      return {
+        uf: state.uf,
+        name: state.name,
+        isActive: state.isActive,
+        citiesCount: citiesCountResult[0]?.count || 0,
+        createdAt: state.createdAt,
+      };
+    }),
+  );
+
+  return statesWithCount;
 }
 
 /**
  * Busca estado por UF
  */
 export async function getStateByUf(uf: string): Promise<State | null> {
-  await delay(500);
-  const state = mockStates.find((s) => s.uf === uf);
-  return state ? { ...state } : null;
+  const state = await db.query.states.findFirst({
+    where: eq(states.uf, uf),
+  });
+
+  if (!state) return null;
+
+  const citiesCountResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(cities)
+    .where(eq(cities.stateUf, state.uf));
+
+  return {
+    uf: state.uf,
+    name: state.name,
+    isActive: state.isActive,
+    citiesCount: citiesCountResult[0]?.count || 0,
+    createdAt: state.createdAt,
+  };
 }
 
 /**
  * Cria novo estado
  */
-export async function createState(state: Omit<State, 'createdAt'>): Promise<State> {
-  await delay(800);
-  const newState: State = {
-    ...state,
-    createdAt: new Date(),
+export async function createState(
+  state: Omit<State, "createdAt">,
+): Promise<State> {
+  const [newState] = await db
+    .insert(states)
+    .values({
+      uf: state.uf,
+      name: state.name,
+      isActive: state.isActive,
+    })
+    .returning();
+
+  return {
+    uf: newState.uf,
+    name: newState.name,
+    isActive: newState.isActive,
+    citiesCount: 0,
+    createdAt: newState.createdAt,
   };
-  mockStates.push(newState);
-  return { ...newState };
 }
 
 /**
  * Atualiza status do estado (ativo/inativo)
  */
-export async function updateStateStatus(uf: string, isActive: boolean): Promise<State> {
-  await delay(600);
-  const index = mockStates.findIndex((s) => s.uf === uf);
-  if (index === -1) throw new Error('Estado não encontrado');
-  
-  mockStates[index] = { ...mockStates[index], isActive };
-  return { ...mockStates[index] };
+export async function updateStateStatus(
+  uf: string,
+  isActive: boolean,
+): Promise<State> {
+  const [updatedState] = await db
+    .update(states)
+    .set({ isActive, updatedAt: new Date() })
+    .where(eq(states.uf, uf))
+    .returning();
+
+  if (!updatedState) throw new Error("Estado não encontrado");
+
+  const citiesCountResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(cities)
+    .where(eq(cities.stateUf, updatedState.uf));
+
+  return {
+    uf: updatedState.uf,
+    name: updatedState.name,
+    isActive: updatedState.isActive,
+    citiesCount: citiesCountResult[0]?.count || 0,
+    createdAt: updatedState.createdAt,
+  };
 }
 
 /**
  * Remove estado
  */
 export async function deleteState(uf: string): Promise<void> {
-  await delay(600);
-  const index = mockStates.findIndex((s) => s.uf === uf);
-  if (index === -1) throw new Error('Estado não encontrado');
-  
-  mockStates.splice(index, 1);
+  await db.delete(states).where(eq(states.uf, uf));
 }

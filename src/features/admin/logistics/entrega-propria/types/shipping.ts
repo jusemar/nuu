@@ -11,7 +11,7 @@ import type {
   CepEspecifico,
   ShippingRegionSlot,
   ShippingBairroAvulsoSlot,
-} from "@/db/table/logistics/shipping";
+} from "@/db/table/logistics/entrega-propria";
 
 export type {
   ShippingRegion,

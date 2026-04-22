@@ -20,7 +20,7 @@ import {
   cepsEspecificos,
   shippingRegionSlots,
   shippingBairroAvulsoSlots,
-} from "@/db/table/logistics/shipping";
+} from "@/db/table/logistics/entrega-propria";
 import { eq, and, or } from "drizzle-orm";
 import type {
   ShippingRegion,
@@ -35,7 +35,7 @@ import type {
   NewCepEspecifico,
   NewShippingRegionSlot,
   NewShippingBairroAvulsoSlot,
-} from "@/db/table/logistics/shipping";
+} from "@/db/table/logistics/entrega-propria";
 
 const DAY_NAMES = [
   "Domingo",

@@ -10,7 +10,9 @@ Regras estabelecidas:
 
 3) Aplicar melhores práticas que um engenheiro de programação sênior especialista em react com nextjs faria.
 
-4) Aplicar melhores práticas ux ui designer faria na prática.
+4) Aplicar melhores práticas ux ui designer systema faria na prática com tailwind.
+
+5) quando for preciso criar página visual sempre aplicar de forma responsiva para todos tamanhos de telas.
 
 Regra do Next.js App Router:
 Toda rota acessível via URL deve estar dentro da pasta src/app/. A pasta src/features/ é para componentes, hooks, services, types, utilitários, lógica de negócio — não para páginas.

@@ -60,7 +60,7 @@ import {
   bairrosAvulsosRelations,
   shippingRegionSlotsRelations,
   shippingBairroAvulsoSlotsRelations,
-} from "./table/logistics/shipping";
+} from "./table/logistics/entrega-propria";
 
 // ============================================
 // TABELAS EXISTENTES (mantidas como estavam)
@@ -541,7 +541,7 @@ export {
   type NewShippingRegionSlot,
   type ShippingBairroAvulsoSlot,
   type NewShippingBairroAvulsoSlot,
-} from "./table/logistics/shipping";
+} from "./table/logistics/entrega-propria";
 
 // Relations de Shipping
 export {
@@ -550,4 +550,4 @@ export {
   bairrosAvulsosRelations,
   shippingRegionSlotsRelations,
   shippingBairroAvulsoSlotsRelations,
-} from "./table/logistics/shipping";
+} from "./table/logistics/entrega-propria";

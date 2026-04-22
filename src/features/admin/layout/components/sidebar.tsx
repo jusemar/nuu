@@ -30,6 +30,7 @@ import {
   Building2,
   Navigation,
   DollarSign,
+  PackageCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '../hooks/useSidebar';
@@ -49,6 +50,7 @@ const iconMap: Record<string, React.ElementType> = {
   Building2,
   Navigation,
   DollarSign,
+  PackageCheck,
 };
 
 /**
@@ -96,7 +98,7 @@ const menuData = [
         ],
       },
       { id: 'routes', type: 'item' as const,   label: 'Rotas',  href: '/admin/logistics/routes',  icon: 'Navigation'},      
-      { id: 'shipping', type: 'item' as const, label: 'Frete Próprio', href: '/admin/shipping', icon: 'DollarSign' },
+      { id: 'shipping', type: 'item' as const, label: 'Entrega Própria', href: '/admin/logistics/entrega-propria', icon: 'PackageCheck' },
       { id: 'methods', label: 'Entregas | Frete', href: '/admin/logistics/modalidades-entrega', icon: 'Truck' },
       { id: 'suppliers', label: 'Fornecedores', href: '/admin/logistics/fornecedores', icon: 'Store' },
     ],

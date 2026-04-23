@@ -41,13 +41,7 @@ import { suppliers } from "./table/logistics/suppliers/suppliers";
 import { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
 import { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
 
-// Rotas de entrega própria (ANTIGO - será removido)
-import {
-  deliveryRoutes,
-  deliveryRouteSlots,
-} from "./table/logistics/deliveryRoutes/deliveryRoutes";
-
-// Shipping - Novo sistema de 3 níveis (NOVO - substitui rotas)
+// Entrega Própria - Sistema de 3 níveis
 import {
   shippingRegions,
   regioBairros,
@@ -467,31 +461,6 @@ export const productSuppliersRelations = relations(
   }),
 );
 
-/**
- * Relações de Rotas de Entrega
- * Uma rota tem muitos slots de entrega (1:N)
- */
-export const deliveryRoutesRelations = relations(
-  deliveryRoutes,
-  ({ many }) => ({
-    slots: many(deliveryRouteSlots),
-  }),
-);
-
-/**
- * Relações de Slots de Rotas
- * Cada slot pertence a uma única rota (N:1)
- */
-export const deliveryRouteSlotsRelations = relations(
-  deliveryRouteSlots,
-  ({ one }) => ({
-    route: one(deliveryRoutes, {
-      fields: [deliveryRouteSlots.routeId],
-      references: [deliveryRoutes.id],
-    }),
-  }),
-);
-
 // ============================================
 // RE-EXPORTAR TODAS AS TABELAS PARA O SCHEMA
 // ============================================
@@ -514,12 +483,6 @@ export { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMetho
 export { suppliers } from "./table/logistics/suppliers/suppliers";
 export { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
 export { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
-
-// Rotas de entrega própria (ANTIGO)
-export {
-  deliveryRoutes,
-  deliveryRouteSlots,
-} from "./table/logistics/deliveryRoutes/deliveryRoutes";
 
 // Shipping - Novo sistema 3 níveis (NOVO)
 export {

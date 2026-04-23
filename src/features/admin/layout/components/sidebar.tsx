@@ -97,7 +97,6 @@ const menuData = [
           { id: 'test-coverage', label: 'Testar Cobertura', href: '/admin/logistics/regions/test', icon: 'MapPin' },
         ],
       },
-      { id: 'routes', type: 'item' as const,   label: 'Rotas',  href: '/admin/logistics/routes',  icon: 'Navigation'},      
       { id: 'shipping', type: 'item' as const, label: 'Entrega Própria', href: '/admin/logistics/entrega-propria', icon: 'PackageCheck' },
       { id: 'methods', label: 'Entregas | Frete', href: '/admin/logistics/modalidades-entrega', icon: 'Truck' },
       { id: 'suppliers', label: 'Fornecedores', href: '/admin/logistics/fornecedores', icon: 'Store' },

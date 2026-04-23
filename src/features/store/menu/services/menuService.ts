@@ -1,7 +1,7 @@
 // src/features/store/menu/services/menuService.ts
 'use server'
 
-import { db } from '@/db'
+import { db } from '@/db/connection'
 import { categoryTable } from '@/db/table/categories/categories'
 import { eq } from 'drizzle-orm'
 

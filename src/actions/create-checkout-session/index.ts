@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import {
   cartItemTable,
   cartTable,

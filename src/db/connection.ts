@@ -1,4 +1,4 @@
-// src/db/index.ts
+// src/db/connection.ts
 // 
 // Configuração da conexão com o banco de dados Neon (PostgreSQL)
 // O cliente neon é responsável pela comunicação HTTP com o banco

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { orderTable } from "@/db/schema";
 
 export const POST = async (request: Request) => {

@@ -7,7 +7,7 @@
 "use server"
 
 // --- IMPORTAÇÕES DO BANCO DE DADOS ---
-import { db } from "@/db"
+import { db } from "@/db/connection"
 import {
   productTable,            // Tabela principal dos produtos
   productGalleryImagesTable, // Tabela de imagens da GALERIA PRINCIPAL (product_gallery_images)

@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { cartTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 

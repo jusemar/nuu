@@ -5,7 +5,7 @@
  */
 "use server";
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { states } from "@/db/table/logistics/states/states";
 import { cities } from "@/db/table/logistics/cities/cities";
 import { eq, sql } from "drizzle-orm";

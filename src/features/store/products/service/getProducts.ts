@@ -6,7 +6,7 @@
 // ==============================================================
 import "server-only"
 
-import { db } from "@/db"
+import { db } from "@/db/connection"
 import { productTable } from "@/db/schema"
 import { desc } from "drizzle-orm"
 

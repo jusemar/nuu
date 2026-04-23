@@ -1,7 +1,7 @@
  "use server"
 
 import { revalidatePath } from "next/cache"
-import { db } from "@/db"
+import { db } from "@/db/connection"
 import { productTable, productPricingTable, productGalleryImagesTable } from "@/db/schema"
 import { eq } from "drizzle-orm"
 

@@ -1,6 +1,6 @@
 // src/app/api/admin/categories/route.ts
 import { NextResponse } from 'next/server';
-import { db } from '@/db';
+import { db } from '@/db/connection';
 import { categoryTable } from '@/db/table/categories/categories';
 import { revalidatePath } from 'next/cache';
 

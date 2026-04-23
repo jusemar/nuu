@@ -10,7 +10,7 @@
 // TECNOLOGIAS: Next.js App Router, Drizzle ORM, PostgreSQL
 // =====================================================================
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { categoryTable } from "@/db/table/categories/categories";
 import { sql, eq, desc, asc } from "drizzle-orm";
 import type {

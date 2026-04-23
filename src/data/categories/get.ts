@@ -1,6 +1,6 @@
 "use server"
 
-import { db } from "@/db"
+import { db } from "@/db/connection"
 import { categoryTable } from "@/db/table/categories/categories"
 import { isNull } from "drizzle-orm"  // ← ADICIONAR ESTE IMPORT
 

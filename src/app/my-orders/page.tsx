@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { orderTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 

@@ -1,6 +1,6 @@
 'use server'
 
-import { db } from '@/db'
+import { db } from '@/db/connection'
 import { productTable, productGalleryImagesTable, productPricingTable } from '@/db/schema'
 import { revalidatePath } from 'next/cache'
 

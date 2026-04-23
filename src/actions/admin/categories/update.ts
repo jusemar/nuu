@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { db } from "@/db"
+import { db } from "@/db/connection"
 import { categoryTable } from "@/db/table/categories/categories"
 import { eq, and, not } from "drizzle-orm"
 

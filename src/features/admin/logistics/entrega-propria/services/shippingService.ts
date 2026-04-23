@@ -12,7 +12,7 @@
  * A diretiva 'use server' garante execução no servidor.
  */
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import {
   shippingRegions,
   regioBairros,

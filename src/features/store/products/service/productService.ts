@@ -9,7 +9,7 @@
 // protegendo credenciais do banco de dados.
 import "server-only"
 
-import { db } from "@/db"
+import { db } from "@/db/connection"
 import { productTable } from "@/db/schema"
 import { eq } from "drizzle-orm"
 

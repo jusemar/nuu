@@ -1,7 +1,7 @@
 // src/features/store/category/services/categoryTabsService.ts
 'use server';
 
-import { db } from '@/db';
+import { db } from '@/db/connection';
 import { categoryTable, productTable } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 

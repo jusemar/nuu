@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import {Footer} from "@/components/common/footer";
 import ProductList from "@/components/common/product-list";
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { productTable, productVariantTable } from "@/db/schema";
 import { formatCentsToBRL } from "@/helpers/money";
 

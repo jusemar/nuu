@@ -1,5 +1,5 @@
 
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { productTable } from '@/db/table/products/products';
 import {productVariantTable} from '@/db/table/products/product-variants';
 import { desc } from "drizzle-orm";

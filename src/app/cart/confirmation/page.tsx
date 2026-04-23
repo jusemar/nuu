@@ -5,7 +5,7 @@ import { Footer } from "@/components/common/footer";
 import { Header } from "@/components/common/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { auth } from "@/lib/auth";
 
 import CartSummary from "../components/cart-summary";

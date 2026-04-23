@@ -1,7 +1,7 @@
 // src/app/category/[slug]/page.tsx
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { db } from "@/db";
+import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
 import Navbar08 from "@/components/ui/shadcn-io/navbar-08";
 import ProductItem from "@/components/common/product-item";

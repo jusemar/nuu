@@ -11,7 +11,7 @@
 
 'use server'
 
-import { db } from '@/db'
+import { db } from '@/db/connection'
 import { productGalleryImagesTable } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 

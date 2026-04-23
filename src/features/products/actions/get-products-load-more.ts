@@ -1,6 +1,6 @@
 "use server"; // Indica que esta função roda no servidor (Next.js App Router)
 
-import { db } from "@/db"; // Conexão com o banco de dados
+import { db } from "@/db/connection"; // Conexão com o banco de dados
 import {
   productTable,              // Tabela dos produtos
   productPricingTable,       // Tabela dos preços dos produtos

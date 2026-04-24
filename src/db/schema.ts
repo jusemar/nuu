@@ -56,6 +56,20 @@ import {
   shippingBairroAvulsoSlotsRelations,
 } from "./table/logistics/entrega-propria";
 
+// Retirada - Pontos de coleta e modalidades
+import {
+  configHorarioTable,
+  feriadosTable,
+  modalidadesRetiradaTable,
+  pontosColetaTable,
+  produtoRetiradaTable,
+  configHorarioRelations,
+  feriadosRelations,
+  modalidadesRetiradaRelations,
+  pontosColetaRelations,
+  produtoRetiradaRelations,
+} from "./table/retirada";
+
 // ============================================
 // TABELAS EXISTENTES (mantidas como estavam)
 // ============================================
@@ -506,6 +520,15 @@ export {
   type NewShippingBairroAvulsoSlot,
 } from "./table/logistics/entrega-propria";
 
+// Tabelas de Retirada
+export {
+  configHorarioTable,
+  feriadosTable,
+  modalidadesRetiradaTable,
+  pontosColetaTable,
+  produtoRetiradaTable,
+} from "./table/retirada";
+
 // Relations de Shipping
 export {
   shippingRegionsRelations,
@@ -514,3 +537,42 @@ export {
   shippingRegionSlotsRelations,
   shippingBairroAvulsoSlotsRelations,
 } from "./table/logistics/entrega-propria";
+
+// ============================================
+// NOVAS RELAÇÕES DE RETIRADA
+// ============================================
+
+export const configHorarioRelationsRetirada = relations(configHorarioTable, ({ many }) => ({
+  pontosColeta: many(pontosColetaTable),
+}));
+
+export const feriadosRelationsRetirada = relations(feriadosTable, ({ many }) => ({
+  // Relações de feriados (um para muitos se necessário)
+}));
+
+export const modalidadesRetiradaRelationsRetirada = relations(modalidadesRetiradaTable, ({ many }) => ({
+  produtoRetiradas: many(produtoRetiradaTable),
+}));
+
+export const pontosColetaRelationsRetirada = relations(pontosColetaTable, ({ one, many }) => ({
+  configHorario: one(configHorarioTable, {
+    fields: [],
+    references: [],
+  }),
+  produtoRetiradas: many(produtoRetiradaTable),
+}));
+
+export const produtoRetiradaRelationsRetirada = relations(produtoRetiradaTable, ({ one }) => ({
+  product: one(productTable, {
+    fields: [produtoRetiradaTable.productId],
+    references: [productTable.id],
+  }),
+  pontoColeta: one(pontosColetaTable, {
+    fields: [produtoRetiradaTable.pontoColetaId],
+    references: [pontosColetaTable.id],
+  }),
+  modalidade: one(modalidadesRetiradaTable, {
+    fields: [produtoRetiradaTable.modalidadeId],
+    references: [modalidadesRetiradaTable.id],
+  }),
+}));

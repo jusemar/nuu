@@ -1,72 +1,151 @@
 # AGENTS.md
 
-## Developer Commands
+# ⚠️ REGRA PRINCIPAL (LEIA PRIMEIRO)
+
+Este projeto possui um padrão arquitetural oficial definido em:
+
+👉 **`regras.md`**
+
+## 🔥 PRIORIDADE ABSOLUTA
+
+* `regras.md` é a **única fonte de verdade**
+* Este arquivo (`AGENTS.md`) é apenas **auxiliar**
+* Em caso de conflito → **seguir sempre `regras.md`**
+
+---
+
+## ❌ PROIBIDO
+
+* Usar padrões antigos deste arquivo como referência arquitetural
+* Criar código fora do padrão definido em `regras.md`
+* Criar estruturas como:
+
+  * `src/actions/` (fora de features)
+  * `src/shared/ui/` como principal estrutura
+* Tomar decisões arquiteturais sem consultar `regras.md`
+
+---
+
+## ✅ OBRIGATÓRIO
+
+* Sempre ler `regras.md` antes de criar qualquer código
+* Seguir arquitetura **Feature-based por domínio**
+* Seguir separação obrigatória:
+
+  * `actions` → escrita
+  * `queries` → leitura
+  * `lib` → regra de negócio
+  * `components` → UI
+
+---
+
+# ⚙️ Developer Commands
 
 ```bash
-npm run dev     # Start dev server at http://localhost:3000
+npm run dev     # Start dev server
 npm run build   # Production build
 npm run lint    # Run ESLint
 npm run start   # Start production server
 ```
 
-No separate typecheck script - run `npx tsc --noEmit` if needed.
-
-## Database
-
-- **ORM**: Drizzle with PostgreSQL (Neon)
-- **Schema**: `src/db/schema.ts` + modular tables in `src/db/table/`
-- **Migrations**: `drizzle/` folder
+Typecheck manual:
 
 ```bash
-npx drizzle-kit migrate   # Create migration
-npx drizzle-kit push     # Push schema to DB
-npx drizzle-kit studio  # Open DB GUI
+npx tsc --noEmit
 ```
 
-Requires `DATABASE_URL` in `.env`.
+---
 
-## Architecture
+# 🗄️ Database
 
-- **Routes**: `src/app/` (Next.js App Router)
-- **Server Actions**: `src/actions/[action-name]/index.ts`
-- **Features**: `src/features/` (business logic)
-- **Database tables**: `src/db/table/`
-- **UI components**: `src/components/`, `src/shared/ui/`
+* ORM: **Drizzle (PostgreSQL - Neon)**
 
-## Key Patterns
+⚠️ Estrutura de banco deve seguir **regras.md**
 
-- **Forms**: React Hook Form + Zod → ref: `src/app/authentication/components/sign-in-form.tsx`
-- **Server Actions**: Store in `src/actions/[action-name]/index.ts` + `schema.ts` → ref: `src/actions/add-cart-product`
-- **Client queries**: TanStack Query → ref: `src/hooks/queries/use-cart.ts`
-- **Query keys**: Always export key functions
+Comandos:
 
-## Styling
+```bash
+npx drizzle-kit migrate
+npx drizzle-kit push
+npx drizzle-kit studio
+```
 
-- Tailwind CSS v4
-- Custom colors: `primary`, `accent`, `success`, `danger`, `text`, `surface`, `pix`
-- Font: Plus Jakarta Sans
-
-## Image Domains
-
-Configured in `next.config.ts`: cloudfront.net, fakestoreapi.com, via.placeholder.com, unsplash.com, *.vercel-storage.com
-
-## Conventions
-
-- kebab-case for files/folders
-- No code comments
-- shadcn/ui components preferred
-- useInfiniteQuery + pushState for infinite scroll
-- Server Actions for: login, checkout, CRUD, cart
-
-## Env Required
+Requer:
 
 ```
-DATABASE_URL          # Neon PostgreSQL
-BETTER_AUTH_SECRET   # Better Auth
-BETTER_AUTH_URL      # e.g., http://localhost:3000
+DATABASE_URL
+```
+
+---
+
+# ⚠️ Arquitetura (RESUMO SIMPLES)
+
+👉 Estrutura correta:
+
+```
+src/
+├── app/          # rotas
+├── features/     # domínios (fonte principal)
+├── db/           # banco
+```
+
+👉 Regra:
+
+* `app/` → apenas rotas
+* `features/` → lógica + UI
+* `db/` → banco global
+
+⚠️ Estrutura detalhada → ver `regras.md`
+
+---
+
+# 🔄 Padrões Técnicos
+
+* Forms → React Hook Form + Zod
+* Queries client → TanStack Query
+* Mutações → Server Actions
+* Query keys → sempre centralizadas
+
+---
+
+# 🎨 Styling
+
+* Tailwind CSS
+* Preferir componentes reutilizáveis
+* Evitar duplicação de classes
+
+---
+
+# 🧩 UI
+
+* Preferir shadcn/ui
+* Customizar via wrapper (não alterar direto)
+
+---
+
+# 🌐 Imagens
+
+Domínios configurados em `next.config.ts`
+
+---
+
+# 🔐 Environment Variables
+
+```
+DATABASE_URL
+BETTER_AUTH_SECRET
+BETTER_AUTH_URL
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 STRIPE_SECRET_KEY
 NEXT_PUBLIC_APP_URL
 ```
 
-Optional: Google OAuth, Cloudinary, Vercel Blob tokens.
+---
+
+# 🧭 REGRA FINAL
+
+👉 Este arquivo NÃO define arquitetura
+
+👉 Sempre seguir:
+
+✔️ **regras.md**

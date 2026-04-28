@@ -53,14 +53,25 @@ src/features/<dominio>/
 │
 ├── actions/                # escrita no banco (Server Actions)
 ├── queries/                # leitura de dados (server-only)
+│   └── subpasta/
+│       ├── arquivo1.ts
+│       ├── arquivo2.ts
+│       ├── arquivo3.ts
+│       ├── arquivo4.ts               
 ├── hooks/                  # client (TanStack Query, estado)
+│   └── arquivo1.ts
+│   ├── arquivo2.ts
+│   ├── arquivo3.ts    
 ├── schemas/                # validação (Zod)
 ├── lib/                    # regra de negócio pura (sem React)
 ├── types/                  # tipos TypeScript
 ├── constants/              # valores fixos
 └── index.ts                # barrel export
 ```
+Regra prática (guarda isso)
 
+👉 Até 3 arquivos → pode ficar direto
+👉 Passou disso → cria subpasta por assunto
 ---
 
 ## 🧠 Regras de domínio
@@ -103,6 +114,7 @@ src/db/
     │   ├── <tabela>.ts     # definição da tabela
     │   └── relacoes.ts    # relações entre tabelas
 ```
+
 
 ---
 

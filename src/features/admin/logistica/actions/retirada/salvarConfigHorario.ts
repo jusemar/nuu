@@ -6,7 +6,7 @@
 
 import { db } from "@/db/connection";
 import { configHorarioTable } from "@/db/table/retirada/config-horario";
-import { configHorarioSchema } from "@/features/logistica/schemas/retiradaLocal.schema";
+import { configHorarioSchema } from "@/features/admin/logistica/schemas/retiradaLocal.schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 

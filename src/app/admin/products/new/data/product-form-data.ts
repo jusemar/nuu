@@ -35,6 +35,18 @@ export interface ProductFormData {
   // Dados de outras abas (serão preenchidos depois)
   pricing?: any
   shipping?: any
+  entrega?: {
+    permiteRetirada?: boolean;
+    modeloRetiradaId?: string | null;
+    prazoCustom?: string;
+  }
+  modelosRetirada?: Array<{
+    id: string;
+    nome: string;
+    prazoTexto: string;
+    mensagem: string | null;
+    ativo: boolean;
+  }>
   warranty?: any
   variants?: any
   seller?: any 
@@ -72,6 +84,11 @@ export interface SellerTabProps {
 
 export interface SeoTabProps {
   data: ProductFormData 
+  onChange: (updates: Partial<ProductFormData>) => void
+}
+
+export interface EntregaTabProps {
+  data: ProductFormData
   onChange: (updates: Partial<ProductFormData>) => void
 }
 

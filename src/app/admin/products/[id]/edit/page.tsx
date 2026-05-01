@@ -14,6 +14,7 @@ import { useParams } from "next/navigation"
 import { BasicTab } from '../../new/components/tabs/BasicTab'
 import { PricingTab } from '../../new/components/tabs/PricingTab'
 import { ShippingTab } from '../../../../../features/admin/products/components/ShippingTab'
+import { EntregaTab } from '../../new/components/tabs/EntregaTab'
 import { WarrantyTab } from '../../new/components/tabs/WarrantyTab'
 import { VariantsTab } from '../../new/components/tabs/VariantsTab'
 import { SellerTab } from '../../new/components/tabs/SellerTab'
@@ -169,10 +170,18 @@ export default function EditProductPage() {
         name: '🚚 Frete',
         value: 'shipping',
         component: <ShippingTab 
-          data={productData}
-          onChange={(updates: Partial<ProductFormData>) => setProductData(prev => ({...prev, ...updates}))}
+          data={productData.shipping ?? {}}
+          onChange={(updates: Partial<{ [key: string]: any }>) => setProductData(prev => ({...prev, shipping: updates}))}
         />
       },
+    {
+      name: '📦 Entrega',
+      value: 'entrega',
+      component: <EntregaTab 
+        data={productData.entrega ?? {}}
+        onChange={(updates: Partial<{ permiteRetirada?: boolean; modeloRetiradaId?: string | null; prazoCustom?: string; }>) => setProductData(prev => ({...prev, entrega: updates}))}
+      />
+    },
     {
       name: '🛡️ Garantia',
       value: 'warranty',

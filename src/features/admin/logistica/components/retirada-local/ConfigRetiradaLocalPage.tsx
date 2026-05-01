@@ -7,6 +7,22 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Clock, Package, Plus, Store, Trash2, AlertCircle } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { criarModeloRetirada, atualizarModeloRetirada, excluirModeloRetirada } from "@/features/admin/logistica/actions/retirada";
 import { modeloRetiradaSchema } from "@/features/admin/logistica/schemas/retiradaLocal.schema";
 import type { ModeloRetirada } from "@/features/admin/logistica/types/logistica.types";
@@ -18,8 +34,15 @@ type Props = {
 const formVazio = {
   nome: "",
   prazoTexto: "",
-  mensagem: "",
+  mensagem: undefined as string | undefined,
   ativo: true,
+};
+
+type FormData = {
+  nome: string;
+  prazoTexto: string;
+  mensagem?: string | null;
+  ativo: boolean;
 };
 
 export function ConfigRetiradaLocalPage({ modelosInicial }: Props) {
@@ -27,12 +50,13 @@ export function ConfigRetiradaLocalPage({ modelosInicial }: Props) {
   const [modalAberto, setModalAberto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [erro, setErro] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(modeloRetiradaSchema),
     defaultValues: formVazio,
@@ -64,25 +88,31 @@ export function ConfigRetiradaLocalPage({ modelosInicial }: Props) {
     setErro("");
   }
 
-  async function onSubmit(dados: any) {
-    if (editandoId) {
-      const resultado = await atualizarModeloRetirada(editandoId, dados);
-      if (resultado.success) {
-        setModelos((prev) =>
-          prev.map((m) => (m.id === editandoId ? { ...m, ...dados } : m))
-        );
-        fechar();
+  async function onSubmit(dados: FormData) {
+    setIsLoading(true);
+    try {
+      if (editandoId) {
+        const resultado = await atualizarModeloRetirada(editandoId, dados);
+        if (resultado.success) {
+          setModelos((prev) =>
+            prev.map((m) => (m.id === editandoId ? { ...m, ...dados } : m))
+          );
+          fechar();
+        } else {
+          setErro(resultado.error || "Erro ao atualizar");
+        }
       } else {
-        setErro(resultado.error || "Erro ao atualizar");
+        const resultado = await criarModeloRetirada(dados);
+        if (resultado.success) {
+          window.location.reload();
+        } else {
+          setErro(resultado.error || "Erro ao criar");
+        }
       }
-    } else {
-      const resultado = await criarModeloRetirada(dados);
-      if (resultado.success) {
-        // Recarrega a página para buscar o novo modelo com ID gerado pelo banco
-        window.location.reload();
-      } else {
-        setErro(resultado.error || "Erro ao criar");
-      }
+    } catch {
+      setErro("Erro interno. Tente novamente.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -95,164 +125,155 @@ export function ConfigRetiradaLocalPage({ modelosInicial }: Props) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
+    <div className="container mx-auto max-w-4xl px-4 py-8 space-y-6">
       {/* Cabeçalho */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Retirada Local</h1>
-          <p className="text-sm text-gray-500 mt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Store className="w-6 h-6" />
+            Retirada Local
+          </h1>
+          <p className="text-sm text-muted-foreground">
             Crie modelos de retirada que serão exibidos na página do produto.
           </p>
         </div>
-        <button
-          onClick={abrirNovo}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
-        >
-          + Novo modelo
-        </button>
+        <Button onClick={abrirNovo} size="sm">
+          <Plus className="w-4 h-4" />
+          Novo modelo
+        </Button>
       </div>
 
       {/* Explicação */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="text-sm font-medium text-blue-900 mb-1">📋 Como usar</h3>
-        <p className="text-sm text-blue-700">
-          Crie modelos com nome, prazo e mensagem. O cliente verá essas informações na página do produto.
-        </p>
-        <div className="bg-white rounded-md p-3 mt-3 text-xs text-blue-800">
-          <p className="font-medium mb-1">Exemplos:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li><strong>Retirada na loja:</strong> "Hoje, no horário comercial" — Produto disponível em estoque.</li>
-            <li><strong>Retirada expressa:</strong> "Pedido até 12h → retira após 15h" — Separação prioritária.</li>
-            <li><strong>Retirada sob encomenda:</strong> "3 a 7 dias úteis" — Produto sob encomenda do fornecedor.</li>
-          </ul>
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-primary" />
+            Como usar
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-3">
+          <p>
+            Crie modelos com nome, prazo e mensagem. O cliente verá essas informações na página do produto.
+          </p>
+          <div className="bg-muted rounded-md p-3 space-y-2">
+            <p className="font-medium text-foreground">Exemplos:</p>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li>
+                <strong className="text-foreground">Retirada na loja:</strong> "Hoje, no horário comercial" — Produto disponível em estoque.
+              </li>
+              <li>
+                <strong className="text-foreground">Retirada expressa:</strong> "Pedido até 12h → retira após 15h" — Separação prioritária.
+              </li>
+              <li>
+                <strong className="text-foreground">Retirada sob encomenda:</strong> "3 a 7 dias úteis" — Produto sob encomenda do fornecedor.
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Lista de modelos */}
       {modelos.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-gray-200">
-          <p className="text-lg mb-2">Nenhum modelo cadastrado</p>
-          <p className="text-sm">Clique em "+ Novo modelo" para começar</p>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+            <Package className="w-12 h-12 text-muted-foreground/50" />
+            <div>
+              <p className="text-lg font-medium text-foreground">Nenhum modelo cadastrado</p>
+              <p className="text-sm text-muted-foreground">Clique em "Novo modelo" para começar</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-4">
           {modelos.map((modelo) => (
-            <div
-              key={modelo.id}
-              className="bg-white rounded-lg border border-gray-200 p-6"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold text-gray-900">{modelo.nome}</h3>
-                    {modelo.ativo ? (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700">
-                        ativo
-                      </span>
-                    ) : (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                        inativo
-                      </span>
-                    )}
+            <Card key={modelo.id}>
+              <CardContent className="flex items-start justify-between gap-4 p-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-foreground">{modelo.nome}</h3>
+                    <Badge variant={modelo.ativo ? "default" : "secondary"}>
+                      {modelo.ativo ? "ativo" : "inativo"}
+                    </Badge>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-sm text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full mb-2">
-                    ⏱ {modelo.prazoTexto}
-                  </span>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="text-primary font-medium">{modelo.prazoTexto}</span>
+                  </div>
                   {modelo.mensagem && (
-                    <p className="text-sm text-gray-500 italic mt-2">"{modelo.mensagem}"</p>
+                    <p className="text-sm text-muted-foreground italic">"{modelo.mensagem}"</p>
                   )}
                 </div>
-                <div className="flex gap-2 ml-4">
-                  <button
-                    onClick={() => abrirEditar(modelo)}
-                    className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  >
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => abrirEditar(modelo)}>
                     Editar
-                  </button>
-                  <button
-                    onClick={() => handleExcluir(modelo.id)}
-                    className="text-sm px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50"
-                  >
-                    Excluir
-                  </button>
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleExcluir(modelo.id)}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Modal */}
-      {modalAberto && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              {editandoId ? "Editar modelo" : "Novo modelo"}
-            </h2>
+      <Dialog open={modalAberto} onOpenChange={(open) => !open && fechar()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editandoId ? "Editar modelo" : "Novo modelo"}</DialogTitle>
+            <DialogDescription>
+              Preencha os dados do modelo de retirada.
+            </DialogDescription>
+          </DialogHeader>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome do modelo
-                </label>
-                <input
-                  {...register("nome")}
-                  placeholder="Ex: Retirada na loja"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
-                {errors.nome && (
-                  <p className="text-red-500 text-xs mt-1">{errors.nome.message}</p>
-                )}
-              </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do modelo</label>
+              <Input
+                {...register("nome")}
+                placeholder="Ex: Retirada na loja"
+              />
+              {errors.nome && (
+                <p className="text-sm text-destructive">{errors.nome.message}</p>
+              )}
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prazo exibido ao cliente
-                </label>
-                <input
-                  {...register("prazoTexto")}
-                  placeholder="Ex: Hoje, no horário comercial"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
-                {errors.prazoTexto && (
-                  <p className="text-red-500 text-xs mt-1">{errors.prazoTexto.message}</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Prazo exibido ao cliente</label>
+              <Input
+                {...register("prazoTexto")}
+                placeholder="Ex: Hoje, no horário comercial"
+              />
+              {errors.prazoTexto && (
+                <p className="text-sm text-destructive">{errors.prazoTexto.message}</p>
+              )}
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mensagem ao cliente (opcional)
-                </label>
-                <textarea
-                  {...register("mensagem")}
-                  rows={3}
-                  placeholder="Ex: Endereço enviado após pagamento via WhatsApp."
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none"
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mensagem ao cliente (opcional)</label>
+              <Textarea
+                {...register("mensagem")}
+                rows={3}
+                placeholder="Ex: Endereço enviado após pagamento via WhatsApp."
+              />
+            </div>
 
-              {erro && <p className="text-sm text-red-600">{erro}</p>}
+            {erro && (
+              <p className="text-sm text-destructive bg-destructive/10 p-2 rounded-md">{erro}</p>
+            )}
 
-              <div className="flex justify-end gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={fechar}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isSubmitting ? "Salvando..." : "Salvar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={fechar}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Salvando..." : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

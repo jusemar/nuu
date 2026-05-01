@@ -56,18 +56,13 @@ import {
   shippingBairroAvulsoSlotsRelations,
 } from "./table/logistics/entrega-propria";
 
-// Retirada - Pontos de coleta e modalidades
+// Retirada - Modelos de retirada
 import {
   configHorarioTable,
   feriadosTable,
-  modalidadesRetiradaTable,
-  pontosColetaTable,
-  produtoRetiradaTable,
+  modelosRetiradaTable,
   configHorarioRelations,
   feriadosRelations,
-  modalidadesRetiradaRelations,
-  pontosColetaRelations,
-  produtoRetiradaRelations,
 } from "./table/retirada";
 
 // ============================================
@@ -524,9 +519,7 @@ export {
 export {
   configHorarioTable,
   feriadosTable,
-  modalidadesRetiradaTable,
-  pontosColetaTable,
-  produtoRetiradaTable,
+  modelosRetiradaTable,
 } from "./table/retirada";
 
 // Relations de Shipping
@@ -543,36 +536,9 @@ export {
 // ============================================
 
 export const configHorarioRelationsRetirada = relations(configHorarioTable, ({ many }) => ({
-  pontosColeta: many(pontosColetaTable),
+  Holidays: many(feriadosTable),
 }));
 
 export const feriadosRelationsRetirada = relations(feriadosTable, ({ many }) => ({
-  // Relações de feriados (um para muitos se necessário)
-}));
-
-export const modalidadesRetiradaRelationsRetirada = relations(modalidadesRetiradaTable, ({ many }) => ({
-  produtoRetiradas: many(produtoRetiradaTable),
-}));
-
-export const pontosColetaRelationsRetirada = relations(pontosColetaTable, ({ one, many }) => ({
-  configHorario: one(configHorarioTable, {
-    fields: [],
-    references: [],
-  }),
-  produtoRetiradas: many(produtoRetiradaTable),
-}));
-
-export const produtoRetiradaRelationsRetirada = relations(produtoRetiradaTable, ({ one }) => ({
-  product: one(productTable, {
-    fields: [produtoRetiradaTable.productId],
-    references: [productTable.id],
-  }),
-  pontoColeta: one(pontosColetaTable, {
-    fields: [produtoRetiradaTable.pontoColetaId],
-    references: [pontosColetaTable.id],
-  }),
-  modalidade: one(modalidadesRetiradaTable, {
-    fields: [produtoRetiradaTable.modalidadeId],
-    references: [modalidadesRetiradaTable.id],
-  }),
+  // Relações de feriados
 }));

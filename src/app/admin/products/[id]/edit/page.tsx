@@ -139,6 +139,13 @@ export default function EditProductPage() {
           hasLocalPickup: false
         },
 
+        // Campos de retirada local (entrega)
+        entrega: {
+          permiteRetirada: product.allowsPickup ?? false,
+          modeloRetiradaId: product.modeloRetiradaId || null,
+          prazoCustom: product.prazoRetiradaCustom || '',
+        },
+
         // Campos de vendedor (valores padrão)
         seller: {
           sellerCode: product.sellerCode || '',

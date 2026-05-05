@@ -13,6 +13,7 @@ import {
   productGalleryImagesTable, // Tabela de imagens da GALERIA PRINCIPAL (product_gallery_images)
   productPricingTable,      // Tabela de modalidades de preço
   categoryTable,            // Tabela de categorias (para buscar o nome da categoria)
+  modelosRetiradaTable,     // Tabela de modelos de retirada
 } from "@/db/schema"
 import { eq, asc } from "drizzle-orm"
 
@@ -89,6 +90,11 @@ export async function getProductById(id: string) {
         categoryId: productTable.categoryId,
         categoryName: categoryTable.name,
 
+        // Retirada local
+        allowsPickup: productTable.allowsPickup,
+        modeloRetiradaId: productTable.modeloRetiradaId,
+        prazoRetiradaCustom: productTable.prazoRetiradaCustom,
+
         // Datas de controle
         createdAt: productTable.createdAt,
         updatedAt: productTable.updatedAt,
@@ -96,6 +102,8 @@ export async function getProductById(id: string) {
       .from(productTable)
       // LEFT JOIN: traz o nome da categoria mesmo se o produto não tiver categoria
       .leftJoin(categoryTable, eq(categoryTable.id, productTable.categoryId))
+      // LEFT JOIN: traz o modelo de retirada relacionado
+      .leftJoin(modelosRetiradaTable, eq(modelosRetiradaTable.id, productTable.modeloRetiradaId))
       // Filtra pelo ID do produto
       .where(eq(productTable.id, id))
       // Limita a 1 resultado (pois o ID é único)
@@ -233,6 +241,10 @@ export async function getProductById(id: string) {
         storeProductFlags: flags,
         images: normalizedImages,
         pricing: { modalities, mainCardPriceType },
+        // Dados de retirada local
+        allowsPickup: product.allowsPickup,
+        modeloRetiradaId: product.modeloRetiradaId,
+        prazoRetiradaCustom: product.prazoRetiradaCustom,
       },
     }
   } catch (error: any) {

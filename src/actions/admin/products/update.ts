@@ -50,6 +50,11 @@ interface UpdateProductData {
     isPrimary: boolean
     altText?: string
   }>
+  entrega?: {
+    permiteRetirada?: boolean
+    modeloRetiradaId?: string | null
+    prazoCustom?: string | null
+  }
 }
 
 function toPlainText(value: string) {
@@ -110,6 +115,13 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     }
     if (data.warranty?.provider !== undefined) {
       updateFields.warrantyProvider = data.warranty.provider
+    }
+
+    // Configuração de retirada local (entrega)
+    if (data.entrega !== undefined) {
+      updateFields.allowsPickup = data.entrega.permiteRetirada ?? false
+      updateFields.modeloRetiradaId = data.entrega.modeloRetiradaId || null
+      updateFields.prazoRetiradaCustom = data.entrega.prazoCustom || null
     }
 
     // ✅ ATUALIZAR APENAS SE HOUVER CAMPOS MODIFICADOS

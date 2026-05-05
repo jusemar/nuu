@@ -119,19 +119,22 @@ export function SecaoRetiradaProduto({
                 <p className="text-xs uppercase tracking-wide text-gray-400 mb-2">
                   Como o cliente vê
                 </p>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-800 font-medium">
-                    ✓ Retirada local
-                  </span>
-                  <p className="text-sm font-medium text-gray-900">{modelo.nome}</p>
-                  <p className="text-sm text-gray-500">⏱ {prazoFinal}</p>
-                  {modelo.mensagem && (
-                    <p className="text-sm text-gray-400 bg-white rounded-lg px-3 py-2">
-                      {modelo.mensagem}
-                    </p>
-                  )}
-                  <p className="text-sm font-medium text-green-700">✓ Sem custo de entrega</p>
+                <div className="flex items-center gap-2 p-2.5 border-[1.5px] border-gray-200 rounded-lg bg-white">
+                  <div className="flex-1 text-xs font-semibold text-gray-900">
+                    {modelo.nome}
+                  </div>
+                  <div className="text-[11px] text-gray-500 text-right">
+                    {prazoFinal}
+                  </div>
+                  <div className="text-xs font-bold text-green-600">
+                    Grátis
+                  </div>
                 </div>
+                {modelo.mensagem && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-success-light text-success ml-1">
+                    {modelo.mensagem}
+                  </span>
+                )}
               </div>
             </>
           )}

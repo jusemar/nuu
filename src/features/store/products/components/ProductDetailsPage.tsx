@@ -50,6 +50,8 @@ interface ProductDetailProps {
     cardShortText: string | null;
     brand: string | null;
     sku: string;
+    allowsPickup: boolean | null;
+    prazoRetiradaCustom: string | null;
     galleryImages?: Array<{
       id: string;
       imageUrl: string;
@@ -58,6 +60,13 @@ interface ProductDetailProps {
       sortOrder: number | string;
     }>;
     pricing?: PrecoModalidade[];
+    modeloRetirada?: {
+      id: string;
+      nome: string;
+      prazoTexto: string;
+      mensagem: string | null;
+      ativo: boolean;
+    } | null;
   };
 }
 
@@ -110,6 +119,18 @@ export function ProductDetail({ product }: ProductDetailProps) {
     descontoPix,               // 13 (% de desconto PIX)
     prazoEntrega,              // "imediato" (prazo da modalidade ativa)
   } = useProductPricing(product.pricing || []);
+
+  // -----------------------------------------
+  // RETIRADA LOCAL: Dados reais do banco
+  // -----------------------------------------
+  // Só mostra se o produto tem retirada habilitada E tem modelo selecionado
+  const retiradaLocal = product.allowsPickup && product.modeloRetirada
+    ? {
+        nome: product.modeloRetirada.nome,
+        prazo: product.prazoRetiradaCustom || product.modeloRetirada.prazoTexto,
+        mensagem: product.modeloRetirada.mensagem,
+      }
+    : null;
 
   // -----------------------------------------
   // IMAGENS: Processamento e ordenação
@@ -246,6 +267,9 @@ export function ProductDetail({ product }: ProductDetailProps) {
               // Dados mock (ainda não no banco)
               estoque={produto.estoque}
               transportadoras={transportadoras}
+              
+              // Dados reais de retirada local (do admin)
+              retiradaLocal={retiradaLocal}
               
               // Cupom e callbacks
               cupomAplicado={cupomAplicado}

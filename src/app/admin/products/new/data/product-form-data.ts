@@ -111,4 +111,9 @@ export const initialProductData: ProductFormData = {
   metaTitle: '',
   metaDescription: '',
   canonicalUrl: '',
+  entrega: {
+    permiteRetirada: false,
+    modeloRetiradaId: null,
+    prazoCustom: '',
+  },
 }

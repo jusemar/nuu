@@ -57,6 +57,7 @@ import {
 } from "./table/logistics/entrega-propria";
 
 // Retirada - Modelos de retirada
+// import { modelosRetiradaTable } from "./table/retirada";
 import {
   configHorarioTable,
   feriadosTable,
@@ -299,6 +300,12 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   // NOVOS: Relações de logística
   deliveryMethods: many(productDeliveryMethodsTable),
   suppliers: many(productSuppliersTable),
+
+  // Retirada local
+  modeloRetirada: one(modelosRetiradaTable, {
+    fields: [productTable.modeloRetiradaId],
+    references: [modelosRetiradaTable.id],
+  }),
 }));
 
 export const shippingAddressRelations = relations(

@@ -2,6 +2,7 @@
 import { pgTable, text, timestamp, uuid, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { categoryTable } from '../categories/categories';
 import { sql } from "drizzle-orm";
+import { modelosRetiradaTable } from '../retirada/modelos-retirada';
 
 /**
  * Tabela de produtos
@@ -90,6 +91,22 @@ export const productTable = pgTable("product", {
    * Quando true, cliente pode retirar na loja
    */
   allowsPickup: boolean("allows_pickup").default(false),
+  
+  // ============================================
+  // RETIRADA LOCAL — Modelo e prazo
+  // ============================================
+  /**
+   * Modelo de retirada selecionado para este produto
+   * FK → modelos_retirada
+   */
+  modeloRetiradaId: uuid("modelo_retirada_id")
+    .references(() => modelosRetiradaTable.id, { onDelete: "set null" }),
+  
+  /**
+   * Prazo personalizado para retirada (sobrescreve o prazo do modelo)
+   * Ex: "48h após confirmação do pagamento"
+   */
+  prazoRetiradaCustom: text("prazo_retirada_custom"),
   
   /**
    * Se produto requer transportadora obrigatória

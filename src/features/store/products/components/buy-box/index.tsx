@@ -29,6 +29,13 @@ interface BuyBoxProps {
   onRemoverCupom?: () => void;
   
   transportadoras?: Transportadora[];
+  
+  // Retirada local (dados reais do admin)
+  retiradaLocal?: {
+    nome: string;
+    prazo: string;
+    mensagem: string | null;
+  } | null;
 }
 
 // ==========================================
@@ -47,13 +54,14 @@ export function BuyBox({
   onAplicarCupom,
   onRemoverCupom,
   transportadoras = [],
+  retiradaLocal = null,
 }: BuyBoxProps) {
   
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
   const [cep, setCep] = useState('');
   const [cepConsultado, setCepConsultado] = useState(false);
-  const [transportadoraSelecionada, setTransportadoraSelecionada] = useState<number | null>(null);
+  const [transportadoraSelecionada, setTransportadoraSelecionada] = useState<number | 'retirada' | null>(null);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [inputCupom, setInputCupom] = useState('');
   const [mostrarInputCupom, setMostrarInputCupom] = useState(false);
@@ -231,7 +239,7 @@ export function BuyBox({
             onChange={(e) => handleCepChange(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && consultarFrete()}
             maxLength={9}
-            className="flex-1 border-[1.5px] border-surface-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-white"
+            className="w-44 border-[1.5px] border-surface-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary bg-white"
           />
           <button 
             onClick={consultarFrete}
@@ -242,57 +250,105 @@ export function BuyBox({
           </button>
         </div>
         
-        {cepConsultado && transportadoras.length > 0 && (
+        {cepConsultado && (retiradaLocal || transportadoras.length > 0) && (
           <div className="mt-2 flex flex-col gap-1 animate-[fadeUp_0.3s_ease]">
             {transportadoraSelecionada !== null ? (
+              // Opção selecionada — mostra qual foi escolhida
               <div>
-                <div className="flex items-center gap-2 p-2.5 border-[1.5px] border-primary bg-primary-light rounded-lg">
-                  <div className="flex-1 text-xs font-semibold text-text-primary">
-                    {transportadoras[transportadoraSelecionada].nome}
+                {transportadoraSelecionada === 'retirada' ? (
+                  <div className="relative flex items-center gap-2 p-2.5 border-[1.5px] border-primary bg-primary-light rounded-lg">
+                    <div className="flex-1 text-xs font-semibold text-text-primary">
+                      {retiradaLocal?.nome}
+                    </div>
+                    <div className="text-[11px] text-text-hint">
+                      {retiradaLocal?.prazo}
+                    </div>
+                    <div className="text-xs font-bold text-success">
+                      Grátis
+                    </div>
+                    <button 
+                      onClick={() => setTransportadoraSelecionada(null)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-white border border-surface-border rounded-full text-[10px] text-text-hint hover:text-danger hover:border-danger transition-colors"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div className="text-[11px] text-text-hint">
-                    {transportadoras[transportadoraSelecionada].prazo}
+                ) : (
+                  <div className="relative flex items-center gap-2 p-2.5 border-[1.5px] border-primary bg-primary-light rounded-lg">
+                    <div className="flex-1 text-xs font-semibold text-text-primary">
+                      {transportadoras[transportadoraSelecionada as number].nome}
+                    </div>
+                    <div className="text-[11px] text-text-hint">
+                      {transportadoras[transportadoraSelecionada as number].prazo}
+                    </div>
+                    <div className={`text-xs font-bold ${transportadoras[transportadoraSelecionada as number].valor === 'Grátis' ? 'text-success' : 'text-text-primary'}`}>
+                      {transportadoras[transportadoraSelecionada as number].valor}
+                    </div>
+                    <button 
+                      onClick={() => setTransportadoraSelecionada(null)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-white border border-surface-border rounded-full text-[10px] text-text-hint hover:text-danger hover:border-danger transition-colors"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div className={`text-sm font-bold ${transportadoras[transportadoraSelecionada].valor === 'Grátis' ? 'text-success' : 'text-text-primary'}`}>
-                    {transportadoras[transportadoraSelecionada].valor}
-                  </div>
-                  <button 
-                    onClick={() => setTransportadoraSelecionada(null)}
-                    className="text-[11px] text-primary underline whitespace-nowrap"
-                  >
-                    alterar
-                  </button>
-                </div>
+                )}
                 <div className="text-[11px] text-text-muted mt-1">
                   📍 Entregando para <strong>{cep}</strong>
+                  {transportadoraSelecionada === 'retirada' && retiradaLocal?.mensagem && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-success-light text-success ml-1">
+                      {retiradaLocal.mensagem}
+                    </span>
+                  )}
                 </div>
               </div>
             ) : (
-              transportadoras.map((t, i) => (
-                <label 
-                  key={i} 
-                  className="flex items-center gap-2 p-2.5 border-[1.5px] border-surface-border rounded-lg cursor-pointer hover:border-primary-mid transition-colors bg-white"
-                  onClick={() => setTransportadoraSelecionada(i)}
-                >
-                  <input 
-                    type="radio" 
-                    name="transportadora" 
-                    className="accent-primary flex-shrink-0" 
-                  />
-                  <div className="flex-1 text-xs font-medium text-text-primary">
-                    {t.nome}
-                    {t.destaque && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-success-light text-success ml-1">
-                        Recomendado
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-text-hint">{t.prazo}</div>
-                  <div className={`text-xs font-bold ${t.valor === 'Grátis' ? 'text-success' : 'text-text-primary'}`}>
-                    {t.valor}
-                  </div>
-                </label>
-              ))
+              // Lista de opções — retirada local primeiro (se habilitada), depois transportadoras
+              <>
+                {retiradaLocal && (
+                  <label 
+                    className="flex items-center gap-2 p-2.5 border-[1.5px] border-surface-border rounded-lg cursor-pointer hover:border-primary-mid transition-colors bg-white"
+                    onClick={() => setTransportadoraSelecionada('retirada')}
+                  >
+                    <input 
+                      type="radio" 
+                      name="entrega" 
+                      className="accent-primary flex-shrink-0" 
+                    />
+                    <div className="flex-1 text-xs font-medium text-text-primary">
+                      {retiradaLocal.nome}
+                    </div>
+                    <div className="text-[11px] text-text-hint">{retiradaLocal.prazo}</div>
+                    <div className="text-xs font-bold text-success">
+                      Grátis
+                    </div>
+                  </label>
+                )}
+                {transportadoras.map((t, i) => (
+                  <label 
+                    key={i} 
+                    className="flex items-center gap-2 p-2.5 border-[1.5px] border-surface-border rounded-lg cursor-pointer hover:border-primary-mid transition-colors bg-white"
+                    onClick={() => setTransportadoraSelecionada(i)}
+                  >
+                    <input 
+                      type="radio" 
+                      name="entrega" 
+                      className="accent-primary flex-shrink-0" 
+                    />
+                    <div className="flex-1 text-xs font-medium text-text-primary">
+                      {t.nome}
+                      {t.destaque && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-success-light text-success ml-1">
+                          Recomendado
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-text-hint">{t.prazo}</div>
+                    <div className={`text-xs font-bold ${t.valor === 'Grátis' ? 'text-success' : 'text-text-primary'}`}>
+                      {t.valor}
+                    </div>
+                  </label>
+                ))}
+              </>
             )}
           </div>
         )}

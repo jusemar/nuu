@@ -26,7 +26,14 @@ export default function NewProductPage() {
     }
   })
   
-  const [productData, setProductData] = useState<ProductFormData>(initialProductData)
+  const [productData, setProductData] = useState<ProductFormData>({
+    ...initialProductData,
+    entrega: {
+      permiteRetirada: false,
+      modeloRetiradaId: null,
+      prazoCustom: '',
+    },
+  })
 
   const tabs = [
   {

@@ -121,6 +121,14 @@ export interface Cupom {
   code: string;           // Código digitado (ex: "PRIMEIRA10")
 }
 
+/** Retirada local - dados reais do banco */
+export interface RetiradaLocal {
+  nome: string;
+  prazoTexto: string;
+  prazoCustom: string | null;
+  mensagem: string | null;
+}
+
 // ==========================================
 // INTERFACE COMPLETA (união Real + Mock)
 // ==========================================
@@ -156,6 +164,7 @@ export interface Produto {
   especificacoes: Especificacao[]; // Ficha técnica (futuro: attributes)
   avaliacoes: Avaliacao[]; // Reviews (futuro: reviewsTable)
   upsell: UpsellItem[];   // Compre junto (futuro: upsellTable)
+  retiradaLocal: RetiradaLocal | null;  // Retirada local configurada no admin
 }
 
 // ==========================================

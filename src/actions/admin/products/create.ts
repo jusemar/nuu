@@ -39,6 +39,11 @@ interface CreateProductData {
     isPrimary: boolean
     altText?: string
   }>
+  entrega?: {
+    permiteRetirada?: boolean
+    modeloRetiradaId?: string | null
+    prazoCustom?: string | null
+  }
 }
 
 function toPlainText(value: string) {
@@ -72,7 +77,12 @@ export async function createProduct(data: CreateProductData) {
       warrantyProvider: data.warranty?.provider,
       metaTitle: data.metaTitle,
       metaDescription: data.metaDescription,
-      canonicalUrl: data.canonicalUrl, 
+      canonicalUrl: data.canonicalUrl,
+      
+      // Configuração de retirada local
+      allowsPickup: data.entrega?.permiteRetirada ?? false,
+      modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
+      prazoRetiradaCustom: data.entrega?.prazoCustom || null,
       
       status: 'draft',
       isActive: true,

@@ -34,10 +34,11 @@ export async function getProductBySlug(slug: string) {
   // findFirst = busca UM registro que combine com o filtro
   // "with" = carrega as relações (JOIN automático do Drizzle)
   const product = await db.query.productTable.findFirst({
-    where: eq(productTable.slug, slug),  // WHERE slug = 'valor'
+    where: eq(productTable.slug, slug),
     with: {
-      galleryImages: true,  // Todas as imagens da galeria
-      pricing: true,        // Todos os preços/modalidades
+      galleryImages: true,
+      pricing: true,
+      modeloRetirada: true,
     },
   })
 

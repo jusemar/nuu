@@ -23,15 +23,15 @@ export function ProductGallery({
   };
 
   return (
-    <div className="flex gap-3 items-start sticky top-[70px]">
+    <div className="flex flex-col-reverse md:flex-row gap-3 items-start sticky top-[70px]">
       {/* Miniaturas */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible">
         {imagens.map((img, index) => (
           <button
             key={index}
             onClick={() => setImgAtiva(index)}
             className={`
-              w-16 h-16 rounded-lg overflow-hidden border-2 transition-all
+              w-14 h-14 md:w-16 md:h-16 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0
               ${index === imgAtiva 
                 ? 'border-primary opacity-100' 
                 : 'border-transparent opacity-50 hover:opacity-80'

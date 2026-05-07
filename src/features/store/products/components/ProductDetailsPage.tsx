@@ -206,13 +206,13 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
       {/* CONTEÚDO PRINCIPAL: Grid de 3 colunas */}
       <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 xl:grid-cols-[420px_1fr_320px]">
+        <div className="grid grid-cols-1 items-start gap-6 sm:px-6 md:grid-cols-[minmax(300px,45%)_1fr] xl:grid-cols-[minmax(300px,420px)_minmax(400px,2fr)_minmax(280px,320px)]">
           
           {/* ==========================================
               COLUNA 1: GALERIA DE IMAGENS
               Recebe: array de URLs (strings)
               ========================================== */}
-          <div className="order-1">
+          <div className="order-1 xl:max-w-[420px]">
             <ProductGallery 
               imagens={galleryImages} 
               isLancamento={true} 
@@ -253,7 +253,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
               Recebe: Mesmo estado global da coluna 2
               Resultado: Quando clica no ProductInfo, BuyBox atualiza automaticamente
               ========================================== */}
-          <div className="order-3 hidden xl:block">
+          <div className="order-3">
             
             {/* BuyBox: Caixa de compra com preço, frete, cupom, botões */}
             <BuyBox

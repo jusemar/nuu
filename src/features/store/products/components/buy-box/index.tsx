@@ -8,34 +8,58 @@
 
 import { useState } from 'react';
 import { formatCEP, isValidCEP } from '../../utils/formatters';
-import type { Transportadora } from '../../types/product.types';
+import { consultarFreteAction } from '../../actions/consultarFreteAction';
+import type { ConsultaFreteResult } from '../../actions/consultarFreteAction';
 
 // ==========================================
-// INTERFACE ORIGINAL (sem modalidades reais)
+// INTERFACE
 // ==========================================
 interface BuyBoxProps {
-  precoPix: string;           // "R$ 679,91"
-  precoNormal: string;        // "R$ 799,90"
-  precoParc: string;          // "3x de R$ 253,97"
-  descontoPix: number;        // 15
+  precoPix: string;
+  precoNormal: string;
+  precoParc: string;
+  descontoPix: number;
   estoque: number;
   freteGratisMin?: number;
-  
+  prazoEntrega: string;
+
   onAddToCart: (quantidade: number) => void;
   onShowPaymentOptions?: () => void;
-  
+
   cupomAplicado?: { desconto: number; label: string; code: string } | null;
   onAplicarCupom?: (codigo: string) => void;
   onRemoverCupom?: () => void;
-  
-  transportadoras?: Transportadora[];
-  
+
   // Retirada local (dados reais do admin)
   retiradaLocal?: {
     nome: string;
     prazo: string;
     mensagem: string | null;
   } | null;
+
+  // Entrega Própria
+  allowsOwnDelivery?: boolean;
+
+  // Modalidades
+  modalidades?: Array<{
+    type: string;
+    price: number;
+    pricingModalDescription: string | null;
+    deliveryDays: string | null;
+    hasPromo: boolean;
+    promoPrice: number | null;
+    isActive: boolean;
+  }>;
+  modalidadeAtiva?: {
+    type: string;
+    price: number;
+    pricingModalDescription: string | null;
+    deliveryDays: string | null;
+    hasPromo: boolean;
+    promoPrice: number | null;
+    isActive: boolean;
+  } | null;
+  onTrocarModalidade?: (tipo: string) => void;
 }
 
 // ==========================================
@@ -48,20 +72,26 @@ export function BuyBox({
   descontoPix,
   estoque,
   freteGratisMin = 299,
+  prazoEntrega,
   onAddToCart,
   onShowPaymentOptions,
   cupomAplicado,
   onAplicarCupom,
   onRemoverCupom,
-  transportadoras = [],
   retiradaLocal = null,
+  allowsOwnDelivery = false,
+  modalidades,
+  modalidadeAtiva,
+  onTrocarModalidade,
 }: BuyBoxProps) {
-  
+
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
   const [cep, setCep] = useState('');
   const [cepConsultado, setCepConsultado] = useState(false);
-  const [transportadoraSelecionada, setTransportadoraSelecionada] = useState<number | 'retirada' | null>(null);
+  const [transportadoraSelecionada, setTransportadoraSelecionada] = useState<'retirada' | 'entrega-propria' | null>(null);
+  const [entregaPropriaResult, setEntregaPropriaResult] = useState<ConsultaFreteResult | null>(null);
+  const [consultandoFrete, setConsultandoFrete] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [inputCupom, setInputCupom] = useState('');
   const [mostrarInputCupom, setMostrarInputCupom] = useState(false);
@@ -92,10 +122,23 @@ export function BuyBox({
     }
   }
 
-  function consultarFrete() {
+  async function consultarFrete() {
     if (isValidCEP(cep)) {
       setCepConsultado(true);
       setTransportadoraSelecionada(null);
+      setEntregaPropriaResult(null);
+
+      if (allowsOwnDelivery) {
+        setConsultandoFrete(true);
+        try {
+          const result = await consultarFreteAction(cep);
+          setEntregaPropriaResult(result);
+        } catch {
+          setEntregaPropriaResult({ found: false, message: "Erro ao consultar frete" });
+        } finally {
+          setConsultandoFrete(false);
+        }
+      }
     }
   }
 
@@ -250,7 +293,7 @@ export function BuyBox({
           </button>
         </div>
         
-        {cepConsultado && (retiradaLocal || transportadoras.length > 0) && (
+        {cepConsultado && (retiradaLocal || allowsOwnDelivery) && (
           <div className="mt-2 flex flex-col gap-1 animate-[fadeUp_0.3s_ease]">
             {transportadoraSelecionada !== null ? (
               // Opção selecionada — mostra qual foi escolhida
@@ -276,14 +319,16 @@ export function BuyBox({
                 ) : (
                   <div className="relative flex items-center gap-2 p-2.5 border-[1.5px] border-primary bg-primary-light rounded-lg">
                     <div className="flex-1 text-xs font-semibold text-text-primary">
-                      {transportadoras[transportadoraSelecionada as number].nome}
+                      Entrega Própria
                     </div>
                     <div className="text-[11px] text-text-hint">
-                      {transportadoras[transportadoraSelecionada as number].prazo}
+                      {prazoEntrega}
                     </div>
-                    <div className={`text-xs font-bold ${transportadoras[transportadoraSelecionada as number].valor === 'Grátis' ? 'text-success' : 'text-text-primary'}`}>
-                      {transportadoras[transportadoraSelecionada as number].valor}
-                    </div>
+                    {entregaPropriaResult?.found && (
+                      <div className="text-xs font-bold text-text-primary">
+                        R$ {(entregaPropriaResult.shippingPrice / 100).toFixed(2).replace('.', ',')}
+                      </div>
+                    )}
                     <button 
                       onClick={() => setTransportadoraSelecionada(null)}
                       className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-white border border-surface-border rounded-full text-[10px] text-text-hint hover:text-danger hover:border-danger transition-colors"
@@ -302,7 +347,7 @@ export function BuyBox({
                 </div>
               </div>
             ) : (
-              // Lista de opções — retirada local primeiro (se habilitada), depois transportadoras
+              // Lista de opções
               <>
                 {retiradaLocal && (
                   <label 
@@ -323,31 +368,40 @@ export function BuyBox({
                     </div>
                   </label>
                 )}
-                {transportadoras.map((t, i) => (
-                  <label 
-                    key={i} 
-                    className="flex items-center gap-2 p-2.5 border-[1.5px] border-surface-border rounded-lg cursor-pointer hover:border-primary-mid transition-colors bg-white"
-                    onClick={() => setTransportadoraSelecionada(i)}
-                  >
-                    <input 
-                      type="radio" 
-                      name="entrega" 
-                      className="accent-primary flex-shrink-0" 
-                    />
-                    <div className="flex-1 text-xs font-medium text-text-primary">
-                      {t.nome}
-                      {t.destaque && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-success-light text-success ml-1">
-                          Recomendado
-                        </span>
-                      )}
+
+                {allowsOwnDelivery && (
+                  consultandoFrete ? (
+                    <div className="flex items-center gap-2 p-2.5 border-[1.5px] border-surface-border rounded-lg bg-white">
+                      <div className="flex-1 text-xs font-medium text-gray-500">
+                        Consultando Entrega Própria...
+                      </div>
                     </div>
-                    <div className="text-[11px] text-text-hint">{t.prazo}</div>
-                    <div className={`text-xs font-bold ${t.valor === 'Grátis' ? 'text-success' : 'text-text-primary'}`}>
-                      {t.valor}
+                  ) : entregaPropriaResult?.found ? (
+                    <label 
+                      className="flex items-center gap-2 p-2.5 border-[1.5px] border-surface-border rounded-lg cursor-pointer hover:border-primary-mid transition-colors bg-white"
+                      onClick={() => setTransportadoraSelecionada('entrega-propria')}
+                    >
+                      <input 
+                        type="radio" 
+                        name="entrega" 
+                        className="accent-primary flex-shrink-0" 
+                      />
+                      <div className="flex-1 text-xs font-medium text-text-primary">
+                        Entrega Própria
+                      </div>
+                      <div className="text-[11px] text-text-hint">{prazoEntrega}</div>
+                      <div className="text-xs font-bold text-text-primary">
+                        R$ {(entregaPropriaResult.shippingPrice / 100).toFixed(2).replace('.', ',')}
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="flex items-center gap-2 p-2.5 border-[1.5px] border-red-200 rounded-lg bg-red-50">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 whitespace-nowrap">
+                        Não atendemos este CEP
+                      </span>
                     </div>
-                  </label>
-                ))}
+                  )
+                )}
               </>
             )}
           </div>

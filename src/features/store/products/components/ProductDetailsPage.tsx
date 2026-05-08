@@ -31,7 +31,6 @@ import { useProductPricing } from "../hooks/useProductPricing";
 // MOCKS temporários (apenas para dados que ainda não estão no banco)
 import {
   produto,
-  transportadoras,
   parcelamentos,
   cuponsValidos,
 } from "../constants/mockData";
@@ -41,34 +40,35 @@ import type { PrecoModalidade, Modalidade } from "../types/product.types";
 // ==========================================
 // INTERFACE DAS PROPS
 // ==========================================
-interface ProductDetailProps {
-  product: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string;
-    cardShortText: string | null;
-    brand: string | null;
-    sku: string;
-    allowsPickup: boolean | null;
-    prazoRetiradaCustom: string | null;
-    galleryImages?: Array<{
+  interface ProductDetailProps {
+    product: {
       id: string;
-      imageUrl: string;
-      altText: string | null;
-      isPrimary: boolean | null;
-      sortOrder: number | string;
-    }>;
-    pricing?: PrecoModalidade[];
-    modeloRetirada?: {
-      id: string;
-      nome: string;
-      prazoTexto: string;
-      mensagem: string | null;
-      ativo: boolean;
-    } | null;
-  };
-}
+      name: string;
+      slug: string;
+      description: string;
+      cardShortText: string | null;
+      brand: string | null;
+      sku: string;
+      allowsPickup: boolean | null;
+      prazoRetiradaCustom: string | null;
+      allowsOwnDelivery: boolean | null;
+      galleryImages?: Array<{
+        id: string;
+        imageUrl: string;
+        altText: string | null;
+        isPrimary: boolean | null;
+        sortOrder: number | string;
+      }>;
+      pricing?: PrecoModalidade[];
+      modeloRetirada?: {
+        id: string;
+        nome: string;
+        prazoTexto: string;
+        mensagem: string | null;
+        ativo: boolean;
+      } | null;
+    };
+  }
 
 // ==========================================
 // FUNÇÃO UTILITÁRIA: Formatar centavos → R$
@@ -264,12 +264,10 @@ export function ProductDetail({ product }: ProductDetailProps) {
               descontoPix={descontoPix}
               prazoEntrega={prazoEntrega}
               
-              // Dados mock (ainda não no banco)
+              // Dados reais de entrega
               estoque={produto.estoque}
-              transportadoras={transportadoras}
-              
-              // Dados reais de retirada local (do admin)
               retiradaLocal={retiradaLocal}
+              allowsOwnDelivery={!!product.allowsOwnDelivery}
               
               // Cupom e callbacks
               cupomAplicado={cupomAplicado}
@@ -279,7 +277,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
               onShowPaymentOptions={() => setModalPgto(true)}
               
               // === SELETOR DE MODALIDADES INTEGRADO (NOVO) ===
-              // Permite trocar modalidade diretamente no BuyBox também
               modalidades={modalidadesDisponiveis}
               modalidadeAtiva={modalidadeAtiva}
               onTrocarModalidade={selecionarModalidade}

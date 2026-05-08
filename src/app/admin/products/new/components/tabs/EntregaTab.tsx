@@ -10,6 +10,7 @@ import { Store, Truck, Loader2 } from "lucide-react";
 
 import { SecaoRetiradaProduto } from "@/features/admin/logistica/components/retirada-local/SecaoRetiradaProduto";
 import { ShippingPage } from "@/features/admin/logistics/entrega-propria/components/ShippingPage";
+import { EntregaPropriaInfoCard } from "@/features/admin/logistics/entrega-propria/components/EntregaPropriaInfoCard";
 import { buscarModelosRetiradaAction } from "@/features/admin/logistica/actions/retirada/buscarModelos";
 import type { ModeloRetirada } from "@/features/admin/logistica/types/logistica.types";
 
@@ -105,20 +106,23 @@ export function EntregaTab({ data, onChange }: Props) {
       </TabsContent>
 
       <TabsContent value="entrega-propria">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Truck className="h-5 w-5" />
-              Entrega Própria
-            </CardTitle>
-            <CardDescription>
-              Configure zonas de entrega própria para este produto.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ShippingPage />
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <EntregaPropriaInfoCard />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Configurar Zonas de Entrega
+              </CardTitle>
+              <CardDescription>
+                Gerencie regiões, bairros avulsos e CEPs específicos para a entrega própria.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ShippingPage />
+            </CardContent>
+          </Card>
+        </div>
       </TabsContent>
     </Tabs>
   );

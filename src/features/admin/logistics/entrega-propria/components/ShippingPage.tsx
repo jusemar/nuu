@@ -68,6 +68,9 @@ export function ShippingPage() {
     testShipping,
     clearShippingTest,
     weekDays,
+    estadosAtivos,
+    cidadesAtivas,
+    carregarCidadesPorEstado,
   } = useShipping();
 
   const [activeTab, setActiveTab] = useState<
@@ -872,33 +875,46 @@ export function ShippingPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="region-city">Cidade</Label>
-                <Input
-                  id="region-city"
-                  placeholder="Ex: São Paulo"
-                  value={regionForm.city}
-                  onChange={(e) =>
-                    setRegionForm({ ...regionForm, city: e.target.value })
-                  }
-                />
+                <Label htmlFor="region-state">Estado</Label>
+                <select
+                  id="region-state"
+                  value={regionForm.state}
+                  onChange={(e) => {
+                    const uf = e.target.value;
+                    setRegionForm({ ...regionForm, state: uf, city: "" });
+                    carregarCidadesPorEstado(uf);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {estadosAtivos.map((estado) => (
+                    <option key={estado.uf} value={estado.uf}>
+                      {estado.name} ({estado.uf})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="region-state">Estado (UF)</Label>
-                <Input
-                  id="region-state"
-                  placeholder="Ex: SP"
-                  maxLength={2}
-                  value={regionForm.state}
+                <Label htmlFor="region-city">Cidade</Label>
+                <select
+                  id="region-city"
+                  value={regionForm.city}
                   onChange={(e) =>
-                    setRegionForm({
-                      ...regionForm,
-                      state: e.target.value.toUpperCase(),
-                    })
+                    setRegionForm({ ...regionForm, city: e.target.value })
                   }
-                />
+                  disabled={!regionForm.state}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Selecione...</option>
+                  {cidadesAtivas.map((cidade) => (
+                    <option key={cidade.id} value={cidade.name}>
+                      {cidade.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="region-price">Preço do Frete (R$)</Label>
@@ -915,100 +931,8 @@ export function ShippingPage() {
                       baseShippingPrice: parseFloat(e.target.value) || 0,
                     })
                   }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="region-description">Descrição (opcional)</Label>
-              <Input
-                id="region-description"
-                placeholder="Descrição da região"
-                value={regionForm.description}
-                onChange={(e) =>
-                  setRegionForm({ ...regionForm, description: e.target.value })
-                }
               />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Bairros da Região</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addBairroToRegion}
-                >
-                  <Plus className="mr-1 h-4 w-4" /> Adicionar Bairro
-                </Button>
               </div>
-              <div className="space-y-2">
-                {regionForm.bairros.map((bairro, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder="Nome do bairro"
-                      value={bairro}
-                      onChange={(e) =>
-                        updateBairroInRegion(index, e.target.value)
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeBairroFromRegion(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Horários de Entrega</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addSlotToRegion}
-                  >
-                    <Plus className="mr-1 h-4 w-4" /> Adicionar
-                  </Button>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addWeekdaysToRegion(
-                          e.target.value as
-                            | "weekdays"
-                            | "mon-sat"
-                            | "all"
-                            | "weekend",
-                        );
-                        e.target.value = "";
-                      }
-                    }}
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    <option value="" disabled>
-                      + Adicionar rápido
-                    </option>
-                    <option value="weekdays">Segunda a Sexta</option>
-                    <option value="mon-sat">Segunda a Sábado</option>
-                    <option value="all">Todos os dias</option>
-                    <option value="weekend">Fim de semana</option>
-                  </select>
-                </div>
-              </div>
-              <TimeSlotEditor
-                slots={regionForm.slots}
-                onUpdateSlot={updateSlotInRegion}
-                onRemoveSlot={removeSlotFromRegion}
-              />
             </div>
           </div>
 
@@ -1071,33 +995,46 @@ export function ShippingPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bairro-city">Cidade</Label>
-                <Input
-                  id="bairro-city"
-                  placeholder="Ex: São Paulo"
-                  value={bairroForm.city}
-                  onChange={(e) =>
-                    setBairroForm({ ...bairroForm, city: e.target.value })
-                  }
-                />
+                <Label htmlFor="bairro-state">Estado</Label>
+                <select
+                  id="bairro-state"
+                  value={bairroForm.state}
+                  onChange={(e) => {
+                    const uf = e.target.value;
+                    setBairroForm({ ...bairroForm, state: uf, city: "" });
+                    carregarCidadesPorEstado(uf);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {estadosAtivos.map((estado) => (
+                    <option key={estado.uf} value={estado.uf}>
+                      {estado.name} ({estado.uf})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="bairro-state">Estado (UF)</Label>
-                <Input
-                  id="bairro-state"
-                  placeholder="Ex: SP"
-                  maxLength={2}
-                  value={bairroForm.state}
+                <Label htmlFor="bairro-city">Cidade</Label>
+                <select
+                  id="bairro-city"
+                  value={bairroForm.city}
                   onChange={(e) =>
-                    setBairroForm({
-                      ...bairroForm,
-                      state: e.target.value.toUpperCase(),
-                    })
+                    setBairroForm({ ...bairroForm, city: e.target.value })
                   }
-                />
+                  disabled={!bairroForm.state}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Selecione...</option>
+                  {cidadesAtivas.map((cidade) => (
+                    <option key={cidade.id} value={cidade.name}>
+                      {cidade.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bairro-price">Preço do Frete (R$)</Label>
@@ -1264,15 +1201,69 @@ export function ShippingPage() {
                       state: e.target.value.toUpperCase(),
                     })
                   }
-                />
+                  />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cep-price">Preço do Frete (R$)</Label>
-              <Input
-                id="cep-price"
-                type="number"
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cep-neighborhood">Bairro</Label>
+                <Input
+                  id="cep-neighborhood"
+                  placeholder="Ex: Centro"
+                  value={cepForm.neighborhood}
+                  onChange={(e) =>
+                    setCepForm({ ...cepForm, neighborhood: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cep-state">Estado</Label>
+                <select
+                  id="cep-state"
+                  value={cepForm.state}
+                  onChange={(e) => {
+                    const uf = e.target.value;
+                    setCepForm({ ...cepForm, state: uf, city: "" });
+                    carregarCidadesPorEstado(uf);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {estadosAtivos.map((estado) => (
+                    <option key={estado.uf} value={estado.uf}>
+                      {estado.name} ({estado.uf})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="cep-city">Cidade</Label>
+                <select
+                  id="cep-city"
+                  value={cepForm.city}
+                  onChange={(e) =>
+                    setCepForm({ ...cepForm, city: e.target.value })
+                  }
+                  disabled={!cepForm.state}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Selecione...</option>
+                  {cidadesAtivas.map((cidade) => (
+                    <option key={cidade.id} value={cidade.name}>
+                      {cidade.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cep-price">Preço do Frete (R$)</Label>
+                <Input
+                  id="cep-price"
+                  type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
@@ -1284,6 +1275,7 @@ export function ShippingPage() {
                   })
                 }
               />
+              </div>
             </div>
           </div>
 

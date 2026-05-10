@@ -13,6 +13,8 @@
  */
 
 import { db } from "@/db/connection";
+import { states } from "@/db/table/logistics/states/states";
+import { cities } from "@/db/table/logistics/cities/cities";
 import {
   shippingRegions,
   regioBairros,
@@ -76,6 +78,34 @@ export async function getShippingPrice(
   state: string,
 ): Promise<ShippingPriceResult> {
   const cleanCep = cep.replace(/\D/g, "");
+
+  // [PRÉ-FILTRO 1] Estado ativo?
+  const estadoAtivo = await db.query.states.findFirst({
+    where: and(eq(states.uf, state), eq(states.isActive, true)),
+  });
+
+  if (!estadoAtivo) {
+    return {
+      found: false,
+      message: `Consulte vendedor`,
+    };
+  }
+
+  // [PRÉ-FILTRO 2] Cidade ativa?
+  const cidadeAtiva = await db.query.cities.findFirst({
+    where: and(
+      eq(cities.name, city),
+      eq(cities.stateUf, state),
+      eq(cities.isActive, true),
+    ),
+  });
+
+  if (!cidadeAtiva) {
+    return {
+      found: false,
+      message: `Consulte vendedor`,
+    };
+  }
 
   // [1] BUSCA: CEP ESPECÍFICO
   const cepEspecifico = await db.query.cepsEspecificos.findFirst({
@@ -165,7 +195,7 @@ export async function getShippingPrice(
   // [4] NÃO ATENDEMOS
   return {
     found: false,
-    message: `${neighborhood}, ${city} - ${state} não está coberto por nossas rotas de entrega própria.`,
+    message: `Consulte vendedor`,
   };
 }
 
@@ -614,3 +644,45 @@ export type ShippingPriceResult =
       found: false;
       message: string;
     };
+
+/**
+ * SERVER ACTIONS PARA DROPDOWNS DE ESTADO/CIDADE
+ */
+
+export type EstadoDropdown = {
+  uf: string;
+  name: string;
+};
+
+export async function getEstadosAtivos(): Promise<EstadoDropdown[]> {
+  const data = await db.query.states.findMany({
+    where: eq(states.isActive, true),
+    orderBy: (states, { asc }) => [asc(states.name)],
+    columns: {
+      uf: true,
+      name: true,
+    },
+  });
+
+  return data.map((s) => ({ uf: s.uf, name: s.name }));
+}
+
+export type CidadeDropdown = {
+  id: number;
+  name: string;
+};
+
+export async function getCidadesAtivasPorEstado(
+  stateUf: string,
+): Promise<CidadeDropdown[]> {
+  const data = await db.query.cities.findMany({
+    where: and(eq(cities.stateUf, stateUf), eq(cities.isActive, true)),
+    orderBy: (cities, { asc }) => [asc(cities.name)],
+    columns: {
+      id: true,
+      name: true,
+    },
+  });
+
+  return data.map((c) => ({ id: c.id, name: c.name }));
+}

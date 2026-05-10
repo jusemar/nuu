@@ -19,7 +19,7 @@ import type {
   ViaCepResponse,
   RegioFieldState,
 } from "../types/shipping";
-import type { ShippingPriceResult } from "../services/shippingService";
+import type { ShippingPriceResult, EstadoDropdown, CidadeDropdown } from "../services/shippingService";
 import {
   getRegions,
   getBairrosAvulsos,
@@ -37,6 +37,8 @@ import {
   toggleCepEspecifico,
   deleteCepEspecifico,
   getShippingPrice,
+  getEstadosAtivos,
+  getCidadesAtivasPorEstado,
 } from "../services/shippingService";
 import { fetchAddressByCep } from "../services/viaCepService";
 
@@ -59,6 +61,11 @@ export function useShipping() {
   const [bairrosAvulsos, setBairrosAvulsos] = useState<BairroAvulso[]>([]);
   const [cepsEspecificos, setCepsEspecificos] = useState<CepEspecifico[]>([]);
 
+  // Estados para dropdowns de cobertura
+  const [estadosAtivos, setEstadosAtivos] = useState<EstadoDropdown[]>([]);
+  const [cidadesAtivas, setCidadesAtivas] = useState<CidadeDropdown[]>([]);
+  const [estadoSelecionado, setEstadoSelecionado] = useState("");
+
   // Estados de carregamento e busca
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -76,15 +83,17 @@ export function useShipping() {
   const loadShippingData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [regionsData, bairrosData, cepsData] = await Promise.all([
+      const [regionsData, bairrosData, cepsData, estadosData] = await Promise.all([
         getRegions(),
         getBairrosAvulsos(),
         getCepsEspecificos(),
+        getEstadosAtivos(),
       ]);
 
       setRegions(regionsData);
       setBairrosAvulsos(bairrosData);
       setCepsEspecificos(cepsData);
+      setEstadosAtivos(estadosData);
     } catch (error) {
       console.error("Erro ao carregar dados de frete:", error);
     } finally {
@@ -355,6 +364,16 @@ export function useShipping() {
     setShippingTestResult(null);
   }, []);
 
+  const carregarCidadesPorEstado = useCallback(async (uf: string) => {
+    if (!uf) {
+      setCidadesAtivas([]);
+      return;
+    }
+    setEstadoSelecionado(uf);
+    const data = await getCidadesAtivasPorEstado(uf);
+    setCidadesAtivas(data);
+  }, []);
+
   return {
     // Estados
     regions: filteredRegions,
@@ -399,5 +418,11 @@ export function useShipping() {
 
     // Utilitários
     weekDays: WEEK_DAYS,
+
+    // Dropdowns de cobertura (estado/cidade)
+    estadosAtivos,
+    cidadesAtivas,
+    estadoSelecionado,
+    carregarCidadesPorEstado,
   };
 }

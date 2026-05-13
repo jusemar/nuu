@@ -4,6 +4,7 @@ import { LogInIcon, LogOutIcon, MenuIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { GavetaCarrinho } from "@/features/carrinho";
 import { authClient } from "@/lib/auth-client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -15,7 +16,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "../ui/sheet";
-import { Cart } from "./cart";
 
 export const Header = () => {
   const { data: session } = authClient.useSession();
@@ -80,7 +80,7 @@ export const Header = () => {
             </div>
           </SheetContent>
         </Sheet>
-        <Cart />
+        <GavetaCarrinho />
       </div>
     </header>
   );

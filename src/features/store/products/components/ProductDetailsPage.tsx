@@ -2,7 +2,7 @@
 // ORQUESTRADOR: ProductDetailsPage (CORRIGIDO - ESTADO GLOBAL)
 // ==========================================
 // Responsabilidade: Juntar todos os componentes da página de produto
-// 
+//
 // O QUE MUDOU:
 //   - Removido seletor de teste da coluna 3 (era duplicado)
 //   - Estado de modalidade elevado para cá (orquestrador)
@@ -27,48 +27,45 @@ import { UpsellSection } from "./upsell-section";
 import { Header } from "@/features/header";
 import { Footer } from "@/components/common/footer";
 import { useProductPricing } from "../hooks/useProductPricing";
+import { useCarrinho } from "@/features/carrinho";
 
 // MOCKS temporários (apenas para dados que ainda não estão no banco)
-import {
-  produto,
-  parcelamentos,
-  cuponsValidos,
-} from "../constants/mockData";
+import { produto, parcelamentos, cuponsValidos } from "../constants/mockData";
 
 import type { PrecoModalidade, Modalidade } from "../types/product.types";
 
 // ==========================================
 // INTERFACE DAS PROPS
 // ==========================================
-  interface ProductDetailProps {
-    product: {
+interface ProductDetailProps {
+  product: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    cardShortText: string | null;
+    brand: string | null;
+    sku: string;
+    allowsPickup: boolean | null;
+    prazoRetiradaCustom: string | null;
+    allowsOwnDelivery: boolean | null;
+    galleryImages?: Array<{
       id: string;
-      name: string;
-      slug: string;
-      description: string;
-      cardShortText: string | null;
-      brand: string | null;
-      sku: string;
-      allowsPickup: boolean | null;
-      prazoRetiradaCustom: string | null;
-      allowsOwnDelivery: boolean | null;
-      galleryImages?: Array<{
-        id: string;
-        imageUrl: string;
-        altText: string | null;
-        isPrimary: boolean | null;
-        sortOrder: number | string;
-      }>;
-      pricing?: PrecoModalidade[];
-      modeloRetirada?: {
-        id: string;
-        nome: string;
-        prazoTexto: string;
-        mensagem: string | null;
-        ativo: boolean;
-      } | null;
-    };
-  }
+      imageUrl: string;
+      altText: string | null;
+      isPrimary: boolean | null;
+      sortOrder: number | string;
+    }>;
+    pricing?: PrecoModalidade[];
+    modeloRetirada?: {
+      id: string;
+      nome: string;
+      prazoTexto: string;
+      mensagem: string | null;
+      ativo: boolean;
+    } | null;
+  };
+}
 
 // ==========================================
 // FUNÇÃO UTILITÁRIA: Formatar centavos → R$
@@ -87,16 +84,14 @@ function formatarPreco(centavos: number): string {
 // COMPONENTE PRINCIPAL
 // ==========================================
 export function ProductDetail({ product }: ProductDetailProps) {
-  
+  const { adicionarItem } = useCarrinho();
+
   // -----------------------------------------
   // ESTADOS GLOBAIS DA PÁGINA
   // -----------------------------------------
   // modalPgto: controla se o modal de pagamento está aberto
   const [modalPgto, setModalPgto] = useState(false);
-  
-  // cartCount: quantidade de itens no carrinho (simulação)
-  const [cartCount, setCartCount] = useState(0);
-  
+
   // cupomAplicado: cupom de desconto ativo (ainda mock)
   const [cupomAplicado, setCupomAplicado] = useState<null | {
     desconto: number;
@@ -110,27 +105,29 @@ export function ProductDetail({ product }: ProductDetailProps) {
   // Este hook é a FONTE ÚNICA DA VERDADE para preços
   // Ele mantém qual modalidade está ativa e calcula os preços formatados
   const {
-    modalidadeAtiva,           // Objeto da modalidade selecionada (ex: stock)
-    modalidadesDisponiveis,    // Array com todas as modalidades ativas do DB
-    selecionarModalidade,      // Função para trocar de modalidade
-    precoPixFormatado,         // "R$ 51,51" (preço atual formatado)
-    precoNormalFormatado,      // "R$ 59,24" (preço no cartão)
-    precoParceladoFormatado,   // "3x de R$ 17,17" (parcelamento)
-    descontoPix,               // 13 (% de desconto PIX)
-    prazoEntrega,              // "imediato" (prazo da modalidade ativa)
+    modalidadeAtiva, // Objeto da modalidade selecionada (ex: stock)
+    modalidadesDisponiveis, // Array com todas as modalidades ativas do DB
+    selecionarModalidade, // Função para trocar de modalidade
+    precoPixFormatado, // "R$ 51,51" (preço atual formatado)
+    precoNormalFormatado, // "R$ 59,24" (preço no cartão)
+    precoParceladoFormatado, // "3x de R$ 17,17" (parcelamento)
+    descontoPix, // 13 (% de desconto PIX)
+    prazoEntrega, // "imediato" (prazo da modalidade ativa)
   } = useProductPricing(product.pricing || []);
 
   // -----------------------------------------
   // RETIRADA LOCAL: Dados reais do banco
   // -----------------------------------------
   // Só mostra se o produto tem retirada habilitada E tem modelo selecionado
-  const retiradaLocal = product.allowsPickup && product.modeloRetirada
-    ? {
-        nome: product.modeloRetirada.nome,
-        prazo: product.prazoRetiradaCustom || product.modeloRetirada.prazoTexto,
-        mensagem: product.modeloRetirada.mensagem,
-      }
-    : null;
+  const retiradaLocal =
+    product.allowsPickup && product.modeloRetirada
+      ? {
+          nome: product.modeloRetirada.nome,
+          prazo:
+            product.prazoRetiradaCustom || product.modeloRetirada.prazoTexto,
+          mensagem: product.modeloRetirada.mensagem,
+        }
+      : null;
 
   // -----------------------------------------
   // IMAGENS: Processamento e ordenação
@@ -163,14 +160,14 @@ export function ProductDetail({ product }: ProductDetailProps) {
   // Descrição curta: usa cardShortText se existir, senão description
   const productShortDescription =
     product.cardShortText?.trim() || product.description;
-  
+
   // Descrição longa: sempre a description completa (para abas)
   const productLongDescription = product.description;
 
   // -----------------------------------------
   // HANDLERS: Ações do usuário
   // -----------------------------------------
-  
+
   // Aplica cupom de desconto (ainda mock - futuro: validar no backend)
   function aplicarCupom(codigo: string) {
     if (cuponsValidos[codigo]) {
@@ -183,12 +180,31 @@ export function ProductDetail({ product }: ProductDetailProps) {
     setCupomAplicado(null);
   }
 
+  function adicionarProdutoAoCarrinho(quantidade: number) {
+    if (!modalidadeAtiva) return;
+
+    const precoEmCentavos =
+      modalidadeAtiva.hasPromo && modalidadeAtiva.promoPrice
+        ? modalidadeAtiva.promoPrice
+        : modalidadeAtiva.price;
+
+    // A página de produto só monta o item; persistência e abertura da gaveta ficam no domínio carrinho.
+    adicionarItem({
+      produtoId: product.id,
+      nome: product.name,
+      variante: modalidadeAtiva.pricingModalDescription || modalidadeAtiva.type,
+      prazoModalidade: modalidadeAtiva.deliveryDays || "Consulte prazo",
+      imagemUrl: galleryImages[0] || "/produto-sem-foto.webp",
+      precoEmCentavos,
+      quantidade,
+    });
+  }
+
   // -----------------------------------------
   // RENDER: Composição dos componentes
   // -----------------------------------------
   return (
     <div className="bg-surface-bg text-text-primary min-h-screen font-sans">
-      
       {/* HEADER: Navegação principal do site */}
       <Header />
 
@@ -207,16 +223,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
       {/* CONTEÚDO PRINCIPAL: Grid de 3 colunas */}
       <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
         <div className="grid grid-cols-1 items-start gap-6 sm:px-6 md:grid-cols-[minmax(300px,45%)_1fr] xl:grid-cols-[minmax(300px,420px)_minmax(400px,2fr)_minmax(280px,320px)]">
-          
           {/* ==========================================
               COLUNA 1: GALERIA DE IMAGENS
               Recebe: array de URLs (strings)
               ========================================== */}
           <div className="order-1 xl:max-w-[420px]">
-            <ProductGallery 
-              imagens={galleryImages} 
-              isLancamento={true} 
-            />
+            <ProductGallery imagens={galleryImages} isLancamento={true} />
           </div>
 
           {/* ==========================================
@@ -238,13 +250,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
               descricao={productShortDescription}
               cores={produto.cores}
               tamanhos={produto.tamanhos}
-              
               // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
               // Antes: ProductInfo gerenciava sozinho (estado local)
               // Agora: Recebe do pai e comunica mudanças via callback
-              modalidadesDisponiveis={modalidadesDisponiveis}  // Array de modalidades
-              modalidadeAtiva={modalidadeAtiva}                // Qual está selecionada
-              onTrocarModalidade={selecionarModalidade}       // Função para trocar
+              modalidadesDisponiveis={modalidadesDisponiveis} // Array de modalidades
+              modalidadeAtiva={modalidadeAtiva} // Qual está selecionada
+              onTrocarModalidade={selecionarModalidade} // Função para trocar
             />
           </div>
 
@@ -254,7 +265,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
               Resultado: Quando clica no ProductInfo, BuyBox atualiza automaticamente
               ========================================== */}
           <div className="order-3">
-            
             {/* BuyBox: Caixa de compra com preço, frete, cupom, botões */}
             <BuyBox
               // Preços da modalidade ATIVA (formatados pelo hook)
@@ -263,19 +273,16 @@ export function ProductDetail({ product }: ProductDetailProps) {
               precoParc={precoParceladoFormatado}
               descontoPix={descontoPix}
               prazoEntrega={prazoEntrega}
-              
               // Dados reais de entrega
               estoque={produto.estoque}
               retiradaLocal={retiradaLocal}
               allowsOwnDelivery={!!product.allowsOwnDelivery}
-              
               // Cupom e callbacks
               cupomAplicado={cupomAplicado}
               onAplicarCupom={aplicarCupom}
               onRemoverCupom={removerCupom}
-              onAddToCart={(qty) => setCartCount((c) => c + qty)}
+              onAddToCart={adicionarProdutoAoCarrinho}
               onShowPaymentOptions={() => setModalPgto(true)}
-              
               // === SELETOR DE MODALIDADES INTEGRADO (NOVO) ===
               modalidades={modalidadesDisponiveis}
               modalidadeAtiva={modalidadeAtiva}
@@ -294,21 +301,60 @@ export function ProductDetail({ product }: ProductDetailProps) {
           rating={produto.rating}
           totalAvaliacoes={produto.totalAvaliacoes}
           // Passa modalidades reais para a aba de preços (se existir)
-          modalidades={modalidadesDisponiveis.reduce((acc, mod) => {
-            acc[mod.type] = {
-              icon: mod.type === 'stock' ? '🏭' : mod.type === 'pre_sale' ? '⏳' : mod.type === 'dropshipping' ? '📦' : '📋',
-              label: mod.pricingModalDescription || mod.type,
-              badge: mod.type === 'stock' ? 'Estoque Próprio' : mod.type === 'pre_sale' ? 'Pré-venda' : mod.type === 'dropshipping' ? 'Dropshipping' : 'Sob Encomenda',
-              badgeBg: mod.type === 'stock' ? '#E8F5E9' : mod.type === 'pre_sale' ? '#FFF3E0' : mod.type === 'dropshipping' ? '#E3F2FD' : '#F3E5F5',
-              badgeColor: mod.type === 'stock' ? '#2E7D32' : mod.type === 'pre_sale' ? '#ED6C02' : mod.type === 'dropshipping' ? '#0288D1' : '#7B1FA2',
-              precoPix: formatarPreco(mod.hasPromo && mod.promoPrice ? mod.promoPrice : mod.price),
-              precoNormal: formatarPreco(Math.round((mod.hasPromo && mod.promoPrice ? mod.promoPrice : mod.price) * 1.15)),
-              prazo: mod.deliveryDays || 'Consulte prazo',
-              garantia: '12 meses',
-              envia: 'Brasil',
-            };
-            return acc;
-          }, {} as Record<string, any>)}
+          modalidades={modalidadesDisponiveis.reduce(
+            (acc, mod) => {
+              acc[mod.type] = {
+                icon:
+                  mod.type === "stock"
+                    ? "🏭"
+                    : mod.type === "pre_sale"
+                      ? "⏳"
+                      : mod.type === "dropshipping"
+                        ? "📦"
+                        : "📋",
+                label: mod.pricingModalDescription || mod.type,
+                badge:
+                  mod.type === "stock"
+                    ? "Estoque Próprio"
+                    : mod.type === "pre_sale"
+                      ? "Pré-venda"
+                      : mod.type === "dropshipping"
+                        ? "Dropshipping"
+                        : "Sob Encomenda",
+                badgeBg:
+                  mod.type === "stock"
+                    ? "#E8F5E9"
+                    : mod.type === "pre_sale"
+                      ? "#FFF3E0"
+                      : mod.type === "dropshipping"
+                        ? "#E3F2FD"
+                        : "#F3E5F5",
+                badgeColor:
+                  mod.type === "stock"
+                    ? "#2E7D32"
+                    : mod.type === "pre_sale"
+                      ? "#ED6C02"
+                      : mod.type === "dropshipping"
+                        ? "#0288D1"
+                        : "#7B1FA2",
+                precoPix: formatarPreco(
+                  mod.hasPromo && mod.promoPrice ? mod.promoPrice : mod.price,
+                ),
+                precoNormal: formatarPreco(
+                  Math.round(
+                    (mod.hasPromo && mod.promoPrice
+                      ? mod.promoPrice
+                      : mod.price) * 1.15,
+                  ),
+                ),
+                prazo: mod.deliveryDays || "Consulte prazo",
+                garantia: "12 meses",
+                envia: "Brasil",
+              };
+              return acc;
+            },
+            {} as Record<string, any>,
+          )}
         />
 
         {/* COMPRE JUNTO: Produtos relacionados */}
@@ -329,7 +375,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
           cupomAplicado
             ? (
                 parseFloat(
-                  precoPixFormatado.replace("R$ ", "").replace(",", ".")
+                  precoPixFormatado.replace("R$ ", "").replace(",", "."),
                 ) *
                 (1 - cupomAplicado.desconto / 100)
               )

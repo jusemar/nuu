@@ -1,6 +1,8 @@
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatarPrecoCarrinho, type ItemCarrinho } from "@/features/carrinho";
 
@@ -13,6 +15,10 @@ type ResumoPedidoProps = {
   formaPagamento: "pix" | "cartao";
   parcelasCartao?: number;
   carregandoPagamento: boolean;
+  cupom: string;
+  mensagemCupom: string | null;
+  onCupomChange: (value: string) => void;
+  onAplicarCupom: () => Promise<void>;
 };
 
 export function ResumoPedido({
@@ -22,6 +28,10 @@ export function ResumoPedido({
   formaPagamento,
   parcelasCartao = 1,
   carregandoPagamento,
+  cupom,
+  mensagemCupom,
+  onCupomChange,
+  onAplicarCupom,
 }: ResumoPedidoProps) {
   return (
     <aside className="lg:sticky lg:top-6">
@@ -65,6 +75,32 @@ export function ResumoPedido({
           final soma o prazo da modalidade de preço escolhida com o prazo da
           transportadora. Exemplo: modalidade em 2 dias + frete em 3 a 7 dias
           úteis = entrega estimada em 5 a 9 dias úteis.
+        </div>
+
+        <div className="mt-5 space-y-2">
+          <Label htmlFor="cupom">Cupom</Label>
+          <div className="flex gap-2">
+            <Input
+              id="cupom"
+              placeholder="PRIMEIRA10"
+              className="uppercase"
+              value={cupom}
+              onChange={(e) => onCupomChange(e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 rounded-md"
+              onClick={onAplicarCupom}
+            >
+              Aplicar
+            </Button>
+          </div>
+          {mensagemCupom ? (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              {mensagemCupom}
+            </p>
+          ) : null}
         </div>
 
         <Separator className="my-5" />

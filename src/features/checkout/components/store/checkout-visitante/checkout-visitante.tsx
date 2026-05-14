@@ -19,7 +19,6 @@ import {
   checkoutVisitanteSchema,
   type CheckoutVisitanteSchema,
 } from "../../../schemas/checkout.schema";
-import { CampoCupom } from "./campo-cupom";
 import { FormularioEndereco } from "./formulario-endereco";
 import { FormularioIdentificacao } from "./formulario-identificacao";
 import { OpcoesFrete } from "./opcoes-frete";
@@ -215,24 +214,6 @@ export function CheckoutVisitante() {
               totalEmCentavos={totais.totalEmCentavos}
             />
 
-            <Separator />
-
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-              <CampoCupom
-                mensagemCupom={mensagemCupom}
-                register={form.register}
-              />
-
-              <Button
-                className="h-9 rounded-md"
-                type="button"
-                variant="outline"
-                onClick={conferirCupom}
-              >
-                Aplicar
-              </Button>
-            </div>
-
             {erroPagamento ? (
               <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {erroPagamento}
@@ -248,6 +229,10 @@ export function CheckoutVisitante() {
           parcelasCartao={parcelasCartao}
           prazoFrete={frete.prazo}
           totais={totais}
+          cupom={cupom}
+          mensagemCupom={mensagemCupom}
+          onCupomChange={(value) => form.setValue("cupom", value)}
+          onAplicarCupom={conferirCupom}
         />
       </form>
     </main>

@@ -19,6 +19,7 @@ type ResumoPedidoProps = {
   mensagemCupom: string | null;
   onCupomChange: (value: string) => void;
   onAplicarCupom: () => Promise<void>;
+  isFormValid: boolean;
 };
 
 export function ResumoPedido({
@@ -32,6 +33,7 @@ export function ResumoPedido({
   mensagemCupom,
   onCupomChange,
   onAplicarCupom,
+  isFormValid,
 }: ResumoPedidoProps) {
   return (
     <aside className="lg:sticky lg:top-6">
@@ -155,10 +157,10 @@ export function ResumoPedido({
 
         <Button
           className="mt-5 h-11 w-full rounded-md"
-          disabled={carregandoPagamento || itens.length === 0}
+          disabled={!isFormValid || carregandoPagamento || itens.length === 0}
           type="submit"
         >
-          {carregandoPagamento ? "Abrindo pagamento..." : "Pagar com Stripe"}
+          {carregandoPagamento ? "Criando pedido..." : "Pagar agora"}
         </Button>
       </div>
     </aside>

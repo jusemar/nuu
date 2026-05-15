@@ -529,6 +529,24 @@ export {
   modelosRetiradaTable,
 } from "./table/retirada";
 
+// Checkout visitante, pedidos e pagamentos
+export {
+  checkoutClientesRelations,
+  checkoutClientesTable,
+  checkoutEnderecosRelations,
+  checkoutEnderecosTable,
+  checkoutPagamentoGatewayEnum,
+  checkoutPagamentoMetodoEnum,
+  checkoutPagamentoStatusEnum,
+  checkoutPagamentosRelations,
+  checkoutPagamentosTable,
+  checkoutPedidoItensRelations,
+  checkoutPedidoItensTable,
+  checkoutPedidosRelations,
+  checkoutPedidosTable,
+  checkoutPedidoStatusEnum,
+} from "./tables/checkout";
+
 // Relations de Shipping
 export {
   shippingRegionsRelations,

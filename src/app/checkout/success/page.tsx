@@ -4,9 +4,19 @@ import { CheckoutSucesso } from "@/features/checkout";
 
 export const metadata: Metadata = {
   title: "Pedido recebido",
-  description: "Pagamento confirmado e pedido recebido com sucesso.",
+  description: "Pedido recebido com sucesso.",
 };
 
-export default function CheckoutSuccessPage() {
-  return <CheckoutSucesso />;
+type CheckoutSuccessPageProps = {
+  searchParams: Promise<{
+    pedido?: string;
+  }>;
+};
+
+export default async function CheckoutSuccessPage({
+  searchParams,
+}: CheckoutSuccessPageProps) {
+  const { pedido } = await searchParams;
+
+  return <CheckoutSucesso numeroPedido={pedido} />;
 }

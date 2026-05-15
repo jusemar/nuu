@@ -1,40 +1,41 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 
-import { db } from "@/db/connection";
-import { orderTable } from "@/db/schema";
+import {
+  construirEventoWebhookStripe,
+  processarWebhookStripe,
+} from "@/features/checkout";
 
-export const POST = async (request: Request) => {
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.error();
-  }
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
+
   if (!signature) {
-    return NextResponse.error();
+    return NextResponse.json(
+      { error: "Assinatura Stripe ausente." },
+      { status: 400 },
+    );
   }
-  const text = await request.text();
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2023-10-16",
-  });
-  const event = stripe.webhooks.constructEvent(
-    text,
-    signature,
-    process.env.STRIPE_WEBHOOK_SECRET,
-  );
-  if (event.type === "checkout.session.completed") {
-    console.log("Checkout session completed");
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId;
-    if (!orderId) {
-      return NextResponse.error();
-    }
-    await db
-      .update(orderTable)
-      .set({
-        status: "paid",
-      })
-      .where(eq(orderTable.id, orderId));
+
+  const body = await request.text();
+
+  try {
+    const event = construirEventoWebhookStripe({
+      body,
+      signature,
+    });
+
+    await processarWebhookStripe(event);
+
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error("Erro no webhook Stripe.", {
+      message: error instanceof Error ? error.message : "Erro desconhecido",
+    });
+
+    return NextResponse.json(
+      { error: "Webhook Stripe inválido." },
+      { status: 400 },
+    );
   }
-  return NextResponse.json({ received: true });
-};
+}

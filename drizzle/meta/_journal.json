@@ -64,6 +64,20 @@
       "when": 1776816109965,
       "tag": "0008_lonely_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777587189000,
+      "tag": "0009_create_modelos_retirada",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778806393000,
+      "tag": "0010_create_checkout_pedidos_pagamentos",
+      "breakpoints": true
     }
   ]
 }

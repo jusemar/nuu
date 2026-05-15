@@ -45,6 +45,7 @@ export function FormularioEndereco({
           <Input
             id="cep"
             autoComplete="postal-code"
+            placeholder="00000-000"
             {...cepField}
             onChange={(event) => {
               cepField.onChange(event);
@@ -71,7 +72,7 @@ export function FormularioEndereco({
 
         <div className="space-y-2 sm:col-span-4">
           <Label htmlFor="rua">Rua</Label>
-          <Input id="rua" autoComplete="address-line1" {...register("rua")} />
+          <Input id="rua" autoComplete="address-line1" placeholder="Nome da rua" {...register("rua")} />
           {errors.rua ? (
             <p className="text-xs text-red-600">{errors.rua.message}</p>
           ) : null}
@@ -79,7 +80,7 @@ export function FormularioEndereco({
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="numero">Número</Label>
-          <Input id="numero" {...register("numero")} />
+          <Input id="numero" placeholder="Número" {...register("numero")} />
           {errors.numero ? (
             <p className="text-xs text-red-600">{errors.numero.message}</p>
           ) : null}
@@ -87,12 +88,12 @@ export function FormularioEndereco({
 
         <div className="space-y-2 sm:col-span-4">
           <Label htmlFor="complemento">Complemento</Label>
-          <Input id="complemento" {...register("complemento")} />
+          <Input id="complemento" placeholder="Apartamento, bloco, etc." {...register("complemento")} />
         </div>
 
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="bairro">Bairro</Label>
-          <Input id="bairro" {...register("bairro")} />
+          <Input id="bairro" placeholder="Seu bairro" {...register("bairro")} />
           {errors.bairro ? (
             <p className="text-xs text-red-600">{errors.bairro.message}</p>
           ) : null}
@@ -103,6 +104,7 @@ export function FormularioEndereco({
           <Input
             id="cidade"
             autoComplete="address-level2"
+            placeholder="Sua cidade"
             {...register("cidade")}
           />
           {errors.cidade ? (
@@ -116,6 +118,7 @@ export function FormularioEndereco({
             id="estado"
             maxLength={2}
             autoComplete="address-level1"
+            placeholder="UF"
             {...register("estado", {
               onChange: (event) => {
                 setValue("estado", event.target.value.toUpperCase());
@@ -131,7 +134,7 @@ export function FormularioEndereco({
           <Label htmlFor="observacao">Observação para entrega</Label>
           <Input
             id="observacao"
-            placeholder="Ex: portaria, ponto de referência, melhor horário"
+            placeholder="Ex: portaria, ponto de referência, vizinho"
             {...register("observacao")}
           />
         </div>

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  isValidCPFOrCNPJ,
+  isValidNome,
+  isValidTelefone,
+} from "../lib/validators";
+
 export const itemCheckoutSchema = z.object({
   id: z.string().min(1),
   produtoId: z.string().uuid(),
@@ -12,10 +18,40 @@ export const itemCheckoutSchema = z.object({
 });
 
 export const checkoutVisitanteSchema = z.object({
-  nome: z.string().min(3, "Informe seu nome completo"),
+  nome: z
+    .string()
+    .min(3, "Informe seu nome completo")
+    .superRefine((nome, ctx) => {
+      if (!isValidNome(nome)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Informe nome e sobrenome usando apenas letras",
+        });
+      }
+    }),
   email: z.email("Informe um e-mail válido"),
-  telefone: z.string().min(10, "Informe um telefone válido"),
-  documento: z.string().min(11, "Informe CPF ou CNPJ"),
+  telefone: z
+    .string()
+    .min(11, "Informe um telefone válido")
+    .superRefine((telefone, ctx) => {
+      if (!isValidTelefone(telefone)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Informe um celular válido com DDD",
+        });
+      }
+    }),
+  documento: z
+    .string()
+    .min(11, "Informe CPF ou CNPJ")
+    .superRefine((documento, ctx) => {
+      if (!isValidCPFOrCNPJ(documento)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CPF ou CNPJ inválido",
+        });
+      }
+    }),
   cep: z.string().min(8, "Informe um CEP válido"),
   rua: z.string().min(3, "Informe a rua"),
   numero: z.string().min(1, "Informe o número"),

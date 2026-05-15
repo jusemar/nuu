@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -11,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useCarrinho } from "@/features/carrinho";
 
 import { consultarEnderecoCep } from "../../../actions/consultar-endereco-cep";
-import { criarSessaoCheckoutStripe } from "../../../actions/criar-sessao-checkout-stripe";
+import { criarPedidoCheckoutVisitante } from "../../../actions/pedido/criar-pedido-checkout-visitante";
 import { validarCupomCheckout } from "../../../actions/validar-cupom-checkout";
 import { calcularFreteCheckout } from "../../../lib/calcular-frete-checkout";
 import { calcularTotalCheckout } from "../../../lib/calcular-total-checkout";
@@ -23,9 +24,21 @@ import { FormularioEndereco } from "./formulario-endereco";
 import { FormularioIdentificacao } from "./formulario-identificacao";
 import { OpcoesFrete } from "./opcoes-frete";
 import { OpcoesPagamento } from "./opcoes-pagamento";
+import { PagamentoPixPendente } from "./pagamento-pix-pendente";
 import { ResumoPedido } from "./resumo-pedido";
 
+type PixCriado = {
+  numeroPedido: string;
+  totalEmCentavos: number;
+  pix: {
+    qrCode: string;
+    copiaECola: string;
+    expiresAt: string;
+  };
+};
+
 export function CheckoutVisitante() {
+  const router = useRouter();
   const carrinho = useCarrinho();
   const [erroPagamento, setErroPagamento] = useState<string | null>(null);
   const [mensagemCupom, setMensagemCupom] = useState<string | null>(null);
@@ -35,9 +48,12 @@ export function CheckoutVisitante() {
   );
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [carregandoPagamento, setCarregandoPagamento] = useState(false);
+  const [pixCriado, setPixCriado] = useState<PixCriado | null>(null);
 
   const form = useForm<CheckoutVisitanteSchema>({
     resolver: zodResolver(checkoutVisitanteSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
     defaultValues: {
       nome: "",
       email: "",
@@ -126,22 +142,53 @@ export function CheckoutVisitante() {
     setErroPagamento(null);
     setCarregandoPagamento(true);
 
-    criarSessaoCheckoutStripe({
+    criarPedidoCheckoutVisitante({
       ...dados,
       cupom,
       itens: carrinho.itens,
     })
-      .then((sessao) => {
-        window.location.assign(sessao.url);
+      .then((pedido) => {
+        setCarregandoPagamento(false);
+
+        if ("pix" in pedido && pedido.pix) {
+          carrinho.limparCarrinho();
+          setPixCriado({
+            numeroPedido: pedido.numeroPedido,
+            totalEmCentavos: pedido.totalEmCentavos,
+            pix: pedido.pix,
+          });
+          return;
+        }
+
+        if ("stripe" in pedido && pedido.stripe) {
+          window.location.assign(pedido.stripe.url);
+          return;
+        }
+
+        router.push(
+          `/checkout/success?pedido=${encodeURIComponent(pedido.numeroPedido)}`,
+        );
       })
       .catch((error) => {
         setErroPagamento(
           error instanceof Error
             ? error.message
-            : "Não foi possível iniciar o pagamento.",
+            : "Não foi possível criar o pedido.",
         );
         setCarregandoPagamento(false);
       });
+  }
+
+  if (pixCriado) {
+    return (
+      <PagamentoPixPendente
+        numeroPedido={pixCriado.numeroPedido}
+        totalEmCentavos={pixCriado.totalEmCentavos}
+        qrCode={pixCriado.pix.qrCode}
+        copiaECola={pixCriado.pix.copiaECola}
+        expiresAt={pixCriado.pix.expiresAt}
+      />
+    );
   }
 
   if (!carrinho.carregando && carrinho.carrinhoVazio) {
@@ -181,10 +228,7 @@ export function CheckoutVisitante() {
       >
         <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <div className="space-y-8">
-            <FormularioIdentificacao
-              errors={form.formState.errors}
-              register={form.register}
-            />
+            <FormularioIdentificacao control={form.control} />
 
             <Separator />
 
@@ -233,6 +277,7 @@ export function CheckoutVisitante() {
           mensagemCupom={mensagemCupom}
           onCupomChange={(value) => form.setValue("cupom", value)}
           onAplicarCupom={conferirCupom}
+          isFormValid={form.formState.isValid}
         />
       </form>
     </main>

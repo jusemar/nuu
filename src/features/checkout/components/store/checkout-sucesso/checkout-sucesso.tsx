@@ -7,7 +7,11 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCarrinho } from "@/features/carrinho";
 
-export function CheckoutSucesso() {
+type CheckoutSucessoProps = {
+  numeroPedido?: string;
+};
+
+export function CheckoutSucesso({ numeroPedido }: CheckoutSucessoProps) {
   const { limparCarrinho } = useCarrinho();
 
   useEffect(() => {
@@ -26,9 +30,15 @@ export function CheckoutSucesso() {
         </h1>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          O pagamento foi confirmado pelo Stripe. Enviaremos os próximos
-          detalhes para o e-mail informado no checkout.
+          Seu pedido foi criado e o pagamento ficou pendente. A próxima etapa
+          será conectar o processamento real de pagamento.
         </p>
+
+        {numeroPedido ? (
+          <p className="mt-4 text-sm font-medium text-zinc-950 dark:text-zinc-50">
+            Pedido {numeroPedido}
+          </p>
+        ) : null}
 
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Button className="rounded-md" asChild>

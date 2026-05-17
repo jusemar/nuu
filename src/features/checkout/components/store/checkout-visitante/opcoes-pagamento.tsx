@@ -1,21 +1,15 @@
-import { Lock, Tag } from "lucide-react";
+import { CreditCard, Lock, Tag, Zap } from "lucide-react";
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatarPrecoCarrinho } from "@/features/carrinho";
 
 import type { CheckoutVisitanteSchema } from "../../../schemas/checkout.schema";
+import type { ResumoCheckoutCalculado } from "../../../types/checkout.types";
 
 type OpcoesPagamentoProps = {
   formaPagamento: "pix" | "cartao";
   parcelasCartao?: number;
-  totalEmCentavos: number;
+  resumoCheckout: ResumoCheckoutCalculado | null;
   register: UseFormRegister<CheckoutVisitanteSchema>;
   setValue: UseFormSetValue<CheckoutVisitanteSchema>;
 };
@@ -23,38 +17,34 @@ type OpcoesPagamentoProps = {
 export function OpcoesPagamento({
   formaPagamento,
   parcelasCartao = 1,
-  totalEmCentavos,
+  resumoCheckout,
   register,
   setValue,
 }: OpcoesPagamentoProps) {
-  const parcelas = Array.from({ length: 12 }, (_, index) => index + 1);
+  const pixAtivo = resumoCheckout?.pagamentos.pix.ativo ?? false;
+  const cartaoAtivo = resumoCheckout?.pagamentos.cartao.ativo ?? false;
+  const parcelamentosCartao =
+    resumoCheckout?.pagamentos.cartao.parcelamentos ?? [];
+  const parcelamentoSelecionado =
+    parcelamentosCartao.find(
+      (parcela) => parcela.parcelas === parcelasCartao,
+    ) ?? parcelamentosCartao[0];
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 md:p-7 shadow-card">
+    <section className="border-border bg-card shadow-card rounded-2xl border p-6 md:p-7">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect width="20" height="14" x="2" y="5" rx="2" />
-              <line x1="2" x2="22" y1="10" y2="10" />
-            </svg>
+          <div className="bg-accent text-accent-foreground flex size-9 items-center justify-center rounded-lg">
+            <CreditCard className="size-4" />
           </div>
           <div>
             <h2 className="text-base font-semibold">Pagamento</h2>
-            <p className="text-xs text-muted-foreground">Transação criptografada de ponta a ponta.</p>
+            <p className="text-muted-foreground text-xs">
+              Escolha uma única forma de pagamento para este pedido.
+            </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-emerald-600 uppercase dark:bg-emerald-900/30 dark:text-emerald-400">
           <Lock className="size-3" /> SSL
         </span>
       </div>
@@ -64,43 +54,38 @@ export function OpcoesPagamento({
           type="button"
           role="radio"
           aria-checked={formaPagamento === "pix"}
+          disabled={!pixAtivo}
           className={
-            "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all " +
+            "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-55 " +
             (formaPagamento === "pix"
-              ? "border-primary bg-accent ring-1 ring-primary"
+              ? "border-primary bg-accent ring-primary ring-1"
               : "border-border bg-card hover:border-primary/40")
           }
           onClick={() => {
-            const input = document.querySelector(`input[name="formaPagamento"]`) as HTMLInputElement;
-            if (input) {
-              input.value = "pix";
-              input.dispatchEvent(new Event("change", { bubbles: true }));
-            }
+            if (!pixAtivo) return;
+            setValue("formaPagamento", "pix", {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
           }}
         >
           <span
             className={
               "flex size-7 shrink-0 items-center justify-center rounded-md " +
-              (formaPagamento === "pix" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")
+              (formaPagamento === "pix"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground")
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
+            <Zap className="size-4" />
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block text-[13px] font-semibold">PIX</span>
-            <span className="block truncate text-[11px] text-muted-foreground">5% OFF · imediato</span>
+            <span className="text-muted-foreground block truncate text-[11px]">
+              {pixAtivo
+                ? resumoCheckout?.pagamentos.pix.total
+                : "Indisponível para este pedido"}
+            </span>
           </span>
         </button>
 
@@ -108,138 +93,100 @@ export function OpcoesPagamento({
           type="button"
           role="radio"
           aria-checked={formaPagamento === "cartao"}
+          disabled={!cartaoAtivo}
           className={
-            "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all " +
+            "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-55 " +
             (formaPagamento === "cartao"
-              ? "border-primary bg-accent ring-1 ring-primary"
+              ? "border-primary bg-accent ring-primary ring-1"
               : "border-border bg-card hover:border-primary/40")
           }
           onClick={() => {
-            const input = document.querySelector(`input[name="formaPagamento"]`) as HTMLInputElement;
-            if (input) {
-              input.value = "cartao";
-              input.dispatchEvent(new Event("change", { bubbles: true }));
+            if (!cartaoAtivo) return;
+            setValue("formaPagamento", "cartao", {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+            if (parcelamentoSelecionado) {
+              setValue("parcelasCartao", parcelamentoSelecionado.parcelas, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
             }
           }}
         >
           <span
             className={
               "flex size-7 shrink-0 items-center justify-center rounded-md " +
-              (formaPagamento === "cartao" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")
+              (formaPagamento === "cartao"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground")
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect width="20" height="14" x="2" y="5" rx="2" />
-              <line x1="2" x2="22" y1="10" y2="10" />
-            </svg>
+            <CreditCard className="size-4" />
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block text-[13px] font-semibold">Cartão</span>
-            <span className="block truncate text-[11px] text-muted-foreground">até 12x</span>
+            <span className="text-muted-foreground block truncate text-[11px]">
+              {cartaoAtivo && parcelamentoSelecionado
+                ? `${parcelamentoSelecionado.parcelas}x de ${parcelamentoSelecionado.valor}`
+                : "Indisponível para este pedido"}
+            </span>
           </span>
         </button>
 
-        <input
-          type="radio"
-          value={formaPagamento}
-          {...register("formaPagamento")}
-          className="sr-only"
-        />
+        <input type="hidden" {...register("formaPagamento")} />
       </div>
 
       <div className="mt-4">
         {formaPagamento === "pix" && (
           <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
             <Tag className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-            <p className="text-[13px] leading-relaxed text-foreground">
-              QR Code gerado após confirmar o pedido. Aprovação em segundos com{" "}
-              <strong className="text-emerald-600">5% de desconto</strong>.
+            <p className="text-foreground text-[13px] leading-relaxed">
+              QR Code gerado após confirmar o pedido. Economia no PIX:{" "}
+              <strong className="text-emerald-600">
+                {formatarPrecoCarrinho(
+                  resumoCheckout?.pagamentos.pix.economiaEmCentavos ?? 0,
+                )}
+              </strong>
+              .
             </p>
           </div>
         )}
 
         {formaPagamento === "cartao" && (
-          <div className="grid grid-cols-1 gap-3 animate-in slide-in-from-top-2 fade-in duration-300 md:grid-cols-6">
-            <div className="md:col-span-6">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Número do cartão
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="0000 0000 0000 0000"
-                autoComplete="cc-number"
-                className="h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-            <div className="md:col-span-6">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Nome no cartão
-              </label>
-              <input
-                type="text"
-                placeholder="Como impresso"
-                autoComplete="cc-name"
-                className="h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Validade
-              </label>
-              <input
-                type="text"
-                placeholder="MM/AA"
-                autoComplete="cc-exp"
-                className="h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                CVV
-              </label>
-              <input
-                type="text"
-                placeholder="123"
-                autoComplete="cc-csc"
-                className="h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Parcelas
-              </label>
-              <Select
-                value={String(parcelasCartao)}
-                onValueChange={(value) => {
-                  setValue("parcelasCartao", Number(value));
-                }}
-              >
-                <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {parcelas.map((parcela) => (
-                    <SelectItem key={parcela} value={String(parcela)}>
-                      {parcela}x de{" "}
-                      {formatarPrecoCarrinho(
-                        Math.ceil(totalEmCentavos / parcela),
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="animate-in slide-in-from-top-2 fade-in grid grid-cols-1 gap-2 duration-300 sm:grid-cols-2">
+            {parcelamentosCartao.map((parcela) => {
+              const selecionada = parcelasCartao === parcela.parcelas;
+
+              return (
+                <button
+                  key={parcela.parcelas}
+                  type="button"
+                  className={
+                    "rounded-lg border px-3 py-2.5 text-left transition-all " +
+                    (selecionada
+                      ? "border-primary bg-accent ring-primary ring-1"
+                      : "border-border bg-background hover:border-primary/40")
+                  }
+                  onClick={() =>
+                    setValue("parcelasCartao", parcela.parcelas, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                >
+                  <span className="block text-[13px] font-semibold">
+                    {parcela.parcelas}x de {parcela.valor}
+                  </span>
+                  <span className="text-muted-foreground block text-[11px]">
+                    {parcela.semJuros ? "Sem juros" : `Total ${parcela.total}`}
+                  </span>
+                </button>
+              );
+            })}
+            <p className="text-muted-foreground text-[11px] leading-relaxed sm:col-span-2">
+              Os dados do cartão serão informados no ambiente seguro da Stripe.
+            </p>
           </div>
         )}
       </div>

@@ -4,6 +4,13 @@ export type ItemCarrinho = {
   nome: string;
   variante?: string;
   prazoModalidade?: string;
+  freteEscolhido?: {
+    id: "retirada" | "entrega-propria" | "padrao";
+    nome: string;
+    prazo: string;
+    valorEmCentavos: number;
+    cep?: string;
+  };
   imagemUrl: string;
   precoEmCentavos: number;
   quantidade: number;

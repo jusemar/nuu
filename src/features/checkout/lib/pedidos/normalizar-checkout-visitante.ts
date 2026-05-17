@@ -11,7 +11,11 @@ type PrecoProdutoCheckout = {
   mainCardPrice: boolean | null;
   deliveryDays: string | null;
   hasPromo: boolean | null;
+  promoType: string | null;
   promoPrice: number | null;
+  promoEndDate: Date | null;
+  promoDuration: number | null;
+  promoDurationUnit: string | null;
   isActive: boolean | null;
 };
 

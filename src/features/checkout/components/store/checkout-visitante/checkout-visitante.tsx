@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -14,17 +14,16 @@ import { useCarrinho } from "@/features/carrinho";
 import { consultarEnderecoCep } from "../../../actions/consultar-endereco-cep";
 import { criarPedidoCheckoutVisitante } from "../../../actions/pedido/criar-pedido-checkout-visitante";
 import { validarCupomCheckout } from "../../../actions/validar-cupom-checkout";
-import { calcularFreteCheckout } from "../../../lib/calcular-frete-checkout";
-import { calcularTotalCheckout } from "../../../lib/calcular-total-checkout";
+import { calcularResumoCheckout } from "../../../queries/resumo-checkout/calcular-resumo-checkout";
 import {
   checkoutVisitanteSchema,
   type CheckoutVisitanteSchema,
 } from "../../../schemas/checkout.schema";
+import type { ResumoCheckoutCalculado } from "../../../types/checkout.types";
 import { FormularioEndereco } from "./formulario-endereco";
 import { FormularioIdentificacao } from "./formulario-identificacao";
-import { OpcoesFrete } from "./opcoes-frete";
-import { OpcoesPagamento } from "./opcoes-pagamento";
 import { PagamentoPixPendente } from "./pagamento-pix-pendente";
+import { RevisaoProdutosEntrega } from "./revisao-pedido/revisao-produtos-entrega";
 import { ResumoPedido } from "./resumo-pedido";
 
 const steps = [
@@ -54,6 +53,9 @@ export function CheckoutVisitante() {
   );
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [carregandoPagamento, setCarregandoPagamento] = useState(false);
+  const [carregandoResumo, setCarregandoResumo] = useState(false);
+  const [resumoCheckout, setResumoCheckout] =
+    useState<ResumoCheckoutCalculado | null>(null);
   const [pixCriado, setPixCriado] = useState<PixCriado | null>(null);
 
   const form = useForm<CheckoutVisitanteSchema>({
@@ -85,22 +87,71 @@ export function CheckoutVisitante() {
   const formaPagamento = form.watch("formaPagamento");
   const parcelasCartao = form.watch("parcelasCartao");
   const cupom = form.watch("cupom");
-  const frete = calcularFreteCheckout(freteSelecionado);
 
   useEffect(() => {
     // O formulário valida os dados; o carrinho continua sendo fonte do domínio carrinho.
     form.setValue("itens", carrinho.itens);
   }, [carrinho.itens, form]);
 
-  const totais = useMemo(
-    () =>
-      calcularTotalCheckout({
-        itens: carrinho.itens,
-        freteEmCentavos: frete.valorEmCentavos,
-        cupom,
-      }),
-    [carrinho.itens, cupom, frete.valorEmCentavos],
-  );
+  useEffect(() => {
+    let consultaCancelada = false;
+
+    if (carrinho.itens.length === 0) {
+      setResumoCheckout(null);
+      return;
+    }
+
+    setCarregandoResumo(true);
+    calcularResumoCheckout({
+      itens: carrinho.itens,
+      cupom,
+      freteFallbackId: freteSelecionado,
+    })
+      .then((resumo) => {
+        if (consultaCancelada) return;
+
+        setResumoCheckout(resumo);
+
+        if (resumo && !resumo.pagamentos[formaPagamento].ativo) {
+          const proximaForma = resumo.pagamentos.pix.ativo ? "pix" : "cartao";
+          form.setValue("formaPagamento", proximaForma, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+
+        const primeiraParcela = resumo?.pagamentos.cartao.parcelamentos[0];
+        if (primeiraParcela && !parcelasCartao) {
+          form.setValue("parcelasCartao", primeiraParcela.parcelas, {
+            shouldDirty: true,
+            shouldValidate: true,
+          });
+        }
+      })
+      .catch((error) => {
+        if (consultaCancelada) return;
+        setResumoCheckout(null);
+        setErroPagamento(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível calcular o resumo do pedido.",
+        );
+      })
+      .finally(() => {
+        if (!consultaCancelada) setCarregandoResumo(false);
+      });
+
+    return () => {
+      consultaCancelada = true;
+    };
+  }, [
+    carrinho.itens,
+    cupom,
+    formaPagamento,
+    form,
+    freteSelecionado,
+    parcelasCartao,
+  ]);
 
   async function conferirCupom() {
     if (!cupom?.trim()) {
@@ -197,36 +248,46 @@ export function CheckoutVisitante() {
     );
   }
 
-if (!carrinho.carregando && carrinho.carrinhoVazio) {
+  if (!carrinho.carregando && carrinho.carrinhoVazio) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="sticky top-0 z-40 border-b border-border bg-white">
+      <div className="bg-background text-foreground min-h-screen">
+        <header className="border-border sticky top-0 z-40 border-b bg-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg shadow-sm bg-primary">
+              <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-lg shadow-sm">
                 <span className="text-sm font-bold text-white">DR</span>
               </div>
               <div>
-                <span className="block text-[17px] font-bold text-zinc-800">Do Rocha</span>
-                <span className="block text-[11px] text-zinc-500">Sua loja</span>
+                <span className="block text-[17px] font-bold text-zinc-800">
+                  Do Rocha
+                </span>
+                <span className="block text-[11px] text-zinc-500">
+                  Sua loja
+                </span>
               </div>
             </Link>
             <div className="flex items-center gap-1.5 text-emerald-600">
               <Lock className="size-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Ambiente seguro</span>
+              <span className="text-[10px] font-bold tracking-wider uppercase">
+                Ambiente seguro
+              </span>
             </div>
           </div>
         </header>
         <main className="mx-auto flex min-h-[70vh] max-w-3xl items-center justify-center px-4 py-12">
-          <Card className="w-full rounded-2xl border border-border bg-card shadow-card">
+          <Card className="border-border bg-card shadow-card w-full rounded-2xl border">
             <CardContent className="flex flex-col items-center px-6 py-10 text-center">
-              <h1 className="text-xl font-semibold text-foreground">
+              <h1 className="text-foreground text-xl font-semibold">
                 Seu carrinho está vazio
               </h1>
-              <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                Adicione produtos ao carrinho antes de continuar para o checkout.
+              <p className="text-muted-foreground mt-2 max-w-md text-sm">
+                Adicione produtos ao carrinho antes de continuar para o
+                checkout.
               </p>
-              <Button className="mt-6 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold" asChild>
+              <Button
+                className="bg-primary mt-6 rounded-xl px-6 py-2.5 text-sm font-semibold"
+                asChild
+              >
                 <Link href="/">Voltar para a loja</Link>
               </Button>
             </CardContent>
@@ -237,16 +298,18 @@ if (!carrinho.carregando && carrinho.carrinhoVazio) {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-white">
+      <header className="border-border sticky top-0 z-40 border-b bg-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg shadow-sm bg-primary">
+            <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-lg shadow-sm">
               <span className="text-sm font-bold text-white">DR</span>
             </div>
             <div>
-              <span className="block text-[17px] font-bold text-zinc-800">Do Rocha</span>
+              <span className="block text-[17px] font-bold text-zinc-800">
+                Do Rocha
+              </span>
               <span className="block text-[11px] text-zinc-500">Sua loja</span>
             </div>
           </Link>
@@ -265,7 +328,11 @@ if (!carrinho.carregando && carrinho.carrinhoVazio) {
                           : "bg-muted text-muted-foreground")
                     }
                   >
-                    {s.done ? <Check className="size-3" strokeWidth={3} /> : s.n}
+                    {s.done ? (
+                      <Check className="size-3" strokeWidth={3} />
+                    ) : (
+                      s.n
+                    )}
                   </span>
                   <span
                     className={
@@ -276,23 +343,28 @@ if (!carrinho.carregando && carrinho.carrinhoVazio) {
                     {s.label}
                   </span>
                 </div>
-                {i < steps.length - 1 && <div className="h-px w-6 bg-border" />}
+                {i < steps.length - 1 && <div className="bg-border h-px w-6" />}
               </div>
             ))}
           </nav>
 
           <div className="flex items-center gap-1.5 text-emerald-600">
             <Lock className="size-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Ambiente seguro</span>
+            <span className="text-[10px] font-bold tracking-wider uppercase">
+              Ambiente seguro
+            </span>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-10 lg:py-14">
         <div className="mb-10">
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Finalizar pedido</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Confirme seus dados, escolha frete e pagamento. Tudo em ambiente criptografado.
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+            Finalizar pedido
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Revise o pedido, confirme seus dados e escolha a forma de pagamento.
+            Tudo em ambiente criptografado.
           </p>
         </div>
 
@@ -314,21 +386,16 @@ if (!carrinho.carregando && carrinho.carrinhoVazio) {
               onConsultarCep={consultarCep}
             />
 
-            <OpcoesFrete
-              freteSelecionado={freteSelecionado}
-              register={form.register}
-            />
+            <RevisaoProdutosEntrega resumoCheckout={resumoCheckout} />
 
-            <OpcoesPagamento
-              formaPagamento={formaPagamento}
-              parcelasCartao={parcelasCartao}
-              register={form.register}
-              setValue={form.setValue}
-              totalEmCentavos={totais.totalEmCentavos}
-            />
+            {carregandoResumo ? (
+              <div className="border-border bg-card text-muted-foreground rounded-lg border p-3 text-sm">
+                Atualizando resumo do pedido...
+              </div>
+            ) : null}
 
             {erroPagamento ? (
-              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="border-destructive/20 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
                 {erroPagamento}
               </div>
             ) : null}
@@ -337,11 +404,11 @@ if (!carrinho.carregando && carrinho.carrinhoVazio) {
           <ResumoPedido
             carregandoPagamento={carregandoPagamento}
             formaPagamento={formaPagamento}
-            itens={carrinho.itens}
             parcelasCartao={parcelasCartao}
-            prazoFrete={frete.prazo}
-            totais={totais}
+            resumoCheckout={resumoCheckout}
             cupom={cupom}
+            register={form.register}
+            setValue={form.setValue}
             mensagemCupom={mensagemCupom}
             onCupomChange={(value) => form.setValue("cupom", value)}
             onAplicarCupom={conferirCupom}
@@ -350,16 +417,22 @@ if (!carrinho.carregando && carrinho.carrinhoVazio) {
         </form>
       </main>
 
-      <footer className="mt-16 border-t border-border bg-card py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs text-muted-foreground md:flex-row">
+      <footer className="border-border bg-card mt-16 border-t py-8">
+        <div className="text-muted-foreground mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs md:flex-row">
           <p>© 2026 NUU STORE</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-foreground">Termos</a>
-            <a href="#" className="hover:text-foreground">Privacidade</a>
-            <a href="#" className="hover:text-foreground">Segurança</a>
+            <a href="#" className="hover:text-foreground">
+              Termos
+            </a>
+            <a href="#" className="hover:text-foreground">
+              Privacidade
+            </a>
+            <a href="#" className="hover:text-foreground">
+              Segurança
+            </a>
           </div>
         </div>
       </footer>
     </div>
-);
+  );
 }

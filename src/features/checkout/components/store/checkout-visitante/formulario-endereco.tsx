@@ -21,7 +21,8 @@ type FormularioEnderecoProps = {
   onConsultarCep: (cep: string) => void;
 };
 
-const inputClass = "h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15";
+const inputClass =
+  "h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15";
 
 export function FormularioEndereco({
   register,
@@ -36,22 +37,24 @@ export function FormularioEndereco({
   const permitirEntregaVizinho = watch("permitirEntregaVizinho");
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 md:p-7 shadow-card">
+    <section className="border-border bg-card shadow-card rounded-2xl border p-6 md:p-7">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+          <div className="bg-accent text-accent-foreground flex size-9 items-center justify-center rounded-lg">
             <MapPin className="size-4" />
           </div>
           <div>
             <h2 className="text-base font-semibold">Endereço de entrega</h2>
-            <p className="text-xs text-muted-foreground">Para cálculo do frete e envio.</p>
+            <p className="text-muted-foreground text-xs">
+              Para cálculo do frete e envio.
+            </p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
         <div className="md:col-span-2">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             CEP
           </label>
           <Input
@@ -75,13 +78,15 @@ export function FormularioEndereco({
             }}
           />
           {errors.cep ? (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
               <Info className="size-3" />
               {errors.cep.message}
             </p>
           ) : null}
           {buscandoCep ? (
-            <p className="mt-1.5 text-xs text-muted-foreground">Buscando CEP...</p>
+            <p className="text-muted-foreground mt-1.5 text-xs">
+              Buscando CEP...
+            </p>
           ) : null}
           {mensagemCep ? (
             <p className="mt-1.5 text-xs text-emerald-600">{mensagemCep}</p>
@@ -89,7 +94,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-4">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             Rua / Logradouro
           </label>
           <Input
@@ -100,7 +105,7 @@ export function FormularioEndereco({
             {...register("rua")}
           />
           {errors.rua ? (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
               <Info className="size-3" />
               {errors.rua.message}
             </p>
@@ -108,7 +113,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             Número
           </label>
           <Input
@@ -118,7 +123,7 @@ export function FormularioEndereco({
             {...register("numero")}
           />
           {errors.numero ? (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
               <Info className="size-3" />
               {errors.numero.message}
             </p>
@@ -126,7 +131,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-4">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             Complemento (opcional)
           </label>
           <Input
@@ -138,7 +143,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-3">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             Bairro
           </label>
           <Input
@@ -148,7 +153,7 @@ export function FormularioEndereco({
             {...register("bairro")}
           />
           {errors.bairro ? (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
               <Info className="size-3" />
               {errors.bairro.message}
             </p>
@@ -156,7 +161,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             Cidade
           </label>
           <Input
@@ -167,7 +172,7 @@ export function FormularioEndereco({
             {...register("cidade")}
           />
           {errors.cidade ? (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
               <Info className="size-3" />
               {errors.cidade.message}
             </p>
@@ -175,7 +180,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-1">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             UF
           </label>
           <Input
@@ -191,7 +196,7 @@ export function FormularioEndereco({
             })}
           />
           {errors.estado ? (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
               <Info className="size-3" />
               {errors.estado.message}
             </p>
@@ -199,7 +204,7 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-6">
-          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
             Observação (opcional)
           </label>
           <Input
@@ -211,11 +216,11 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-6">
-          <div className="mt-5 rounded-xl border border-dashed border-border bg-background/60 p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
+          <div className="border-border bg-background/60 mt-5 rounded-xl border border-dashed p-4">
+            <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
-                className="mt-0.5 size-4 rounded border-border accent-primary"
+                className="border-border accent-primary mt-0.5 size-4 rounded"
                 {...register("permitirEntregaVizinho")}
               />
               <span className="text-sm font-medium">
@@ -226,24 +231,20 @@ export function FormularioEndereco({
         </div>
 
         {permitirEntregaVizinho && (
-          <div className="md:col-span-6 grid grid-cols-1 gap-3 md:grid-cols-2 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="animate-in slide-in-from-top-2 fade-in grid grid-cols-1 gap-3 duration-300 md:col-span-6 md:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Nome do vizinho
-              </label>
               <Input
                 id="nomeVizinho"
+                aria-label="Nome do vizinho"
                 placeholder="Nome do vizinho"
                 className={inputClass}
                 {...register("nomeVizinho")}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Apto / Casa do vizinho
-              </label>
               <Input
                 id="enderecoVizinho"
+                aria-label="Apto / Casa do vizinho"
                 placeholder="Apto / Casa do vizinho"
                 className={inputClass}
                 {...register("enderecoVizinho")}

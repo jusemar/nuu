@@ -176,7 +176,16 @@ export function ProductDetail({
     setCupomAplicado(null);
   }
 
-  function adicionarProdutoAoCarrinho(quantidade: number) {
+  function adicionarProdutoAoCarrinho(
+    quantidade: number,
+    freteEscolhido?: {
+      id: "retirada" | "entrega-propria" | "padrao";
+      nome: string;
+      prazo: string;
+      valorEmCentavos: number;
+      cep?: string;
+    },
+  ) {
     if (!modalidadeAtiva) return;
 
     const precoEmCentavos =
@@ -192,6 +201,7 @@ export function ProductDetail({
       prazoModalidade: modalidadeAtiva.deliveryDays || "Consulte prazo",
       imagemUrl: galleryImages[0] || "/produto-sem-foto.webp",
       precoEmCentavos,
+      freteEscolhido,
       quantidade,
     });
   }

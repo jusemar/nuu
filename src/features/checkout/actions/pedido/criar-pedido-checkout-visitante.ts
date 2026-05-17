@@ -11,9 +11,11 @@ import {
   checkoutPedidosTable,
   productTable,
 } from "@/db/schema";
-import { buscarConfiguracaoPagamentoAtiva } from "@/features/precificacao";
+import {
+  buscarConfiguracaoPagamentoAtiva,
+  calcularParcelamentosCartao,
+} from "@/features/precificacao";
 
-import { calcularFreteCheckout } from "../../lib/calcular-frete-checkout";
 import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
 import { criarCobrancaPixEfi } from "../../lib/gateways/efi/pix-efi";
 import { criarCheckoutCartaoStripe } from "../../lib/gateways/stripe/checkout-stripe";
@@ -24,6 +26,7 @@ import {
   normalizarTelefoneCheckout,
   normalizarTextoOpcionalCheckout,
 } from "../../lib/pedidos/normalizar-checkout-visitante";
+import { calcularFreteItensCheckout } from "../../lib/resumo-checkout/calcular-frete-itens-checkout";
 import {
   isValidCPFOrCNPJ,
   isValidNome,
@@ -247,15 +250,34 @@ async function criarPedidoCheckoutVisitanteInterno({
       });
     });
 
-    const frete = calcularFreteCheckout(dados.freteId);
-    const totais = calcularTotalCheckout({
+    const freteEmCentavos = calcularFreteItensCheckout({
+      itens: dados.itens,
+      freteFallbackId: dados.freteId,
+    });
+    const totaisBase = calcularTotalCheckout({
       itens: itensPedido.map((item) => ({
         precoEmCentavos: item.precoUnitarioEmCentavos,
         quantidade: item.quantidade,
       })),
-      freteEmCentavos: frete.valorEmCentavos,
+      freteEmCentavos,
       cupom: dados.cupom,
     });
+    const parcelamentosCartao = calcularParcelamentosCartao({
+      valorEmCentavos: totaisBase.totalEmCentavos,
+      configuracao: configuracaoPagamento,
+    });
+    const parcelamentoSelecionado =
+      dados.formaPagamento === "cartao"
+        ? parcelamentosCartao.find(
+            (parcelamento) =>
+              parcelamento.parcelas === (dados.parcelasCartao ?? 1),
+          ) || parcelamentosCartao[0]
+        : null;
+    const totais = {
+      ...totaisBase,
+      totalEmCentavos:
+        parcelamentoSelecionado?.totalEmCentavos ?? totaisBase.totalEmCentavos,
+    };
 
     if (totais.totalEmCentavos <= 0) {
       throw new Error("Total do checkout inválido");

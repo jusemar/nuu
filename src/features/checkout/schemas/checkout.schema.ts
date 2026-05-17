@@ -12,6 +12,15 @@ export const itemCheckoutSchema = z.object({
   nome: z.string().min(1),
   variante: z.string().optional(),
   prazoModalidade: z.string().optional(),
+  freteEscolhido: z
+    .object({
+      id: z.enum(["retirada", "entrega-propria", "padrao"]),
+      nome: z.string().min(1),
+      prazo: z.string().min(1),
+      valorEmCentavos: z.number().int().nonnegative(),
+      cep: z.string().optional(),
+    })
+    .optional(),
   imagemUrl: z.string().min(1),
   precoEmCentavos: z.number().int().nonnegative(),
   quantidade: z.number().int().min(1).max(99),

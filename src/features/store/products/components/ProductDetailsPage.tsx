@@ -196,7 +196,16 @@ export function ProductDetail({
     // A página de produto só monta o item; persistência e abertura da gaveta ficam no domínio carrinho.
     adicionarItem({
       produtoId: product.id,
+      produtoSlug: product.slug,
+      produtoUrl: `/product/${product.slug}`,
       nome: product.name,
+      modalidadeTipo: modalidadeAtiva.type,
+      modalidadeTitulo:
+        tituloModalidadePorTipo[modalidadeAtiva.type] ||
+        (!textoParecePrazo(modalidadeAtiva.pricingModalDescription)
+          ? modalidadeAtiva.pricingModalDescription
+          : null) ||
+        modalidadeAtiva.type,
       variante: modalidadeAtiva.pricingModalDescription || modalidadeAtiva.type,
       prazoModalidade: modalidadeAtiva.deliveryDays || "Consulte prazo",
       imagemUrl: galleryImages[0] || "/produto-sem-foto.webp",
@@ -372,5 +381,21 @@ export function ProductDetail({
         parcelamentos={parcelamentosCartao}
       />
     </div>
+  );
+}
+const tituloModalidadePorTipo: Record<string, string> = {
+  stock: "Estoque Próprio",
+  pre_sale: "Pré-venda",
+  preSale: "Pré-venda",
+  dropshipping: "Dropshipping",
+  order_basis: "Sob Encomenda",
+  orderBasis: "Sob Encomenda",
+};
+
+function textoParecePrazo(texto?: string | null) {
+  if (!texto) return false;
+
+  return /(\d+\s*(dia|dias|hora|horas)|consulte prazo|entrega|úteis|uteis)/i.test(
+    texto,
   );
 }

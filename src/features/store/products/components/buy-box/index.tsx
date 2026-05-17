@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatCEP, isValidCEP } from "../../utils/formatters";
 import { consultarFreteAction } from "../../actions/consultarFreteAction";
 import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
@@ -107,6 +107,8 @@ export function BuyBox({
   const [inputCupom, setInputCupom] = useState("");
   const [mostrarInputCupom, setMostrarInputCupom] = useState(false);
   const [erroCupom, setErroCupom] = useState("");
+  const [erroFrete, setErroFrete] = useState("");
+  const freteRef = useRef<HTMLDivElement | null>(null);
 
   // CÁLCULOS
   const precoNumerico = parseFloat(
@@ -129,6 +131,7 @@ export function BuyBox({
   function handleCepChange(valor: string) {
     const formatado = formatCEP(valor);
     setCep(formatado);
+    setErroFrete("");
     if (valor.length === 0) {
       setCepConsultado(false);
       setTransportadoraSelecionada(null);
@@ -136,6 +139,8 @@ export function BuyBox({
   }
 
   async function consultarFrete() {
+    setErroFrete("");
+
     if (isValidCEP(cep)) {
       setCepConsultado(true);
       setTransportadoraSelecionada(null);
@@ -197,6 +202,36 @@ export function BuyBox({
     }
 
     return undefined;
+  }
+
+  function destacarFrete(mensagem: string) {
+    setErroFrete(mensagem);
+    freteRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+
+  function adicionarComFreteValidado() {
+    const freteEscolhido = montarFreteEscolhido();
+
+    if (!isValidCEP(cep)) {
+      destacarFrete("Digite seu CEP para consultar as formas de entrega.");
+      return;
+    }
+
+    if (!cepConsultado) {
+      destacarFrete("Clique em OK para consultar as formas de entrega.");
+      return;
+    }
+
+    if (!freteEscolhido) {
+      destacarFrete("Selecione uma forma de entrega para continuar.");
+      return;
+    }
+
+    setErroFrete("");
+    onAddToCart(quantidade, freteEscolhido);
   }
 
   // RENDER
@@ -319,9 +354,28 @@ export function BuyBox({
       </div>
 
       {/* CEP */}
-      <div className="border-surface-border rounded-xl border bg-[#F9FAFB] p-3">
-        <div className="text-text-primary mb-2 text-[11px] font-bold tracking-wide uppercase">
-          Calcular Frete
+      <div
+        ref={freteRef}
+        className={`rounded-xl border bg-[#F9FAFB] p-3 transition-all ${
+          erroFrete
+            ? "border-danger bg-red-50 ring-2 ring-red-100"
+            : "border-surface-border"
+        }`}
+      >
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-text-primary text-[11px] font-bold tracking-wide uppercase">
+              Calcular Frete
+            </div>
+            <p className="text-text-hint mt-0.5 text-[11px]">
+              Digite o CEP e selecione a forma de entrega antes de continuar.
+            </p>
+          </div>
+          {transportadoraSelecionada ? (
+            <span className="bg-success-light text-success rounded-full px-2 py-0.5 text-[10px] font-bold whitespace-nowrap">
+              Selecionado
+            </span>
+          ) : null}
         </div>
 
         <div className="flex gap-1.5">
@@ -404,7 +458,10 @@ export function BuyBox({
                 {retiradaLocal && (
                   <label
                     className="border-surface-border hover:border-primary-mid flex cursor-pointer items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
-                    onClick={() => setTransportadoraSelecionada("retirada")}
+                    onClick={() => {
+                      setTransportadoraSelecionada("retirada");
+                      setErroFrete("");
+                    }}
                   >
                     <input
                       type="radio"
@@ -431,9 +488,10 @@ export function BuyBox({
                   ) : entregaPropriaResult?.found ? (
                     <label
                       className="border-surface-border hover:border-primary-mid flex cursor-pointer items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
-                      onClick={() =>
-                        setTransportadoraSelecionada("entrega-propria")
-                      }
+                      onClick={() => {
+                        setTransportadoraSelecionada("entrega-propria");
+                        setErroFrete("");
+                      }}
                     >
                       <input
                         type="radio"
@@ -464,6 +522,12 @@ export function BuyBox({
             )}
           </div>
         )}
+
+        {erroFrete ? (
+          <div className="mt-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-700">
+            {erroFrete}
+          </div>
+        ) : null}
       </div>
 
       {/* CUPOM */}
@@ -559,14 +623,14 @@ export function BuyBox({
         <button
           className="bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
           disabled={!aceitouTermos}
-          onClick={() => onAddToCart(quantidade, montarFreteEscolhido())}
+          onClick={adicionarComFreteValidado}
         >
           {!aceitouTermos ? "Aceite os termos para continuar" : "Comprar agora"}
         </button>
 
         <button
           className="text-primary border-primary hover:bg-primary-light w-full rounded-xl border-[1.5px] bg-white py-3 text-sm font-semibold transition-all active:scale-[0.98]"
-          onClick={() => onAddToCart(quantidade, montarFreteEscolhido())}
+          onClick={adicionarComFreteValidado}
         >
           Adicionar ao carrinho
         </button>

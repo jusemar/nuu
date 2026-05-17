@@ -59,6 +59,25 @@ const configuracaoVisualModalidade: Record<
   },
 };
 
+function obterTituloModalidade({
+  tipo,
+  descricao,
+  prazo,
+}: {
+  tipo: string;
+  descricao: string | null;
+  prazo: string | null;
+}) {
+  const descricaoNormalizada = descricao?.trim();
+  const prazoNormalizado = prazo?.trim();
+
+  if (descricaoNormalizada && descricaoNormalizada !== prazoNormalizado) {
+    return descricaoNormalizada;
+  }
+
+  return configuracaoVisualModalidade[tipo]?.badge || tipo;
+}
+
 export async function calcularResumoCheckout({
   itens,
   cupom,
@@ -89,6 +108,7 @@ export async function calcularResumoCheckout({
     const precoSelecionado = selecionarPrecoProdutoCheckout(
       produto,
       item.variante,
+      item.modalidadeTipo,
     );
     const precoBaseEmCentavos =
       precoSelecionado.hasPromo && precoSelecionado.promoPrice
@@ -114,12 +134,22 @@ export async function calcularResumoCheckout({
       imagemUrl: item.imagemUrl,
       quantidade: item.quantidade,
       modalidade:
-        precoSelecionado.pricingModalDescription || precoSelecionado.type,
+        item.modalidadeTitulo ||
+        obterTituloModalidade({
+          tipo: precoSelecionado.type,
+          descricao: precoSelecionado.pricingModalDescription,
+          prazo: precoSelecionado.deliveryDays,
+        }),
       prazoModalidade: precoSelecionado.deliveryDays || "Consulte prazo",
       modalidadeDetalhes: {
         tipo: precoSelecionado.type,
         titulo:
-          precoSelecionado.pricingModalDescription || precoSelecionado.type,
+          item.modalidadeTitulo ||
+          obterTituloModalidade({
+            tipo: precoSelecionado.type,
+            descricao: precoSelecionado.pricingModalDescription,
+            prazo: precoSelecionado.deliveryDays,
+          }),
         badge: visualModalidade.badge,
         badgeBg: visualModalidade.badgeBg,
         badgeColor: visualModalidade.badgeColor,

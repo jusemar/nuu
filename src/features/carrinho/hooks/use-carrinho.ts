@@ -11,9 +11,12 @@ import type { ItemCarrinho, NovoItemCarrinho } from "../types/carrinho.types";
 import { abrirGavetaCarrinho } from "./use-gaveta-carrinho";
 
 function criarIdItemCarrinho(
-  item: Pick<NovoItemCarrinho, "produtoId" | "variante">,
+  item: Pick<NovoItemCarrinho, "produtoId" | "modalidadeTipo" | "variante">,
 ) {
-  return [item.produtoId, item.variante?.trim() || "padrao"].join(":");
+  return [
+    item.produtoId,
+    item.modalidadeTipo?.trim() || item.variante?.trim() || "padrao",
+  ].join(":");
 }
 
 function lerCarrinhoStorage() {
@@ -104,7 +107,8 @@ export function useCarrinho() {
         return itensAtuais.map((item) =>
           item.id === id
             ? {
-                ...item,
+                ...novoItem,
+                id: item.id,
                 quantidade: item.quantidade + quantidadeAdicionada,
               }
             : item,

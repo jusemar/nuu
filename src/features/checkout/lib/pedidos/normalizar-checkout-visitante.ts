@@ -46,8 +46,10 @@ export function normalizarTextoOpcionalCheckout(valor?: string | null) {
 export function selecionarPrecoProdutoCheckout(
   produto: ProdutoCheckout,
   variante?: string,
+  modalidadeTipo?: string,
 ) {
   const precoSelecionado =
+    produto.pricing.find((preco) => preco.type === modalidadeTipo) ||
     produto.pricing.find(
       (preco) =>
         preco.pricingModalDescription === variante || preco.type === variante,
@@ -77,6 +79,7 @@ export function montarSnapshotItemPedidoCheckout({
   const precoSelecionado = selecionarPrecoProdutoCheckout(
     produto,
     item.variante,
+    item.modalidadeTipo,
   );
   const precoBaseEmCentavos =
     precoSelecionado.hasPromo && precoSelecionado.promoPrice

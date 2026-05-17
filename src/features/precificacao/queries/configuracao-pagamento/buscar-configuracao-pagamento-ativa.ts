@@ -7,10 +7,17 @@ import { CONFIGURACAO_PAGAMENTO_PADRAO } from "../../constants/precificacao-padr
 import type { ConfiguracaoPagamentoCalculavel } from "../../types/precificacao.types";
 
 export async function buscarConfiguracaoPagamentoAtiva(): Promise<ConfiguracaoPagamentoCalculavel> {
-  const configuracao = await db.query.configuracoesPagamentoTable.findFirst({
-    where: eq(configuracoesPagamentoTable.ativo, true),
-    orderBy: desc(configuracoesPagamentoTable.updatedAt),
-  });
+  let configuracao: typeof configuracoesPagamentoTable.$inferSelect | undefined;
+
+  try {
+    configuracao = await db.query.configuracoesPagamentoTable.findFirst({
+      where: eq(configuracoesPagamentoTable.ativo, true),
+      orderBy: desc(configuracoesPagamentoTable.updatedAt),
+    });
+  } catch (error) {
+    console.error("Erro ao buscar configuração de pagamento ativa", error);
+    return CONFIGURACAO_PAGAMENTO_PADRAO;
+  }
 
   if (!configuracao) {
     return CONFIGURACAO_PAGAMENTO_PADRAO;

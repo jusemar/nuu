@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  CalendarClock,
+  ClipboardList,
+  PackageCheck,
+  Truck,
+} from "lucide-react";
+import type { ElementType } from "react";
 import { useRef, useState } from "react";
 
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
@@ -15,33 +22,76 @@ interface PricingModalitiesProps {
 
 const configPorTipo: Record<
   string,
-  { icon: string; badge: string; badgeBg: string; badgeColor: string }
+  {
+    Icone: ElementType;
+    titulo: string;
+    subtitulo: string;
+    badgeBg: string;
+    badgeColor: string;
+  }
 > = {
   stock: {
-    icon: "🏭",
-    badge: "Estoque Próprio",
+    Icone: PackageCheck,
+    titulo: "Estoque Próprio",
+    subtitulo: "Produto disponível para envio pela loja",
     badgeBg: "#E8F5E9",
     badgeColor: "#2E7D32",
   },
   pre_sale: {
-    icon: "⏳",
-    badge: "Pré-venda",
+    Icone: CalendarClock,
+    titulo: "Pré-venda",
+    subtitulo: "Venda antecipada com data de entrega futura",
+    badgeBg: "#FFF3E0",
+    badgeColor: "#ED6C02",
+  },
+  preSale: {
+    Icone: CalendarClock,
+    titulo: "Pré-venda",
+    subtitulo: "Venda antecipada com data de entrega futura",
     badgeBg: "#FFF3E0",
     badgeColor: "#ED6C02",
   },
   dropshipping: {
-    icon: "📦",
-    badge: "Dropshipping",
+    Icone: Truck,
+    titulo: "Dropshipping",
+    subtitulo: "Enviado diretamente pelo fornecedor",
     badgeBg: "#E3F2FD",
     badgeColor: "#0288D1",
   },
   order_basis: {
-    icon: "📋",
-    badge: "Sob Encomenda",
+    Icone: ClipboardList,
+    titulo: "Sob Encomenda",
+    subtitulo: "Produzido especialmente para o cliente",
+    badgeBg: "#F3E5F5",
+    badgeColor: "#7B1FA2",
+  },
+  orderBasis: {
+    Icone: ClipboardList,
+    titulo: "Sob Encomenda",
+    subtitulo: "Produzido especialmente para o cliente",
     badgeBg: "#F3E5F5",
     badgeColor: "#7B1FA2",
   },
 };
+
+function obterConfigModalidade(tipo: string) {
+  return configPorTipo[tipo] || configPorTipo.stock;
+}
+
+function obterTituloModalidade(modalidade: PrecoModalidade) {
+  const tituloInformado = modalidade.pricingModalDescription?.trim();
+  const prazoInformado = modalidade.deliveryDays?.trim();
+
+  if (tituloInformado && tituloInformado !== prazoInformado) {
+    return tituloInformado;
+  }
+
+  return obterConfigModalidade(modalidade.type).titulo;
+}
+
+function obterPrazoModalidade(modalidade: PrecoModalidade) {
+  return modalidade.deliveryDays?.trim() || "Consulte prazo";
+}
 
 export function PricingModalities({
   modalidades,
@@ -67,8 +117,8 @@ export function PricingModalities({
     setIsOpen(false);
   }
 
-  const configAtiva =
-    configPorTipo[modalidadeAtiva.type] || configPorTipo.stock;
+  const configAtiva = obterConfigModalidade(modalidadeAtiva.type);
+  const IconeAtivo = configAtiva.Icone;
   const precoAtivoCalculado =
     precosCalculadosPorModalidade[modalidadeAtiva.type];
 
@@ -85,13 +135,20 @@ export function PricingModalities({
           className="border-primary hover:border-primary-mid flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] bg-white p-3 shadow-[0_0_0_1px_#0C447C] transition-all"
           onClick={() => setIsOpen((prev) => !prev)}
         >
-          <span className="text-xl">{configAtiva.icon}</span>
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg"
+            style={{
+              background: configAtiva.badgeBg,
+              color: configAtiva.badgeColor,
+            }}
+          >
+            <IconeAtivo className="size-4" />
+          </span>
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[13px] font-bold">
-                {modalidadeAtiva.pricingModalDescription ||
-                  modalidadeAtiva.type}
+                {obterTituloModalidade(modalidadeAtiva)}
               </span>
               <span
                 className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold"
@@ -100,12 +157,11 @@ export function PricingModalities({
                   color: configAtiva.badgeColor,
                 }}
               >
-                {configAtiva.badge}
+                {obterPrazoModalidade(modalidadeAtiva)}
               </span>
             </div>
             <div className="text-text-hint mt-0.5 text-[11px]">
-              {modalidadeAtiva.deliveryDays || "Consulte prazo"} · 12 meses ·
-              por Brasil
+              {configAtiva.subtitulo}
             </div>
           </div>
 
@@ -138,7 +194,8 @@ export function PricingModalities({
             {modalidades
               .filter((mod) => mod.type !== modalidadeAtiva.type)
               .map((mod) => {
-                const config = configPorTipo[mod.type] || configPorTipo.stock;
+                const config = obterConfigModalidade(mod.type);
+                const Icone = config.Icone;
                 const precoCalculado = precosCalculadosPorModalidade[mod.type];
 
                 return (
@@ -147,11 +204,19 @@ export function PricingModalities({
                     className="border-surface-border hover:border-primary-mid hover:bg-primary-light flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] bg-white p-3 transition-all"
                     onClick={() => handleSelect(mod.type)}
                   >
-                    <span className="text-lg">{config.icon}</span>
+                    <span
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+                      style={{
+                        background: config.badgeBg,
+                        color: config.badgeColor,
+                      }}
+                    >
+                      <Icone className="size-4" />
+                    </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[13px] font-bold">
-                          {mod.pricingModalDescription || mod.type}
+                          {obterTituloModalidade(mod)}
                         </span>
                         <span
                           className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold"
@@ -160,11 +225,11 @@ export function PricingModalities({
                             color: config.badgeColor,
                           }}
                         >
-                          {config.badge}
+                          {obterPrazoModalidade(mod)}
                         </span>
                       </div>
                       <div className="text-text-hint mt-0.5 text-[11px]">
-                        {mod.deliveryDays || "Consulte prazo"} · 12 meses
+                        {config.subtitulo}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">

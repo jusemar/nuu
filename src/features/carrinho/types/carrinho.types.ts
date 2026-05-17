@@ -1,7 +1,11 @@
 export type ItemCarrinho = {
   id: string;
   produtoId: string;
+  produtoSlug?: string;
+  produtoUrl?: string;
   nome: string;
+  modalidadeTipo?: string;
+  modalidadeTitulo?: string;
   variante?: string;
   prazoModalidade?: string;
   freteEscolhido?: {

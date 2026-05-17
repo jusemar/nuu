@@ -386,7 +386,10 @@ export function CheckoutVisitante() {
               onConsultarCep={consultarCep}
             />
 
-            <RevisaoProdutosEntrega resumoCheckout={resumoCheckout} />
+            <RevisaoProdutosEntrega
+              resumoCheckout={resumoCheckout}
+              onRemoverItem={carrinho.removerItem}
+            />
 
             {carregandoResumo ? (
               <div className="border-border bg-card text-muted-foreground rounded-lg border p-3 text-sm">

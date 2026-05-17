@@ -9,7 +9,11 @@ import {
 export const itemCheckoutSchema = z.object({
   id: z.string().min(1),
   produtoId: z.string().uuid(),
+  produtoSlug: z.string().optional(),
+  produtoUrl: z.string().optional(),
   nome: z.string().min(1),
+  modalidadeTipo: z.string().optional(),
+  modalidadeTitulo: z.string().optional(),
   variante: z.string().optional(),
   prazoModalidade: z.string().optional(),
   freteEscolhido: z

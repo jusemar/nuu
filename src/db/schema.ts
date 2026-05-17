@@ -547,6 +547,16 @@ export {
   checkoutPedidoStatusEnum,
 } from "./tables/checkout";
 
+// Precificação e regras comerciais
+export {
+  configuracoesPagamentoRelations,
+  configuracoesPagamentoTable,
+  precificacaoAlvoRegraPromocionalEnum,
+  precificacaoTipoRegraPromocionalEnum,
+  regrasPromocionaisRelations,
+  regrasPromocionaisTable,
+} from "./tables/precificacao";
+
 // Relations de Shipping
 export {
   shippingRegionsRelations,
@@ -560,10 +570,16 @@ export {
 // NOVAS RELAÇÕES DE RETIRADA
 // ============================================
 
-export const configHorarioRelationsRetirada = relations(configHorarioTable, ({ many }) => ({
-  Holidays: many(feriadosTable),
-}));
+export const configHorarioRelationsRetirada = relations(
+  configHorarioTable,
+  ({ many }) => ({
+    Holidays: many(feriadosTable),
+  }),
+);
 
-export const feriadosRelationsRetirada = relations(feriadosTable, ({ many }) => ({
-  // Relações de feriados
-}));
+export const feriadosRelationsRetirada = relations(
+  feriadosTable,
+  ({ many }) => ({
+    // Relações de feriados
+  }),
+);

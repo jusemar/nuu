@@ -14,13 +14,21 @@
 //   2. Renderiza PricingModalities com essas props
 //   3. Clique no PricingModalities → chama onTrocarModalidade → pai atualiza → BuyBox atualiza
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import type { Cor, Tamanho, PrecoModalidade, Modalidade } from '../../types/product.types';
-import { PricingModalities } from '../PricingModalities';
-import { ChatVendedor } from '../chat-vendedor';
-import { Stars } from '@/components/ui/stars';
+import { useState } from "react";
+
+import { Stars } from "@/components/ui/stars";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+
+import type {
+  Cor,
+  Modalidade,
+  PrecoModalidade,
+  Tamanho,
+} from "../../types/product.types";
+import { PricingModalities } from "../PricingModalities";
+import { ChatVendedor } from "../chat-vendedor";
 
 // ==========================================
 // INTERFACE ATUALIZADA (estado global)
@@ -38,13 +46,14 @@ interface ProductInfoProps {
   cores: Record<Cor, string>;
   tamanhos: Tamanho[];
   corInicial?: Cor;
-  
+
   // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
   // Antes: ProductInfo gerenciava sozinho (estado local)
   // Agora: Recebe do ProductDetailsPage (orquestrador)
-  modalidadesDisponiveis: PrecoModalidade[];  // Todas as modalidades do DB
-  modalidadeAtiva: PrecoModalidade;           // Qual está selecionada agora
+  modalidadesDisponiveis: PrecoModalidade[]; // Todas as modalidades do DB
+  modalidadeAtiva: PrecoModalidade; // Qual está selecionada agora
   onTrocarModalidade: (tipo: Modalidade) => void; // Callback para trocar
+  precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
 }
 
 // ==========================================
@@ -61,19 +70,19 @@ export function ProductInfo({
   descricao,
   cores,
   tamanhos,
-  corInicial = 'preto',
+  corInicial = "preto",
   // === NOVAS PROPS (estado global) ===
   modalidadesDisponiveis,
   modalidadeAtiva,
   onTrocarModalidade,
+  precosCalculadosPorModalidade,
 }: ProductInfoProps) {
-
   // -----------------------------------------
   // ESTADOS LOCAIS (mantidos - não afetam outros componentes)
   // -----------------------------------------
   // Cor selecionada (independente por produto)
   const [corSel, setCorSel] = useState<Cor>(corInicial);
-  
+
   // Tamanho selecionado
   const [tamSel, setTamSel] = useState<Tamanho | null>(null);
 
@@ -82,13 +91,13 @@ export function ProductInfo({
   // -----------------------------------------
   // Descrição de cada tamanho em centímetros
   const tamDesc: Record<Tamanho, string> = {
-    '38': '23.5cm',
-    '39': '24.5cm',
-    '40': '25cm',
-    '41': '25.5cm',
-    '42': '26cm',
-    '43': '27cm',
-    '44': '27.5cm',
+    "38": "23.5cm",
+    "39": "24.5cm",
+    "40": "25cm",
+    "41": "25.5cm",
+    "42": "26cm",
+    "43": "27cm",
+    "44": "27.5cm",
   };
 
   // -----------------------------------------
@@ -96,66 +105,65 @@ export function ProductInfo({
   // -----------------------------------------
   return (
     <div className="flex flex-col gap-4">
-
       {/* -----------------------------------------
           LINHA 1: MARCA + SKU
           ----------------------------------------- */}
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-bold text-text-hint tracking-widest uppercase">
+        <span className="text-text-hint text-[11px] font-bold tracking-widest uppercase">
           {marca}
         </span>
-        <span className="w-1 h-1 rounded-full bg-surface-border-mid" />
-        <span className="text-[11px] text-text-hint">SKU: {sku}</span>
+        <span className="bg-surface-border-mid h-1 w-1 rounded-full" />
+        <span className="text-text-hint text-[11px]">SKU: {sku}</span>
       </div>
 
       {/* -----------------------------------------
           LINHA 2: NOME DO PRODUTO
           ----------------------------------------- */}
-      <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-text-primary">
+      <h1 className="text-text-primary text-[26px] leading-tight font-extrabold tracking-tight">
         {nome}
       </h1>
 
       {/* -----------------------------------------
           LINHA 3: RATING + AVALIAÇÕES + VENDEDOR
           ----------------------------------------- */}
-      <div className="flex items-center gap-2.5 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2.5">
         <Stars rating={rating} size="lg" />
         <span className="text-[13px] font-bold">{rating}</span>
-        <a href="#" className="text-xs text-text-muted underline">
-          {totalAvaliacoes.toLocaleString('pt-BR')} avaliações
+        <a href="#" className="text-text-muted text-xs underline">
+          {totalAvaliacoes.toLocaleString("pt-BR")} avaliações
         </a>
-        <span className="w-1 h-1 rounded-full bg-surface-border-mid" />
-        <span className="text-xs text-text-muted">
-          Vendido por{' '}
+        <span className="bg-surface-border-mid h-1 w-1 rounded-full" />
+        <span className="text-text-muted text-xs">
+          Vendido por{" "}
           <a href="#" className="text-primary font-semibold no-underline">
             {vendedor}
           </a>
         </span>
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-success-light text-success">
+        <span className="bg-success-light text-success inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold">
           {vendedorRating}% positivo
         </span>
       </div>
 
       {/* DIVISOR */}
-      <div className="h-px bg-surface-border w-full" />
+      <div className="bg-surface-border h-px w-full" />
 
       {/* -----------------------------------------
           DESCRIÇÃO DO PRODUTO
           ----------------------------------------- */}
-      <p className="text-[13px] text-text-muted leading-relaxed">{descricao}</p>
+      <p className="text-text-muted text-[13px] leading-relaxed">{descricao}</p>
 
       {/* DIVISOR */}
-      <div className="h-px bg-surface-border w-full" />
+      <div className="bg-surface-border h-px w-full" />
 
       {/* -----------------------------------------
           SELETOR DE COR
           ----------------------------------------- */}
       <div>
-        <div className="flex items-center gap-2 mb-2.5">
-          <span className="text-xs font-bold text-text-primary uppercase tracking-wider">
+        <div className="mb-2.5 flex items-center gap-2">
+          <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
             Cor
           </span>
-          <span className="text-xs text-text-muted font-medium capitalize">
+          <span className="text-text-muted text-xs font-medium capitalize">
             {corSel}
           </span>
         </div>
@@ -166,14 +174,14 @@ export function ProductInfo({
               key={cor}
               onClick={() => setCorSel(cor)}
               title={cor}
-              className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all flex-shrink-0 ${
+              className={`h-7 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 transition-all ${
                 corSel === cor
-                  ? 'outline outline-2 outline-primary outline-offset-2'
-                  : ''
+                  ? "outline-primary outline outline-2 outline-offset-2"
+                  : ""
               }`}
               style={{
                 backgroundColor: cores[cor],
-                borderColor: cores[cor] === '#f5f5f0' ? '#D1D5DB' : cores[cor],
+                borderColor: cores[cor] === "#f5f5f0" ? "#D1D5DB" : cores[cor],
               }}
             />
           ))}
@@ -184,44 +192,46 @@ export function ProductInfo({
           SELETOR DE TAMANHO
           ----------------------------------------- */}
       <div>
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="mb-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-text-primary uppercase tracking-wider">
+            <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
               Tamanho
             </span>
             {tamSel && (
-              <span className="text-xs text-text-muted">— {tamDesc[tamSel]}</span>
+              <span className="text-text-muted text-xs">
+                — {tamDesc[tamSel]}
+              </span>
             )}
           </div>
-          <a href="#" className="text-xs text-primary underline">
+          <a href="#" className="text-primary text-xs underline">
             Guia de tamanhos
           </a>
         </div>
 
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
           {tamanhos.map((t) => (
             <button
               key={t}
-              onClick={() => t !== '40' && setTamSel(t)}
-              className={`min-w-[42px] h-[38px] border-[1.5px] bg-white rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center px-2 ${
+              onClick={() => t !== "40" && setTamSel(t)}
+              className={`flex h-[38px] min-w-[42px] items-center justify-center rounded-lg border-[1.5px] bg-white px-2 text-[13px] font-semibold transition-all ${
                 tamSel === t
-                  ? 'border-primary bg-primary text-white'
-                  : t === '40'
-                  ? 'opacity-35 cursor-not-allowed line-through border-surface-border text-text-primary'
-                  : 'border-surface-border text-text-primary hover:border-primary-mid'
+                  ? "border-primary bg-primary text-white"
+                  : t === "40"
+                    ? "border-surface-border text-text-primary cursor-not-allowed line-through opacity-35"
+                    : "border-surface-border text-text-primary hover:border-primary-mid"
               }`}
             >
               {t}
             </button>
           ))}
         </div>
-        <div className="text-[11px] text-text-hint mt-1.5">
+        <div className="text-text-hint mt-1.5 text-[11px]">
           Tam. 40 indisponível
         </div>
       </div>
 
       {/* DIVISOR */}
-      <div className="h-px bg-surface-border w-full" />
+      <div className="bg-surface-border h-px w-full" />
 
       {/* -----------------------------------------
           MODALIDADE DE PREÇO (ATUALIZADO - ESTADO GLOBAL)
@@ -235,10 +245,11 @@ export function ProductInfo({
         modalidades={modalidadesDisponiveis}
         modalidadeAtiva={modalidadeAtiva}
         onSelecionarModalidade={onTrocarModalidade}
+        precosCalculadosPorModalidade={precosCalculadosPorModalidade}
       />
 
       {/* DIVISOR */}
-      <div className="h-px bg-surface-border w-full" />
+      <div className="bg-surface-border h-px w-full" />
 
       {/* -----------------------------------------
           CHAT COM VENDEDOR
@@ -248,7 +259,7 @@ export function ProductInfo({
         status="online"
         tempoResposta="Responde em minutos"
         onClick={() => {
-          console.log('Abrir chat com:', vendedor);
+          console.log("Abrir chat com:", vendedor);
         }}
       />
     </div>

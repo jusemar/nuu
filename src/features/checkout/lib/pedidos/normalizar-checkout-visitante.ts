@@ -1,4 +1,8 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+import {
+  calcularPrecoProduto,
+  type ConfiguracaoPagamentoCalculavel,
+} from "@/features/precificacao";
 
 type PrecoProdutoCheckout = {
   type: string;
@@ -58,18 +62,34 @@ export function selecionarPrecoProdutoCheckout(
 export function montarSnapshotItemPedidoCheckout({
   item,
   produto,
+  formaPagamento,
+  configuracaoPagamento,
 }: {
   item: ItemCarrinho;
   produto: ProdutoCheckout;
+  formaPagamento: "pix" | "cartao";
+  configuracaoPagamento: ConfiguracaoPagamentoCalculavel;
 }) {
   const precoSelecionado = selecionarPrecoProdutoCheckout(
     produto,
     item.variante,
   );
-  const precoEmCentavos =
+  const precoBaseEmCentavos =
     precoSelecionado.hasPromo && precoSelecionado.promoPrice
       ? precoSelecionado.promoPrice
       : precoSelecionado.price;
+  const precoCalculado = calcularPrecoProduto({
+    entrada: {
+      produtoId: produto.id,
+      modalidade: precoSelecionado.type,
+      precoBaseEmCentavos,
+    },
+    configuracao: configuracaoPagamento,
+  });
+  const precoEmCentavos =
+    formaPagamento === "cartao"
+      ? precoCalculado.cartao.valorEmCentavos
+      : precoCalculado.pix.valorEmCentavos;
 
   return {
     produtoId: produto.id,

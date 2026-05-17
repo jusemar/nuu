@@ -1,51 +1,66 @@
+import { Info, MapPin } from "lucide-react";
+import { useState } from "react";
 import type {
   FieldErrors,
   UseFormRegister,
   UseFormSetValue,
+  UseFormWatch,
 } from "react-hook-form";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 import type { CheckoutVisitanteSchema } from "../../../schemas/checkout.schema";
 
 type FormularioEnderecoProps = {
   register: UseFormRegister<CheckoutVisitanteSchema>;
   setValue: UseFormSetValue<CheckoutVisitanteSchema>;
+  watch: UseFormWatch<CheckoutVisitanteSchema>;
   errors: FieldErrors<CheckoutVisitanteSchema>;
   buscandoCep: boolean;
   mensagemCep: string | null;
   onConsultarCep: (cep: string) => void;
 };
 
+const inputClass = "h-11 w-full rounded-lg border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15";
+
 export function FormularioEndereco({
   register,
   setValue,
+  watch,
   errors,
   buscandoCep,
   mensagemCep,
   onConsultarCep,
 }: FormularioEnderecoProps) {
   const cepField = register("cep");
+  const permitirEntregaVizinho = watch("permitirEntregaVizinho");
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
-          Endereço de entrega
-        </h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          O frete é estimado para o checkout visitante.
-        </p>
+    <section className="rounded-2xl border border-border bg-card p-6 md:p-7 shadow-card">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <MapPin className="size-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold">Endereço de entrega</h2>
+            <p className="text-xs text-muted-foreground">Para cálculo do frete e envio.</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-6">
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="cep">CEP</Label>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
+        <div className="md:col-span-2">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            CEP
+          </label>
           <Input
             id="cep"
             autoComplete="postal-code"
             placeholder="00000-000"
+            inputMode="numeric"
+            maxLength={9}
+            className={inputClass}
             {...cepField}
             onChange={(event) => {
               cepField.onChange(event);
@@ -60,65 +75,115 @@ export function FormularioEndereco({
             }}
           />
           {errors.cep ? (
-            <p className="text-xs text-red-600">{errors.cep.message}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+              <Info className="size-3" />
+              {errors.cep.message}
+            </p>
           ) : null}
           {buscandoCep ? (
-            <p className="text-xs text-zinc-500">Buscando CEP...</p>
+            <p className="mt-1.5 text-xs text-muted-foreground">Buscando CEP...</p>
           ) : null}
           {mensagemCep ? (
-            <p className="text-xs text-zinc-500">{mensagemCep}</p>
+            <p className="mt-1.5 text-xs text-emerald-600">{mensagemCep}</p>
           ) : null}
         </div>
 
-        <div className="space-y-2 sm:col-span-4">
-          <Label htmlFor="rua">Rua</Label>
-          <Input id="rua" autoComplete="address-line1" placeholder="Nome da rua" {...register("rua")} />
+        <div className="md:col-span-4">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Rua / Logradouro
+          </label>
+          <Input
+            id="rua"
+            autoComplete="address-line1"
+            placeholder="Av. Paulista"
+            className={inputClass}
+            {...register("rua")}
+          />
           {errors.rua ? (
-            <p className="text-xs text-red-600">{errors.rua.message}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+              <Info className="size-3" />
+              {errors.rua.message}
+            </p>
           ) : null}
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="numero">Número</Label>
-          <Input id="numero" placeholder="Número" {...register("numero")} />
+        <div className="md:col-span-2">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Número
+          </label>
+          <Input
+            id="numero"
+            placeholder="123"
+            className={inputClass}
+            {...register("numero")}
+          />
           {errors.numero ? (
-            <p className="text-xs text-red-600">{errors.numero.message}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+              <Info className="size-3" />
+              {errors.numero.message}
+            </p>
           ) : null}
         </div>
 
-        <div className="space-y-2 sm:col-span-4">
-          <Label htmlFor="complemento">Complemento</Label>
-          <Input id="complemento" placeholder="Apartamento, bloco, etc." {...register("complemento")} />
+        <div className="md:col-span-4">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Complemento (opcional)
+          </label>
+          <Input
+            id="complemento"
+            placeholder="Apto, Bloco"
+            className={inputClass}
+            {...register("complemento")}
+          />
         </div>
 
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bairro">Bairro</Label>
-          <Input id="bairro" placeholder="Seu bairro" {...register("bairro")} />
+        <div className="md:col-span-3">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Bairro
+          </label>
+          <Input
+            id="bairro"
+            placeholder="Bairro"
+            className={inputClass}
+            {...register("bairro")}
+          />
           {errors.bairro ? (
-            <p className="text-xs text-red-600">{errors.bairro.message}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+              <Info className="size-3" />
+              {errors.bairro.message}
+            </p>
           ) : null}
         </div>
 
-        <div className="space-y-2 sm:col-span-3">
-          <Label htmlFor="cidade">Cidade</Label>
+        <div className="md:col-span-2">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Cidade
+          </label>
           <Input
             id="cidade"
             autoComplete="address-level2"
-            placeholder="Sua cidade"
+            placeholder="Cidade"
+            className={inputClass}
             {...register("cidade")}
           />
           {errors.cidade ? (
-            <p className="text-xs text-red-600">{errors.cidade.message}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+              <Info className="size-3" />
+              {errors.cidade.message}
+            </p>
           ) : null}
         </div>
 
-        <div className="space-y-2 sm:col-span-1">
-          <Label htmlFor="estado">UF</Label>
+        <div className="md:col-span-1">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            UF
+          </label>
           <Input
             id="estado"
             maxLength={2}
             autoComplete="address-level1"
             placeholder="UF"
+            className={inputClass}
             {...register("estado", {
               onChange: (event) => {
                 setValue("estado", event.target.value.toUpperCase());
@@ -126,18 +191,66 @@ export function FormularioEndereco({
             })}
           />
           {errors.estado ? (
-            <p className="text-xs text-red-600">{errors.estado.message}</p>
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-destructive">
+              <Info className="size-3" />
+              {errors.estado.message}
+            </p>
           ) : null}
         </div>
 
-        <div className="space-y-2 sm:col-span-6">
-          <Label htmlFor="observacao">Observação para entrega</Label>
+        <div className="md:col-span-6">
+          <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Observação (opcional)
+          </label>
           <Input
             id="observacao"
-            placeholder="Ex: portaria, ponto de referência, vizinho"
+            placeholder="Ponto de referência, instruções de entrega"
+            className={inputClass}
             {...register("observacao")}
           />
         </div>
+
+        <div className="md:col-span-6">
+          <div className="mt-5 rounded-xl border border-dashed border-border bg-background/60 p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 rounded border-border accent-primary"
+                {...register("permitirEntregaVizinho")}
+              />
+              <span className="text-sm font-medium">
+                Autorizo deixar com vizinho se eu não estiver
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {permitirEntregaVizinho && (
+          <div className="md:col-span-6 grid grid-cols-1 gap-3 md:grid-cols-2 animate-in slide-in-from-top-2 fade-in duration-300">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Nome do vizinho
+              </label>
+              <Input
+                id="nomeVizinho"
+                placeholder="Nome do vizinho"
+                className={inputClass}
+                {...register("nomeVizinho")}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Apto / Casa do vizinho
+              </label>
+              <Input
+                id="enderecoVizinho"
+                placeholder="Apto / Casa do vizinho"
+                className={inputClass}
+                {...register("enderecoVizinho")}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

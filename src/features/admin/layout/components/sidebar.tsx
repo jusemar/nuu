@@ -31,6 +31,7 @@ import {
   Navigation,
   DollarSign,
   PackageCheck,
+  Percent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "../hooks/useSidebar";
@@ -51,6 +52,7 @@ const iconMap: Record<string, React.ElementType> = {
   Navigation,
   DollarSign,
   PackageCheck,
+  Percent,
 };
 
 /**
@@ -84,6 +86,12 @@ const menuData = [
         label: "Categorias",
         href: "/admin/categories",
         icon: "FolderIcon",
+      },
+      {
+        id: "precificacao",
+        label: "Precificação",
+        href: "/admin/precificacao",
+        icon: "Percent",
       },
     ],
   },

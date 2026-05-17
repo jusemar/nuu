@@ -11,6 +11,7 @@ import {
   checkoutPedidosTable,
   productTable,
 } from "@/db/schema";
+import { buscarConfiguracaoPagamentoAtiva } from "@/features/precificacao";
 
 import { calcularFreteCheckout } from "../../lib/calcular-frete-checkout";
 import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
@@ -221,6 +222,7 @@ async function criarPedidoCheckoutVisitanteInterno({
   produtosIds,
 }: CriarPedidoCheckoutVisitanteInternoParams) {
   return dbTransacional.transaction(async (tx) => {
+    const configuracaoPagamento = await buscarConfiguracaoPagamentoAtiva();
     const produtos = await tx.query.productTable.findMany({
       where: inArray(productTable.id, produtosIds),
       with: {
@@ -237,7 +239,12 @@ async function criarPedidoCheckoutVisitanteInterno({
         throw new Error(`Produto não encontrado: ${item.nome}`);
       }
 
-      return montarSnapshotItemPedidoCheckout({ item, produto });
+      return montarSnapshotItemPedidoCheckout({
+        item,
+        produto,
+        formaPagamento: dados.formaPagamento,
+        configuracaoPagamento,
+      });
     });
 
     const frete = calcularFreteCheckout(dados.freteId);

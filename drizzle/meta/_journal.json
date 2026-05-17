@@ -78,6 +78,13 @@
       "when": 1778806393000,
       "tag": "0010_create_checkout_pedidos_pagamentos",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778976000000,
+      "tag": "0011_create_precificacao_configuracoes",
+      "breakpoints": true
     }
   ]
 }

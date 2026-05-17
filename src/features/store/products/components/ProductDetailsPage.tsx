@@ -28,11 +28,12 @@ import { Header } from "@/features/header";
 import { Footer } from "@/components/common/footer";
 import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 
 // MOCKS temporários (apenas para dados que ainda não estão no banco)
-import { produto, parcelamentos, cuponsValidos } from "../constants/mockData";
+import { produto, cuponsValidos } from "../constants/mockData";
 
-import type { PrecoModalidade, Modalidade } from "../types/product.types";
+import type { Modalidade, PrecoModalidade } from "../types/product.types";
 
 // ==========================================
 // INTERFACE DAS PROPS
@@ -65,25 +66,16 @@ interface ProductDetailProps {
       ativo: boolean;
     } | null;
   };
-}
-
-// ==========================================
-// FUNÇÃO UTILITÁRIA: Formatar centavos → R$
-// ==========================================
-// Recebe: número em centavos (ex: 5151)
-// Retorna: string formatada (ex: "R$ 51,51")
-function formatarPreco(centavos: number): string {
-  const reais = centavos / 100;
-  return reais.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+  precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
 }
 
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
-export function ProductDetail({ product }: ProductDetailProps) {
+export function ProductDetail({
+  product,
+  precosCalculadosPorModalidade,
+}: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
 
   // -----------------------------------------
@@ -113,7 +105,11 @@ export function ProductDetail({ product }: ProductDetailProps) {
     precoParceladoFormatado, // "3x de R$ 17,17" (parcelamento)
     descontoPix, // 13 (% de desconto PIX)
     prazoEntrega, // "imediato" (prazo da modalidade ativa)
-  } = useProductPricing(product.pricing || []);
+  } = useProductPricing(product.pricing || [], precosCalculadosPorModalidade);
+
+  const parcelamentosCartao =
+    precosCalculadosPorModalidade[modalidadeAtiva.type]?.cartao.parcelamentos ||
+    [];
 
   // -----------------------------------------
   // RETIRADA LOCAL: Dados reais do banco
@@ -256,6 +252,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
               modalidadesDisponiveis={modalidadesDisponiveis} // Array de modalidades
               modalidadeAtiva={modalidadeAtiva} // Qual está selecionada
               onTrocarModalidade={selecionarModalidade} // Função para trocar
+              precosCalculadosPorModalidade={precosCalculadosPorModalidade}
             />
           </div>
 
@@ -337,16 +334,10 @@ export function ProductDetail({ product }: ProductDetailProps) {
                       : mod.type === "dropshipping"
                         ? "#0288D1"
                         : "#7B1FA2",
-                precoPix: formatarPreco(
-                  mod.hasPromo && mod.promoPrice ? mod.promoPrice : mod.price,
-                ),
-                precoNormal: formatarPreco(
-                  Math.round(
-                    (mod.hasPromo && mod.promoPrice
-                      ? mod.promoPrice
-                      : mod.price) * 1.15,
-                  ),
-                ),
+                precoPix:
+                  precosCalculadosPorModalidade[mod.type]?.pix.valor || "",
+                precoNormal:
+                  precosCalculadosPorModalidade[mod.type]?.cartao.valor || "",
                 prazo: mod.deliveryDays || "Consulte prazo",
                 garantia: "12 meses",
                 envia: "Brasil",
@@ -368,21 +359,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <PaymentModal
         isOpen={modalPgto}
         onClose={() => setModalPgto(false)}
-        precoPix={precoPixFormatado}
-        descontoPix={descontoPix}
-        parcelamentos={parcelamentos}
-        precoFinalPix={
-          cupomAplicado
-            ? (
-                parseFloat(
-                  precoPixFormatado.replace("R$ ", "").replace(",", "."),
-                ) *
-                (1 - cupomAplicado.desconto / 100)
-              )
-                .toFixed(2)
-                .replace(".", ",")
-            : undefined
-        }
+        parcelamentos={parcelamentosCartao}
       />
     </div>
   );

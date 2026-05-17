@@ -1,12 +1,6 @@
+import { Check, Truck } from "lucide-react";
 import type { UseFormRegister } from "react-hook-form";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { formatarPrecoCarrinho } from "@/features/carrinho";
 
 import { OPCOES_FRETE_CHECKOUT } from "../../../constants/checkout-steps";
@@ -19,67 +13,68 @@ type OpcoesFreteProps = {
 
 export function OpcoesFrete({ freteSelecionado, register }: OpcoesFreteProps) {
   return (
-    <Accordion
-      className="rounded-lg border border-zinc-200 px-4 dark:border-zinc-800"
-      type="single"
-      collapsible
-      defaultValue="frete"
-    >
-      <AccordionItem value="frete">
-        <AccordionTrigger className="hover:no-underline">
+    <section className="rounded-2xl border border-border bg-card p-6 md:p-7 shadow-card">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+            <Truck className="size-4" />
+          </div>
           <div>
-            <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">
-              Frete
-            </h2>
-            <p className="mt-1 text-sm font-normal text-zinc-500 dark:text-zinc-400">
-              Escolha uma opção para ver o total antes do pagamento.
-            </p>
+            <h2 className="text-base font-semibold">Frete</h2>
+            <p className="text-xs text-muted-foreground">Selecione a modalidade de entrega.</p>
           </div>
-        </AccordionTrigger>
+        </div>
+      </div>
 
-        <AccordionContent>
-          <div className="grid gap-3">
-            {OPCOES_FRETE_CHECKOUT.map((opcao) => {
-              const selecionado = freteSelecionado === opcao.id;
+      <div role="radiogroup" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {OPCOES_FRETE_CHECKOUT.map((opcao) => {
+          const selecionado = freteSelecionado === opcao.id;
 
-              return (
-                <label
-                  className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 has-[:checked]:border-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:has-[:checked]:border-zinc-100"
-                  key={opcao.id}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      className="mt-1"
-                      type="radio"
-                      value={opcao.id}
-                      {...register("freteId")}
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
-                          {opcao.nome}
-                        </span>
-                        {selecionado ? (
-                          <Badge variant="secondary">Selecionado</Badge>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        {opcao.prazo}
-                      </p>
-                    </div>
-                  </div>
-
-                  <strong className="text-sm text-zinc-950 dark:text-zinc-50">
-                    {opcao.valorEmCentavos === 0
-                      ? "Grátis"
-                      : formatarPrecoCarrinho(opcao.valorEmCentavos)}
-                  </strong>
-                </label>
-              );
-            })}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+          return (
+            <button
+              key={opcao.id}
+              type="button"
+              role="radio"
+              aria-checked={selecionado}
+              className={
+                "group relative flex flex-col items-start gap-1 rounded-lg border px-3 py-2.5 text-left transition-all " +
+                (selecionado
+                  ? "border-primary bg-accent ring-1 ring-primary"
+                  : "border-border bg-card hover:border-primary/40")
+              }
+              onClick={() => {
+                const input = document.querySelector(`input[name="freteId"]`) as HTMLInputElement;
+                if (input) {
+                  input.value = opcao.id;
+                  input.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+              }}
+            >
+              <div className="flex w-full items-center justify-between">
+                <span className="text-[13px] font-semibold leading-tight">{opcao.nome}</span>
+                {selecionado && <Check className="size-3.5 text-primary" strokeWidth={3} />}
+              </div>
+              <span className="text-[11px] text-muted-foreground">{opcao.prazo}</span>
+              <span
+                className={
+                  "text-[12px] font-bold " +
+                  (opcao.valorEmCentavos === 0 ? "text-emerald-600" : "text-foreground")
+                }
+              >
+                {opcao.valorEmCentavos === 0
+                  ? "Grátis"
+                  : formatarPrecoCarrinho(opcao.valorEmCentavos)}
+              </span>
+            </button>
+          );
+        })}
+        <input
+          type="radio"
+          value={freteSelecionado}
+          {...register("freteId")}
+          className="sr-only"
+        />
+      </div>
+    </section>
   );
 }

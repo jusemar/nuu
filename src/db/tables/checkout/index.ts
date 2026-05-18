@@ -12,6 +12,7 @@ export {
   checkoutPedidoHistoricosRelations,
   checkoutPedidoItensRelations,
   checkoutPedidoLogisticasRelations,
+  checkoutStripeWebhookEventosRelations,
   checkoutPagamentosRelations,
   checkoutPedidosRelations,
 } from "./relacoes";
@@ -22,3 +23,4 @@ export { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 export { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
 export { checkoutPagamentosTable } from "./tabelas/pagamentos";
 export { checkoutPedidosTable } from "./tabelas/pedidos";
+export { checkoutStripeWebhookEventosTable } from "./tabelas/stripe-webhook-eventos";

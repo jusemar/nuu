@@ -12,6 +12,7 @@ import {
   checkoutPedidosTable,
   productTable,
 } from "@/db/schema";
+import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
 import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
@@ -68,6 +69,7 @@ function montarRetornoPedidoCheckout(
 
 export async function criarPedidoCheckoutVisitante(data: unknown) {
   const dados = checkoutVisitanteSchema.parse(data);
+  const sessao = await buscarSessaoCliente();
 
   if (!isValidNome(dados.nome)) {
     throw new Error("Nome inválido");
@@ -81,7 +83,7 @@ export async function criarPedidoCheckoutVisitante(data: unknown) {
     throw new Error("Documento CPF ou CNPJ inválido");
   }
 
-  const email = normalizarEmailCheckout(dados.email);
+  const email = normalizarEmailCheckout(sessao?.usuario.email ?? dados.email);
   const documento = normalizarDocumentoCheckout(dados.documento);
   const telefone = normalizarTelefoneCheckout(dados.telefone);
   const produtosIds = [...new Set(dados.itens.map((item) => item.produtoId))];
@@ -92,6 +94,7 @@ export async function criarPedidoCheckoutVisitante(data: unknown) {
     documento,
     telefone,
     produtosIds,
+    usuarioId: sessao?.usuario.id ?? null,
   });
 
   await enviarEmailPedidoRecebido({
@@ -248,6 +251,7 @@ type CriarPedidoCheckoutVisitanteInternoParams = {
   documento: string;
   telefone: string;
   produtosIds: string[];
+  usuarioId: string | null;
 };
 
 async function criarPedidoCheckoutVisitanteInterno({
@@ -256,6 +260,7 @@ async function criarPedidoCheckoutVisitanteInterno({
   documento,
   telefone,
   produtosIds,
+  usuarioId,
 }: CriarPedidoCheckoutVisitanteInternoParams) {
   return dbTransacional.transaction(async (tx) => {
     const configuracaoPagamento = await buscarConfiguracaoPagamentoAtiva();
@@ -316,26 +321,51 @@ async function criarPedidoCheckoutVisitanteInterno({
       throw new Error("Total do checkout inválido");
     }
 
-    const clienteExistente = await tx.query.checkoutClientesTable.findFirst({
-      where: or(
-        eq(checkoutClientesTable.email, email),
-        eq(checkoutClientesTable.documento, documento),
-      ),
+    const clientePorDocumento = await tx.query.checkoutClientesTable.findFirst({
+      where: eq(checkoutClientesTable.documento, documento),
     });
+    const clientePorUsuario = usuarioId
+      ? await tx.query.checkoutClientesTable.findFirst({
+          where: eq(checkoutClientesTable.userId, usuarioId),
+        })
+      : null;
+    const clientePorEmail = await tx.query.checkoutClientesTable.findFirst({
+      where: eq(checkoutClientesTable.email, email),
+    });
+    const clienteExistente =
+      clientePorDocumento ?? clientePorUsuario ?? clientePorEmail;
 
-    const cliente =
-      clienteExistente ??
-      (
-        await tx
-          .insert(checkoutClientesTable)
-          .values({
-            nome: dados.nome.trim(),
-            email,
-            telefone,
-            documento,
-          })
-          .returning()
-      )[0];
+    if (
+      usuarioId &&
+      clienteExistente?.userId &&
+      clienteExistente.userId !== usuarioId
+    ) {
+      throw new Error("Este CPF/CNPJ já está vinculado a outra conta.");
+    }
+
+    const dadosCliente = {
+      userId: usuarioId ?? clienteExistente?.userId ?? null,
+      nome: dados.nome.trim(),
+      email,
+      telefone,
+      documento,
+      updatedAt: new Date(),
+    };
+
+    const cliente = clienteExistente
+      ? (
+          await tx
+            .update(checkoutClientesTable)
+            .set(dadosCliente)
+            .where(eq(checkoutClientesTable.id, clienteExistente.id))
+            .returning()
+        )[0]
+      : (
+          await tx
+            .insert(checkoutClientesTable)
+            .values(dadosCliente)
+            .returning()
+        )[0];
 
     if (!cliente) {
       throw new Error("Não foi possível criar o cliente do pedido.");
@@ -387,6 +417,16 @@ async function criarPedidoCheckoutVisitanteInterno({
           gatewayPagamento,
           pagamentoStatus: "pending",
           observacao: normalizarTextoOpcionalCheckout(dados.observacao),
+          observacaoCliente: normalizarTextoOpcionalCheckout(
+            dados.observacaoCliente,
+          ),
+          autorizarEntregaVizinho: Boolean(dados.permitirEntregaVizinho),
+          nomeVizinho: dados.permitirEntregaVizinho
+            ? normalizarTextoOpcionalCheckout(dados.nomeVizinho)
+            : null,
+          observacaoVizinho: dados.permitirEntregaVizinho
+            ? normalizarTextoOpcionalCheckout(dados.observacaoVizinho)
+            : null,
         })
         .returning()
     )[0];

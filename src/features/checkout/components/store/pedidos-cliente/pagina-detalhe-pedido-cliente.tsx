@@ -66,8 +66,20 @@ export function PaginaDetalhePedidoCliente({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <StatusPedidoClienteBadge status={pedido.status} />
-                <StatusPagamentoClienteBadge status={pedido.pagamentoStatus} />
+                <div className="space-y-1">
+                  <span className="block text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+                    Pedido
+                  </span>
+                  <StatusPedidoClienteBadge status={pedido.status} />
+                </div>
+                <div className="space-y-1">
+                  <span className="block text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+                    Pagamento
+                  </span>
+                  <StatusPagamentoClienteBadge
+                    status={pedido.pagamentoStatus}
+                  />
+                </div>
               </div>
             </div>
           </div>

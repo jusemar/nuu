@@ -19,7 +19,7 @@ export function useAutenticacaoCliente() {
     try {
       const resultado = await clienteAutenticacao.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: "/completar-cadastro",
       });
 
       if ("error" in resultado && resultado.error) {

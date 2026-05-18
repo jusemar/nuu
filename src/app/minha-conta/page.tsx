@@ -1,14 +1,8 @@
-import { redirect } from "next/navigation";
-
 import { PaginaMinhaConta } from "@/features/autenticacao/components/store/minha-conta/pagina-minha-conta";
-import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
+import { protegerFluxoCadastroCliente } from "@/features/autenticacao/queries/cadastro/proteger-fluxo-cadastro-cliente";
 
 export default async function MinhaContaPage() {
-  const sessao = await buscarSessaoCliente();
+  const { sessao, cadastro } = await protegerFluxoCadastroCliente();
 
-  if (!sessao) {
-    redirect("/?login=necessario");
-  }
-
-  return <PaginaMinhaConta sessao={sessao} />;
+  return <PaginaMinhaConta cadastro={cadastro} sessao={sessao} />;
 }

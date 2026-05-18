@@ -171,8 +171,20 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
               Pedido {pedido.numeroPedido}
             </h1>
-            <PedidoStatusBadge status={pedido.status} />
-            <PagamentoStatusBadge status={pedido.pagamentoStatus} />
+            <div className="flex flex-wrap gap-2">
+              <div className="space-y-1">
+                <span className="block text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+                  Pedido
+                </span>
+                <PedidoStatusBadge status={pedido.status} />
+              </div>
+              <div className="space-y-1">
+                <span className="block text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+                  Pagamento
+                </span>
+                <PagamentoStatusBadge status={pedido.pagamentoStatus} />
+              </div>
+            </div>
           </div>
           <p className="mt-1 text-sm text-slate-600">
             Criado em {formatarDataAdminPedido(pedido.createdAt)} e atualizado

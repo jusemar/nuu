@@ -1,6 +1,12 @@
 import "server-only";
 
 import { obterRemetenteEmailTransacional, obterResend } from "./cliente-resend";
+import {
+  extrairErroResendEmail,
+  extrairMessageIdResendEmail,
+  montarContextoLogEmailTransacional,
+} from "./logs-email-transacional";
+import { normalizarValorTagEmailTransacional } from "./tags-email-transacional";
 import { montarEmailPagamentoStripeAprovado } from "./templates/pagamento-stripe-aprovado";
 import { montarEmailPedidoRecebido } from "./templates/pedido-recebido";
 import { montarEmailPixPendente } from "./templates/pix-pendente";
@@ -22,9 +28,10 @@ async function enviarEmailTransacional({
   tags,
 }: EnviarEmailTransacionalParams) {
   const resend = obterResend();
+  const from = obterRemetenteEmailTransacional();
 
   return resend.emails.send({
-    from: obterRemetenteEmailTransacional(),
+    from,
     to,
     subject: template.subject,
     html: template.html,
@@ -38,27 +45,44 @@ async function executarEnvioResiliente({
   contexto,
   envio,
 }: {
-  contexto: Record<string, unknown>;
+  contexto: {
+    tipo: string;
+    numeroPedido?: string;
+    destinatario: string;
+  };
   envio: () => Promise<unknown>;
 }) {
-  try {
-    const resultado = await envio();
+  const contextoLog = montarContextoLogEmailTransacional({
+    ...contexto,
+    remetente: obterRemetenteEmailTransacional(),
+  });
 
-    if (
-      resultado &&
-      typeof resultado === "object" &&
-      "error" in resultado &&
-      resultado.error
-    ) {
-      throw new Error(JSON.stringify(resultado.error));
+  try {
+    console.info("Tentando enviar email transacional.", contextoLog);
+
+    const resultado = await envio();
+    const erroResend = extrairErroResendEmail(resultado);
+
+    if (erroResend) {
+      console.error("Falha Resend ao enviar email transacional.", {
+        ...contextoLog,
+        statusCode: erroResend.statusCode,
+        name: erroResend.name,
+        message: erroResend.message,
+      });
+
+      return null;
     }
 
-    console.info("Email transacional enviado.", contexto);
+    console.info("Email transacional enviado.", {
+      ...contextoLog,
+      messageId: extrairMessageIdResendEmail(resultado),
+    });
 
     return resultado;
   } catch (error) {
     console.error("Falha ao enviar email transacional.", {
-      ...contexto,
+      ...contextoLog,
       message: error instanceof Error ? error.message : "Erro desconhecido",
     });
 
@@ -71,7 +95,7 @@ export function enviarEmailPedidoRecebido(pedido: EmailPedidoResumo) {
     contexto: {
       tipo: "pedido_recebido",
       numeroPedido: pedido.numeroPedido,
-      email: pedido.emailCliente,
+      destinatario: pedido.emailCliente,
     },
     envio: () =>
       enviarEmailTransacional({
@@ -79,7 +103,10 @@ export function enviarEmailPedidoRecebido(pedido: EmailPedidoResumo) {
         template: montarEmailPedidoRecebido(pedido),
         tags: [
           { name: "tipo", value: "pedido_recebido" },
-          { name: "pedido", value: pedido.numeroPedido },
+          {
+            name: "pedido",
+            value: normalizarValorTagEmailTransacional(pedido.numeroPedido),
+          },
         ],
       }),
   });
@@ -90,7 +117,7 @@ export function enviarEmailPagamentoStripeAprovado(pedido: EmailPedidoResumo) {
     contexto: {
       tipo: "pagamento_stripe_aprovado",
       numeroPedido: pedido.numeroPedido,
-      email: pedido.emailCliente,
+      destinatario: pedido.emailCliente,
     },
     envio: () =>
       enviarEmailTransacional({
@@ -98,7 +125,10 @@ export function enviarEmailPagamentoStripeAprovado(pedido: EmailPedidoResumo) {
         template: montarEmailPagamentoStripeAprovado(pedido),
         tags: [
           { name: "tipo", value: "pagamento_stripe_aprovado" },
-          { name: "pedido", value: pedido.numeroPedido },
+          {
+            name: "pedido",
+            value: normalizarValorTagEmailTransacional(pedido.numeroPedido),
+          },
         ],
       }),
   });
@@ -109,7 +139,7 @@ export function enviarEmailPixPendente(pedido: EmailPixPendente) {
     contexto: {
       tipo: "pix_pendente",
       numeroPedido: pedido.numeroPedido,
-      email: pedido.emailCliente,
+      destinatario: pedido.emailCliente,
     },
     envio: () =>
       enviarEmailTransacional({
@@ -117,7 +147,10 @@ export function enviarEmailPixPendente(pedido: EmailPixPendente) {
         template: montarEmailPixPendente(pedido),
         tags: [
           { name: "tipo", value: "pix_pendente" },
-          { name: "pedido", value: pedido.numeroPedido },
+          {
+            name: "pedido",
+            value: normalizarValorTagEmailTransacional(pedido.numeroPedido),
+          },
         ],
       }),
   });

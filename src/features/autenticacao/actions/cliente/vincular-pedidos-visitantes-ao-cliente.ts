@@ -8,13 +8,16 @@ import { dbTransacional } from "@/db/transaction";
 export async function vincularPedidosVisitantesAoCliente({
   usuarioId,
   email,
+  documento,
 }: {
   usuarioId: string;
   email: string;
+  documento?: string | null;
 }) {
   const emailNormalizado = email.trim().toLowerCase();
+  const documentoNormalizado = documento?.replace(/\D/g, "") ?? null;
 
-  if (!emailNormalizado) {
+  if (!emailNormalizado && !documentoNormalizado) {
     return;
   }
 
@@ -26,7 +29,12 @@ export async function vincularPedidosVisitantesAoCliente({
     })
     .where(
       and(
-        eq(checkoutClientesTable.email, emailNormalizado),
+        documentoNormalizado
+          ? or(
+              eq(checkoutClientesTable.email, emailNormalizado),
+              eq(checkoutClientesTable.documento, documentoNormalizado),
+            )
+          : eq(checkoutClientesTable.email, emailNormalizado),
         or(
           isNull(checkoutClientesTable.userId),
           eq(checkoutClientesTable.userId, usuarioId),

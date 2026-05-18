@@ -30,58 +30,69 @@ export const itemCheckoutSchema = z.object({
   quantidade: z.number().int().min(1).max(99),
 });
 
-export const checkoutVisitanteSchema = z.object({
-  nome: z
-    .string()
-    .min(3, "Informe seu nome completo")
-    .superRefine((nome, ctx) => {
-      if (!isValidNome(nome)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Informe nome e sobrenome usando apenas letras",
-        });
-      }
-    }),
-  email: z.email("Informe um e-mail válido"),
-  telefone: z
-    .string()
-    .min(11, "Informe um telefone válido")
-    .superRefine((telefone, ctx) => {
-      if (!isValidTelefone(telefone)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Informe um celular válido com DDD",
-        });
-      }
-    }),
-  documento: z
-    .string()
-    .min(11, "Informe CPF ou CNPJ")
-    .superRefine((documento, ctx) => {
-      if (!isValidCPFOrCNPJ(documento)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "CPF ou CNPJ inválido",
-        });
-      }
-    }),
-  cep: z.string().min(8, "Informe um CEP válido"),
-  rua: z.string().min(3, "Informe a rua"),
-  numero: z.string().min(1, "Informe o número"),
-  complemento: z.string().optional(),
-  bairro: z.string().min(2, "Informe o bairro"),
-  cidade: z.string().min(2, "Informe a cidade"),
-  estado: z.string().min(2, "Informe o estado").max(2, "Use a UF"),
-  observacao: z.string().optional(),
-  permitirEntregaVizinho: z.boolean().optional(),
-  nomeVizinho: z.string().optional(),
-  enderecoVizinho: z.string().optional(),
-  cupom: z.string().optional(),
-  freteId: z.enum(["retirada", "padrao", "expresso"]),
-  formaPagamento: z.enum(["pix", "cartao"]),
-  parcelasCartao: z.coerce.number().int().min(1).max(12).optional(),
-  itens: z.array(itemCheckoutSchema).min(1, "Seu carrinho está vazio"),
-});
+export const checkoutVisitanteSchema = z
+  .object({
+    nome: z
+      .string()
+      .min(3, "Informe seu nome completo")
+      .superRefine((nome, ctx) => {
+        if (!isValidNome(nome)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Informe nome e sobrenome usando apenas letras",
+          });
+        }
+      }),
+    email: z.email("Informe um e-mail válido"),
+    telefone: z
+      .string()
+      .min(11, "Informe um telefone válido")
+      .superRefine((telefone, ctx) => {
+        if (!isValidTelefone(telefone)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Informe um celular válido com DDD",
+          });
+        }
+      }),
+    documento: z
+      .string()
+      .min(11, "Informe CPF ou CNPJ")
+      .superRefine((documento, ctx) => {
+        if (!isValidCPFOrCNPJ(documento)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "CPF ou CNPJ inválido",
+          });
+        }
+      }),
+    cep: z.string().min(8, "Informe um CEP válido"),
+    rua: z.string().min(3, "Informe a rua"),
+    numero: z.string().min(1, "Informe o número"),
+    complemento: z.string().optional(),
+    bairro: z.string().min(2, "Informe o bairro"),
+    cidade: z.string().min(2, "Informe a cidade"),
+    estado: z.string().min(2, "Informe o estado").max(2, "Use a UF"),
+    observacao: z.string().optional(),
+    observacaoCliente: z.string().max(500, "Use até 500 caracteres").optional(),
+    permitirEntregaVizinho: z.boolean().optional(),
+    nomeVizinho: z.string().optional(),
+    observacaoVizinho: z.string().max(300, "Use até 300 caracteres").optional(),
+    cupom: z.string().optional(),
+    freteId: z.enum(["retirada", "padrao", "expresso"]),
+    formaPagamento: z.enum(["pix", "cartao"]),
+    parcelasCartao: z.coerce.number().int().min(1).max(12).optional(),
+    itens: z.array(itemCheckoutSchema).min(1, "Seu carrinho está vazio"),
+  })
+  .superRefine((dados, ctx) => {
+    if (dados.permitirEntregaVizinho && !dados.nomeVizinho?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nomeVizinho"],
+        message: "Informe o nome do vizinho autorizado.",
+      });
+    }
+  });
 
 export const validarCupomCheckoutSchema = z.object({
   cupom: z.string().min(1),

@@ -2,7 +2,6 @@
 
 import { relations } from "drizzle-orm";
 import {
-  boolean,
   integer,
   pgEnum,
   pgTable,
@@ -23,6 +22,14 @@ import { productPricingTable } from "./table/products/product-pricing";
 import { productAttributeTable } from "./table/products/product-attributes";
 import { productVariantImageTable } from "./table/products/variant-images";
 import { productGalleryImagesTable } from "./table/products/product-gallery-images";
+import {
+  clienteTipoPessoaEnum,
+  enderecosClientesRelations,
+  enderecosClientesTable,
+  perfisClientesRelations,
+  perfisClientesTable,
+  userTable,
+} from "./tables/autenticacao";
 
 // ============================================
 // IMPORTS DAS TABELAS DE LOGÍSTICA (NOVOS)
@@ -69,22 +76,6 @@ import {
 // ============================================
 // TABELAS EXISTENTES (mantidas como estavam)
 // ============================================
-
-export const userTable = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified")
-    .$defaultFn(() => false)
-    .notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-  updatedAt: timestamp("updated_at")
-    .$defaultFn(() => new Date())
-    .notNull(),
-});
 
 export const sessionTable = pgTable("session", {
   id: text("id").primaryKey(),
@@ -220,6 +211,11 @@ export const orderItemTable = pgTable("order_item", {
 
 export const userRelations = relations(userTable, ({ many, one }) => ({
   shippingAddresses: many(shippingAddressTable),
+  perfilCliente: one(perfisClientesTable, {
+    fields: [userTable.id],
+    references: [perfisClientesTable.userId],
+  }),
+  enderecosCliente: many(enderecosClientesTable),
   cart: one(cartTable, {
     fields: [userTable.id],
     references: [cartTable.userId],
@@ -482,6 +478,14 @@ export const productSuppliersRelations = relations(
 // ============================================
 
 // Tabelas existentes
+export {
+  clienteTipoPessoaEnum,
+  enderecosClientesRelations,
+  enderecosClientesTable,
+  perfisClientesRelations,
+  perfisClientesTable,
+  userTable,
+} from "./tables/autenticacao";
 export { categoryTable } from "./table/categories/categories";
 export { productTable } from "./table/products/products";
 export { productVariantTable } from "./table/products/product-variants";
@@ -548,6 +552,8 @@ export {
   checkoutPedidoItensTable,
   checkoutPedidoLogisticasRelations,
   checkoutPedidoLogisticasTable,
+  checkoutStripeWebhookEventosRelations,
+  checkoutStripeWebhookEventosTable,
   checkoutPedidosRelations,
   checkoutPedidosTable,
   checkoutPedidoStatusEnum,

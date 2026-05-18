@@ -99,6 +99,34 @@
       "when": 1779148800000,
       "tag": "0013_create_checkout_pedido_logisticas",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779235200000,
+      "tag": "0014_create_perfis_clientes",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1779321600000,
+      "tag": "0015_add_preferencias_entrega_cliente",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1779408000000,
+      "tag": "0016_create_checkout_stripe_webhook_eventos",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779494400000,
+      "tag": "0017_normalize_paid_order_status",
+      "breakpoints": true
     }
   ]
 }

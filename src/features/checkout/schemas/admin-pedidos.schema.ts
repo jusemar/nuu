@@ -44,16 +44,7 @@ export const filtrosPedidosAdminSchema = z.object({
 export const alterarStatusPedidoAdminSchema = z.object({
   pedidoId: z.uuid("Pedido inválido."),
   status: z.enum(
-    [
-      "pending",
-      "paid",
-      "processing",
-      "shipped",
-      "delivered",
-      "canceled",
-      "refunded",
-      "expired",
-    ],
+    ["pending", "processing", "shipped", "delivered", "canceled", "expired"],
     "Status inválido para alteração manual.",
   ),
 });

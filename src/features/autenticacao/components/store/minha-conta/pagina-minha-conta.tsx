@@ -4,7 +4,9 @@ import { PackageSearch, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/features/header";
 
+import type { CadastroClienteCompleto } from "../../../types/cadastro-cliente.types";
 import type { SessaoClienteAutenticado } from "../../../types/sessao-cliente.types";
+import { FormularioCompletarCadastro } from "../completar-cadastro/formulario-completar-cadastro";
 
 function formatarDataConta(data: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -15,8 +17,10 @@ function formatarDataConta(data: Date) {
 
 export function PaginaMinhaConta({
   sessao,
+  cadastro,
 }: {
   sessao: SessaoClienteAutenticado;
+  cadastro: CadastroClienteCompleto;
 }) {
   return (
     <>
@@ -102,6 +106,23 @@ export function PaginaMinhaConta({
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="mt-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-950">
+                Cadastro e endereço
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Atualize seus dados, endereço principal e preferências de
+                entrega.
+              </p>
+            </div>
+            <FormularioCompletarCadastro
+              cadastro={cadastro}
+              modo="editar"
+              sessao={sessao}
+            />
           </section>
         </div>
       </main>

@@ -5,19 +5,35 @@ import {
   checkoutPagamentosTable,
   checkoutPedidoHistoricosTable,
   checkoutPedidosTable,
+  checkoutStripeWebhookEventosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoStripeAprovado } from "../../emails/email-service";
+import { resolverStatusOperacionalPedidoAposPagamento } from "../../pedidos/resolver-status-operacional-pedido";
 import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { obterStripe, obterWebhookSecretStripe } from "./cliente-stripe";
 
 type ConfirmarPagamentoStripeParams = {
+  eventId: string;
+  eventType: string;
   pedidoId: string;
   pagamentoId: string;
   transactionId: string;
   providerResponse: unknown;
+};
+
+type ResultadoProcessamentoWebhookStripe = {
+  status:
+    | "ignorado"
+    | "duplicado"
+    | "pagamento_confirmado"
+    | "pagamento_ja_confirmado";
+  eventId: string;
+  eventType: string;
+  pedidoId?: string;
+  pagamentoId?: string;
 };
 
 function obterMetadataPagamentoStripe(event: Stripe.Event) {
@@ -52,12 +68,79 @@ function obterMetadataPagamentoStripe(event: Stripe.Event) {
 }
 
 async function confirmarPagamentoStripe({
+  eventId,
+  eventType,
   pedidoId,
   pagamentoId,
   transactionId,
   providerResponse,
 }: ConfirmarPagamentoStripeParams) {
   return dbTransacional.transaction(async (tx) => {
+    const eventoInserido = await tx
+      .insert(checkoutStripeWebhookEventosTable)
+      .values({
+        stripeEventId: eventId,
+        tipoEvento: eventType,
+        pedidoId,
+        pagamentoId,
+        statusProcessamento: "recebido",
+        payload: providerResponse,
+      })
+      .onConflictDoNothing({
+        target: checkoutStripeWebhookEventosTable.stripeEventId,
+      })
+      .returning({ id: checkoutStripeWebhookEventosTable.id });
+
+    if (eventoInserido.length === 0) {
+      return {
+        confirmadoAgora: false,
+        duplicado: true,
+      };
+    }
+
+    const pagamentoAtual = await tx.query.checkoutPagamentosTable.findFirst({
+      where: and(
+        eq(checkoutPagamentosTable.id, pagamentoId),
+        eq(checkoutPagamentosTable.pedidoId, pedidoId),
+      ),
+    });
+    const pedidoAtual = await tx.query.checkoutPedidosTable.findFirst({
+      where: eq(checkoutPedidosTable.id, pedidoId),
+    });
+
+    if (!pagamentoAtual || !pedidoAtual) {
+      await tx
+        .update(checkoutStripeWebhookEventosTable)
+        .set({
+          statusProcessamento: "erro",
+          erro: "Pagamento ou pedido nao encontrado para webhook Stripe.",
+          updatedAt: new Date(),
+        })
+        .where(eq(checkoutStripeWebhookEventosTable.stripeEventId, eventId));
+
+      throw new Error(
+        "Pagamento ou pedido não encontrado para webhook Stripe.",
+      );
+    }
+
+    if (
+      pagamentoAtual.status === "paid" &&
+      pedidoAtual.pagamentoStatus === "paid"
+    ) {
+      await tx
+        .update(checkoutStripeWebhookEventosTable)
+        .set({
+          statusProcessamento: "ignorado_pagamento_ja_confirmado",
+          updatedAt: new Date(),
+        })
+        .where(eq(checkoutStripeWebhookEventosTable.stripeEventId, eventId));
+
+      return {
+        confirmadoAgora: false,
+        duplicado: false,
+      };
+    }
+
     const pagamentosAtualizados = await tx
       .update(checkoutPagamentosTable)
       .set({
@@ -78,14 +161,16 @@ async function confirmarPagamentoStripe({
     const pedidosAtualizados = await tx
       .update(checkoutPedidosTable)
       .set({
-        status: "paid",
+        status: resolverStatusOperacionalPedidoAposPagamento(
+          pedidoAtual.status,
+        ),
         pagamentoStatus: "paid",
         updatedAt: new Date(),
       })
       .where(
         and(
           eq(checkoutPedidosTable.id, pedidoId),
-          ne(checkoutPedidosTable.status, "paid"),
+          ne(checkoutPedidosTable.pagamentoStatus, "paid"),
         ),
       )
       .returning({
@@ -96,7 +181,10 @@ async function confirmarPagamentoStripe({
 
     const pedidoAtualizado = pedidosAtualizados[0];
 
-    if (pagamentosAtualizados.length > 0 && pedidoAtualizado) {
+    const houveConfirmacao =
+      pagamentosAtualizados.length > 0 || pedidosAtualizados.length > 0;
+
+    if (houveConfirmacao && pedidoAtualizado) {
       await tx.insert(checkoutPedidoHistoricosTable).values({
         pedidoId,
         tipo: "pagamento_aprovado",
@@ -108,11 +196,26 @@ async function confirmarPagamentoStripe({
         metadata: {
           gateway: "stripe",
           transactionId,
+          stripeEventId: eventId,
+          stripeEventType: eventType,
         },
       });
     }
 
-    return pagamentosAtualizados.length > 0;
+    await tx
+      .update(checkoutStripeWebhookEventosTable)
+      .set({
+        statusProcessamento: houveConfirmacao
+          ? "processado"
+          : "ignorado_sem_alteracao",
+        updatedAt: new Date(),
+      })
+      .where(eq(checkoutStripeWebhookEventosTable.stripeEventId, eventId));
+
+    return {
+      confirmadoAgora: houveConfirmacao,
+      duplicado: false,
+    };
   });
 }
 
@@ -132,12 +235,28 @@ export function construirEventoWebhookStripe({
   );
 }
 
-export async function processarWebhookStripe(event: Stripe.Event) {
+export async function processarWebhookStripe(
+  event: Stripe.Event,
+): Promise<ResultadoProcessamentoWebhookStripe> {
+  console.info("Webhook Stripe recebido.", {
+    eventId: event.id,
+    eventType: event.type,
+  });
+
   if (
     event.type !== "checkout.session.completed" &&
     event.type !== "payment_intent.succeeded"
   ) {
-    return;
+    console.info("Webhook Stripe ignorado por tipo nao acompanhado.", {
+      eventId: event.id,
+      eventType: event.type,
+    });
+
+    return {
+      status: "ignorado",
+      eventId: event.id,
+      eventType: event.type,
+    };
   }
 
   const metadata = obterMetadataPagamentoStripe(event);
@@ -147,14 +266,36 @@ export async function processarWebhookStripe(event: Stripe.Event) {
       eventId: event.id,
       eventType: event.type,
     });
-    return;
+    return {
+      status: "ignorado",
+      eventId: event.id,
+      eventType: event.type,
+    };
   }
 
   if (!metadata.pago) {
-    return;
+    console.info(
+      "Webhook Stripe ignorado porque pagamento ainda nao esta pago.",
+      {
+        eventId: event.id,
+        eventType: event.type,
+        pedidoId: metadata.pedidoId,
+        pagamentoId: metadata.pagamentoId,
+      },
+    );
+
+    return {
+      status: "ignorado",
+      eventId: event.id,
+      eventType: event.type,
+      pedidoId: metadata.pedidoId,
+      pagamentoId: metadata.pagamentoId,
+    };
   }
 
-  const pagamentoFoiConfirmado = await confirmarPagamentoStripe({
+  const resultadoConfirmacao = await confirmarPagamentoStripe({
+    eventId: event.id,
+    eventType: event.type,
     pedidoId: metadata.pedidoId,
     pagamentoId: metadata.pagamentoId,
     transactionId: metadata.transactionId,
@@ -167,9 +308,47 @@ export async function processarWebhookStripe(event: Stripe.Event) {
     },
   });
 
-  if (!pagamentoFoiConfirmado) {
-    return;
+  if (resultadoConfirmacao.duplicado) {
+    console.info("Webhook Stripe duplicado ignorado.", {
+      eventId: event.id,
+      eventType: event.type,
+      pedidoId: metadata.pedidoId,
+      pagamentoId: metadata.pagamentoId,
+    });
+
+    return {
+      status: "duplicado",
+      eventId: event.id,
+      eventType: event.type,
+      pedidoId: metadata.pedidoId,
+      pagamentoId: metadata.pagamentoId,
+    };
   }
+
+  if (!resultadoConfirmacao.confirmadoAgora) {
+    console.info("Webhook Stripe sem nova alteracao de pagamento.", {
+      eventId: event.id,
+      eventType: event.type,
+      pedidoId: metadata.pedidoId,
+      pagamentoId: metadata.pagamentoId,
+    });
+
+    return {
+      status: "pagamento_ja_confirmado",
+      eventId: event.id,
+      eventType: event.type,
+      pedidoId: metadata.pedidoId,
+      pagamentoId: metadata.pagamentoId,
+    };
+  }
+
+  console.info("Pagamento Stripe confirmado pelo webhook.", {
+    eventId: event.id,
+    eventType: event.type,
+    pedidoId: metadata.pedidoId,
+    pagamentoId: metadata.pagamentoId,
+    transactionId: metadata.transactionId,
+  });
 
   const pedidoEmail = await buscarPedidoEmailPorId(metadata.pedidoId);
 
@@ -182,4 +361,12 @@ export async function processarWebhookStripe(event: Stripe.Event) {
   }
 
   await enviarEmailPagamentoStripeAprovado(pedidoEmail);
+
+  return {
+    status: "pagamento_confirmado",
+    eventId: event.id,
+    eventType: event.type,
+    pedidoId: metadata.pedidoId,
+    pagamentoId: metadata.pagamentoId,
+  };
 }

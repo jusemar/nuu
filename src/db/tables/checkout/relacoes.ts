@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 
+import { userTable } from "../autenticacao";
 import { checkoutClientesTable } from "./tabelas/clientes";
 import { checkoutEnderecosTable } from "./tabelas/enderecos";
 import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
@@ -7,10 +8,15 @@ import { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 import { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
 import { checkoutPagamentosTable } from "./tabelas/pagamentos";
 import { checkoutPedidosTable } from "./tabelas/pedidos";
+import { checkoutStripeWebhookEventosTable } from "./tabelas/stripe-webhook-eventos";
 
 export const checkoutClientesRelations = relations(
   checkoutClientesTable,
-  ({ many }) => ({
+  ({ many, one }) => ({
+    usuario: one(userTable, {
+      fields: [checkoutClientesTable.userId],
+      references: [userTable.id],
+    }),
     enderecos: many(checkoutEnderecosTable),
     pedidos: many(checkoutPedidosTable),
   }),
@@ -41,6 +47,7 @@ export const checkoutPedidosRelations = relations(
     itens: many(checkoutPedidoItensTable),
     pagamentos: many(checkoutPagamentosTable),
     historicos: many(checkoutPedidoHistoricosTable),
+    stripeWebhookEventos: many(checkoutStripeWebhookEventosTable),
     logistica: one(checkoutPedidoLogisticasTable, {
       fields: [checkoutPedidosTable.id],
       references: [checkoutPedidoLogisticasTable.pedidoId],
@@ -60,11 +67,12 @@ export const checkoutPedidoItensRelations = relations(
 
 export const checkoutPagamentosRelations = relations(
   checkoutPagamentosTable,
-  ({ one }) => ({
+  ({ one, many }) => ({
     pedido: one(checkoutPedidosTable, {
       fields: [checkoutPagamentosTable.pedidoId],
       references: [checkoutPedidosTable.id],
     }),
+    stripeWebhookEventos: many(checkoutStripeWebhookEventosTable),
   }),
 );
 
@@ -84,6 +92,20 @@ export const checkoutPedidoLogisticasRelations = relations(
     pedido: one(checkoutPedidosTable, {
       fields: [checkoutPedidoLogisticasTable.pedidoId],
       references: [checkoutPedidosTable.id],
+    }),
+  }),
+);
+
+export const checkoutStripeWebhookEventosRelations = relations(
+  checkoutStripeWebhookEventosTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutStripeWebhookEventosTable.pedidoId],
+      references: [checkoutPedidosTable.id],
+    }),
+    pagamento: one(checkoutPagamentosTable, {
+      fields: [checkoutStripeWebhookEventosTable.pagamentoId],
+      references: [checkoutPagamentosTable.id],
     }),
   }),
 );

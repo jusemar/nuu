@@ -9,7 +9,7 @@ import type {
 
 export const PEDIDO_STATUS_LABEL: Record<PedidoStatusCheckout, string> = {
   pending: "Pendente",
-  paid: "Pago",
+  paid: "Processando",
   processing: "Em processamento",
   shipped: "Enviado",
   delivered: "Entregue",

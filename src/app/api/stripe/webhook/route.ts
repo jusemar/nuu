@@ -25,7 +25,9 @@ export async function POST(request: Request) {
       signature,
     });
 
-    await processarWebhookStripe(event);
+    const resultado = await processarWebhookStripe(event);
+
+    console.info("Webhook Stripe processado.", resultado);
 
     return NextResponse.json({ received: true });
   } catch (error) {

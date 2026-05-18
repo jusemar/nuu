@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  boolean,
   pgTable,
   text,
   timestamp,
@@ -37,6 +38,12 @@ export const checkoutPedidosTable = pgTable(
       .notNull()
       .default("pending"),
     observacao: text("observacao"),
+    observacaoCliente: text("observacao_cliente"),
+    autorizarEntregaVizinho: boolean("autorizar_entrega_vizinho")
+      .notNull()
+      .default(false),
+    nomeVizinho: text("nome_vizinho"),
+    observacaoVizinho: text("observacao_vizinho"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

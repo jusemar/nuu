@@ -42,7 +42,29 @@ type PixCriado = {
   };
 };
 
-export function CheckoutVisitante() {
+export type DadosCheckoutClienteInicial = {
+  nome: string;
+  email: string;
+  telefone: string;
+  documento: string;
+  cep: string;
+  rua: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  observacaoCliente: string;
+  permitirEntregaVizinho: boolean;
+  nomeVizinho: string;
+  observacaoVizinho: string;
+};
+
+export function CheckoutVisitante({
+  dadosClienteInicial,
+}: {
+  dadosClienteInicial?: DadosCheckoutClienteInicial;
+}) {
   const router = useRouter();
   const carrinho = useCarrinho();
   const [erroPagamento, setErroPagamento] = useState<string | null>(null);
@@ -63,22 +85,27 @@ export function CheckoutVisitante() {
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: {
-      nome: "",
-      email: "",
-      telefone: "",
-      documento: "",
-      cep: "",
-      rua: "",
-      numero: "",
-      complemento: "",
-      bairro: "",
-      cidade: "",
-      estado: "",
+      nome: dadosClienteInicial?.nome ?? "",
+      email: dadosClienteInicial?.email ?? "",
+      telefone: dadosClienteInicial?.telefone ?? "",
+      documento: dadosClienteInicial?.documento ?? "",
+      cep: dadosClienteInicial?.cep ?? "",
+      rua: dadosClienteInicial?.rua ?? "",
+      numero: dadosClienteInicial?.numero ?? "",
+      complemento: dadosClienteInicial?.complemento ?? "",
+      bairro: dadosClienteInicial?.bairro ?? "",
+      cidade: dadosClienteInicial?.cidade ?? "",
+      estado: dadosClienteInicial?.estado ?? "",
       observacao: "",
+      observacaoCliente: dadosClienteInicial?.observacaoCliente ?? "",
       cupom: "",
       freteId: "padrao",
       formaPagamento: "pix",
       parcelasCartao: 1,
+      permitirEntregaVizinho:
+        dadosClienteInicial?.permitirEntregaVizinho ?? false,
+      nomeVizinho: dadosClienteInicial?.nomeVizinho ?? "",
+      observacaoVizinho: dadosClienteInicial?.observacaoVizinho ?? "",
       itens: [],
     },
   });

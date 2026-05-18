@@ -216,6 +216,24 @@ export function FormularioEndereco({
         </div>
 
         <div className="md:col-span-6">
+          <label className="text-muted-foreground mb-1.5 block text-[11px] font-bold tracking-wider uppercase">
+            Observação geral do cliente
+          </label>
+          <Input
+            id="observacaoCliente"
+            placeholder="Portão azul, interfone quebrado, casa fundos"
+            className={inputClass}
+            {...register("observacaoCliente")}
+          />
+          {errors.observacaoCliente ? (
+            <p className="text-destructive mt-1.5 flex items-center gap-1 text-xs">
+              <Info className="size-3" />
+              {errors.observacaoCliente.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="md:col-span-6">
           <div className="border-border bg-background/60 mt-5 rounded-xl border border-dashed p-4">
             <label className="flex cursor-pointer items-start gap-3">
               <input
@@ -244,10 +262,10 @@ export function FormularioEndereco({
             <div>
               <Input
                 id="enderecoVizinho"
-                aria-label="Apto / Casa do vizinho"
-                placeholder="Apto / Casa do vizinho"
+                aria-label="Observação sobre o vizinho"
+                placeholder="Casa, apartamento ou instrução"
                 className={inputClass}
-                {...register("enderecoVizinho")}
+                {...register("observacaoVizinho")}
               />
             </div>
           </div>

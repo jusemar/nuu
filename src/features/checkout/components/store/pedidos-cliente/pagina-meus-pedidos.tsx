@@ -55,15 +55,24 @@ export function PaginaMeusPedidos({
               </Button>
             </section>
           ) : (
-            <section className="grid gap-3">
+            <section className="space-y-3">
+              <div className="hidden grid-cols-[1.2fr_0.65fr_0.65fr_0.8fr] px-4 text-[11px] font-medium tracking-wide text-slate-500 uppercase md:grid">
+                <span>Pedido</span>
+                <span>Status</span>
+                <span>Pagamento</span>
+                <span className="text-right">Total</span>
+              </div>
               {pedidos.map((pedido) => (
                 <Link
                   key={pedido.id}
                   href={`/minha-conta/pedidos/${pedido.id}`}
-                  className="rounded-lg border bg-white p-4 shadow-sm transition hover:border-[#0C447C]/30 hover:shadow-md"
+                  className="block rounded-lg border bg-white p-4 shadow-sm transition hover:border-[#0C447C]/30 hover:shadow-md"
                 >
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="grid gap-4 md:grid-cols-[1.2fr_0.65fr_0.65fr_0.8fr] md:items-center">
                     <div>
+                      <span className="mb-1 block text-[11px] font-medium tracking-wide text-slate-500 uppercase md:hidden">
+                        Pedido
+                      </span>
                       <p className="text-sm font-semibold text-slate-950">
                         {pedido.numeroPedido}
                       </p>
@@ -71,13 +80,24 @@ export function PaginaMeusPedidos({
                         {formatarDataPedidoCliente(pedido.createdAt)}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div>
+                      <span className="mb-1 block text-[11px] font-medium tracking-wide text-slate-500 uppercase md:hidden">
+                        Status
+                      </span>
                       <StatusPedidoClienteBadge status={pedido.status} />
+                    </div>
+                    <div>
+                      <span className="mb-1 block text-[11px] font-medium tracking-wide text-slate-500 uppercase md:hidden">
+                        Pagamento
+                      </span>
                       <StatusPagamentoClienteBadge
                         status={pedido.pagamentoStatus}
                       />
                     </div>
                     <div className="md:text-right">
+                      <span className="mb-1 block text-[11px] font-medium tracking-wide text-slate-500 uppercase md:hidden">
+                        Total
+                      </span>
                       <p className="text-sm font-semibold text-slate-950">
                         {formatarMoedaPedidoCliente(pedido.totalEmCentavos)}
                       </p>

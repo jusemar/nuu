@@ -1,9 +1,16 @@
 import { and, eq, ne } from "drizzle-orm";
 import type Stripe from "stripe";
 
-import { checkoutPagamentosTable, checkoutPedidosTable } from "@/db/schema";
+import {
+  checkoutPagamentosTable,
+  checkoutPedidoHistoricosTable,
+  checkoutPedidosTable,
+} from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
+import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
+import { enviarEmailPagamentoStripeAprovado } from "../../emails/email-service";
+import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { obterStripe, obterWebhookSecretStripe } from "./cliente-stripe";
 
 type ConfirmarPagamentoStripeParams = {
@@ -50,8 +57,8 @@ async function confirmarPagamentoStripe({
   transactionId,
   providerResponse,
 }: ConfirmarPagamentoStripeParams) {
-  await dbTransacional.transaction(async (tx) => {
-    await tx
+  return dbTransacional.transaction(async (tx) => {
+    const pagamentosAtualizados = await tx
       .update(checkoutPagamentosTable)
       .set({
         status: "paid",
@@ -65,9 +72,10 @@ async function confirmarPagamentoStripe({
           eq(checkoutPagamentosTable.id, pagamentoId),
           ne(checkoutPagamentosTable.status, "paid"),
         ),
-      );
+      )
+      .returning({ id: checkoutPagamentosTable.id });
 
-    await tx
+    const pedidosAtualizados = await tx
       .update(checkoutPedidosTable)
       .set({
         status: "paid",
@@ -79,7 +87,32 @@ async function confirmarPagamentoStripe({
           eq(checkoutPedidosTable.id, pedidoId),
           ne(checkoutPedidosTable.status, "paid"),
         ),
-      );
+      )
+      .returning({
+        id: checkoutPedidosTable.id,
+        numeroPedido: checkoutPedidosTable.numeroPedido,
+        status: checkoutPedidosTable.status,
+      });
+
+    const pedidoAtualizado = pedidosAtualizados[0];
+
+    if (pagamentosAtualizados.length > 0 && pedidoAtualizado) {
+      await tx.insert(checkoutPedidoHistoricosTable).values({
+        pedidoId,
+        tipo: "pagamento_aprovado",
+        descricao: montarDescricaoPagamentoAprovado(
+          pedidoAtualizado.numeroPedido,
+        ),
+        origem: "system",
+        statusNovo: pedidoAtualizado.status,
+        metadata: {
+          gateway: "stripe",
+          transactionId,
+        },
+      });
+    }
+
+    return pagamentosAtualizados.length > 0;
   });
 }
 
@@ -121,7 +154,7 @@ export async function processarWebhookStripe(event: Stripe.Event) {
     return;
   }
 
-  await confirmarPagamentoStripe({
+  const pagamentoFoiConfirmado = await confirmarPagamentoStripe({
     pedidoId: metadata.pedidoId,
     pagamentoId: metadata.pagamentoId,
     transactionId: metadata.transactionId,
@@ -133,4 +166,20 @@ export async function processarWebhookStripe(event: Stripe.Event) {
       },
     },
   });
+
+  if (!pagamentoFoiConfirmado) {
+    return;
+  }
+
+  const pedidoEmail = await buscarPedidoEmailPorId(metadata.pedidoId);
+
+  if (!pedidoEmail) {
+    console.error("Pedido nao encontrado para email Stripe aprovado.", {
+      eventId: event.id,
+      pedidoId: metadata.pedidoId,
+    });
+    return;
+  }
+
+  await enviarEmailPagamentoStripeAprovado(pedidoEmail);
 }

@@ -7,7 +7,6 @@ import {
   Menu,
   Search,
   TrendingUp,
-  User,
   Zap,
   Tag,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { useHeader } from "../hooks/useHeader";
 import { useState } from "react";
 import { NavigationDrawer } from "../../store/menu/components/NavigationDrawer";
 import { GavetaCarrinho } from "@/features/carrinho";
+import { BotaoContaCliente } from "@/features/autenticacao";
 
 // ─── Design system tokens (espelham o globals.css) ───────────────────────────
 const DS = {
@@ -154,29 +154,7 @@ export const Header = ({}: HeaderProps) => {
               {/* Carrinho */}
               <GavetaCarrinho />
 
-              {/* Conta — desktop */}
-              <button
-                className="hidden items-center justify-center rounded-lg p-2 transition md:flex"
-                style={{ color: DS.muted }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = DS.primaryLight)
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
-                aria-label="Minha conta"
-              >
-                <User size={19} />
-              </button>
-
-              {/* Conta — mobile */}
-              <Link
-                href="/login"
-                className="flex items-center justify-center rounded-lg p-2 transition md:hidden"
-                style={{ color: DS.muted }}
-              >
-                <User size={19} />
-              </Link>
+              <BotaoContaCliente />
             </div>
           </div>
         </div>

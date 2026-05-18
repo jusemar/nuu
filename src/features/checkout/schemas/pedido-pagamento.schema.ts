@@ -3,7 +3,11 @@ import { z } from "zod";
 export const pedidoStatusCheckoutSchema = z.enum([
   "pending",
   "paid",
+  "processing",
+  "shipped",
+  "delivered",
   "canceled",
+  "refunded",
   "expired",
 ]);
 

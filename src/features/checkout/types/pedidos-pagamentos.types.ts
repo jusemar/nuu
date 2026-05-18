@@ -1,4 +1,12 @@
-export type PedidoStatusCheckout = "pending" | "paid" | "canceled" | "expired";
+export type PedidoStatusCheckout =
+  | "pending"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "canceled"
+  | "refunded"
+  | "expired";
 
 export type PagamentoStatusCheckout = "pending" | "paid" | "failed" | "expired";
 
@@ -61,6 +69,41 @@ export type PedidoItemCheckout = {
   quantidade: number;
   precoUnitarioEmCentavos: number;
   totalEmCentavos: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type PedidoHistoricoTipoCheckout =
+  | "pedido_criado"
+  | "pagamento_aprovado"
+  | "status_alterado_manual"
+  | "pedido_enviado"
+  | "rastreio_atualizado"
+  | "pedido_entregue";
+
+export type PedidoHistoricoOrigemCheckout = "system" | "admin";
+
+export type PedidoHistoricoCheckout = {
+  id: string;
+  pedidoId: string;
+  tipo: PedidoHistoricoTipoCheckout;
+  descricao: string;
+  origem: PedidoHistoricoOrigemCheckout;
+  statusAnterior: PedidoStatusCheckout | null;
+  statusNovo: PedidoStatusCheckout | null;
+  metadata: unknown | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type PedidoLogisticaCheckout = {
+  id: string;
+  pedidoId: string;
+  transportadora: string | null;
+  codigoRastreio: string | null;
+  dataEnvio: Date | null;
+  dataEntrega: Date | null;
+  metadata: unknown | null;
   createdAt: Date;
   updatedAt: Date;
 };

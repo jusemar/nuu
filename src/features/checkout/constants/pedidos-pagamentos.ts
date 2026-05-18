@@ -8,7 +8,11 @@ import type {
 export const PEDIDO_STATUS_CHECKOUT: PedidoStatusCheckout[] = [
   "pending",
   "paid",
+  "processing",
+  "shipped",
+  "delivered",
   "canceled",
+  "refunded",
   "expired",
 ];
 

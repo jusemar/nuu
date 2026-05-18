@@ -7,6 +7,7 @@ import {
   checkoutClientesTable,
   checkoutEnderecosTable,
   checkoutPagamentosTable,
+  checkoutPedidoHistoricosTable,
   checkoutPedidoItensTable,
   checkoutPedidosTable,
   productTable,
@@ -17,6 +18,11 @@ import {
 } from "@/features/precificacao";
 
 import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
+import {
+  enviarEmailPedidoRecebido,
+  enviarEmailPixPendente,
+} from "../../lib/emails/email-service";
+import { montarDescricaoPedidoCriado } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { criarCobrancaPixEfi } from "../../lib/gateways/efi/pix-efi";
 import { criarCheckoutCartaoStripe } from "../../lib/gateways/stripe/checkout-stripe";
 import {
@@ -88,6 +94,17 @@ export async function criarPedidoCheckoutVisitante(data: unknown) {
     produtosIds,
   });
 
+  await enviarEmailPedidoRecebido({
+    numeroPedido: pedidoCriado.numeroPedido,
+    nomeCliente: pedidoCriado.nomeCliente,
+    emailCliente: pedidoCriado.emailCliente,
+    subtotalEmCentavos: pedidoCriado.subtotalEmCentavos,
+    freteEmCentavos: pedidoCriado.freteEmCentavos,
+    descontoEmCentavos: pedidoCriado.descontoEmCentavos,
+    totalEmCentavos: pedidoCriado.totalEmCentavos,
+    itens: pedidoCriado.itens,
+  });
+
   if (dados.formaPagamento === "cartao") {
     try {
       const checkoutStripe = await criarCheckoutCartaoStripe({
@@ -154,6 +171,22 @@ export async function criarPedidoCheckoutVisitante(data: unknown) {
         updatedAt: new Date(),
       })
       .where(eq(checkoutPagamentosTable.id, pedidoCriado.pagamentoId));
+
+    await enviarEmailPixPendente({
+      numeroPedido: pedidoCriado.numeroPedido,
+      nomeCliente: pedidoCriado.nomeCliente,
+      emailCliente: pedidoCriado.emailCliente,
+      subtotalEmCentavos: pedidoCriado.subtotalEmCentavos,
+      freteEmCentavos: pedidoCriado.freteEmCentavos,
+      descontoEmCentavos: pedidoCriado.descontoEmCentavos,
+      totalEmCentavos: pedidoCriado.totalEmCentavos,
+      itens: pedidoCriado.itens,
+      pix: {
+        qrCode: pix.qrCode,
+        copiaECola: pix.copiaECola,
+        expiresAt: pix.expiresAt,
+      },
+    });
 
     return {
       ...montarRetornoPedidoCheckout(pedidoCriado),
@@ -387,6 +420,17 @@ async function criarPedidoCheckoutVisitanteInterno({
       throw new Error("Não foi possível criar o pagamento do pedido.");
     }
 
+    await tx.insert(checkoutPedidoHistoricosTable).values({
+      pedidoId: pedido.id,
+      tipo: "pedido_criado",
+      descricao: montarDescricaoPedidoCriado(pedido.numeroPedido),
+      origem: "system",
+      statusNovo: pedido.status,
+      metadata: {
+        formaPagamento: dados.formaPagamento,
+      },
+    });
+
     return {
       clienteId: cliente.id,
       enderecoId: endereco.id,
@@ -396,8 +440,18 @@ async function criarPedidoCheckoutVisitanteInterno({
       status: pedido.status,
       pagamentoStatus: pagamento.status,
       totalEmCentavos: totais.totalEmCentavos,
+      subtotalEmCentavos: totais.subtotalEmCentavos,
+      freteEmCentavos: totais.freteEmCentavos,
+      descontoEmCentavos: totais.descontoEmCentavos,
       nomeCliente: cliente.nome,
+      emailCliente: cliente.email,
       documentoCliente: cliente.documento,
+      itens: itensPedido.map((item) => ({
+        nome: item.nomeProduto,
+        quantidade: item.quantidade,
+        precoUnitarioEmCentavos: item.precoUnitarioEmCentavos,
+        totalEmCentavos: item.totalEmCentavos,
+      })),
     };
   });
 }

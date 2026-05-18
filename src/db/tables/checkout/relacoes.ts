@@ -2,7 +2,9 @@ import { relations } from "drizzle-orm";
 
 import { checkoutClientesTable } from "./tabelas/clientes";
 import { checkoutEnderecosTable } from "./tabelas/enderecos";
+import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 import { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
+import { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
 import { checkoutPagamentosTable } from "./tabelas/pagamentos";
 import { checkoutPedidosTable } from "./tabelas/pedidos";
 
@@ -38,6 +40,11 @@ export const checkoutPedidosRelations = relations(
     }),
     itens: many(checkoutPedidoItensTable),
     pagamentos: many(checkoutPagamentosTable),
+    historicos: many(checkoutPedidoHistoricosTable),
+    logistica: one(checkoutPedidoLogisticasTable, {
+      fields: [checkoutPedidosTable.id],
+      references: [checkoutPedidoLogisticasTable.pedidoId],
+    }),
   }),
 );
 
@@ -56,6 +63,26 @@ export const checkoutPagamentosRelations = relations(
   ({ one }) => ({
     pedido: one(checkoutPedidosTable, {
       fields: [checkoutPagamentosTable.pedidoId],
+      references: [checkoutPedidosTable.id],
+    }),
+  }),
+);
+
+export const checkoutPedidoHistoricosRelations = relations(
+  checkoutPedidoHistoricosTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutPedidoHistoricosTable.pedidoId],
+      references: [checkoutPedidosTable.id],
+    }),
+  }),
+);
+
+export const checkoutPedidoLogisticasRelations = relations(
+  checkoutPedidoLogisticasTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutPedidoLogisticasTable.pedidoId],
       references: [checkoutPedidosTable.id],
     }),
   }),

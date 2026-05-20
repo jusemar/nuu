@@ -31,6 +31,7 @@ import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+import { stripProductRichText } from "../utils/rich-text";
 
 // MOCKS temporários (apenas para dados que ainda não estão no banco)
 import { produto, cuponsValidos } from "../constants/mockData";
@@ -157,8 +158,10 @@ export function ProductDetail({
   // DESCRIÇÕES: Curta e longa
   // -----------------------------------------
   // Descrição curta: usa cardShortText se existir, senão description
-  const productShortDescription =
-    product.cardShortText?.trim() || product.description;
+  const productCardShortText = product.cardShortText?.trim();
+  const productShortDescription = productCardShortText
+    ? stripProductRichText(productCardShortText)
+    : stripProductRichText(product.description);
 
   // Descrição longa: sempre a description completa (para abas)
   const productLongDescription = product.description;

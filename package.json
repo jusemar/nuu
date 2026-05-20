@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "import:ceps": "tsx scripts/import-shipping-zip-addresses.ts",
+    "seed:own-delivery-regions": "tsx scripts/seed-own-delivery-official-regions.ts",
     "start": "next start",
     "lint": "next lint"
   },

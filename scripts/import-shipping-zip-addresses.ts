@@ -26,15 +26,17 @@ type ZipAddressImportRow = {
 };
 
 const importFile = process.env.ZIP_ADDRESS_IMPORT_FILE;
-const allowedState = (process.env.ZIP_ADDRESS_IMPORT_STATE || "MG")
+const allowedStateInput = (process.env.ZIP_ADDRESS_IMPORT_STATE || "MG")
   .trim()
   .toUpperCase();
-const allowedCities = (
-  process.env.ZIP_ADDRESS_IMPORT_CITIES || "Belo Horizonte,Contagem"
-)
+const allowedState = allowedStateInput === "ALL" ? null : allowedStateInput;
+const allowedCitiesInput =
+  process.env.ZIP_ADDRESS_IMPORT_CITIES || "Belo Horizonte,Contagem";
+const allowedCities = allowedCitiesInput
   .split(",")
   .map((city) => normalize(city))
   .filter(Boolean);
+const shouldImportAllCities = allowedCities.includes("all");
 const zipPatterns = (
   process.env.ZIP_ADDRESS_IMPORT_ZIP_PATTERNS ||
   "v1/30*.json,v1/31*.json,v1/32*.json"
@@ -87,8 +89,9 @@ function mapRow(row: ZipAddressImportRow) {
     cep.length !== 8 ||
     !neighborhood ||
     !city ||
-    state !== allowedState ||
-    !allowedCities.includes(normalize(city))
+    (allowedState && state !== allowedState) ||
+    // Permite expansão por estado inteiro sem trocar o script a cada nova cidade.
+    (!shouldImportAllCities && !allowedCities.includes(normalize(city)))
   ) {
     return null;
   }

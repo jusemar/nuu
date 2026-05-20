@@ -34,6 +34,16 @@ interface BuyBoxProps {
       cep?: string;
     },
   ) => void;
+  onComprarAgora: (
+    quantidade: number,
+    freteEscolhido?: {
+      id: "retirada" | "entrega-propria" | "padrao";
+      nome: string;
+      prazo: string;
+      valorEmCentavos: number;
+      cep?: string;
+    },
+  ) => void;
   onShowPaymentOptions?: () => void;
 
   cupomAplicado?: { desconto: number; label: string; code: string } | null;
@@ -85,6 +95,7 @@ export function BuyBox({
   freteGratisMin = 299,
   prazoEntrega,
   onAddToCart,
+  onComprarAgora,
   onShowPaymentOptions,
   cupomAplicado,
   onAplicarCupom,
@@ -106,7 +117,6 @@ export function BuyBox({
   const [entregaPropriaResult, setEntregaPropriaResult] =
     useState<ConsultaFreteResult | null>(null);
   const [consultandoFrete, setConsultandoFrete] = useState(false);
-  const [aceitouTermos, setAceitouTermos] = useState(false);
   const [inputCupom, setInputCupom] = useState("");
   const [mostrarInputCupom, setMostrarInputCupom] = useState(false);
   const [erroCupom, setErroCupom] = useState("");
@@ -146,12 +156,6 @@ export function BuyBox({
     setEntregaPropriaResult(null);
     setConsultandoFrete(false);
     consultaFreteIdRef.current += 1;
-
-    console.debug("[frete][cep-change]", {
-      consultaAtual: consultaFreteIdRef.current,
-      cepDigitado: valor,
-      cepFormatado: formatado,
-    });
   }
 
   async function consultarFrete() {
@@ -167,32 +171,14 @@ export function BuyBox({
       setTransportadoraSelecionada(null);
       setEntregaPropriaResult(null);
 
-      console.debug("[frete][consulta-start]", {
-        consultaId,
-        productId,
-        cep,
-        cepParaConsulta,
-        allowsOwnDelivery,
-      });
-
       if (allowsOwnDelivery) {
         setConsultandoFrete(true);
         try {
           const result = await consultarFreteAction(productId, cepParaConsulta);
-          console.debug("[frete][consulta-result]", {
-            consultaId,
-            consultaAtual: consultaFreteIdRef.current,
-            cepParaConsulta,
-            result,
-          });
           if (consultaFreteIdRef.current !== consultaId) return;
           setEntregaPropriaResult(result);
         } catch (error) {
-          console.error("[frete][consulta-error]", {
-            consultaId,
-            cepParaConsulta,
-            error,
-          });
+          void error;
           if (consultaFreteIdRef.current !== consultaId) return;
           setEntregaPropriaResult({
             found: false,
@@ -256,7 +242,18 @@ export function BuyBox({
     });
   }
 
-  function adicionarComFreteValidado() {
+  function executarComFreteValidado(
+    acao: (
+      quantidade: number,
+      freteEscolhido?: {
+        id: "retirada" | "entrega-propria" | "padrao";
+        nome: string;
+        prazo: string;
+        valorEmCentavos: number;
+        cep?: string;
+      },
+    ) => void,
+  ) {
     const freteEscolhido = montarFreteEscolhido();
 
     if (!isValidCEP(cep)) {
@@ -275,7 +272,15 @@ export function BuyBox({
     }
 
     setErroFrete("");
-    onAddToCart(quantidade, freteEscolhido);
+    acao(quantidade, freteEscolhido);
+  }
+
+  function adicionarAoCarrinhoComFrete() {
+    executarComFreteValidado(onAddToCart);
+  }
+
+  function comprarAgoraComFrete() {
+    executarComFreteValidado(onComprarAgora);
   }
 
   // RENDER
@@ -648,46 +653,18 @@ export function BuyBox({
 
       <div className="bg-surface-border h-px" />
 
-      {/* TERMOS */}
-      <label className="flex cursor-pointer items-start gap-2">
-        <div
-          onClick={() => setAceitouTermos((t) => !t)}
-          className={`mt-0.5 flex h-4 w-4 flex-shrink-0 cursor-pointer items-center justify-center rounded border-2 transition-all ${
-            aceitouTermos
-              ? "bg-primary border-primary"
-              : "border-surface-border-mid hover:border-primary bg-transparent"
-          }`}
-        >
-          {aceitouTermos && (
-            <span className="text-[10px] font-extrabold text-white">✓</span>
-          )}
-        </div>
-
-        <span className="text-text-muted text-[11px] leading-relaxed">
-          Li e aceito os{" "}
-          <a href="#" className="text-primary font-semibold hover:underline">
-            Termos
-          </a>{" "}
-          e a{" "}
-          <a href="#" className="text-primary font-semibold hover:underline">
-            Política de Privacidade
-          </a>
-        </span>
-      </label>
-
       {/* BOTÕES */}
       <div className="flex flex-col gap-2">
         <button
-          className="bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
-          disabled={!aceitouTermos}
-          onClick={adicionarComFreteValidado}
+          className="bg-primary hover:bg-primary-mid w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98]"
+          onClick={comprarAgoraComFrete}
         >
-          {!aceitouTermos ? "Aceite os termos para continuar" : "Comprar agora"}
+          Comprar
         </button>
 
         <button
           className="text-primary border-primary hover:bg-primary-light w-full rounded-xl border-[1.5px] bg-white py-3 text-sm font-semibold transition-all active:scale-[0.98]"
-          onClick={adicionarComFreteValidado}
+          onClick={adicionarAoCarrinhoComFrete}
         >
           Adicionar ao carrinho
         </button>

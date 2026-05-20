@@ -43,12 +43,6 @@ export async function consultarFreteAction(
 ): Promise<ConsultaFreteResult> {
   const cleanCep = cep.replace(/\D/g, "");
 
-  console.info("[frete][server-start]", {
-    productId,
-    cepRecebido: cep,
-    cleanCep,
-  });
-
   if (!productId) {
     return { found: false, message: "Consulte o vendedor" };
   }
@@ -64,11 +58,7 @@ export async function consultarFreteAction(
   try {
     enderecoLocal = await buscarEnderecoCepEntregaPropria(cleanCep);
   } catch (error) {
-    console.error("[frete][server-zip-cache-read-error]", {
-      productId,
-      cleanCep,
-      error,
-    });
+    void error;
   }
   let endereco = enderecoLocal
     ? mapShippingZipAddressToEnderecoCep(enderecoLocal)
@@ -96,21 +86,10 @@ export async function consultarFreteAction(
           source: endereco.source,
         });
       } catch (error) {
-        console.error("[frete][server-zip-cache-save-error]", {
-          productId,
-          cleanCep,
-          error,
-        });
+        void error;
       }
     }
   }
-
-  console.info("[frete][server-viacep]", {
-    productId,
-    cleanCep,
-    enderecoSource,
-    endereco,
-  });
 
   if (!endereco || !endereco.bairro) {
     return {
@@ -141,14 +120,7 @@ export async function consultarFreteAction(
       uf,
     );
   } catch (error) {
-    console.error("[frete][server-price-error]", {
-      productId,
-      cleanCep,
-      bairro,
-      cidade,
-      uf,
-      error,
-    });
+    void error;
 
     return {
       found: false,
@@ -156,15 +128,6 @@ export async function consultarFreteAction(
       endereco: enderecoConsultado,
     };
   }
-
-  console.info("[frete][server-result]", {
-    productId,
-    cleanCep,
-    bairro,
-    cidade,
-    uf,
-    result,
-  });
 
   if (!result.found && result.pendingEligible) {
     try {
@@ -175,14 +138,7 @@ export async function consultarFreteAction(
         state: uf,
       });
     } catch (error) {
-      console.error("[frete][server-pending-error]", {
-        productId,
-        cleanCep,
-        bairro,
-        cidade,
-        uf,
-        error,
-      });
+      void error;
     }
   }
 

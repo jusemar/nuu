@@ -10,6 +10,10 @@ import { calcularTotaisCarrinho } from "../lib/calcular-totais-carrinho";
 import type { ItemCarrinho, NovoItemCarrinho } from "../types/carrinho.types";
 import { abrirGavetaCarrinho } from "./use-gaveta-carrinho";
 
+type OpcoesAdicionarItemCarrinho = {
+  abrirGaveta?: boolean;
+};
+
 function criarIdItemCarrinho(
   item: Pick<NovoItemCarrinho, "produtoId" | "modalidadeTipo" | "variante">,
 ) {
@@ -72,11 +76,10 @@ export function useCarrinho() {
 
   const atualizarItens = useCallback(
     (resolver: (itensAtuais: ItemCarrinho[]) => ItemCarrinho[]) => {
-      setItens((itensAtuais) => {
-        const novosItens = resolver(itensAtuais);
-        salvarCarrinhoStorage(novosItens);
-        return novosItens;
-      });
+      const novosItens = resolver(lerCarrinhoStorage());
+      salvarCarrinhoStorage(novosItens);
+      setItens(novosItens);
+      return novosItens;
     },
     [],
   );
@@ -84,7 +87,7 @@ export function useCarrinho() {
   const totais = useMemo(() => calcularTotaisCarrinho(itens), [itens]);
 
   const adicionarItem = useCallback(
-    (novoItem: NovoItemCarrinho) => {
+    (novoItem: NovoItemCarrinho, opcoes: OpcoesAdicionarItemCarrinho = {}) => {
       // O id combina produto + variante para somar quantidades do mesmo item.
       const id = criarIdItemCarrinho(novoItem);
       const quantidadeAdicionada = novoItem.quantidade ?? 1;
@@ -115,7 +118,10 @@ export function useCarrinho() {
         );
       });
 
-      abrirGavetaCarrinho();
+      if (opcoes.abrirGaveta ?? true) {
+        abrirGavetaCarrinho();
+      }
+
       window.setTimeout(() => setItemAtualizandoId(null), 260);
     },
     [atualizarItens],

@@ -18,6 +18,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProductGallery } from "./product-gallery";
 import { ProductInfo } from "./product-info";
 import { BuyBox } from "./buy-box";
@@ -28,6 +29,7 @@ import { Header } from "@/features/header";
 import { Footer } from "@/components/common/footer";
 import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
+import type { NovoItemCarrinho } from "@/features/carrinho";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 
 // MOCKS temporários (apenas para dados que ainda não estão no banco)
@@ -77,6 +79,7 @@ export function ProductDetail({
   precosCalculadosPorModalidade,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
+  const router = useRouter();
 
   // -----------------------------------------
   // ESTADOS GLOBAIS DA PÁGINA
@@ -176,7 +179,7 @@ export function ProductDetail({
     setCupomAplicado(null);
   }
 
-  function adicionarProdutoAoCarrinho(
+  function montarItemCarrinhoProduto(
     quantidade: number,
     freteEscolhido?: {
       id: "retirada" | "entrega-propria" | "padrao";
@@ -185,16 +188,15 @@ export function ProductDetail({
       valorEmCentavos: number;
       cep?: string;
     },
-  ) {
-    if (!modalidadeAtiva) return;
+  ): NovoItemCarrinho | null {
+    if (!modalidadeAtiva) return null;
 
     const precoEmCentavos =
       modalidadeAtiva.hasPromo && modalidadeAtiva.promoPrice
         ? modalidadeAtiva.promoPrice
         : modalidadeAtiva.price;
 
-    // A página de produto só monta o item; persistência e abertura da gaveta ficam no domínio carrinho.
-    adicionarItem({
+    return {
       produtoId: product.id,
       produtoSlug: product.slug,
       produtoUrl: `/product/${product.slug}`,
@@ -212,7 +214,43 @@ export function ProductDetail({
       precoEmCentavos,
       freteEscolhido,
       quantidade,
-    });
+    };
+  }
+
+  function adicionarProdutoAoCarrinho(
+    quantidade: number,
+    freteEscolhido?: {
+      id: "retirada" | "entrega-propria" | "padrao";
+      nome: string;
+      prazo: string;
+      valorEmCentavos: number;
+      cep?: string;
+    },
+  ) {
+    const itemCarrinho = montarItemCarrinhoProduto(quantidade, freteEscolhido);
+
+    if (!itemCarrinho) return;
+
+    // A página de produto só monta o item; persistência e abertura da gaveta ficam no domínio carrinho.
+    adicionarItem(itemCarrinho);
+  }
+
+  function comprarProdutoAgora(
+    quantidade: number,
+    freteEscolhido?: {
+      id: "retirada" | "entrega-propria" | "padrao";
+      nome: string;
+      prazo: string;
+      valorEmCentavos: number;
+      cep?: string;
+    },
+  ) {
+    const itemCarrinho = montarItemCarrinhoProduto(quantidade, freteEscolhido);
+
+    if (!itemCarrinho) return;
+
+    adicionarItem(itemCarrinho, { abrirGaveta: false });
+    router.push("/checkout");
   }
 
   // -----------------------------------------
@@ -299,6 +337,7 @@ export function ProductDetail({
               onAplicarCupom={aplicarCupom}
               onRemoverCupom={removerCupom}
               onAddToCart={adicionarProdutoAoCarrinho}
+              onComprarAgora={comprarProdutoAgora}
               onShowPaymentOptions={() => setModalPgto(true)}
               // === SELETOR DE MODALIDADES INTEGRADO (NOVO) ===
               modalidades={modalidadesDisponiveis}

@@ -15,6 +15,7 @@ export {
   normalizarItensPedidoCheckout,
 } from "./lib/normalizar-dados-pedido";
 export { criarCobrancaPixEfi } from "./lib/gateways/efi/pix-efi";
+export { processarWebhookPixEfi } from "./lib/gateways/efi/webhook-efi";
 export { criarCheckoutCartaoStripe } from "./lib/gateways/stripe/checkout-stripe";
 export {
   construirEventoWebhookStripe,

@@ -127,6 +127,27 @@
       "when": 1779494400000,
       "tag": "0017_normalize_paid_order_status",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1779580800000,
+      "tag": "0018_create_checkout_efi_webhook_eventos",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1779667200000,
+      "tag": "0019_create_shipping_pending_neighborhoods",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779753600000,
+      "tag": "0020_create_product_own_delivery_prices",
+      "breakpoints": true
     }
   ]
 }

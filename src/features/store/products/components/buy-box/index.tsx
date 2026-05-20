@@ -15,6 +15,7 @@ import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
 // INTERFACE
 // ==========================================
 interface BuyBoxProps {
+  productId: string;
   precoPix: string;
   precoNormal: string;
   precoParc: string;
@@ -75,6 +76,7 @@ interface BuyBoxProps {
 // COMPONENTE
 // ==========================================
 export function BuyBox({
+  productId,
   precoPix,
   precoNormal,
   precoParc,
@@ -97,6 +99,7 @@ export function BuyBox({
   const [quantidade, setQuantidade] = useState(1);
   const [cep, setCep] = useState("");
   const [cepConsultado, setCepConsultado] = useState(false);
+  const [cepConsultadoLimpo, setCepConsultadoLimpo] = useState("");
   const [transportadoraSelecionada, setTransportadoraSelecionada] = useState<
     "retirada" | "entrega-propria" | null
   >(null);
@@ -109,6 +112,7 @@ export function BuyBox({
   const [erroCupom, setErroCupom] = useState("");
   const [erroFrete, setErroFrete] = useState("");
   const freteRef = useRef<HTMLDivElement | null>(null);
+  const consultaFreteIdRef = useRef(0);
 
   // CÁLCULOS
   const precoNumerico = parseFloat(
@@ -118,6 +122,10 @@ export function BuyBox({
   const temFreteGratis = valorCarrinho >= freteGratisMin;
   const faltaParaFreteGratis = Math.max(freteGratisMin - valorCarrinho, 0);
   const progressoFrete = Math.min((valorCarrinho / freteGratisMin) * 100, 100);
+  const cepAtualLimpo = cep.replace(/\D/g, "");
+  const resultadoDoCepAtual =
+    cepConsultadoLimpo === cepAtualLimpo ? entregaPropriaResult : null;
+  const enderecoConsultado = resultadoDoCepAtual?.endereco;
 
   // HANDLERS
   function aumentarQuantidade() {
@@ -132,32 +140,68 @@ export function BuyBox({
     const formatado = formatCEP(valor);
     setCep(formatado);
     setErroFrete("");
-    if (valor.length === 0) {
-      setCepConsultado(false);
-      setTransportadoraSelecionada(null);
-    }
+    setCepConsultado(false);
+    setCepConsultadoLimpo("");
+    setTransportadoraSelecionada(null);
+    setEntregaPropriaResult(null);
+    setConsultandoFrete(false);
+    consultaFreteIdRef.current += 1;
+
+    console.debug("[frete][cep-change]", {
+      consultaAtual: consultaFreteIdRef.current,
+      cepDigitado: valor,
+      cepFormatado: formatado,
+    });
   }
 
   async function consultarFrete() {
     setErroFrete("");
 
+    const cepParaConsulta = cep.replace(/\D/g, "");
+
     if (isValidCEP(cep)) {
+      const consultaId = consultaFreteIdRef.current + 1;
+      consultaFreteIdRef.current = consultaId;
       setCepConsultado(true);
+      setCepConsultadoLimpo(cepParaConsulta);
       setTransportadoraSelecionada(null);
       setEntregaPropriaResult(null);
+
+      console.debug("[frete][consulta-start]", {
+        consultaId,
+        productId,
+        cep,
+        cepParaConsulta,
+        allowsOwnDelivery,
+      });
 
       if (allowsOwnDelivery) {
         setConsultandoFrete(true);
         try {
-          const result = await consultarFreteAction(cep);
+          const result = await consultarFreteAction(productId, cepParaConsulta);
+          console.debug("[frete][consulta-result]", {
+            consultaId,
+            consultaAtual: consultaFreteIdRef.current,
+            cepParaConsulta,
+            result,
+          });
+          if (consultaFreteIdRef.current !== consultaId) return;
           setEntregaPropriaResult(result);
-        } catch {
+        } catch (error) {
+          console.error("[frete][consulta-error]", {
+            consultaId,
+            cepParaConsulta,
+            error,
+          });
+          if (consultaFreteIdRef.current !== consultaId) return;
           setEntregaPropriaResult({
             found: false,
-            message: "Erro ao consultar frete",
+            message: "Consulte o vendedor",
           });
         } finally {
-          setConsultandoFrete(false);
+          if (consultaFreteIdRef.current === consultaId) {
+            setConsultandoFrete(false);
+          }
         }
       }
     }
@@ -190,13 +234,13 @@ export function BuyBox({
 
     if (
       transportadoraSelecionada === "entrega-propria" &&
-      entregaPropriaResult?.found
+      resultadoDoCepAtual?.found
     ) {
       return {
         id: "entrega-propria" as const,
         nome: "Entrega Própria",
         prazo: prazoEntrega,
-        valorEmCentavos: entregaPropriaResult.shippingPrice,
+        valorEmCentavos: resultadoDoCepAtual.shippingPrice,
         cep,
       };
     }
@@ -399,6 +443,19 @@ export function BuyBox({
 
         {cepConsultado && (retiradaLocal || allowsOwnDelivery) && (
           <div className="mt-2 flex animate-[fadeUp_0.3s_ease] flex-col gap-1">
+            {enderecoConsultado ? (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-950">
+                <span className="font-bold">Enviar para:</span>
+                <div className="mt-0.5">
+                  {enderecoConsultado.uf} - {enderecoConsultado.cidade},{" "}
+                  {enderecoConsultado.bairro}
+                  {enderecoConsultado.logradouro
+                    ? `, ${enderecoConsultado.logradouro}`
+                    : ""}
+                </div>
+              </div>
+            ) : null}
+
             {transportadoraSelecionada !== null ? (
               // Opção selecionada — mostra qual foi escolhida
               <div>
@@ -426,10 +483,10 @@ export function BuyBox({
                     <div className="text-text-hint text-[11px]">
                       {prazoEntrega}
                     </div>
-                    {entregaPropriaResult?.found && (
+                    {resultadoDoCepAtual?.found && (
                       <div className="text-text-primary text-xs font-bold">
                         R${" "}
-                        {(entregaPropriaResult.shippingPrice / 100)
+                        {(resultadoDoCepAtual.shippingPrice / 100)
                           .toFixed(2)
                           .replace(".", ",")}
                       </div>
@@ -479,13 +536,13 @@ export function BuyBox({
                 )}
 
                 {allowsOwnDelivery &&
-                  (consultandoFrete ? (
+                  (consultandoFrete || !resultadoDoCepAtual ? (
                     <div className="border-surface-border flex items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5">
                       <div className="flex-1 text-xs font-medium text-gray-500">
                         Consultando Entrega Própria...
                       </div>
                     </div>
-                  ) : entregaPropriaResult?.found ? (
+                  ) : resultadoDoCepAtual?.found ? (
                     <label
                       className="border-surface-border hover:border-primary-mid flex cursor-pointer items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
                       onClick={() => {
@@ -506,15 +563,15 @@ export function BuyBox({
                       </div>
                       <div className="text-text-primary text-xs font-bold">
                         R${" "}
-                        {(entregaPropriaResult.shippingPrice / 100)
+                        {(resultadoDoCepAtual.shippingPrice / 100)
                           .toFixed(2)
                           .replace(".", ",")}
                       </div>
                     </label>
                   ) : (
                     <div className="flex items-center gap-2 rounded-lg border-[1.5px] border-red-200 bg-red-50 p-2.5">
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold whitespace-nowrap text-red-700">
-                        Não atendemos este CEP
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-left text-[10px] font-bold text-red-700">
+                        {resultadoDoCepAtual?.message || "Consulte o vendedor"}
                       </span>
                     </div>
                   ))}

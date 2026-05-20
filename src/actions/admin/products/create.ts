@@ -1,49 +1,56 @@
-'use server'
+"use server";
 
-import { db } from '@/db/connection'
-import { productTable, productGalleryImagesTable, productPricingTable } from '@/db/schema'
-import { revalidatePath } from 'next/cache'
+import { db } from "@/db/connection";
+import {
+  productTable,
+  productGalleryImagesTable,
+  productPricingTable,
+} from "@/db/schema";
+import { revalidatePath } from "next/cache";
+import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
+import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 
 interface CreateProductData {
-  name: string
-  slug: string
-  description: string
-  cardShortText: string
-  categoryId: string
-  brand?: string
-  sku: string
-  productType?: string
-  productCode?: string
-  ncmCode?: string
-  collection?: string
-  tags?: string[]
-  storeProductFlags?: string[]
+  name: string;
+  slug: string;
+  description: string;
+  cardShortText: string;
+  categoryId: string;
+  brand?: string;
+  sku: string;
+  productType?: string;
+  productCode?: string;
+  ncmCode?: string;
+  collection?: string;
+  tags?: string[];
+  storeProductFlags?: string[];
   pricing?: {
-    costPrice?: string
-    modalities?: any
-    mainCardPriceType?: string
-  }
+    costPrice?: string;
+    modalities?: any;
+    mainCardPriceType?: string;
+  };
   warranty?: {
-    period?: string
-    provider?: string
-    terms?: string
-  }
-  
-    metaTitle?: string
-    metaDescription?: string
-    canonicalUrl?: string
-  
-  
+    period?: string;
+    provider?: string;
+    terms?: string;
+  };
+
+  metaTitle?: string;
+  metaDescription?: string;
+  canonicalUrl?: string;
+
   images: Array<{
-    url: string
-    isPrimary: boolean
-    altText?: string
-  }>
+    url: string;
+    isPrimary: boolean;
+    altText?: string;
+  }>;
   entrega?: {
-    permiteRetirada?: boolean
-    modeloRetiradaId?: string | null
-    prazoCustom?: string | null
-  }
+    permiteRetirada?: boolean;
+    modeloRetiradaId?: string | null;
+    prazoCustom?: string | null;
+    permiteEntregaPropria?: boolean;
+    precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
+  };
 }
 
 function toPlainText(value: string) {
@@ -51,43 +58,50 @@ function toPlainText(value: string) {
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/\s+/g, " ")
-    .trim()
+    .trim();
 }
 
 export async function createProduct(data: CreateProductData) {
   try {
     // 1. Criar o produto principal
-    const [product] = await db.insert(productTable).values({     
-      
-      name: data.name,
-      slug: data.slug,
-      description: toPlainText(data.description),
-      categoryId: data.categoryId,
-      brand: data.brand,
-      sku: data.sku,
-      productType: data.productType,
-      productCode: data.productCode,
-      ncmCode: data.ncmCode,
-      collection: data.collection,
-      tags: data.tags, 
-      storeProductFlags: data.storeProductFlags || [],     
-      cardShortText: data.cardShortText, 
-      costPrice: data.pricing?.costPrice ? parseInt(data.pricing.costPrice) * 100 : null,
-      warrantyPeriod: data.warranty?.period ? parseInt(data.warranty.period) : null,
-      warrantyProvider: data.warranty?.provider,
-      metaTitle: data.metaTitle,
-      metaDescription: data.metaDescription,
-      canonicalUrl: data.canonicalUrl,
-      
-      // Configuração de retirada local
-      allowsPickup: data.entrega?.permiteRetirada ?? false,
-      modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
-      prazoRetiradaCustom: data.entrega?.prazoCustom || null,
-      
-      status: 'draft',
-      isActive: true,
-    }).returning()
-    console.log('Produto criado:', product);
+    const [product] = await db
+      .insert(productTable)
+      .values({
+        name: data.name,
+        slug: data.slug,
+        description: toPlainText(data.description),
+        categoryId: data.categoryId,
+        brand: data.brand,
+        sku: data.sku,
+        productType: data.productType,
+        productCode: data.productCode,
+        ncmCode: data.ncmCode,
+        collection: data.collection,
+        tags: data.tags,
+        storeProductFlags: data.storeProductFlags || [],
+        cardShortText: data.cardShortText,
+        costPrice: data.pricing?.costPrice
+          ? parseInt(data.pricing.costPrice) * 100
+          : null,
+        warrantyPeriod: data.warranty?.period
+          ? parseInt(data.warranty.period)
+          : null,
+        warrantyProvider: data.warranty?.provider,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        canonicalUrl: data.canonicalUrl,
+
+        // Configuração de retirada local
+        allowsPickup: data.entrega?.permiteRetirada ?? false,
+        allowsOwnDelivery: data.entrega?.permiteEntregaPropria ?? false,
+        modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
+        prazoRetiradaCustom: data.entrega?.prazoCustom || null,
+
+        status: "draft",
+        isActive: true,
+      })
+      .returning();
+    console.log("Produto criado:", product);
 
     // 2. Adicionar imagens na galeria
     if (data.images.length > 0) {
@@ -98,40 +112,46 @@ export async function createProduct(data: CreateProductData) {
           altText: image.altText || data.name,
           isPrimary: image.isPrimary,
           sortOrder: index,
-        }))
-      )
+        })),
+      );
     }
 
     // 3. SALVAR MODALIDADES DE PREÇO (apenas texto descritivo)
     if (data.pricing?.modalities) {
-      const pricingEntries = Object.entries(data.pricing.modalities).map(([type, modality]: [string, any]) => ({
-        productId: product.id,
-        type: type,
-        price: modality.price ? parseInt(modality.price) * 100 : 0,
-        deliveryDays: modality.deliveryText || '',
-        pricingModalDescription: modality.deliveryText || '',
+      const pricingEntries = Object.entries(data.pricing.modalities).map(
+        ([type, modality]: [string, any]) => ({
+          productId: product.id,
+          type: type,
+          price: modality.price ? parseInt(modality.price) * 100 : 0,
+          deliveryDays: modality.deliveryText || "",
+          pricingModalDescription: modality.deliveryText || "",
 
-        mainCardPrice: data.pricing?.mainCardPriceType === type,
-        
-        isActive: true,
-      }))
+          mainCardPrice: data.pricing?.mainCardPriceType === type,
+
+          isActive: true,
+        }),
+      );
 
       if (pricingEntries.length > 0) {
-        await db.insert(productPricingTable).values(pricingEntries)
+        await db.insert(productPricingTable).values(pricingEntries);
       }
     }
 
-
+    if (data.entrega?.permiteEntregaPropria) {
+      await salvarPrecosEntregaPropriaProduto(
+        product.id,
+        data.entrega.precosEntregaPropria ?? [],
+      );
+    }
 
     // 4. Revalidar cache
-    revalidatePath('/admin/products')
-    return { success: true, productId: product.id }
-    
+    revalidatePath("/admin/products");
+    return { success: true, productId: product.id };
   } catch (error) {
-    console.error('Erro ao criar produto:', error)
-    return { 
-      success: false, 
-      error: 'Erro ao criar produto. Tente novamente.' 
-    }
+    console.error("Erro ao criar produto:", error);
+    return {
+      success: false,
+      error: "Erro ao criar produto. Tente novamente.",
+    };
   }
 }

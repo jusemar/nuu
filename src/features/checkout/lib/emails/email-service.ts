@@ -7,6 +7,7 @@ import {
   montarContextoLogEmailTransacional,
 } from "./logs-email-transacional";
 import { normalizarValorTagEmailTransacional } from "./tags-email-transacional";
+import { montarEmailPagamentoPixAprovado } from "./templates/pagamento-pix-aprovado";
 import { montarEmailPagamentoStripeAprovado } from "./templates/pagamento-stripe-aprovado";
 import { montarEmailPedidoRecebido } from "./templates/pedido-recebido";
 import { montarEmailPixPendente } from "./templates/pix-pendente";
@@ -125,6 +126,28 @@ export function enviarEmailPagamentoStripeAprovado(pedido: EmailPedidoResumo) {
         template: montarEmailPagamentoStripeAprovado(pedido),
         tags: [
           { name: "tipo", value: "pagamento_stripe_aprovado" },
+          {
+            name: "pedido",
+            value: normalizarValorTagEmailTransacional(pedido.numeroPedido),
+          },
+        ],
+      }),
+  });
+}
+
+export function enviarEmailPagamentoPixAprovado(pedido: EmailPedidoResumo) {
+  return executarEnvioResiliente({
+    contexto: {
+      tipo: "pagamento_pix_aprovado",
+      numeroPedido: pedido.numeroPedido,
+      destinatario: pedido.emailCliente,
+    },
+    envio: () =>
+      enviarEmailTransacional({
+        to: pedido.emailCliente,
+        template: montarEmailPagamentoPixAprovado(pedido),
+        tags: [
+          { name: "tipo", value: "pagamento_pix_aprovado" },
           {
             name: "pedido",
             value: normalizarValorTagEmailTransacional(pedido.numeroPedido),

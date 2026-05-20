@@ -1,11 +1,8 @@
-/**
- * PÁGINA DE FRETE - Rota Next.js
- *
- * ⚠️ FUNCIONALIDADE VÁLIDA APENAS PARA ENTREGA PRÓPRIA
- */
+import { EstadosEntregaPropriaPage } from "@/features/admin/logistics/entrega-propria/components/admin/estados-entrega-propria-page";
+import { listarEstadosEntregaPropria } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
 
-import { ShippingPage } from "@/features/admin/logistics/entrega-propria/components/ShippingPage";
+export default async function Page() {
+  const estados = await listarEstadosEntregaPropria();
 
-export default function Page() {
-  return <ShippingPage />;
+  return <EstadosEntregaPropriaPage estados={estados} />;
 }

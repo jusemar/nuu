@@ -8,6 +8,7 @@ export {
 } from "./enums";
 export {
   checkoutClientesRelations,
+  checkoutEfiWebhookEventosRelations,
   checkoutEnderecosRelations,
   checkoutPedidoHistoricosRelations,
   checkoutPedidoItensRelations,
@@ -17,6 +18,7 @@ export {
   checkoutPedidosRelations,
 } from "./relacoes";
 export { checkoutClientesTable } from "./tabelas/clientes";
+export { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 export { checkoutEnderecosTable } from "./tabelas/enderecos";
 export { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 export { checkoutPedidoItensTable } from "./tabelas/pedido-itens";

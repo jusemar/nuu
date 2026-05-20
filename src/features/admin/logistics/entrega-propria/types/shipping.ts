@@ -22,7 +22,13 @@ export type {
   ShippingBairroAvulsoSlot,
 };
 
-export type RegioFieldState = "idle" | "loading" | "suggested" | "confirmed" | "manual" | "error";
+export type RegioFieldState =
+  | "idle"
+  | "loading"
+  | "suggested"
+  | "confirmed"
+  | "manual"
+  | "error";
 
 export type CreateRegionData = {
   name: string;
@@ -61,10 +67,29 @@ export type CreateCepEspecificoData = {
 export type ViaCepResponse = {
   cep?: string;
   logradouro?: string;
+  complemento?: string;
   bairro?: string;
   localidade?: string;
   uf?: string;
+  ibge?: string;
   erro?: boolean;
 };
 
-export type ShippingTab = "regioes" | "bairros-avulsos" | "ceps-especificos" | "teste";
+export type ShippingTab =
+  | "regioes"
+  | "bairros-avulsos"
+  | "ceps-especificos"
+  | "teste";
+
+export type OwnDeliveryDestinationType =
+  | "region"
+  | "bairro-avulso"
+  | "cep-especifico";
+
+export type ProductOwnDeliveryPriceFormItem = {
+  destinationType: OwnDeliveryDestinationType;
+  destinationId: number;
+  shippingPrice: number;
+  deliveryDeadline?: string | null;
+  isActive?: boolean;
+};

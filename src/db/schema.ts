@@ -52,15 +52,22 @@ import { productSuppliersTable } from "./table/logistics/productSuppliers/produc
 import {
   shippingRegions,
   regioBairros,
+  shippingRegionCepRanges,
   bairrosAvulsos,
   cepsEspecificos,
   shippingRegionSlots,
   shippingBairroAvulsoSlots,
+  shippingPendingNeighborhoods,
   shippingRegionsRelations,
   regioBairrosRelations,
+  shippingRegionCepRangesRelations,
   bairrosAvulsosRelations,
   shippingRegionSlotsRelations,
   shippingBairroAvulsoSlotsRelations,
+  productOwnDeliveryPrices,
+  productOwnDeliveryPricesRelations,
+  shippingZipAddresses,
+  shippingZipAddressesRelations,
 } from "./table/logistics/entrega-propria";
 
 // Retirada - Modelos de retirada
@@ -508,14 +515,20 @@ export { productSuppliersTable } from "./table/logistics/productSuppliers/produc
 export {
   shippingRegions,
   regioBairros,
+  shippingRegionCepRanges,
   bairrosAvulsos,
   cepsEspecificos,
   shippingRegionSlots,
   shippingBairroAvulsoSlots,
+  shippingPendingNeighborhoods,
+  shippingZipAddresses,
+  productOwnDeliveryPrices,
   type ShippingRegion,
   type NewShippingRegion,
   type RegioBairro,
   type NewRegioBairro,
+  type ShippingRegionCepRange,
+  type NewShippingRegionCepRange,
   type BairroAvulso,
   type NewBairroAvulso,
   type CepEspecifico,
@@ -524,6 +537,12 @@ export {
   type NewShippingRegionSlot,
   type ShippingBairroAvulsoSlot,
   type NewShippingBairroAvulsoSlot,
+  type ShippingPendingNeighborhood,
+  type NewShippingPendingNeighborhood,
+  type ShippingZipAddress,
+  type NewShippingZipAddress,
+  type ProductOwnDeliveryPrice,
+  type NewProductOwnDeliveryPrice,
 } from "./table/logistics/entrega-propria";
 
 // Tabelas de Retirada
@@ -537,6 +556,8 @@ export {
 export {
   checkoutClientesRelations,
   checkoutClientesTable,
+  checkoutEfiWebhookEventosRelations,
+  checkoutEfiWebhookEventosTable,
   checkoutEnderecosRelations,
   checkoutEnderecosTable,
   checkoutPagamentoGatewayEnum,
@@ -573,9 +594,12 @@ export {
 export {
   shippingRegionsRelations,
   regioBairrosRelations,
+  shippingRegionCepRangesRelations,
   bairrosAvulsosRelations,
   shippingRegionSlotsRelations,
   shippingBairroAvulsoSlotsRelations,
+  productOwnDeliveryPricesRelations,
+  shippingZipAddressesRelations,
 } from "./table/logistics/entrega-propria";
 
 // ============================================

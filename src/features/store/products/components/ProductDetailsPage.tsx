@@ -283,6 +283,7 @@ export function ProductDetail({
           <div className="order-3">
             {/* BuyBox: Caixa de compra com preço, frete, cupom, botões */}
             <BuyBox
+              productId={product.id}
               // Preços da modalidade ATIVA (formatados pelo hook)
               precoPix={precoPixFormatado}
               precoNormal={precoNormalFormatado}

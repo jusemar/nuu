@@ -6,7 +6,7 @@
  * ⚠️ FUNCIONALIDADE VÁLIDA APENAS PARA ENTREGA PRÓPRIA
  *
  * Implementa a hierarquia de precificação:
- * [1] CEP Específico (exceções) → [2] Bairro em Região → [3] Bairro Avulso → [4] Não atendemos
+ * [1] CEP Específico (exceções) → [2] Bairro em Região → [3] Bairro Avulso → [4] Consulte o vendedor
  *
  * Usa banco de dados real via Drizzle ORM.
  * A diretiva 'use server' garante execução no servidor.
@@ -18,12 +18,14 @@ import { cities } from "@/db/table/logistics/cities/cities";
 import {
   shippingRegions,
   regioBairros,
+  shippingRegionCepRanges,
   bairrosAvulsos,
   cepsEspecificos,
   shippingRegionSlots,
   shippingBairroAvulsoSlots,
+  productOwnDeliveryPrices,
 } from "@/db/table/logistics/entrega-propria";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, inArray, lte, gte } from "drizzle-orm";
 import type {
   ShippingRegion,
   RegioBairro,
@@ -55,6 +57,15 @@ function formatCepDisplay(cep: string): string {
   return `${clean.slice(0, 5)}-${clean.slice(5)}`;
 }
 
+function normalizarTextoFrete(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
  * HIERARQUIA DE BUSCA DE FRETE
  *
@@ -63,7 +74,7 @@ function formatCepDisplay(cep: string): string {
  * [1] CEP específico (exceção)
  * [2] Bairro em região (padrão)
  * [3] Bairro avulso (isolado)
- * [4] Não atendemos
+ * [4] Consulte o vendedor
  *
  * @param cep - CEP com ou sem hífen
  * @param neighborhood - Nome do bairro (padronizado)
@@ -87,23 +98,23 @@ export async function getShippingPrice(
   if (!estadoAtivo) {
     return {
       found: false,
-      message: `Consulte vendedor`,
+      message: "Consulte o vendedor",
     };
   }
 
   // [PRÉ-FILTRO 2] Cidade ativa?
-  const cidadeAtiva = await db.query.cities.findFirst({
-    where: and(
-      eq(cities.name, city),
-      eq(cities.stateUf, state),
-      eq(cities.isActive, true),
-    ),
+  const cidadesAtivas = await db.query.cities.findMany({
+    where: and(eq(cities.stateUf, state), eq(cities.isActive, true)),
   });
+  const cidadeAtiva = cidadesAtivas.find(
+    (cidade) =>
+      normalizarTextoFrete(cidade.name) === normalizarTextoFrete(city),
+  );
 
   if (!cidadeAtiva) {
     return {
       found: false,
-      message: `Consulte vendedor`,
+      message: "Consulte o vendedor",
     };
   }
 
@@ -128,15 +139,54 @@ export async function getShippingPrice(
     };
   }
 
-  // [2] BUSCA: BAIRRO EM REGIÃO
-  const regiaoComBairro = await db.query.regioBairros.findFirst({
+  // [2] BUSCA: FAIXA DE CEP DA REGIÃO
+  const faixaRegiao = await db.query.shippingRegionCepRanges.findFirst({
+    where: and(
+      lte(shippingRegionCepRanges.cepStart, cleanCep),
+      gte(shippingRegionCepRanges.cepEnd, cleanCep),
+      eq(shippingRegionCepRanges.isActive, true),
+    ),
+    with: {
+      region: true,
+    },
+  });
+
+  if (
+    faixaRegiao?.region?.isActive &&
+    faixaRegiao.region.state === state &&
+    normalizarTextoFrete(faixaRegiao.region.city) === normalizarTextoFrete(city)
+  ) {
+    return {
+      found: true,
+      level: "regiao",
+      shippingPrice: faixaRegiao.region.baseShippingPrice,
+      message: `${formatCepDisplay(cleanCep)} atendido pela região "${faixaRegiao.region.name}"`,
+      region: {
+        id: faixaRegiao.region.id,
+        name: faixaRegiao.region.name,
+        city: faixaRegiao.region.city,
+        state: faixaRegiao.region.state,
+      },
+    };
+  }
+
+  // [3] BUSCA: BAIRRO EM REGIÃO
+  const regioesComBairroLegado = await db.query.regioBairros.findMany({
     where: eq(regioBairros.neighborhood, neighborhood),
     with: {
       regiao: true,
     },
   });
+  const regiaoComBairro = regioesComBairroLegado.find(
+    (bairro) =>
+      normalizarTextoFrete(bairro.neighborhood) ===
+        normalizarTextoFrete(neighborhood) &&
+      bairro.regiao.isActive &&
+      bairro.regiao.state === state &&
+      normalizarTextoFrete(bairro.regiao.city) === normalizarTextoFrete(city),
+  );
 
-  if (regiaoComBairro && regiaoComBairro.regiao.isActive) {
+  if (regiaoComBairro) {
     const slots = await db.query.shippingRegionSlots.findMany({
       where: eq(shippingRegionSlots.regionId, regiaoComBairro.regiao.id),
     });
@@ -159,7 +209,7 @@ export async function getShippingPrice(
     };
   }
 
-  // [3] BUSCA: BAIRRO AVULSO
+  // [4] BUSCA: BAIRRO AVULSO
   const bairroAvulso = await db.query.bairrosAvulsos.findFirst({
     where: and(
       eq(bairrosAvulsos.neighborhood, neighborhood),
@@ -195,7 +245,241 @@ export async function getShippingPrice(
   // [4] NÃO ATENDEMOS
   return {
     found: false,
-    message: `Consulte vendedor`,
+    message: "Consulte o vendedor",
+  };
+}
+
+async function buscarPrecoProdutoDestino(params: {
+  productId: string;
+  destinationType: "region" | "bairro-avulso" | "cep-especifico";
+  destinationId: number;
+}) {
+  const baseWhere = [
+    eq(productOwnDeliveryPrices.productId, params.productId),
+    eq(productOwnDeliveryPrices.destinationType, params.destinationType),
+    eq(productOwnDeliveryPrices.isActive, true),
+  ];
+
+  if (params.destinationType === "region") {
+    baseWhere.push(eq(productOwnDeliveryPrices.regionId, params.destinationId));
+  }
+
+  if (params.destinationType === "bairro-avulso") {
+    baseWhere.push(
+      eq(productOwnDeliveryPrices.bairroAvulsoId, params.destinationId),
+    );
+  }
+
+  if (params.destinationType === "cep-especifico") {
+    baseWhere.push(
+      eq(productOwnDeliveryPrices.cepEspecificoId, params.destinationId),
+    );
+  }
+
+  return db.query.productOwnDeliveryPrices.findFirst({
+    where: and(...baseWhere),
+  });
+}
+
+export async function getProductOwnDeliveryPrice(
+  productId: string,
+  cep: string,
+  neighborhood: string,
+  city: string,
+  state: string,
+): Promise<ShippingPriceResult & { pendingEligible?: boolean }> {
+  const cleanCep = cep.replace(/\D/g, "");
+
+  const [estadoAtivo, cidadeAtiva] = await Promise.all([
+    db.query.states.findFirst({
+      where: and(eq(states.uf, state), eq(states.isActive, true)),
+    }),
+    db.query.cities.findFirst({
+      where: and(
+        eq(cities.name, city),
+        eq(cities.stateUf, state),
+        eq(cities.isActive, true),
+      ),
+    }),
+  ]);
+
+  if (!estadoAtivo) {
+    return {
+      found: false,
+      message: "Consulte o vendedor",
+      pendingEligible: true,
+    };
+  }
+
+  if (!cidadeAtiva) {
+    return {
+      found: false,
+      message: "Consulte o vendedor",
+      pendingEligible: true,
+    };
+  }
+
+  const cepEspecifico = await db.query.cepsEspecificos.findFirst({
+    where: and(
+      eq(cepsEspecificos.cep, cleanCep),
+      eq(cepsEspecificos.isActive, true),
+    ),
+  });
+
+  if (cepEspecifico) {
+    const preco = await buscarPrecoProdutoDestino({
+      productId,
+      destinationType: "cep-especifico",
+      destinationId: cepEspecifico.id,
+    });
+
+    if (preco) {
+      return {
+        found: true,
+        level: "cep-especifico",
+        shippingPrice: preco.shippingPrice,
+        message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
+        cep: cepEspecifico.cep,
+        neighborhood: cepEspecifico.neighborhood,
+        city: cepEspecifico.city,
+        state: cepEspecifico.state,
+      };
+    }
+  }
+
+  const faixaRegiao = await db.query.shippingRegionCepRanges.findFirst({
+    where: and(
+      lte(shippingRegionCepRanges.cepStart, cleanCep),
+      gte(shippingRegionCepRanges.cepEnd, cleanCep),
+      eq(shippingRegionCepRanges.isActive, true),
+    ),
+    with: {
+      region: true,
+    },
+  });
+
+  if (
+    faixaRegiao?.region?.isActive &&
+    faixaRegiao.region.state === state &&
+    normalizarTextoFrete(faixaRegiao.region.city) === normalizarTextoFrete(city)
+  ) {
+    const preco = await buscarPrecoProdutoDestino({
+      productId,
+      destinationType: "region",
+      destinationId: faixaRegiao.region.id,
+    });
+
+    if (preco) {
+      return {
+        found: true,
+        level: "regiao",
+        shippingPrice: preco.shippingPrice,
+        message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
+        region: {
+          id: faixaRegiao.region.id,
+          name: faixaRegiao.region.name,
+          city: faixaRegiao.region.city,
+          state: faixaRegiao.region.state,
+        },
+      };
+    }
+
+    return { found: false, message: "Consulte o vendedor" };
+  }
+
+  const regioesComBairro = await db.query.regioBairros.findMany({
+    where: eq(regioBairros.neighborhood, neighborhood),
+    with: {
+      regiao: true,
+    },
+  });
+  const regioesCompativeis = regioesComBairro.filter(
+    (bairro) =>
+      normalizarTextoFrete(bairro.neighborhood) ===
+        normalizarTextoFrete(neighborhood) &&
+      bairro.regiao.isActive &&
+      bairro.regiao.state === state &&
+      normalizarTextoFrete(bairro.regiao.city) === normalizarTextoFrete(city),
+  );
+
+  const regionIds = regioesCompativeis.map(
+    (regiaoComBairro) => regiaoComBairro.regiao.id,
+  );
+
+  if (regionIds.length > 0) {
+    const preco = await db.query.productOwnDeliveryPrices.findFirst({
+      where: and(
+        eq(productOwnDeliveryPrices.productId, productId),
+        eq(productOwnDeliveryPrices.destinationType, "region"),
+        eq(productOwnDeliveryPrices.isActive, true),
+        inArray(productOwnDeliveryPrices.regionId, regionIds),
+      ),
+    });
+
+    if (preco?.regionId) {
+      const regiaoComPreco = regioesCompativeis.find(
+        (regiaoComBairro) => regiaoComBairro.regiao.id === preco.regionId,
+      );
+
+      if (regiaoComPreco) {
+        return {
+          found: true,
+          level: "regiao",
+          shippingPrice: preco.shippingPrice,
+          message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
+          region: {
+            id: regiaoComPreco.regiao.id,
+            name: regiaoComPreco.regiao.name,
+            city: regiaoComPreco.regiao.city,
+            state: regiaoComPreco.regiao.state,
+          },
+        };
+      }
+    }
+  }
+
+  if (regioesCompativeis.length > 0) {
+    return { found: false, message: "Consulte o vendedor" };
+  }
+
+  const bairroAvulso = await db.query.bairrosAvulsos.findFirst({
+    where: and(
+      eq(bairrosAvulsos.neighborhood, neighborhood),
+      eq(bairrosAvulsos.city, city),
+      eq(bairrosAvulsos.state, state),
+      eq(bairrosAvulsos.isActive, true),
+    ),
+  });
+
+  if (bairroAvulso) {
+    const preco = await buscarPrecoProdutoDestino({
+      productId,
+      destinationType: "bairro-avulso",
+      destinationId: bairroAvulso.id,
+    });
+
+    if (!preco) {
+      return { found: false, message: "Consulte o vendedor" };
+    }
+
+    return {
+      found: true,
+      level: "bairro-avulso",
+      shippingPrice: preco.shippingPrice,
+      message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
+      bairro: {
+        id: bairroAvulso.id,
+        neighborhood: bairroAvulso.neighborhood,
+        city: bairroAvulso.city,
+        state: bairroAvulso.state,
+      },
+    };
+  }
+
+  return {
+    found: false,
+    message: "Consulte o vendedor",
+    pendingEligible: true,
   };
 }
 

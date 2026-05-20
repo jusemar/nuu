@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 
 import { userTable } from "../autenticacao";
 import { checkoutClientesTable } from "./tabelas/clientes";
+import { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 import { checkoutEnderecosTable } from "./tabelas/enderecos";
 import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 import { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
@@ -47,6 +48,7 @@ export const checkoutPedidosRelations = relations(
     itens: many(checkoutPedidoItensTable),
     pagamentos: many(checkoutPagamentosTable),
     historicos: many(checkoutPedidoHistoricosTable),
+    efiWebhookEventos: many(checkoutEfiWebhookEventosTable),
     stripeWebhookEventos: many(checkoutStripeWebhookEventosTable),
     logistica: one(checkoutPedidoLogisticasTable, {
       fields: [checkoutPedidosTable.id],
@@ -72,6 +74,7 @@ export const checkoutPagamentosRelations = relations(
       fields: [checkoutPagamentosTable.pedidoId],
       references: [checkoutPedidosTable.id],
     }),
+    efiWebhookEventos: many(checkoutEfiWebhookEventosTable),
     stripeWebhookEventos: many(checkoutStripeWebhookEventosTable),
   }),
 );
@@ -92,6 +95,20 @@ export const checkoutPedidoLogisticasRelations = relations(
     pedido: one(checkoutPedidosTable, {
       fields: [checkoutPedidoLogisticasTable.pedidoId],
       references: [checkoutPedidosTable.id],
+    }),
+  }),
+);
+
+export const checkoutEfiWebhookEventosRelations = relations(
+  checkoutEfiWebhookEventosTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutEfiWebhookEventosTable.pedidoId],
+      references: [checkoutPedidosTable.id],
+    }),
+    pagamento: one(checkoutPagamentosTable, {
+      fields: [checkoutEfiWebhookEventosTable.pagamentoId],
+      references: [checkoutPagamentosTable.id],
     }),
   }),
 );

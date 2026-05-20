@@ -4,18 +4,19 @@
 // Este arquivo é chamado pelo hook useProductId quando a página
 // de edição do produto é aberta.
 // ==============================================================
-"use server"
+"use server";
 
 // --- IMPORTAÇÕES DO BANCO DE DADOS ---
-import { db } from "@/db/connection"
+import { db } from "@/db/connection";
 import {
-  productTable,            // Tabela principal dos produtos
+  productTable, // Tabela principal dos produtos
   productGalleryImagesTable, // Tabela de imagens da GALERIA PRINCIPAL (product_gallery_images)
-  productPricingTable,      // Tabela de modalidades de preço
-  categoryTable,            // Tabela de categorias (para buscar o nome da categoria)
-  modelosRetiradaTable,     // Tabela de modelos de retirada
-} from "@/db/schema"
-import { eq, asc } from "drizzle-orm"
+  productPricingTable, // Tabela de modalidades de preço
+  categoryTable, // Tabela de categorias (para buscar o nome da categoria)
+  modelosRetiradaTable, // Tabela de modelos de retirada
+} from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
+import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
 
 /**
  * Busca um produto completo pelo seu ID.
@@ -92,6 +93,7 @@ export async function getProductById(id: string) {
 
         // Retirada local
         allowsPickup: productTable.allowsPickup,
+        allowsOwnDelivery: productTable.allowsOwnDelivery,
         modeloRetiradaId: productTable.modeloRetiradaId,
         prazoRetiradaCustom: productTable.prazoRetiradaCustom,
 
@@ -103,15 +105,18 @@ export async function getProductById(id: string) {
       // LEFT JOIN: traz o nome da categoria mesmo se o produto não tiver categoria
       .leftJoin(categoryTable, eq(categoryTable.id, productTable.categoryId))
       // LEFT JOIN: traz o modelo de retirada relacionado
-      .leftJoin(modelosRetiradaTable, eq(modelosRetiradaTable.id, productTable.modeloRetiradaId))
+      .leftJoin(
+        modelosRetiradaTable,
+        eq(modelosRetiradaTable.id, productTable.modeloRetiradaId),
+      )
       // Filtra pelo ID do produto
       .where(eq(productTable.id, id))
       // Limita a 1 resultado (pois o ID é único)
-      .limit(1)
+      .limit(1);
 
     // Se não encontrou o produto, retorna erro
     if (!product) {
-      return { success: false, message: "Produto não encontrado", data: null }
+      return { success: false, message: "Produto não encontrado", data: null };
     }
 
     // ---------------------------------------------------------------
@@ -130,7 +135,7 @@ export async function getProductById(id: string) {
       })
       .from(productGalleryImagesTable)
       .where(eq(productGalleryImagesTable.productId, id))
-      .orderBy(asc(productGalleryImagesTable.sortOrder))
+      .orderBy(asc(productGalleryImagesTable.sortOrder));
 
     // ---------------------------------------------------------------
     // 3. BUSCAR MODALIDADES DE PREÇO
@@ -140,25 +145,27 @@ export async function getProductById(id: string) {
     const pricingModalities = await db
       .select()
       .from(productPricingTable)
-      .where(eq(productPricingTable.productId, id))
+      .where(eq(productPricingTable.productId, id));
+
+    const precosEntregaPropria = await listarPrecosEntregaPropriaProduto(id);
 
     // Montar o objeto de modalidades no formato que o frontend espera
-    const modalities: Record<string, any> = {}
-    let mainCardPriceType = ""
+    const modalities: Record<string, any> = {};
+    let mainCardPriceType = "";
 
     pricingModalities.forEach((m: any) => {
       // Tipo da modalidade (stock, preSale, dropshipping, orderBasis)
-      const type = m.type || "default"
+      const type = m.type || "default";
 
       // Converter preço de centavos para reais (o banco salva em centavos)
-      const price = m.price ? Number(m.price) / 100 : 0
-      const deliveryText = m.deliveryDays || ""
+      const price = m.price ? Number(m.price) / 100 : 0;
+      const deliveryText = m.deliveryDays || "";
 
       // Dados de promoção
-      const promoActive = Boolean(m.hasPromo)
-      const promoPrice = m.promoPrice ? Number(m.promoPrice) / 100 : undefined
-      const promoType = m.promoType || "normal"
-      const promoEndDate = m.promoEndDate || undefined
+      const promoActive = Boolean(m.hasPromo);
+      const promoPrice = m.promoPrice ? Number(m.promoPrice) / 100 : undefined;
+      const promoType = m.promoType || "normal";
+      const promoEndDate = m.promoEndDate || undefined;
 
       // Montar o objeto da modalidade
       modalities[type] = {
@@ -170,28 +177,28 @@ export async function getProductById(id: string) {
           price: promoPrice ? promoPrice.toFixed(2) : "",
           endDate: promoEndDate,
         },
-      }
+      };
 
       // Identifica qual modalidade é exibida como preço principal no card
-      if (m.mainCardPrice) mainCardPriceType = type
-    })
+      if (m.mainCardPrice) mainCardPriceType = type;
+    });
 
     // ---------------------------------------------------------------
     // 4. PROCESSAR STORE PRODUCT FLAGS
     // As flags podem vir como string JSON ou array. Aqui garantimos
     // que sempre será um array de strings.
     // ---------------------------------------------------------------
-    let flags: string[] = []
+    let flags: string[] = [];
     if (product.storeProductFlags) {
       try {
         flags =
           typeof product.storeProductFlags === "string"
             ? JSON.parse(product.storeProductFlags)
-            : (product.storeProductFlags as any)
+            : (product.storeProductFlags as any);
       } catch {
         flags = Array.isArray(product.storeProductFlags)
           ? product.storeProductFlags
-          : []
+          : [];
       }
     }
 
@@ -199,15 +206,15 @@ export async function getProductById(id: string) {
     // 5. PROCESSAR TAGS
     // Mesma lógica das flags: garantir que seja um array de strings.
     // ---------------------------------------------------------------
-    let tags: string[] = []
+    let tags: string[] = [];
     if (product.tags) {
       try {
         tags =
           typeof product.tags === "string"
             ? JSON.parse(product.tags)
-            : product.tags
+            : product.tags;
       } catch {
-        tags = Array.isArray(product.tags) ? product.tags : []
+        tags = Array.isArray(product.tags) ? product.tags : [];
       }
     }
 
@@ -221,11 +228,11 @@ export async function getProductById(id: string) {
     // ---------------------------------------------------------------
     const normalizedImages = galleryImages.map((img) => ({
       id: img.id,
-      url: img.imageUrl,        // URL do Vercel Blob
-      preview: img.imageUrl,    // Usa a mesma URL como preview
+      url: img.imageUrl, // URL do Vercel Blob
+      preview: img.imageUrl, // Usa a mesma URL como preview
       isPrimary: img.isPrimary || false,
       altText: img.altText || "",
-    }))
+    }));
 
     // ---------------------------------------------------------------
     // 7. RETORNAR TODOS OS DADOS DO PRODUTO
@@ -243,17 +250,25 @@ export async function getProductById(id: string) {
         pricing: { modalities, mainCardPriceType },
         // Dados de retirada local
         allowsPickup: product.allowsPickup,
+        allowsOwnDelivery: product.allowsOwnDelivery,
         modeloRetiradaId: product.modeloRetiradaId,
         prazoRetiradaCustom: product.prazoRetiradaCustom,
+        precosEntregaPropria: precosEntregaPropria.map((preco) => ({
+          destinationType: preco.destinationType,
+          destinationId: preco.destinationId,
+          shippingPrice: preco.shippingPrice,
+          deliveryDeadline: preco.deliveryDeadline,
+          isActive: preco.isActive,
+        })),
       },
-    }
+    };
   } catch (error: any) {
     // Em caso de erro, loga no console e retorna mensagem de erro
-    console.error("Erro ao buscar produto:", error)
+    console.error("Erro ao buscar produto:", error);
     return {
       success: false,
       message: "Erro interno ao buscar produto",
       data: null,
-    }
+    };
   }
 }

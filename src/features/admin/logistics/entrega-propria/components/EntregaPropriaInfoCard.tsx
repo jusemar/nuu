@@ -19,21 +19,19 @@ const levels = [
     border: "border-amber-200",
     bg: "bg-amber-50/50",
     badge: "Prioridade máxima",
-    badgeVariant:
-      "bg-amber-100 text-amber-700 hover:bg-amber-100" as const,
+    badgeVariant: "bg-amber-100 text-amber-700 hover:bg-amber-100" as const,
   },
   {
     number: 2,
     title: "Regiões",
-    description: "Grupos de bairros com um único preço de frete",
+    description: "Grupos operacionais de bairros atendidos",
     icon: Layers,
     iconBg: "bg-blue-100",
     iconColor: "text-blue-600",
     border: "border-blue-200",
     bg: "bg-blue-50/50",
     badge: "2ª prioridade",
-    badgeVariant:
-      "bg-blue-100 text-blue-700 hover:bg-blue-100" as const,
+    badgeVariant: "bg-blue-100 text-blue-700 hover:bg-blue-100" as const,
   },
   {
     number: 3,
@@ -45,13 +43,12 @@ const levels = [
     border: "border-slate-200",
     bg: "bg-slate-50/50",
     badge: "3ª prioridade",
-    badgeVariant:
-      "bg-slate-100 text-slate-700 hover:bg-slate-100" as const,
+    badgeVariant: "bg-slate-100 text-slate-700 hover:bg-slate-100" as const,
   },
   {
     number: 4,
-    title: "Não atendemos",
-    description: "Endereço fora da área de entrega própria",
+    title: "Consulte o vendedor",
+    description: "Bairro sem regra automatica cadastrada",
     icon: XCircle,
     iconBg: "bg-red-100",
     iconColor: "text-red-500",
@@ -62,11 +59,7 @@ const levels = [
   },
 ];
 
-function LevelCard({
-  level,
-}: {
-  level: (typeof levels)[number];
-}) {
+function LevelCard({ level }: { level: (typeof levels)[number] }) {
   const Icon = level.icon;
 
   return (
@@ -74,13 +67,13 @@ function LevelCard({
       className={cn(
         "flex gap-3 rounded-lg border p-3 transition-colors",
         level.border,
-        level.bg
+        level.bg,
       )}
     >
       <div
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-          level.iconBg
+          level.iconBg,
         )}
       >
         <Icon className={cn("h-5 w-5", level.iconColor)} />
@@ -91,7 +84,10 @@ function LevelCard({
           <span className="text-sm font-semibold text-gray-900">
             {level.title}
           </span>
-          <Badge variant="secondary" className={cn("text-xs", level.badgeVariant)}>
+          <Badge
+            variant="secondary"
+            className={cn("text-xs", level.badgeVariant)}
+          >
             {level.badge}
           </Badge>
         </div>
@@ -117,8 +113,8 @@ export function EntregaPropriaInfoCard() {
         <AccordionContent>
           <div className="space-y-2 pt-1">
             <p className="mb-2 text-xs text-gray-500">
-              Quando o cliente digita o CEP na loja, o sistema verifica as
-              zonas de entrega nesta ordem:
+              Quando o cliente digita o CEP na loja, o sistema verifica as zonas
+              de entrega nesta ordem:
             </p>
 
             {levels.map((level) => (

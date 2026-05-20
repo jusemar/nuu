@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "import:ceps": "tsx scripts/import-shipping-zip-addresses.ts",
     "start": "next start",
     "lint": "next lint"
   },

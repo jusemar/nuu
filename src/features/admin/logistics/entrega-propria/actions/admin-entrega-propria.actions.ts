@@ -22,6 +22,15 @@ function revalidarEntregaPropria() {
   revalidatePath("/admin/logistics/entrega-propria/regioes");
 }
 
+function revalidarProdutoComEntregaPropria(productId: string) {
+  try {
+    revalidatePath("/admin/products");
+    revalidatePath(`/admin/products/${productId}/edit`);
+  } catch (error) {
+    console.warn("Nao foi possivel revalidar produto com entrega:", error);
+  }
+}
+
 async function buscarRegiaoObrigatoria(regiaoId: number) {
   const regiao = await db.query.shippingRegions.findFirst({
     where: eq(shippingRegions.id, regiaoId),
@@ -538,8 +547,7 @@ export async function salvarPrecosEntregaPropriaProduto(
     await db.insert(productOwnDeliveryPrices).values(entries);
   }
 
-  revalidatePath("/admin/products");
-  revalidatePath(`/admin/products/${productId}/edit`);
+  revalidarProdutoComEntregaPropria(productId);
 }
 
 export async function removerBairroDaRegiaoEntregaPropria(

@@ -9,6 +9,20 @@ import {
 import { revalidatePath } from "next/cache";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
+import type {
+  ProductAttributeInput,
+  ProductKind,
+  ProductVariantFormInput,
+} from "@/features/products";
+
+function revalidateAdminProductsPath() {
+  try {
+    revalidatePath("/admin/products");
+  } catch (error) {
+    console.warn("Nao foi possivel revalidar /admin/products:", error);
+  }
+}
 
 interface CreateProductData {
   name: string;
@@ -19,6 +33,7 @@ interface CreateProductData {
   brand?: string;
   sku: string;
   productType?: string;
+  productKind?: ProductKind;
   productCode?: string;
   ncmCode?: string;
   collection?: string;
@@ -40,7 +55,7 @@ interface CreateProductData {
   canonicalUrl?: string;
 
   images: Array<{
-    url: string;
+    url?: string;
     isPrimary: boolean;
     altText?: string;
   }>;
@@ -51,6 +66,8 @@ interface CreateProductData {
     permiteEntregaPropria?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
   };
+  attributes?: ProductAttributeInput[];
+  variants?: ProductVariantFormInput[];
 }
 
 export async function createProduct(data: CreateProductData) {
@@ -72,6 +89,7 @@ export async function createProduct(data: CreateProductData) {
         tags: data.tags,
         storeProductFlags: data.storeProductFlags || [],
         cardShortText: data.cardShortText,
+        productKind: data.productKind ?? "simple",
         costPrice: data.pricing?.costPrice
           ? parseInt(data.pricing.costPrice) * 100
           : null,
@@ -96,11 +114,13 @@ export async function createProduct(data: CreateProductData) {
     console.log("Produto criado:", product);
 
     // 2. Adicionar imagens na galeria
-    if (data.images.length > 0) {
+    const validImages = data.images.filter((image) => image.url);
+
+    if (validImages.length > 0) {
       await db.insert(productGalleryImagesTable).values(
-        data.images.map((image, index) => ({
+        validImages.map((image, index) => ({
           productId: product.id,
-          imageUrl: image.url,
+          imageUrl: image.url!,
           altText: image.altText || data.name,
           isPrimary: image.isPrimary,
           sortOrder: index,
@@ -136,8 +156,15 @@ export async function createProduct(data: CreateProductData) {
       );
     }
 
+    await salvarEstruturaVariantesProduto({
+      productId: product.id,
+      productKind: data.productKind ?? "simple",
+      attributes: data.attributes,
+      variants: data.variants,
+    });
+
     // 4. Revalidar cache
-    revalidatePath("/admin/products");
+    revalidateAdminProductsPath();
     return { success: true, productId: product.id };
   } catch (error) {
     console.error("Erro ao criar produto:", error);

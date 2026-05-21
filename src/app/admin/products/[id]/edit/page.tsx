@@ -102,6 +102,7 @@ export default function EditProductPage() {
         isActive: product.isActive ?? true,
         collection: product.collection || "",
         tags: product.tags || [],
+        productKind: product.productKind === "variable" ? "variable" : "simple",
 
         // Store Product Flags (campo que estava faltando)
         storeProductFlags: product.storeProductFlags || [],
@@ -137,6 +138,35 @@ export default function EditProductPage() {
               url: String(img.url ?? ""),
               preview: String(img.url ?? img.preview ?? ""),
               isPrimary: Boolean(img.isPrimary),
+            }))
+          : [],
+
+        attributes: Array.isArray(product.attributes)
+          ? product.attributes.map((attribute: any) => ({
+              id: String(attribute.id),
+              productId: String(attribute.productId),
+              name: String(attribute.name ?? ""),
+              values: Array.isArray(attribute.values) ? attribute.values : [],
+            }))
+          : [],
+
+        variants: Array.isArray(product.variants)
+          ? product.variants.map((variant: any) => ({
+              id: String(variant.id),
+              productId: String(variant.productId),
+              sku: String(variant.sku ?? ""),
+              name: variant.name ?? null,
+              attributes: variant.attributes ?? {},
+              priceInCents: Number(variant.priceInCents ?? 0),
+              comparePriceInCents: variant.comparePriceInCents,
+              stockQuantity: Number(variant.stockQuantity ?? 0),
+              weightInGrams: variant.weightInGrams,
+              heightInCm: variant.heightInCm,
+              widthInCm: variant.widthInCm,
+              lengthInCm: variant.lengthInCm,
+              imageUrl: variant.imageUrl,
+              isActive: Boolean(variant.isActive),
+              isDefault: Boolean(variant.isDefault),
             }))
           : [],
 
@@ -199,9 +229,12 @@ export default function EditProductPage() {
       value: "shipping",
       component: (
         <ShippingTab
-          data={productData.shipping ?? {}}
+          data={productData}
           onChange={(updates: Partial<{ [key: string]: any }>) =>
-            setProductData((prev) => ({ ...prev, shipping: updates }))
+            setProductData((prev) => ({
+              ...prev,
+              shipping: { ...prev.shipping, ...updates },
+            }))
           }
         />
       ),
@@ -227,6 +260,18 @@ export default function EditProductPage() {
       value: "warranty",
       component: (
         <WarrantyTab
+          data={productData}
+          onChange={(updates: Partial<ProductFormData>) =>
+            setProductData((prev) => ({ ...prev, ...updates }))
+          }
+        />
+      ),
+    },
+    {
+      name: "🎨 Variantes",
+      value: "variants",
+      component: (
+        <VariantsTab
           data={productData}
           onChange={(updates: Partial<ProductFormData>) =>
             setProductData((prev) => ({ ...prev, ...updates }))

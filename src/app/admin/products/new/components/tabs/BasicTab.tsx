@@ -21,7 +21,19 @@ import {
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { X, RefreshCw, Plus } from "lucide-react";
+import {
+  Box,
+  CheckCircle2,
+  DollarSign,
+  Info,
+  Layers,
+  Package,
+  Plus,
+  RefreshCw,
+  Ruler,
+  Tag,
+  X,
+} from "lucide-react";
 import { useCategories } from "@/hooks/admin/queries/use-categories";
 import { useSlugGenerator } from "@/hooks/forms/useSlugGenerator";
 import { useSkuGenerator } from "@/hooks/forms/useSkuGenerator";
@@ -31,6 +43,7 @@ import {
 } from "../image-upload/ProductImageGallery";
 import { StoreProductFlags } from "@/components/admin/store-product-flags";
 import { CategoryTreeSelector } from "@/features/admin/products/components/CategoryTreeSelector";
+import type { ProductKind } from "@/features/products";
 
 interface BasicTabProps {
   data: {
@@ -43,6 +56,7 @@ interface BasicTabProps {
     isActive: boolean;
     collection: string;
     tags: string[];
+    productKind: ProductKind;
     productType: string;
     productCode: string;
     ncmCode: string;
@@ -94,7 +108,6 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
   const handleImagesChange = (images: UploadedImage[]) => {
     onChange({ images });
   };
-  
 
   return (
     <div className="space-y-6">
@@ -270,6 +283,135 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                   className="text-sm"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipo de Produto</CardTitle>
+              <CardDescription>
+                Define onde preço, SKU, estoque e dimensões serão controlados.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  {
+                    value: "simple" as const,
+                    icon: Package,
+                    title: "Produto simples",
+                    description:
+                      "Um único item vendável com preço, estoque e dimensões próprios.",
+                    items: ["1 SKU", "1 preço", "1 estoque"],
+                  },
+                  {
+                    value: "variable" as const,
+                    icon: Layers,
+                    title: "Produto com variantes",
+                    description:
+                      "Cada combinação vendável controla SKU, preço, estoque e dimensões.",
+                    items: [
+                      "SKU por variante",
+                      "preço por variante",
+                      "dimensões por variante",
+                    ],
+                  },
+                ].map((option) => {
+                  const active = data.productKind === option.value;
+                  const Icon = option.icon;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => onChange({ productKind: option.value })}
+                      className={`relative rounded-xl border p-4 text-left transition ${
+                        active
+                          ? "border-slate-900 bg-slate-900/[0.02] shadow-[0_0_0_4px_rgba(15,23,42,0.04)]"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg transition ${
+                              active
+                                ? "bg-slate-900 text-white"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {option.title}
+                              </p>
+                              {active ? (
+                                <span className="grid h-4 w-4 place-items-center rounded-full bg-slate-900 text-white">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {option.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {option.items.map((item) => (
+                          <Badge
+                            key={item}
+                            variant="secondary"
+                            className="text-[11px]"
+                          >
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {data.productKind === "variable" ? (
+                <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-900 text-white">
+                      <Info className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900">
+                        Controlado pelas variantes
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Este produto usa variantes. Preço, SKU, estoque, peso e
+                        dimensões são definidos em cada variante.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {[
+                          { label: "Preço", icon: DollarSign },
+                          { label: "Estoque", icon: Box },
+                          { label: "SKU", icon: Tag },
+                          { label: "Peso", icon: Ruler },
+                          { label: "Dimensões", icon: Ruler },
+                        ].map((item) => (
+                          <span
+                            key={item.label}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600"
+                          >
+                            <item.icon className="h-3 w-3 text-slate-400" />
+                            {item.label}
+                            <span className="text-slate-300">→</span>
+                            <span className="text-slate-900">por variante</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 

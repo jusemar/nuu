@@ -10,6 +10,20 @@ import {
 import { eq } from "drizzle-orm";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
+import type {
+  ProductAttributeInput,
+  ProductKind,
+  ProductVariantFormInput,
+} from "@/features/products";
+
+function revalidateAdminProductsPath() {
+  try {
+    revalidatePath("/admin/products");
+  } catch (error) {
+    console.warn("Nao foi possivel revalidar /admin/products:", error);
+  }
+}
 
 interface UpdateProductData {
   name?: string;
@@ -23,6 +37,7 @@ interface UpdateProductData {
   collection?: string;
   tags?: string[];
   storeProductFlags: string[];
+  productKind?: ProductKind;
   productType?: string;
   productCode?: string;
   ncmCode?: string;
@@ -52,7 +67,7 @@ interface UpdateProductData {
     terms?: string;
   };
   images?: Array<{
-    url: string;
+    url?: string;
     isPrimary: boolean;
     altText?: string;
   }>;
@@ -63,6 +78,8 @@ interface UpdateProductData {
     permiteEntregaPropria?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
   };
+  attributes?: ProductAttributeInput[];
+  variants?: ProductVariantFormInput[];
 }
 
 export async function updateProduct(id: string, data: UpdateProductData) {
@@ -107,6 +124,8 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     if (data.ncmCode !== undefined) updateFields.ncmCode = data.ncmCode;
     if (data.storeProductFlags !== undefined)
       updateFields.storeProductFlags = data.storeProductFlags;
+    if (data.productKind !== undefined)
+      updateFields.productKind = data.productKind;
     if (data.metaTitle !== undefined) updateFields.metaTitle = data.metaTitle;
     if (data.metaDescription !== undefined)
       updateFields.metaDescription = data.metaDescription;
@@ -204,10 +223,12 @@ export async function updateProduct(id: string, data: UpdateProductData) {
         .delete(productGalleryImagesTable)
         .where(eq(productGalleryImagesTable.productId, id));
 
-      if (data.images.length > 0) {
-        const imageEntries = data.images.map((image, index) => ({
+      const validImages = data.images.filter((image) => image.url);
+
+      if (validImages.length > 0) {
+        const imageEntries = validImages.map((image, index) => ({
           productId: id,
-          imageUrl: image.url,
+          imageUrl: image.url!,
           altText: image.altText || data.name || existingProduct.name,
           isPrimary: image.isPrimary,
           sortOrder: index,
@@ -228,7 +249,21 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       );
     }
 
-    revalidatePath("/admin/products");
+    if (
+      data.productKind !== undefined ||
+      data.attributes !== undefined ||
+      data.variants !== undefined
+    ) {
+      await salvarEstruturaVariantesProduto({
+        productId: id,
+        productKind:
+          data.productKind ?? existingProduct.productKind ?? "simple",
+        attributes: data.attributes ?? [],
+        variants: data.variants ?? [],
+      });
+    }
+
+    revalidateAdminProductsPath();
 
     return {
       success: true,

@@ -12,6 +12,8 @@ import {
   productTable, // Tabela principal dos produtos
   productGalleryImagesTable, // Tabela de imagens da GALERIA PRINCIPAL (product_gallery_images)
   productPricingTable, // Tabela de modalidades de preço
+  productAttributeTable,
+  productVariantTable,
   categoryTable, // Tabela de categorias (para buscar o nome da categoria)
   modelosRetiradaTable, // Tabela de modelos de retirada
 } from "@/db/schema";
@@ -47,6 +49,7 @@ export async function getProductById(id: string) {
         isActive: productTable.isActive,
         collection: productTable.collection,
         tags: productTable.tags,
+        productKind: productTable.productKind,
 
         // Códigos do produto
         productType: productTable.productType,
@@ -146,6 +149,39 @@ export async function getProductById(id: string) {
       .select()
       .from(productPricingTable)
       .where(eq(productPricingTable.productId, id));
+
+    const attributes = await db
+      .select({
+        id: productAttributeTable.id,
+        productId: productAttributeTable.productId,
+        name: productAttributeTable.name,
+        values: productAttributeTable.values,
+      })
+      .from(productAttributeTable)
+      .where(eq(productAttributeTable.productId, id))
+      .orderBy(asc(productAttributeTable.createdAt));
+
+    const variants = await db
+      .select({
+        id: productVariantTable.id,
+        productId: productVariantTable.productId,
+        sku: productVariantTable.sku,
+        name: productVariantTable.name,
+        attributes: productVariantTable.attributes,
+        priceInCents: productVariantTable.priceInCents,
+        comparePriceInCents: productVariantTable.comparePriceInCents,
+        stockQuantity: productVariantTable.stockQuantity,
+        weightInGrams: productVariantTable.weightInGrams,
+        heightInCm: productVariantTable.heightInCm,
+        widthInCm: productVariantTable.widthInCm,
+        lengthInCm: productVariantTable.lengthInCm,
+        imageUrl: productVariantTable.imageUrl,
+        isActive: productVariantTable.isActive,
+        isDefault: productVariantTable.isDefault,
+      })
+      .from(productVariantTable)
+      .where(eq(productVariantTable.productId, id))
+      .orderBy(asc(productVariantTable.createdAt));
 
     const precosEntregaPropria = await listarPrecosEntregaPropriaProduto(id);
 
@@ -248,6 +284,8 @@ export async function getProductById(id: string) {
         storeProductFlags: flags,
         images: normalizedImages,
         pricing: { modalities, mainCardPriceType },
+        attributes,
+        variants,
         // Dados de retirada local
         allowsPickup: product.allowsPickup,
         allowsOwnDelivery: product.allowsOwnDelivery,

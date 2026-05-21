@@ -1,5 +1,10 @@
 import type { UploadedImage } from "@/app/admin/products/new/components/image-upload/ProductImageGallery";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import type {
+  ProductAttributeInput,
+  ProductKind,
+  ProductVariantFormInput,
+} from "@/features/products";
 export interface BasicTabProps {
   data: ProductFormData;
   onChange: (updates: Partial<ProductFormData>) => void;
@@ -28,6 +33,7 @@ export interface ProductFormData {
   storeProductFlags: string[];
   collection: string;
   tags: string[];
+  productKind: ProductKind;
   productType: string;
   productCode: string;
   ncmCode: string;
@@ -51,7 +57,8 @@ export interface ProductFormData {
     ativo: boolean;
   }>;
   warranty?: any;
-  variants?: any;
+  attributes: ProductAttributeInput[];
+  variants: ProductVariantFormInput[];
   seller?: any;
   metaTitle?: string;
   metaDescription?: string;
@@ -106,6 +113,7 @@ export const initialProductData: ProductFormData = {
   storeProductFlags: [],
   collection: "",
   tags: [],
+  productKind: "simple",
   productType: "",
   productCode: "",
   ncmCode: "",
@@ -113,6 +121,8 @@ export const initialProductData: ProductFormData = {
   metaTitle: "",
   metaDescription: "",
   canonicalUrl: "",
+  attributes: [],
+  variants: [],
   entrega: {
     permiteRetirada: false,
     modeloRetiradaId: null,

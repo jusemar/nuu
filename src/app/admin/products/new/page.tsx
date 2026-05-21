@@ -67,9 +67,12 @@ export default function NewProductPage() {
       value: "shipping",
       component: (
         <ShippingTab
-          data={productData.shipping ?? {}}
+          data={productData}
           onChange={(updates: Partial<{ [key: string]: any }>) =>
-            setProductData((prev) => ({ ...prev, shipping: updates }))
+            setProductData((prev) => ({
+              ...prev,
+              shipping: { ...prev.shipping, ...updates },
+            }))
           }
         />
       ),
@@ -104,7 +107,14 @@ export default function NewProductPage() {
     {
       name: "🎨 Variantes",
       value: "variants",
-      component: <VariantsTab />,
+      component: (
+        <VariantsTab
+          data={productData}
+          onChange={(updates: Partial<ProductFormData>) =>
+            setProductData((prev) => ({ ...prev, ...updates }))
+          }
+        />
+      ),
     },
     {
       name: "👥 Vendedor",

@@ -13,7 +13,7 @@ import SectionTitle from "@/components/common/section-title";
 import { Footer } from "@/components/common/footer";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const FLASH_DEAL_END_DATE = "2025-09-28T11:02:00";
+const DURACAO_OFERTA_RELAMPAGO_MS = 3 * 60 * 60 * 1000;
 
 const BANNERS = [
   {
@@ -104,6 +104,9 @@ const Home = async () => {
     getNewProducts(),
     getCategories(),
   ]);
+  const dataFinalOfertaRelampago = new Date(
+    Date.now() + DURACAO_OFERTA_RELAMPAGO_MS,
+  ).toISOString();
 
   return (
     <>
@@ -176,8 +179,8 @@ const Home = async () => {
             <SectionTitle icon="flame">Ofertas Especiais</SectionTitle>
           </div>
           <DealsGrid
-            flashDealProduct={products[0]}
-            flashDealEndDate={FLASH_DEAL_END_DATE}
+            produtosOfertaRelampago={products.slice(0, 3)}
+            dataFinalOfertaRelampago={dataFinalOfertaRelampago}
           />
         </section>
 

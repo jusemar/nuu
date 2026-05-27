@@ -2,17 +2,17 @@
 
 import { useProductsByFlag } from "@/features/products/api/queries/use-products-by-flag";
 import DealsCarousel from "./DealsCarousel";
-import { FlashDealCard } from "@/components/common/flash-deal-card";
+import { CartaoOfertaRelampago } from "@/components/common/flash-deal-card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DealsGridProps {
-  flashDealProduct: any; // Produto com galleryImages e pricing
-  flashDealEndDate: string;
+  produtosOfertaRelampago: any[]; // Produtos com galleryImages e pricing
+  dataFinalOfertaRelampago: string;
 }
 
 export const DealsGrid = ({
-  flashDealProduct,
-  flashDealEndDate,
+  produtosOfertaRelampago,
+  dataFinalOfertaRelampago,
 }: DealsGridProps) => {
   // Usando TanStack Query com cache
   const {
@@ -31,12 +31,12 @@ export const DealsGrid = ({
 
   if (isLoading) {
     return (
-      <div className="mb-8 grid grid-cols-1 gap-6 px-4 lg:grid-cols-4">
-        <div className="lg:col-span-1">
-          <Skeleton className="h-[400px] rounded-xl" />
+      <div className="mb-8 grid grid-cols-1 gap-6 px-4 lg:grid-cols-[minmax(480px,1.02fr)_minmax(0,0.98fr)]">
+        <div>
+          <Skeleton className="h-[490px] rounded-xl" />
         </div>
-        <div className="lg:col-span-3">
-          <Skeleton className="h-[300px] rounded-xl" />
+        <div>
+          <Skeleton className="h-[490px] rounded-xl" />
         </div>
       </div>
     );
@@ -72,12 +72,15 @@ export const DealsGrid = ({
   });
 
   return (
-    <div className="mb-8 grid grid-cols-1 items-start gap-6 px-4 lg:grid-cols-4">
-      <div className="lg:col-span-1">
-        <FlashDealCard product={flashDealProduct} endDate={flashDealEndDate} />
+    <div className="mb-8 grid grid-cols-1 items-stretch gap-6 px-4 lg:grid-cols-[minmax(480px,1.02fr)_minmax(0,0.98fr)] xl:grid-cols-[minmax(570px,1.06fr)_minmax(0,0.94fr)]">
+      <div className="min-w-0">
+        <CartaoOfertaRelampago
+          produtos={produtosOfertaRelampago}
+          dataFinal={dataFinalOfertaRelampago}
+        />
       </div>
 
-      <div className="lg:col-span-3">
+      <div className="min-w-0">
         <DealsCarousel products={carouselProducts} />
       </div>
     </div>

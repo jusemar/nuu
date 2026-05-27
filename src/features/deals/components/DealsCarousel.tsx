@@ -147,7 +147,7 @@ const DealsCarousel = ({ products: propProducts }: DealsCarouselProps) => {
   if (products.length === 0) return null;
 
   return (
-    <div className="relative px-4">
+    <div className="relative px-4 lg:flex lg:h-full lg:min-h-[490px] lg:items-center lg:pt-14">
       {/* Carousel */}
       <Carousel
         plugins={[

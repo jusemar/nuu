@@ -1,5 +1,6 @@
 import { getProducts, getNewProducts } from "@/features/store/products/service/getProducts";
 import { getCategories } from "@/data/categories/get";
+import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home";
 
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 import { Header } from "@/features/header";
@@ -13,8 +14,6 @@ import SectionTitle from "@/components/common/section-title";
 import { Footer } from "@/components/common/footer";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const DURACAO_OFERTA_RELAMPAGO_MS = 3 * 60 * 60 * 1000;
-
 const BANNERS = [
   {
     mobileSrc:  "/banner-promocao.webp",
@@ -99,14 +98,12 @@ const SIDE_BANNERS = [
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
-  const [products, newlyCreatedProducts, categories] = await Promise.all([
+  const [products, newlyCreatedProducts, categories, ofertasHome] = await Promise.all([
     getProducts(),
     getNewProducts(),
     getCategories(),
+    buscarOfertasHome(),
   ]);
-  const dataFinalOfertaRelampago = new Date(
-    Date.now() + DURACAO_OFERTA_RELAMPAGO_MS,
-  ).toISOString();
 
   return (
     <>
@@ -179,8 +176,8 @@ const Home = async () => {
             <SectionTitle icon="flame">Ofertas Especiais</SectionTitle>
           </div>
           <DealsGrid
-            produtosOfertaRelampago={products.slice(0, 3)}
-            dataFinalOfertaRelampago={dataFinalOfertaRelampago}
+            produtosOfertaRelampago={ofertasHome.produtosOfertaRelampago}
+            produtosPromocaoNormal={ofertasHome.produtosPromocaoNormal}
           />
         </section>
 

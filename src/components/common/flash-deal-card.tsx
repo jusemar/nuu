@@ -21,16 +21,21 @@ interface ProdutoOfertaRelampago {
     isPrimary: boolean | null;
   }>;
   pricing: Array<{
+    id?: string;
+    type?: string | null;
+    pricingModalDescription?: string | null;
     price: number | null;
     promoPrice?: number | null;
     hasPromo?: boolean | null;
+    promoType?: "normal" | "flash" | string | null;
+    promoEndDate?: Date | string | null;
     mainCardPrice: boolean | null;
   }>;
 }
 
 interface CartaoOfertaRelampagoProps {
   produtos: ProdutoOfertaRelampago[];
-  dataFinal: string;
+  dataFinalFallback?: string;
 }
 
 const unidadesRestantes = [7, 12, 3];
@@ -38,15 +43,22 @@ const fundosImagem = ["bg-[#f5f0e8]", "bg-[#e8f0f5]", "bg-[#f0ede8]"];
 
 export const CartaoOfertaRelampago = ({
   produtos,
-  dataFinal,
+  dataFinalFallback,
 }: CartaoOfertaRelampagoProps) => {
   const [indiceProduto, setIndiceProduto] = useState(0);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [produtoAdicionadoId, setProdutoAdicionadoId] = useState<string | null>(
     null,
   );
-  const tempoRestante = useCountdown(dataFinal);
   const { adicionarItem } = useCarrinho();
+  const produtoAtual = produtos[indiceProduto] ?? produtos[0];
+  const dataFinalAtual =
+    produtoAtual?.pricing?.[0]?.promoEndDate ?? dataFinalFallback;
+  const tempoRestante = useCountdown(
+    dataFinalAtual
+      ? new Date(dataFinalAtual).toISOString()
+      : new Date().toISOString(),
+  );
 
   useEffect(() => {
     if (produtos.length < 2) return;
@@ -60,7 +72,7 @@ export const CartaoOfertaRelampago = ({
 
   if (produtos.length === 0) return null;
 
-  const produto = produtos[indiceProduto] ?? produtos[0];
+  const produto = produtoAtual!;
   const imagemPrincipal =
     produto.galleryImages?.find((imagem) => imagem.isPrimary) ??
     produto.galleryImages?.[0];
@@ -102,7 +114,7 @@ export const CartaoOfertaRelampago = ({
       produtoId: produto.id,
       produtoSlug: produto.slug,
       nome: produto.name,
-      variante: "Preço principal",
+      variante: precoPrincipal?.pricingModalDescription || "Preço principal",
       prazoModalidade: "Consulte prazo",
       imagemUrl: imagemPrincipal?.imageUrl ?? "/produto-sem-foto.webp",
       precoEmCentavos: precoAtual,
@@ -145,6 +157,10 @@ export const CartaoOfertaRelampago = ({
               -{desconto}%
             </span>
           )}
+          <span className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-red-600 to-orange-500 px-3 py-1.5 text-xs font-extrabold tracking-[0.08em] text-white uppercase shadow-lg shadow-red-500/30">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+            Relâmpago
+          </span>
           {imagemPrincipal?.imageUrl ? (
             <Image
               src={imagemPrincipal.imageUrl}
@@ -308,4 +324,6 @@ export const FlashDealCard = ({
 }: {
   product: any;
   endDate: string;
-}) => <CartaoOfertaRelampago produtos={[product]} dataFinal={endDate} />;
+}) => (
+  <CartaoOfertaRelampago produtos={[product]} dataFinalFallback={endDate} />
+);

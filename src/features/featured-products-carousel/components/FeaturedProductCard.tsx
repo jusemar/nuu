@@ -27,6 +27,7 @@ interface FeaturedProductCardProps {
   isFeatured?: boolean;
   isExclusive?: boolean;
   isTrending?: boolean;
+  badgePromocao?: "normal" | "relampago";
   rating?: number;
   reviewCount?: number;
   isFavorite?: boolean;
@@ -49,6 +50,7 @@ export const FeaturedProductCard = ({
   isFeatured = true,
   isExclusive = false,
   isTrending = false,
+  badgePromocao,
   rating = 4.5,
   reviewCount = 42,
   isFavorite: externalIsFavorite,
@@ -70,6 +72,20 @@ export const FeaturedProductCard = ({
     (originalPrice && originalPrice > currentPrice
       ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
       : undefined);
+  const dadosBadgePrincipal = badgePromocao
+    ? {
+        label: badgePromocao === "relampago" ? "Relâmpago" : "Promoção",
+        className:
+          badgePromocao === "relampago"
+            ? "from-red-600 to-orange-500"
+            : "from-emerald-500 to-teal-500",
+      }
+    : isFeatured
+      ? {
+          label: "Destaque",
+          className: "from-purple-600 to-pink-600",
+        }
+      : null;
 
   const formatPrice = (price: number) => {
     return price.toLocaleString("pt-BR", {
@@ -147,12 +163,14 @@ export const FeaturedProductCard = ({
       role={slug ? "link" : undefined}
       tabIndex={slug ? 0 : undefined}
     >
-      {/* Badge DESTAQUE no topo */}
-      {isFeatured && (
+      {/* Badge principal no topo */}
+      {dadosBadgePrincipal && (
         <div className="absolute top-3 left-3 z-10">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 text-xs font-bold tracking-wide text-white uppercase shadow-lg">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full bg-gradient-to-r ${dadosBadgePrincipal.className} px-3 py-1.5 text-xs font-bold tracking-wide text-white uppercase shadow-lg`}
+          >
             <Sparkles className="h-3 w-3" />
-            Destaque
+            {dadosBadgePrincipal.label}
           </span>
         </div>
       )}

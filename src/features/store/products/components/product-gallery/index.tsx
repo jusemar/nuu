@@ -6,11 +6,15 @@ import Image from "next/image";
 interface ProductGalleryProps {
   imagens: string[];
   isLancamento?: boolean;
+  tipoBadge?: "relampago" | "promocao" | null;
+  dataFimRelampago?: Date | null;
 }
 
 export function ProductGallery({
   imagens,
   isLancamento = true,
+  tipoBadge = null,
+  dataFimRelampago = null,
 }: ProductGalleryProps) {
   const [imgAtiva, setImgAtiva] = useState(0);
 
@@ -25,6 +29,15 @@ export function ProductGallery({
   const imagemAnterior = () => {
     setImgAtiva((atual) => (atual - 1 + imagens.length) % imagens.length);
   };
+
+  const relampagoAtivo = Boolean(
+    tipoBadge === "relampago" &&
+      dataFimRelampago &&
+      dataFimRelampago.getTime() > Date.now(),
+  );
+  const mostrarBadgePromocao = tipoBadge === "promocao";
+  const mostrarBadgeLancamento =
+    isLancamento && !relampagoAtivo && !mostrarBadgePromocao;
 
   return (
     <div className="sticky top-[70px] flex flex-col-reverse items-start gap-3 md:flex-row">
@@ -62,8 +75,22 @@ export function ProductGallery({
             priority
           />
 
-          {/* Badge LANÇAMENTO */}
-          {isLancamento && (
+          {/* Badge RELAMPAGO */}
+          {relampagoAtivo && (
+            <span className="absolute top-3 left-3 z-10 rounded-full bg-gradient-to-r from-red-600 to-orange-500 px-3 py-1 text-[10px] font-extrabold tracking-wider text-white shadow-md">
+              RELÂMPAGO
+            </span>
+          )}
+
+          {/* Badge PROMOCAO */}
+          {mostrarBadgePromocao && (
+            <span className="absolute top-3 left-3 z-10 rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-extrabold tracking-wider text-white shadow-md">
+              PROMOÇÃO
+            </span>
+          )}
+
+          {/* Badge LANCAMENTO */}
+          {mostrarBadgeLancamento && (
             <span
               className="absolute top-3 left-3 z-10 rounded-full px-3 py-1 text-[10px] font-extrabold tracking-wider text-white shadow-md"
               style={{ backgroundColor: "#EF9F27" }}

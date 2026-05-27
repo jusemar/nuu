@@ -154,6 +154,21 @@ export function ProductDetail({
       )
     : descontoPix;
 
+  const dataFimPromocaoModalidadeAtiva = converterDataPromocao(
+    modalidadeAtiva.promoEndDate,
+  );
+  const relampagoAtivoModalidadeAtiva = isOfertaRelampagoAtiva(modalidadeAtiva);
+  const promocaoNormalAtivaModalidadeAtiva =
+    modalidadeAtiva.hasPromo &&
+    modalidadeAtiva.promoPrice !== null &&
+    modalidadeAtiva.promoType !== "flash";
+  const tipoBadgeGaleria: "relampago" | "promocao" | null =
+    relampagoAtivoModalidadeAtiva
+      ? "relampago"
+      : promocaoNormalAtivaModalidadeAtiva
+        ? "promocao"
+        : null;
+
   // -----------------------------------------
   // RETIRADA LOCAL: Dados reais do banco
   // -----------------------------------------
@@ -247,9 +262,7 @@ export function ProductDetail({
 
     const precoEmCentavos = hasSelectedVariant
       ? selectedVariant!.priceInCents
-      : modalidadeAtiva.hasPromo && modalidadeAtiva.promoPrice
-        ? modalidadeAtiva.promoPrice
-        : modalidadeAtiva.price;
+      : obterPrecoModalidadeVigente(modalidadeAtiva);
     const descricaoVariante = selectedVariant
       ? selectedVariant.name ||
         Object.values(selectedVariant.attributes).filter(Boolean).join(" / ")
@@ -355,7 +368,12 @@ export function ProductDetail({
               Recebe: array de URLs (strings)
               ========================================== */}
           <div className="order-1 xl:max-w-[420px]">
-            <ProductGallery imagens={galleryImages} isLancamento={true} />
+            <ProductGallery
+              imagens={galleryImages}
+              isLancamento={true}
+              tipoBadge={tipoBadgeGaleria}
+              dataFimRelampago={dataFimPromocaoModalidadeAtiva}
+            />
           </div>
 
           {/* ==========================================
@@ -539,4 +557,32 @@ function textoParecePrazo(texto?: string | null) {
   return /(\d+\s*(dia|dias|hora|horas)|consulte prazo|entrega|úteis|uteis)/i.test(
     texto,
   );
+}
+
+function converterDataPromocao(data: Date | string | null | undefined) {
+  if (!data) return null;
+  const dataConvertida = data instanceof Date ? data : new Date(data);
+  return Number.isNaN(dataConvertida.getTime()) ? null : dataConvertida;
+}
+
+function isOfertaRelampagoAtiva(modalidade: PrecoModalidade) {
+  if (!modalidade.hasPromo || !modalidade.promoPrice) return false;
+  if (modalidade.promoType !== "flash") return false;
+
+  const dataFinal = converterDataPromocao(modalidade.promoEndDate);
+  if (!dataFinal) return false;
+
+  return dataFinal.getTime() > Date.now();
+}
+
+function obterPrecoModalidadeVigente(modalidade: PrecoModalidade) {
+  if (!modalidade.hasPromo || !modalidade.promoPrice) return modalidade.price;
+
+  if (modalidade.promoType === "flash") {
+    return isOfertaRelampagoAtiva(modalidade)
+      ? modalidade.promoPrice
+      : modalidade.price;
+  }
+
+  return modalidade.promoPrice;
 }

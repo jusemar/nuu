@@ -62,9 +62,11 @@ export interface ImagemGaleria {
 export interface PrecoModalidade {
   type: Modalidade; // tipo da modalidade
   price: number; // preço em centavos (ex: 67991 = R$ 679,91)
+  mainCardPrice?: boolean; // modalidade principal configurada no admin
   pricingModalDescription: string | null; // descrição (ex: "Estoque Próprio")
   deliveryDays: string | null; // prazo de entrega (ex: "5 dias úteis")
   hasPromo: boolean; // se tem promoção ativa
+  promoType: "normal" | "flash" | null; // tipo da promoção
   promoPrice: number | null; // preço promocional em centavos
   promoEndDate: Date | null; // quando a promo expira
   isActive: boolean; // se esta modalidade está ativa

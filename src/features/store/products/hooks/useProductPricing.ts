@@ -24,7 +24,18 @@ export function useProductPricing(
   const [modalidadeSelecionada, setModalidadeSelecionada] =
     useState<Modalidade>(() => {
       const modalidadesAtivas = precos.filter((preco) => preco.isActive);
-      return modalidadesAtivas[0]?.type || "stock";
+      const modalidadePrincipal =
+        modalidadesAtivas.find((preco) => preco.mainCardPrice) || null;
+      const modalidadeRelampagoAtiva =
+        modalidadesAtivas.find((preco) => isOfertaRelampagoAtiva(preco)) ||
+        null;
+
+      return (
+        modalidadePrincipal?.type ||
+        modalidadeRelampagoAtiva?.type ||
+        modalidadesAtivas[0]?.type ||
+        "stock"
+      );
     });
 
   const modalidadeAtiva = useMemo(() => {
@@ -38,9 +49,11 @@ export function useProductPricing(
       precos[0] || {
         type: "stock",
         price: 0,
+        mainCardPrice: false,
         pricingModalDescription: null,
         deliveryDays: null,
         hasPromo: false,
+        promoType: null,
         promoPrice: null,
         promoEndDate: null,
         isActive: true,
@@ -86,4 +99,20 @@ export function useProductPricing(
     descontoPix,
     prazoEntrega: modalidadeAtiva.deliveryDays || "Consulte prazo",
   };
+}
+
+function converterDataPromocao(data: Date | string | null | undefined) {
+  if (!data) return null;
+  const dataConvertida = data instanceof Date ? data : new Date(data);
+  return Number.isNaN(dataConvertida.getTime()) ? null : dataConvertida;
+}
+
+function isOfertaRelampagoAtiva(preco: PrecoModalidade) {
+  if (!preco.hasPromo || !preco.promoPrice) return false;
+  if (preco.promoType !== "flash") return false;
+
+  const dataFinal = converterDataPromocao(preco.promoEndDate);
+  if (!dataFinal) return false;
+
+  return dataFinal.getTime() > Date.now();
 }

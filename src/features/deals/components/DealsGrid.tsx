@@ -1,84 +1,63 @@
 "use client";
 
-import { useProductsByFlag } from "@/features/products/api/queries/use-products-by-flag";
 import DealsCarousel from "./DealsCarousel";
 import { CartaoOfertaRelampago } from "@/components/common/flash-deal-card";
-import { Skeleton } from "@/components/ui/skeleton";
+import type { ProdutoPromocionalHome } from "@/features/deals/queries/buscar-ofertas-home";
 
 interface DealsGridProps {
-  produtosOfertaRelampago: any[]; // Produtos com galleryImages e pricing
-  dataFinalOfertaRelampago: string;
+  produtosOfertaRelampago: ProdutoPromocionalHome[];
+  produtosPromocaoNormal: ProdutoPromocionalHome[];
 }
 
 export const DealsGrid = ({
   produtosOfertaRelampago,
-  dataFinalOfertaRelampago,
+  produtosPromocaoNormal,
 }: DealsGridProps) => {
-  // Usando TanStack Query com cache
-  const {
-    data: saleProducts = [],
-    isLoading,
-    error,
-  } = useProductsByFlag(["new"]);
-
-  if (error) {
-    return (
-      <div className="mb-8 px-4 text-red-600">
-        Erro ao carregar ofertas: {error.message}
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="mb-8 grid grid-cols-1 gap-6 px-4 lg:grid-cols-[minmax(480px,1.02fr)_minmax(0,0.98fr)]">
-        <div>
-          <Skeleton className="h-[490px] rounded-xl" />
-        </div>
-        <div>
-          <Skeleton className="h-[490px] rounded-xl" />
-        </div>
-      </div>
-    );
-  }
-
-  // Converter produtos
-  const carouselProducts = saleProducts.map((p) => {
-    const priceNormal = p.mainPrice?.price ? p.mainPrice.price / 100 : 0;
-    const pricePromo = p.mainPrice?.promoPrice
-      ? p.mainPrice.promoPrice / 100
+  const carouselProducts = produtosPromocaoNormal.map((produto) => {
+    const precoPromocional = produto.pricing[0];
+    const priceNormal = precoPromocional?.price
+      ? precoPromocional.price / 100
+      : 0;
+    const pricePromo = precoPromocional?.promoPrice
+      ? precoPromocional.promoPrice / 100
       : null;
-    const hasPromo = p.mainPrice?.hasPromo && pricePromo;
+    const hasPromo = Boolean(precoPromocional?.hasPromo && pricePromo);
     const discount =
       hasPromo && priceNormal > 0
-        ? Math.round(((priceNormal - pricePromo) / priceNormal) * 100)
+        ? Math.round(((priceNormal - pricePromo!) / priceNormal) * 100)
         : undefined;
 
     return {
-      id: p.id,
-      slug: p.slug,
-      image: p.mainImage?.imageUrl || "/produto-sem-foto.webp",
-      title: p.name,
-      description: p.cardShortText || undefined,
+      id: produto.id,
+      slug: produto.slug,
+      image: produto.galleryImages[0]?.imageUrl || "/produto-sem-foto.webp",
+      title: produto.name,
+      description: produto.cardShortText || undefined,
       currentPrice: hasPromo ? pricePromo! : priceNormal,
       originalPrice: hasPromo ? priceNormal : undefined,
-      discount: discount,
-      hasFreeShipping: p.hasFreeShipping || false,
-      // O card compartilhado com "Os mais queridos" usa flags de destaque.
-      isFeatured: Boolean(hasPromo),
+      discount,
+      hasFreeShipping: produto.hasFreeShipping || false,
+      isFeatured: false,
       isExclusive: false,
-      isTrending: p.storeProductFlags?.includes("trending") || false,
+      isTrending: produto.storeProductFlags?.includes("trending") || false,
+      badgePromocao: "normal" as const,
     };
   });
 
+  const temOfertaRelampago = produtosOfertaRelampago.length > 0;
+  const classeGrid = temOfertaRelampago
+    ? "lg:grid-cols-[minmax(480px,1.02fr)_minmax(0,0.98fr)] xl:grid-cols-[minmax(570px,1.06fr)_minmax(0,0.94fr)]"
+    : "lg:grid-cols-1";
+
   return (
-    <div className="mb-8 grid grid-cols-1 items-stretch gap-6 px-4 lg:grid-cols-[minmax(480px,1.02fr)_minmax(0,0.98fr)] xl:grid-cols-[minmax(570px,1.06fr)_minmax(0,0.94fr)]">
-      <div className="min-w-0">
-        <CartaoOfertaRelampago
-          produtos={produtosOfertaRelampago}
-          dataFinal={dataFinalOfertaRelampago}
-        />
-      </div>
+    <div
+      className={`mb-8 grid grid-cols-1 items-stretch gap-6 px-4 ${classeGrid}`}
+    >
+      {temOfertaRelampago && (
+        <div className="min-w-0">
+          <CartaoOfertaRelampago produtos={produtosOfertaRelampago} />
+        </div>
+      )}
 
       <div className="min-w-0">
         <DealsCarousel products={carouselProducts} />

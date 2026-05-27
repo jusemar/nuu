@@ -172,12 +172,21 @@ export default function EditProductPage() {
 
         // Campos de shipping (valores padrão)
         shipping: {
-          weight: "",
-          length: "",
-          width: "",
-          height: "",
+          weight: product.weight ?? "",
+          length: product.length ?? "",
+          width: product.width ?? "",
+          height: product.height ?? "",
           hasFreeShipping: false,
           hasLocalPickup: false,
+        },
+        dimensoesFreteExterno: {
+          pesoEmKg:
+            product.weight === null || product.weight === undefined
+              ? ""
+              : String(Number(product.weight) / 1000),
+          alturaEmCm: product.height?.toString() ?? "",
+          larguraEmCm: product.width?.toString() ?? "",
+          comprimentoEmCm: product.length?.toString() ?? "",
         },
 
         // Campos de retirada local (entrega)
@@ -246,6 +255,13 @@ export default function EditProductPage() {
         <EntregaTab
           data={productData.entrega ?? {}}
           productId={productId}
+          dimensoesFrete={productData.dimensoesFreteExterno}
+          aoAlterarDimensoes={(dimensoes) =>
+            setProductData((prev) => ({
+              ...prev,
+              dimensoesFreteExterno: dimensoes,
+            }))
+          }
           onChange={(updates) =>
             setProductData((prev) => ({
               ...prev,

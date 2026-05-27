@@ -1,38 +1,20 @@
 import type { ItemCarrinho } from "@/features/carrinho";
 
-import { calcularFreteCheckout } from "../calcular-frete-checkout";
-import type { OpcaoFreteCheckoutId } from "../../types/checkout.types";
-
-export function resolverFreteItemCheckout({
-  item,
-  freteFallbackId,
-}: {
-  item: ItemCarrinho;
-  freteFallbackId: OpcaoFreteCheckoutId;
-}) {
-  if (item.freteEscolhido) {
-    return item.freteEscolhido;
+export function resolverFreteItemCheckout(item: ItemCarrinho) {
+  if (!item.freteEscolhido) {
+    throw new Error("Selecione uma forma de entrega para continuar.");
   }
 
-  const freteFallback = calcularFreteCheckout(freteFallbackId);
-
-  return {
-    id: freteFallback.id,
-    nome: freteFallback.nome,
-    prazo: freteFallback.prazo,
-    valorEmCentavos: freteFallback.valorEmCentavos,
-  };
+  return item.freteEscolhido;
 }
 
 export function calcularFreteItensCheckout({
   itens,
-  freteFallbackId,
 }: {
   itens: ItemCarrinho[];
-  freteFallbackId: OpcaoFreteCheckoutId;
 }) {
   return itens.reduce((total, item) => {
-    const frete = resolverFreteItemCheckout({ item, freteFallbackId });
+    const frete = resolverFreteItemCheckout(item);
 
     return total + frete.valorEmCentavos;
   }, 0);

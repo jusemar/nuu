@@ -16,6 +16,7 @@ import type {
   ProductKind,
   ProductVariantFormInput,
 } from "@/features/products";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 
 function revalidateAdminProductsPath() {
   try {
@@ -23,6 +24,18 @@ function revalidateAdminProductsPath() {
   } catch (error) {
     console.warn("Nao foi possivel revalidar /admin/products:", error);
   }
+}
+
+function converterValorEmInteiro(valor?: string) {
+  if (!valor?.trim()) return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= 0 ? Math.round(numero) : null;
+}
+
+function converterPesoEmGramas(pesoEmKg?: string) {
+  if (!pesoEmKg?.trim()) return null;
+  const peso = Number(pesoEmKg);
+  return Number.isFinite(peso) && peso >= 0 ? Math.round(peso * 1000) : null;
 }
 
 interface UpdateProductData {
@@ -78,6 +91,7 @@ interface UpdateProductData {
     permiteEntregaPropria?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
   };
+  dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
 }
@@ -131,6 +145,20 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updateFields.metaDescription = data.metaDescription;
     if (data.canonicalUrl !== undefined)
       updateFields.canonicalUrl = data.canonicalUrl;
+    if (data.dimensoesFreteExterno !== undefined) {
+      updateFields.weight = converterPesoEmGramas(
+        data.dimensoesFreteExterno.pesoEmKg,
+      );
+      updateFields.height = converterValorEmInteiro(
+        data.dimensoesFreteExterno.alturaEmCm,
+      );
+      updateFields.width = converterValorEmInteiro(
+        data.dimensoesFreteExterno.larguraEmCm,
+      );
+      updateFields.length = converterValorEmInteiro(
+        data.dimensoesFreteExterno.comprimentoEmCm,
+      );
+    }
 
     // Campos com transformação
     if (data.pricing?.costPrice !== undefined) {

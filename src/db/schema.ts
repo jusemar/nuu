@@ -590,6 +590,28 @@ export {
   regrasPromocionaisTable,
 } from "./tables/precificacao";
 
+// Regras profissionais de disponibilidade de frete
+export {
+  produtosTiposLogisticosRelations,
+  produtosTiposLogisticosTable,
+  provedoresFreteRelations,
+  provedoresFreteTable,
+  regrasCategoriasFreteRelations,
+  regrasCategoriasFreteTable,
+  regrasProdutosFreteRelations,
+  regrasProdutosFreteTable,
+  regrasTiposLogisticosFreteRelations,
+  regrasTiposLogisticosFreteTable,
+  servicosFreteRelations,
+  servicosFreteTable,
+  tiposLogisticosRelations,
+  tiposLogisticosTable,
+  transportadorasFreteRelations,
+  transportadorasFreteTable,
+  variantesTiposLogisticosRelations,
+  variantesTiposLogisticosTable,
+} from "./tables/logistica";
+
 // Relations de Shipping
 export {
   shippingRegionsRelations,

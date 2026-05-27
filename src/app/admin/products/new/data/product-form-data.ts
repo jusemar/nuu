@@ -1,5 +1,6 @@
 import type { UploadedImage } from "@/app/admin/products/new/components/image-upload/ProductImageGallery";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -42,12 +43,14 @@ export interface ProductFormData {
   // Dados de outras abas (serão preenchidos depois)
   pricing?: any;
   shipping?: any;
+  dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   entrega?: {
     permiteRetirada?: boolean;
     modeloRetiradaId?: string | null;
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
+    classificacoesLogisticasIds?: string[];
   };
   modelosRetirada?: Array<{
     id: string;
@@ -129,5 +132,7 @@ export const initialProductData: ProductFormData = {
     prazoCustom: "",
     permiteEntregaPropria: false,
     precosEntregaPropria: [],
+    classificacoesLogisticasIds: [],
   },
+  dimensoesFreteExterno: {},
 };

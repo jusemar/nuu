@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -17,7 +18,13 @@ export const checkoutPedidoItensTable = pgTable(
       .notNull()
       .references(() => checkoutPedidosTable.id, { onDelete: "cascade" }),
     produtoId: uuid("produto_id").notNull(),
+    varianteId: uuid("variante_id"),
     nomeProduto: text("nome_produto").notNull(),
+    nomeVariante: text("nome_variante"),
+    atributosVariante: jsonb("atributos_variante")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
     skuProduto: text("sku_produto"),
     modalidade: text("modalidade"),
     prazoModalidade: text("prazo_modalidade"),

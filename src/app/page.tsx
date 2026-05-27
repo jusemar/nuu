@@ -172,6 +172,9 @@ const Home = async () => {
 
         {/* Deals / Flash sale */}
         <section aria-label="Ofertas em destaque">
+          <div className="mb-8">
+            <SectionTitle icon="flame">Ofertas Especiais</SectionTitle>
+          </div>
           <DealsGrid
             flashDealProduct={products[0]}
             flashDealEndDate={FLASH_DEAL_END_DATE}

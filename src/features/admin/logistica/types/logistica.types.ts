@@ -8,5 +8,15 @@ export type ModeloRetirada = {
   updatedAt: Date;
 };
 
-export type CriarModeloRetirada = Omit<ModeloRetirada, "id" | "createdAt" | "updatedAt">;
+export type CriarModeloRetirada = Omit<
+  ModeloRetirada,
+  "id" | "createdAt" | "updatedAt"
+>;
 export type AtualizarModeloRetirada = Partial<CriarModeloRetirada>;
+
+export type DimensoesFreteExternoProduto = {
+  pesoEmKg?: string;
+  alturaEmCm?: string;
+  larguraEmCm?: string;
+  comprimentoEmCm?: string;
+};

@@ -32,7 +32,20 @@ export function useProductPricing(
       (preco) => preco.type === modalidadeSelecionada,
     );
 
-    return encontrada || precos.find((preco) => preco.isActive) || precos[0];
+    return (
+      encontrada ||
+      precos.find((preco) => preco.isActive) ||
+      precos[0] || {
+        type: "stock",
+        price: 0,
+        pricingModalDescription: null,
+        deliveryDays: null,
+        hasPromo: false,
+        promoPrice: null,
+        promoEndDate: null,
+        isActive: true,
+      }
+    );
   }, [precos, modalidadeSelecionada]);
 
   const modalidadesDisponiveis = useMemo(

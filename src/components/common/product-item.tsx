@@ -13,13 +13,25 @@ interface ProductItemProps {
 }
 
 const ProductItem = ({ product, className }: ProductItemProps) => {
-  const firstVariant = product.variants[0];
+  const activeVariants = product.variants.filter((variant) => variant.isActive);
+  const firstVariant =
+    activeVariants.reduce<(typeof product.variants)[number] | undefined>(
+      (lowestVariant, variant) =>
+        !lowestVariant || variant.priceInCents < lowestVariant.priceInCents
+          ? variant
+          : lowestVariant,
+      undefined,
+    ) || product.variants[0];
+  const productUrl =
+    product.productKind === "variable"
+      ? `/product/${product.slug}`
+      : `/product-variant/${firstVariant?.id}`;
 
   // ✅ CORRETO: if ANTES do return
   if (!firstVariant) {
     return (
-      <div className={cn("group w-full max-w-xs mx-auto", className)}>
-        <div className="block bg-gray-100 rounded-xl shadow-sm border border-gray-200 overflow-hidden p-8 text-center">
+      <div className={cn("group mx-auto w-full max-w-xs", className)}>
+        <div className="block overflow-hidden rounded-xl border border-gray-200 bg-gray-100 p-8 text-center shadow-sm">
           <p className="text-gray-500">Variante não disponível</p>
         </div>
       </div>
@@ -28,23 +40,32 @@ const ProductItem = ({ product, className }: ProductItemProps) => {
 
   // ✅ AGORA SIM o return
   return (
-    <div className={cn("group w-full max-w-xs mx-auto", className)}>
+    <div className={cn("group mx-auto w-full max-w-xs", className)}>
       <Link
-        href={`/product-variant/${firstVariant.id}`}
-        className="block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-lg"
+        href={productUrl}
+        className="block overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:shadow-lg"
       >
-        <div className="relative mx-auto w-64 h-64 overflow-hidden">
+        <div className="relative mx-auto h-64 w-64 overflow-hidden">
           <Image
-            src={firstVariant?.imageUrl || '/placeholder-image.jpg'}
-            alt={firstVariant?.name || 'Produto sem nome'}
+            src={firstVariant?.imageUrl || "/placeholder-image.jpg"}
+            alt={firstVariant?.name || "Produto sem nome"}
             fill
-            className="object-contain group-hover:scale-105 transition-transform duration-300"
+            className="object-contain transition-transform duration-300 group-hover:scale-105"
           />
         </div>
-        <div className="p-2 w-full max-w-full min-w-0 break-words overflow-hidden">
-          <p className="font-semibold text-gray-800 truncate mb-2 break-words whitespace-normal">{product.name}</p>
-          <p className="text-gray-500 text-xs mb-2 break-words whitespace-normal overflow-wrap-break-word">{product.description}</p>
-          <p className="font-bold text-lg text-gray-900 break-words whitespace-normal">
+        <div className="w-full max-w-full min-w-0 overflow-hidden p-2 break-words">
+          <p className="mb-2 truncate font-semibold break-words whitespace-normal text-gray-800">
+            {product.name}
+          </p>
+          <p className="overflow-wrap-break-word mb-2 text-xs break-words whitespace-normal text-gray-500">
+            {product.description}
+          </p>
+          {product.productKind === "variable" ? (
+            <p className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
+              A partir de
+            </p>
+          ) : null}
+          <p className="text-lg font-bold break-words whitespace-normal text-gray-900">
             {formatCentsToBRL(firstVariant.priceInCents)}
           </p>
         </div>

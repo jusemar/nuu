@@ -36,7 +36,12 @@ import { stripProductRichText } from "../utils/rich-text";
 // MOCKS temporários (apenas para dados que ainda não estão no banco)
 import { produto, cuponsValidos } from "../constants/mockData";
 
-import type { Modalidade, PrecoModalidade } from "../types/product.types";
+import type {
+  AtributoProdutoLoja,
+  Modalidade,
+  PrecoModalidade,
+  VarianteProdutoLoja,
+} from "../types/product.types";
 
 // ==========================================
 // INTERFACE DAS PROPS
@@ -50,6 +55,7 @@ interface ProductDetailProps {
     cardShortText: string | null;
     brand: string | null;
     sku: string;
+    productKind?: string | null;
     allowsPickup: boolean | null;
     prazoRetiradaCustom: string | null;
     allowsOwnDelivery: boolean | null;
@@ -58,18 +64,21 @@ interface ProductDetailProps {
       imageUrl: string;
       altText: string | null;
       isPrimary: boolean | null;
-      sortOrder: number | string;
+      sortOrder: number | string | null;
     }>;
     pricing?: PrecoModalidade[];
+    attributes?: AtributoProdutoLoja[];
+    variants?: VarianteProdutoLoja[];
     modeloRetirada?: {
       id: string;
       nome: string;
       prazoTexto: string;
       mensagem: string | null;
-      ativo: boolean;
+      ativo: boolean | null;
     } | null;
   };
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
+  precosCalculadosPorVariante: PrecosProdutoPorModalidade;
 }
 
 // ==========================================
@@ -78,6 +87,7 @@ interface ProductDetailProps {
 export function ProductDetail({
   product,
   precosCalculadosPorModalidade,
+  precosCalculadosPorVariante,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
@@ -94,6 +104,22 @@ export function ProductDetail({
     label: string;
     code: string;
   }>(null);
+  const publicVariants = (product.variants || []).filter(
+    (variant) => variant.isActive,
+  );
+  const [selectedVariant, setSelectedVariant] =
+    useState<VarianteProdutoLoja | null>(() => {
+      if (product.productKind !== "variable") return null;
+
+      return (
+        publicVariants.find((variant) => variant.isDefault) ||
+        publicVariants.find((variant) => variant.stockQuantity > 0) ||
+        publicVariants[0] ||
+        null
+      );
+    });
+  const hasSelectedVariant =
+    product.productKind === "variable" && Boolean(selectedVariant);
 
   // -----------------------------------------
   // HOOK: Gerenciamento de preços e modalidades (ESTADO GLOBAL)
@@ -114,6 +140,19 @@ export function ProductDetail({
   const parcelamentosCartao =
     precosCalculadosPorModalidade[modalidadeAtiva.type]?.cartao.parcelamentos ||
     [];
+  const precoVarianteSelecionada = selectedVariant
+    ? precosCalculadosPorVariante[`variant:${selectedVariant.id}`]
+    : null;
+  const parcelamentosVariante =
+    precoVarianteSelecionada?.cartao.parcelamentos || [];
+  const descontoPixVariante = precoVarianteSelecionada
+    ? Math.round(
+        (1 -
+          precoVarianteSelecionada.pix.valorEmCentavos /
+            precoVarianteSelecionada.cartao.valorEmCentavos) *
+          100,
+      )
+    : descontoPix;
 
   // -----------------------------------------
   // RETIRADA LOCAL: Dados reais do banco
@@ -151,8 +190,15 @@ export function ProductDetail({
     .map((img) => img.imageUrl);
 
   // Fallback: se não tiver imagens no DB, usa mock temporário
+  const galleryImagesBase =
+    productImages.length > 0
+      ? productImages
+      : (produto.imagens as unknown as string[]);
   const galleryImages =
-    productImages.length > 0 ? productImages : produto.imagens;
+    selectedVariant?.imageUrl &&
+    !galleryImagesBase.includes(selectedVariant.imageUrl)
+      ? [selectedVariant.imageUrl, ...galleryImagesBase]
+      : galleryImagesBase;
 
   // -----------------------------------------
   // DESCRIÇÕES: Curta e longa
@@ -185,36 +231,59 @@ export function ProductDetail({
   function montarItemCarrinhoProduto(
     quantidade: number,
     freteEscolhido?: {
-      id: "retirada" | "entrega-propria" | "padrao";
+      id: "retirada" | "entrega-propria" | "frenet";
       nome: string;
       prazo: string;
       valorEmCentavos: number;
       cep?: string;
+      servico?: string;
     },
   ): NovoItemCarrinho | null {
     if (!modalidadeAtiva) return null;
 
-    const precoEmCentavos =
-      modalidadeAtiva.hasPromo && modalidadeAtiva.promoPrice
+    if (product.productKind === "variable" && !selectedVariant) {
+      return null;
+    }
+
+    const precoEmCentavos = hasSelectedVariant
+      ? selectedVariant!.priceInCents
+      : modalidadeAtiva.hasPromo && modalidadeAtiva.promoPrice
         ? modalidadeAtiva.promoPrice
         : modalidadeAtiva.price;
+    const descricaoVariante = selectedVariant
+      ? selectedVariant.name ||
+        Object.values(selectedVariant.attributes).filter(Boolean).join(" / ")
+      : modalidadeAtiva.pricingModalDescription || modalidadeAtiva.type;
 
     return {
       produtoId: product.id,
+      produtoVarianteId: selectedVariant?.id,
       produtoSlug: product.slug,
       produtoUrl: `/product/${product.slug}`,
       nome: product.name,
-      modalidadeTipo: modalidadeAtiva.type,
-      modalidadeTitulo:
-        tituloModalidadePorTipo[modalidadeAtiva.type] ||
-        (!textoParecePrazo(modalidadeAtiva.pricingModalDescription)
-          ? modalidadeAtiva.pricingModalDescription
-          : null) ||
-        modalidadeAtiva.type,
-      variante: modalidadeAtiva.pricingModalDescription || modalidadeAtiva.type,
-      prazoModalidade: modalidadeAtiva.deliveryDays || "Consulte prazo",
+      sku: selectedVariant?.sku || product.sku,
+      modalidadeTipo: selectedVariant
+        ? `variant:${selectedVariant.id}`
+        : modalidadeAtiva.type,
+      modalidadeTitulo: selectedVariant
+        ? descricaoVariante
+        : tituloModalidadePorTipo[modalidadeAtiva.type] ||
+          (!textoParecePrazo(modalidadeAtiva.pricingModalDescription)
+            ? modalidadeAtiva.pricingModalDescription
+            : null) ||
+          modalidadeAtiva.type,
+      variante: descricaoVariante,
+      atributosVariante: selectedVariant?.attributes,
+      prazoModalidade: selectedVariant
+        ? "Consulte prazo"
+        : modalidadeAtiva.deliveryDays || "Consulte prazo",
       imagemUrl: galleryImages[0] || "/produto-sem-foto.webp",
       precoEmCentavos,
+      estoqueDisponivel: selectedVariant?.stockQuantity,
+      pesoEmGramas: selectedVariant?.weightInGrams,
+      alturaEmCm: selectedVariant?.heightInCm,
+      larguraEmCm: selectedVariant?.widthInCm,
+      comprimentoEmCm: selectedVariant?.lengthInCm,
       freteEscolhido,
       quantidade,
     };
@@ -223,11 +292,12 @@ export function ProductDetail({
   function adicionarProdutoAoCarrinho(
     quantidade: number,
     freteEscolhido?: {
-      id: "retirada" | "entrega-propria" | "padrao";
+      id: "retirada" | "entrega-propria" | "frenet";
       nome: string;
       prazo: string;
       valorEmCentavos: number;
       cep?: string;
+      servico?: string;
     },
   ) {
     const itemCarrinho = montarItemCarrinhoProduto(quantidade, freteEscolhido);
@@ -241,11 +311,12 @@ export function ProductDetail({
   function comprarProdutoAgora(
     quantidade: number,
     freteEscolhido?: {
-      id: "retirada" | "entrega-propria" | "padrao";
+      id: "retirada" | "entrega-propria" | "frenet";
       nome: string;
       prazo: string;
       valorEmCentavos: number;
       cep?: string;
+      servico?: string;
     },
   ) {
     const itemCarrinho = montarItemCarrinhoProduto(quantidade, freteEscolhido);
@@ -313,6 +384,11 @@ export function ProductDetail({
               modalidadeAtiva={modalidadeAtiva} // Qual está selecionada
               onTrocarModalidade={selecionarModalidade} // Função para trocar
               precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+              productKind={product.productKind}
+              variantAttributes={product.attributes}
+              variants={publicVariants}
+              selectedVariant={selectedVariant}
+              onSelectVariant={setSelectedVariant}
             />
           </div>
 
@@ -325,14 +401,32 @@ export function ProductDetail({
             {/* BuyBox: Caixa de compra com preço, frete, cupom, botões */}
             <BuyBox
               productId={product.id}
+              varianteIdSelecionada={selectedVariant?.id}
               // Preços da modalidade ATIVA (formatados pelo hook)
-              precoPix={precoPixFormatado}
-              precoNormal={precoNormalFormatado}
-              precoParc={precoParceladoFormatado}
-              descontoPix={descontoPix}
+              precoPix={
+                precoVarianteSelecionada?.pix.valor || precoPixFormatado
+              }
+              precoNormal={
+                precoVarianteSelecionada?.cartao.valor || precoNormalFormatado
+              }
+              precoParc={
+                parcelamentosVariante[0]
+                  ? `${parcelamentosVariante[0].parcelas}x de ${parcelamentosVariante[0].valor}`
+                  : precoParceladoFormatado
+              }
+              descontoPix={descontoPixVariante}
               prazoEntrega={prazoEntrega}
               // Dados reais de entrega
-              estoque={produto.estoque}
+              estoque={
+                selectedVariant?.stockQuantity ??
+                (product.productKind === "variable" ? 0 : produto.estoque)
+              }
+              selectedVariantLabel={
+                selectedVariant
+                  ? selectedVariant.name ||
+                    Object.values(selectedVariant.attributes).join(" / ")
+                  : null
+              }
               retiradaLocal={retiradaLocal}
               allowsOwnDelivery={!!product.allowsOwnDelivery}
               // Cupom e callbacks
@@ -421,7 +515,11 @@ export function ProductDetail({
       <PaymentModal
         isOpen={modalPgto}
         onClose={() => setModalPgto(false)}
-        parcelamentos={parcelamentosCartao}
+        parcelamentos={
+          parcelamentosVariante.length > 0
+            ? parcelamentosVariante
+            : parcelamentosCartao
+        }
       />
     </div>
   );

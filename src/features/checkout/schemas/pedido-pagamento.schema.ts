@@ -59,7 +59,10 @@ export const criarPedidoCheckoutSchema = z.object({
 export const criarPedidoItemCheckoutSchema = z.object({
   pedidoId: z.string().uuid(),
   produtoId: z.string().uuid(),
+  varianteId: z.string().uuid().optional().nullable(),
   nomeProduto: z.string().min(1),
+  nomeVariante: z.string().optional().nullable(),
+  atributosVariante: z.record(z.string(), z.string()).default({}),
   skuProduto: z.string().optional().nullable(),
   modalidade: z.string().optional().nullable(),
   prazoModalidade: z.string().optional().nullable(),

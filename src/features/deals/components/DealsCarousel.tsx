@@ -1,6 +1,6 @@
 "use client";
 
-import { ProductCard } from "@/features/product-card/components/ProductCard";
+import { FeaturedProductCard } from "@/features/featured-products-carousel/components/FeaturedProductCard";
 import {
   Carousel,
   CarouselContent,
@@ -9,7 +9,6 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
-
 
 // No componente:
 <Carousel
@@ -23,12 +22,10 @@ import Autoplay from "embla-carousel-autoplay";
     align: "start",
     loop: true,
   }}
-  className="w-full max-w-7xl mx-auto" // Centraliza e limita largura
->
+  className="mx-auto w-full max-w-7xl" // Centraliza e limita largura
+></Carousel>;
 
-</Carousel>
-
-// Tipo para os dados mock (formato que ProductCard espera)
+// O carousel de ofertas usa o mesmo contrato visual dos cards de "Os mais queridos".
 interface DealProduct {
   id: string;
   slug?: string;
@@ -39,67 +36,64 @@ interface DealProduct {
   currentPrice: number;
   discount?: number;
   hasFreeShipping?: boolean;
-  hasFlashSale?: boolean;
-  hasBestPrice?: boolean;
+  isFeatured?: boolean;
+  isExclusive?: boolean;
+  isTrending?: boolean;
 }
 
 interface DealsCarouselProps {
   products?: DealProduct[]; // Opcional, usa mock se não fornecido
-  title?: string;
 }
 
-const DealsCarousel = ({ 
-  products: propProducts, 
-  title = "🔥 Ofertas Especiais" 
-}: DealsCarouselProps) => {
+const DealsCarousel = ({ products: propProducts }: DealsCarouselProps) => {
   // Dados MOCK para teste visual
   const mockProducts: DealProduct[] = [
     {
-    id: "6",
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
-    title: "Tênis de Corrida Pro",
-    description: "Amortecimento máximo, leve 280g",
-    originalPrice: 399.99,
-    currentPrice: 299.99,
-    discount: 25,
-    hasFreeShipping: true,
-  },
-  {
-    id: "7",
-    image: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa",
-    title: "Tênis Nike Air Max",
-    description: "Design moderno, conforto premium",
-    currentPrice: 349.99,
-    hasFlashSale: true,
-  },
-  {
-    id: "8",
-    image: "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519",
-    title: "Tênis Adidas Ultraboost",
-    description: "Energia infinita, tecnologia Boost",
-    originalPrice: 499.99,
-    currentPrice: 399.99,
-    discount: 20,
-    hasBestPrice: true,
-  },
-  {
-    id: "9",
-    image: "https://images.unsplash.com/photo-1605348532760-6753d2c43329",
-    title: "Tênis Casual Converse",
-    description: "Estilo clássico, versátil",
-    currentPrice: 199.99,
-    hasFreeShipping: true,
-  },
-  {
-    id: "10",
-    image: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa",
-    title: "Tênis Esportivo Puma",
-    description: "Performance atlética",
-    originalPrice: 279.99,
-    currentPrice: 199.99,
-    discount: 29,
-    hasFlashSale: true,
-  },
+      id: "6",
+      image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+      title: "Tênis de Corrida Pro",
+      description: "Amortecimento máximo, leve 280g",
+      originalPrice: 399.99,
+      currentPrice: 299.99,
+      discount: 25,
+      hasFreeShipping: true,
+    },
+    {
+      id: "7",
+      image: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa",
+      title: "Tênis Nike Air Max",
+      description: "Design moderno, conforto premium",
+      currentPrice: 349.99,
+      isFeatured: true,
+    },
+    {
+      id: "8",
+      image: "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519",
+      title: "Tênis Adidas Ultraboost",
+      description: "Energia infinita, tecnologia Boost",
+      originalPrice: 499.99,
+      currentPrice: 399.99,
+      discount: 20,
+      isExclusive: true,
+    },
+    {
+      id: "9",
+      image: "https://images.unsplash.com/photo-1605348532760-6753d2c43329",
+      title: "Tênis Casual Converse",
+      description: "Estilo clássico, versátil",
+      currentPrice: 199.99,
+      hasFreeShipping: true,
+    },
+    {
+      id: "10",
+      image: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa",
+      title: "Tênis Esportivo Puma",
+      description: "Performance atlética",
+      originalPrice: 279.99,
+      currentPrice: 199.99,
+      discount: 29,
+      isFeatured: true,
+    },
     {
       id: "1",
       image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e",
@@ -109,7 +103,7 @@ const DealsCarousel = ({
       currentPrice: 199.99,
       discount: 33,
       hasFreeShipping: true,
-      hasFlashSale: true,
+      isFeatured: true,
     },
     {
       id: "2",
@@ -119,7 +113,7 @@ const DealsCarousel = ({
       originalPrice: 899.99,
       currentPrice: 749.99,
       discount: 17,
-      hasBestPrice: true,
+      isExclusive: true,
     },
     {
       id: "3",
@@ -136,7 +130,7 @@ const DealsCarousel = ({
       description: "16GB RAM, SSD 512GB, tela 4K",
       originalPrice: 1299.99,
       currentPrice: 1099.99,
-      hasFlashSale: true,
+      isFeatured: true,
     },
     {
       id: "5",
@@ -153,49 +147,38 @@ const DealsCarousel = ({
   if (products.length === 0) return null;
 
   return (
-    <div className="relative my-8 px-4">
-      {/* Título */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-      </div>
-
+    <div className="relative px-4">
       {/* Carousel */}
- <Carousel
-  plugins={[
-    Autoplay({
-      delay: 7000, // 7 segundos
-      stopOnInteraction: false,
-    }),
-  ]}
-  opts={{
-    align: "start",
-    loop: true,
-  }}
-  className="w-full max-w-7xl mx-auto"
->
-    
-    
-    <CarouselContent className="-ml-2"> {/* Reduz margem esquerda */}
-    {products.map((product) => (
-      <CarouselItem 
-        key={product.id} 
-        // Ajuste responsivo:
-        className="pl-2 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6"
+      <Carousel
+        plugins={[
+          Autoplay({
+            delay: 7000, // 7 segundos
+            stopOnInteraction: false,
+          }),
+        ]}
+        opts={{
+          align: "start",
+          loop: true,
+        }}
+        className="mx-auto w-full max-w-7xl"
       >
-        <div className="p-1"> {/* Reduz padding interno */}
-          <ProductCard
-            {...product}
-            className="h-full"
-          />
-        </div>
-      </CarouselItem>
-    ))}
-  </CarouselContent>
-
-  <CarouselPrevious className="-left-4" /> {/* Ajusta posição setas */}
-  <CarouselNext className="-right-4" />
-</Carousel>
-      
+        {/* Margem e padding mantem os cards alinhados no trilho de ofertas. */}
+        <CarouselContent className="-ml-2">
+          {products.map((product) => (
+            <CarouselItem
+              key={product.id}
+              // A largura fixa evita que o carousel comprima o card dentro da coluna de ofertas.
+              className="basis-[224px] pl-2 md:basis-[232px]"
+            >
+              <div className="px-1 pb-1">
+                <FeaturedProductCard {...product} className="h-full" />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="-left-4" /> {/* Ajusta posição setas */}
+        <CarouselNext className="-right-4" />
+      </Carousel>
     </div>
   );
 };

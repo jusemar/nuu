@@ -22,13 +22,16 @@ import { Stars } from "@/components/ui/stars";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 
 import type {
+  AtributoProdutoLoja,
   Cor,
   Modalidade,
   PrecoModalidade,
   Tamanho,
+  VarianteProdutoLoja,
 } from "../../types/product.types";
 import { PricingModalities } from "../PricingModalities";
 import { ChatVendedor } from "../chat-vendedor";
+import { ProductVariantSelector } from "../product-variant-selector";
 
 // ==========================================
 // INTERFACE ATUALIZADA (estado global)
@@ -54,6 +57,11 @@ interface ProductInfoProps {
   modalidadeAtiva: PrecoModalidade; // Qual está selecionada agora
   onTrocarModalidade: (tipo: Modalidade) => void; // Callback para trocar
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
+  productKind?: string | null;
+  variantAttributes?: AtributoProdutoLoja[];
+  variants?: VarianteProdutoLoja[];
+  selectedVariant?: VarianteProdutoLoja | null;
+  onSelectVariant?: (variant: VarianteProdutoLoja) => void;
 }
 
 // ==========================================
@@ -76,6 +84,11 @@ export function ProductInfo({
   modalidadeAtiva,
   onTrocarModalidade,
   precosCalculadosPorModalidade,
+  productKind,
+  variantAttributes = [],
+  variants = [],
+  selectedVariant = null,
+  onSelectVariant,
 }: ProductInfoProps) {
   // -----------------------------------------
   // ESTADOS LOCAIS (mantidos - não afetam outros componentes)
@@ -99,6 +112,11 @@ export function ProductInfo({
     "43": "27cm",
     "44": "27.5cm",
   };
+  const hasRealVariants =
+    productKind === "variable" &&
+    variants.length > 0 &&
+    Boolean(onSelectVariant);
+  const isVariableProduct = productKind === "variable";
 
   // -----------------------------------------
   // RENDER
@@ -113,7 +131,9 @@ export function ProductInfo({
           {marca}
         </span>
         <span className="bg-surface-border-mid h-1 w-1 rounded-full" />
-        <span className="text-text-hint text-[11px]">SKU: {sku}</span>
+        <span className="text-text-hint text-[11px]">
+          SKU: {selectedVariant?.sku || sku}
+        </span>
       </div>
 
       {/* -----------------------------------------
@@ -155,80 +175,96 @@ export function ProductInfo({
       {/* DIVISOR */}
       <div className="bg-surface-border h-px w-full" />
 
-      {/* -----------------------------------------
-          SELETOR DE COR
-          ----------------------------------------- */}
-      <div>
-        <div className="mb-2.5 flex items-center gap-2">
-          <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
-            Cor
-          </span>
-          <span className="text-text-muted text-xs font-medium capitalize">
-            {corSel}
-          </span>
-        </div>
-
-        <div className="flex gap-2">
-          {(Object.keys(cores) as Cor[]).map((cor) => (
-            <button
-              key={cor}
-              onClick={() => setCorSel(cor)}
-              title={cor}
-              className={`h-7 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 transition-all ${
-                corSel === cor
-                  ? "outline-primary outline outline-2 outline-offset-2"
-                  : ""
-              }`}
-              style={{
-                backgroundColor: cores[cor],
-                borderColor: cores[cor] === "#f5f5f0" ? "#D1D5DB" : cores[cor],
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* -----------------------------------------
-          SELETOR DE TAMANHO
-          ----------------------------------------- */}
-      <div>
-        <div className="mb-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
-              Tamanho
-            </span>
-            {tamSel && (
-              <span className="text-text-muted text-xs">
-                — {tamDesc[tamSel]}
+      {hasRealVariants ? (
+        <ProductVariantSelector
+          attributes={variantAttributes}
+          variants={variants}
+          selectedVariant={selectedVariant}
+          onSelectVariant={onSelectVariant!}
+        />
+      ) : isVariableProduct ? (
+        <p className="text-text-muted text-[13px]">
+          Este produto está sem variantes disponíveis no momento.
+        </p>
+      ) : (
+        <>
+          {/* -----------------------------------------
+              SELETOR DE COR
+              ----------------------------------------- */}
+          <div>
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
+                Cor
               </span>
-            )}
-          </div>
-          <a href="#" className="text-primary text-xs underline">
-            Guia de tamanhos
-          </a>
-        </div>
+              <span className="text-text-muted text-xs font-medium capitalize">
+                {corSel}
+              </span>
+            </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {tamanhos.map((t) => (
-            <button
-              key={t}
-              onClick={() => t !== "40" && setTamSel(t)}
-              className={`flex h-[38px] min-w-[42px] items-center justify-center rounded-lg border-[1.5px] bg-white px-2 text-[13px] font-semibold transition-all ${
-                tamSel === t
-                  ? "border-primary bg-primary text-white"
-                  : t === "40"
-                    ? "border-surface-border text-text-primary cursor-not-allowed line-through opacity-35"
-                    : "border-surface-border text-text-primary hover:border-primary-mid"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-        <div className="text-text-hint mt-1.5 text-[11px]">
-          Tam. 40 indisponível
-        </div>
-      </div>
+            <div className="flex gap-2">
+              {(Object.keys(cores) as Cor[]).map((cor) => (
+                <button
+                  key={cor}
+                  onClick={() => setCorSel(cor)}
+                  title={cor}
+                  className={`h-7 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 transition-all ${
+                    corSel === cor
+                      ? "outline-primary outline outline-2 outline-offset-2"
+                      : ""
+                  }`}
+                  style={{
+                    backgroundColor: cores[cor],
+                    borderColor:
+                      cores[cor] === "#f5f5f0" ? "#D1D5DB" : cores[cor],
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* -----------------------------------------
+              SELETOR DE TAMANHO
+              ----------------------------------------- */}
+          <div>
+            <div className="mb-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
+                  Tamanho
+                </span>
+                {tamSel && (
+                  <span className="text-text-muted text-xs">
+                    — {tamDesc[tamSel]}
+                  </span>
+                )}
+              </div>
+              <a href="#" className="text-primary text-xs underline">
+                Guia de tamanhos
+              </a>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {tamanhos.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => t !== "40" && setTamSel(t)}
+                  className={`flex h-[38px] min-w-[42px] items-center justify-center rounded-lg border-[1.5px] bg-white px-2 text-[13px] font-semibold transition-all ${
+                    tamSel === t
+                      ? "border-primary bg-primary text-white"
+                      : t === "40"
+                        ? "border-surface-border text-text-primary cursor-not-allowed line-through opacity-35"
+                        : "border-surface-border text-text-primary hover:border-primary-mid"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="text-text-hint mt-1.5 text-[11px]">
+              Tam. 40 indisponível
+            </div>
+          </div>
+        </>
+      )}
 
       {/* DIVISOR */}
       <div className="bg-surface-border h-px w-full" />
@@ -241,12 +277,14 @@ export function ProductInfo({
         AGORA: Usa PricingModalities com props do pai (estado global)
         RESULTADO: Clique aqui atualiza o BuyBox (coluna 3) automaticamente
       */}
-      <PricingModalities
-        modalidades={modalidadesDisponiveis}
-        modalidadeAtiva={modalidadeAtiva}
-        onSelecionarModalidade={onTrocarModalidade}
-        precosCalculadosPorModalidade={precosCalculadosPorModalidade}
-      />
+      {!isVariableProduct && modalidadesDisponiveis.length > 0 ? (
+        <PricingModalities
+          modalidades={modalidadesDisponiveis}
+          modalidadeAtiva={modalidadeAtiva}
+          onSelecionarModalidade={onTrocarModalidade}
+          precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+        />
+      ) : null}
 
       {/* DIVISOR */}
       <div className="bg-surface-border h-px w-full" />

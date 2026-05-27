@@ -37,6 +37,9 @@ export function RevisaoProdutosEntrega({
         {resumoCheckout?.itens.map((item) => {
           const totalPix = item.pix.valorEmCentavos * item.quantidade;
           const totalCartao = item.cartao.valorEmCentavos * item.quantidade;
+          const temAtributosVariante =
+            item.atributosVariante &&
+            Object.keys(item.atributosVariante).length > 0;
           const freteTexto =
             item.frete.valorEmCentavos === 0
               ? "Grátis"
@@ -64,16 +67,27 @@ export function RevisaoProdutosEntrega({
                       <h3 className="text-foreground truncate text-sm font-semibold">
                         {item.nome}
                       </h3>
+                      {temAtributosVariante ? (
+                        <p className="text-muted-foreground mt-1 line-clamp-2 text-[11px]">
+                          {Object.entries(item.atributosVariante)
+                            .map(([nome, valor]) => `${nome}: ${valor}`)
+                            .join(" • ")}
+                        </p>
+                      ) : null}
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                        <span
-                          className="font-semibold"
-                          style={{
-                            color: item.modalidadeDetalhes.badgeColor,
-                          }}
-                        >
-                          {item.modalidadeDetalhes.titulo}
-                        </span>
-                        <span className="text-muted-foreground">·</span>
+                        {!temAtributosVariante ? (
+                          <>
+                            <span
+                              className="font-semibold"
+                              style={{
+                                color: item.modalidadeDetalhes.badgeColor,
+                              }}
+                            >
+                              {item.modalidadeDetalhes.titulo}
+                            </span>
+                            <span className="text-muted-foreground">·</span>
+                          </>
+                        ) : null}
                         <span className="text-muted-foreground">
                           Produto: {item.prazoModalidade}
                         </span>

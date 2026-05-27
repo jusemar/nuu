@@ -36,6 +36,11 @@ type ResultadoProcessamentoWebhookStripe = {
   pagamentoId?: string;
 };
 
+type SincronizarPagamentoCheckoutStripeParams = {
+  sessionId: string;
+  numeroPedido?: string;
+};
+
 function obterMetadataPagamentoStripe(event: Stripe.Event) {
   const objeto = event.data.object;
 
@@ -219,6 +224,26 @@ async function confirmarPagamentoStripe({
   });
 }
 
+async function enviarEmailConfirmacaoPagamentoStripe({
+  eventId,
+  pedidoId,
+}: {
+  eventId: string;
+  pedidoId: string;
+}) {
+  const pedidoEmail = await buscarPedidoEmailPorId(pedidoId);
+
+  if (!pedidoEmail) {
+    console.error("Pedido nao encontrado para email Stripe aprovado.", {
+      eventId,
+      pedidoId,
+    });
+    return;
+  }
+
+  await enviarEmailPagamentoStripeAprovado(pedidoEmail);
+}
+
 export function construirEventoWebhookStripe({
   body,
   signature,
@@ -350,17 +375,10 @@ export async function processarWebhookStripe(
     transactionId: metadata.transactionId,
   });
 
-  const pedidoEmail = await buscarPedidoEmailPorId(metadata.pedidoId);
-
-  if (!pedidoEmail) {
-    console.error("Pedido nao encontrado para email Stripe aprovado.", {
-      eventId: event.id,
-      pedidoId: metadata.pedidoId,
-    });
-    return;
-  }
-
-  await enviarEmailPagamentoStripeAprovado(pedidoEmail);
+  await enviarEmailConfirmacaoPagamentoStripe({
+    eventId: event.id,
+    pedidoId: metadata.pedidoId,
+  });
 
   return {
     status: "pagamento_confirmado",
@@ -369,4 +387,64 @@ export async function processarWebhookStripe(
     pedidoId: metadata.pedidoId,
     pagamentoId: metadata.pagamentoId,
   };
+}
+
+export async function sincronizarPagamentoCheckoutStripe({
+  sessionId,
+  numeroPedido,
+}: SincronizarPagamentoCheckoutStripeParams) {
+  if (!sessionId.startsWith("cs_")) {
+    return;
+  }
+
+  const session = await obterStripe().checkout.sessions.retrieve(sessionId);
+  const pedidoId = session.metadata?.pedidoId;
+  const pagamentoId = session.metadata?.pagamentoId;
+
+  if (
+    session.mode !== "payment" ||
+    session.payment_status !== "paid" ||
+    !pedidoId ||
+    !pagamentoId ||
+    (numeroPedido && session.metadata?.numeroPedido !== numeroPedido)
+  ) {
+    console.info("Checkout Session Stripe sem pagamento sincronizavel.", {
+      sessionId,
+      numeroPedido,
+      sessionStatus: session.status,
+      paymentStatus: session.payment_status,
+    });
+    return;
+  }
+
+  const transactionId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.id;
+  const eventId = `checkout_session_success:${session.id}`;
+  const eventType = "checkout.session.success_page";
+  const resultadoConfirmacao = await confirmarPagamentoStripe({
+    eventId,
+    eventType,
+    pedidoId,
+    pagamentoId,
+    transactionId,
+    providerResponse: {
+      stripeCheckoutSessionSincronizada: session,
+    },
+  });
+
+  if (resultadoConfirmacao.confirmadoAgora) {
+    console.info("Pagamento Stripe confirmado pelo retorno do checkout.", {
+      sessionId,
+      pedidoId,
+      pagamentoId,
+      transactionId,
+    });
+
+    await enviarEmailConfirmacaoPagamentoStripe({
+      eventId,
+      pedidoId,
+    });
+  }
 }

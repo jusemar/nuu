@@ -34,6 +34,7 @@ export default function NewProductPage() {
       prazoCustom: "",
       permiteEntregaPropria: false,
       precosEntregaPropria: [],
+      classificacoesLogisticasIds: [],
     },
   });
 
@@ -83,6 +84,13 @@ export default function NewProductPage() {
       component: (
         <EntregaTab
           data={productData.entrega ?? {}}
+          dimensoesFrete={productData.dimensoesFreteExterno}
+          aoAlterarDimensoes={(dimensoes) =>
+            setProductData((prev) => ({
+              ...prev,
+              dimensoesFreteExterno: dimensoes,
+            }))
+          }
           onChange={(updates) =>
             setProductData((prev) => ({
               ...prev,

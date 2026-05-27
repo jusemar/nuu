@@ -64,6 +64,9 @@ export async function buscarPedidoClientePorId({
     itens: pedido.itens.map((item) => ({
       id: item.id,
       nomeProduto: item.nomeProduto,
+      varianteId: item.varianteId,
+      nomeVariante: item.nomeVariante,
+      atributosVariante: item.atributosVariante,
       skuProduto: item.skuProduto,
       modalidade: item.modalidade,
       prazoModalidade: item.prazoModalidade,

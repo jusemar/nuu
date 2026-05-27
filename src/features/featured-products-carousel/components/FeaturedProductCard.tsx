@@ -116,7 +116,7 @@ export const FeaturedProductCard = ({
   if (isLoading) {
     return (
       <div
-        className={`group relative w-full max-w-[280px] animate-pulse overflow-hidden rounded-2xl bg-gray-100 ${className}`}
+        className={`group relative w-full max-w-[296px] animate-pulse overflow-hidden rounded-2xl bg-gray-100 ${className}`}
         role="status"
         aria-label="Carregando produto em destaque"
       >
@@ -132,7 +132,7 @@ export const FeaturedProductCard = ({
 
   return (
     <article
-      className={`group relative w-full max-w-[280px] overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-b from-white to-gray-50 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${slug ? "cursor-pointer" : ""} ${className}`}
+      className={`group relative w-full max-w-[296px] overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-b from-white to-gray-50 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${slug ? "cursor-pointer" : ""} ${className}`}
       data-product-id={id}
       itemScope
       itemType="https://schema.org/Product"
@@ -274,8 +274,8 @@ export const FeaturedProductCard = ({
           )}
 
           {/* Linha com preço atual, PIX e botão carrinho */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-baseline gap-3">
               <p
                 className="text-xl font-bold tracking-tight text-gray-900"
                 itemProp="offers"

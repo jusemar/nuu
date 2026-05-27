@@ -7,11 +7,11 @@
 //
 // "server-only" garante que este código NUNCA roda no navegador,
 // protegendo credenciais do banco de dados.
-import "server-only"
+import "server-only";
 
-import { db } from "@/db/connection"
-import { productTable } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { db } from "@/db/connection";
+import { productTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 // ==========================================
 // BUSCAR PRODUTO POR SLUG (dados reais)
@@ -38,10 +38,12 @@ export async function getProductBySlug(slug: string) {
     with: {
       galleryImages: true,
       pricing: true,
+      attributes: true,
+      variants: true,
       modeloRetirada: true,
     },
-  })
+  });
 
   // Se não encontrou, retorna null (a page.tsx vai tratar como 404)
-  return product ?? null
+  return product ?? null;
 }

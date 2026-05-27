@@ -15,12 +15,18 @@ type OpcoesAdicionarItemCarrinho = {
 };
 
 function criarIdItemCarrinho(
-  item: Pick<NovoItemCarrinho, "produtoId" | "modalidadeTipo" | "variante">,
+  item: Pick<
+    NovoItemCarrinho,
+    "produtoId" | "produtoVarianteId" | "modalidadeTipo" | "variante"
+  >,
 ) {
   return [
     item.produtoId,
-    item.modalidadeTipo?.trim() || item.variante?.trim() || "padrao",
-  ].join(":");
+    item.produtoVarianteId?.trim(),
+    item.modalidadeTipo?.trim() || item.variante?.trim() || "sem-modalidade",
+  ]
+    .filter(Boolean)
+    .join(":");
 }
 
 function lerCarrinhoStorage() {

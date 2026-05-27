@@ -6,7 +6,7 @@
 
 # 🤖 Regras de Comportamento da IA
 
-1. Nunca enviar código sem explicar antes e aguardar aprovação
+1. Antes de alterar algo grande, explique rapidamente o plano. Depois execute sem ficar pedindo aprovação a cada comando.
 
 2. Após aprovação:
 
@@ -22,11 +22,21 @@
 
 4. Interfaces sempre responsivas
 
-5. Em caso de dúvida:
+5. Autonomia da IA / Codex
 
-   * apresentar opções
-   * aguardar decisão
-
+- Não parar para pedir permissão em tarefas técnicas comuns.
+- Pode executar comandos de validação, testes, build, lint, typecheck e abrir/recarregar navegador headless.
+- Pode investigar erros, consultar logs e ajustar arquivos do projeto sem perguntar antes.
+- Só deve perguntar ao usuário quando:
+  - envolver apagar dados reais;
+  - mexer em pagamento, produção ou credenciais;
+  - houver mais de uma decisão de negócio possível.
+- Ao final, sempre validar com:
+  - npm run typecheck ou npx tsc --noEmit
+  - npm run lint, se existir
+  - npm run build, se aplicável
+  - teste manual/headless da página alterada, se necessário
+- Não considerar tarefa concluída sem informar o que testou e o resultado.
 ---
 
 # 🧠 Arquitetura do Projeto
@@ -117,6 +127,43 @@ src/db/
 
 
 ---
+## Convenções de nomenclatura
+
+- Usar nomes claros, descritivos e em português.
+- Evitar termos genéricos ou técnicos sem necessidade.
+- Não usar nomes em inglês para:
+  - arquivos;
+  - variáveis;
+  - funções;
+  - schemas;
+  - componentes;
+  - tipos;
+  - actions;
+  - queries;
+  - tabelas;
+  - enums.
+
+Exemplos corretos:
+- frete-externo.tsx
+- pesoProduto
+- alturaProduto
+- classificacoesLogisticas
+- buscarServicosEntrega
+
+Evitar:
+- shipping
+- freight
+- dimensions
+- weight
+- delivery
+- externalShipping
+
+Exceção:
+- APIs externas;
+- bibliotecas;
+- nomes obrigatórios do framework;
+- nomes oficiais de terceiros.
+
 
 ## 🧠 Regras do banco
 

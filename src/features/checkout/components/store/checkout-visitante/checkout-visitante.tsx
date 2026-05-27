@@ -99,7 +99,6 @@ export function CheckoutVisitante({
       observacao: "",
       observacaoCliente: dadosClienteInicial?.observacaoCliente ?? "",
       cupom: "",
-      freteId: "padrao",
       formaPagamento: "pix",
       parcelasCartao: 1,
       permitirEntregaVizinho:
@@ -110,7 +109,6 @@ export function CheckoutVisitante({
     },
   });
 
-  const freteSelecionado = form.watch("freteId");
   const formaPagamento = form.watch("formaPagamento");
   const parcelasCartao = form.watch("parcelasCartao");
   const cupom = form.watch("cupom");
@@ -132,7 +130,6 @@ export function CheckoutVisitante({
     calcularResumoCheckout({
       itens: carrinho.itens,
       cupom,
-      freteFallbackId: freteSelecionado,
     })
       .then((resumo) => {
         if (consultaCancelada) return;
@@ -171,14 +168,7 @@ export function CheckoutVisitante({
     return () => {
       consultaCancelada = true;
     };
-  }, [
-    carrinho.itens,
-    cupom,
-    formaPagamento,
-    form,
-    freteSelecionado,
-    parcelasCartao,
-  ]);
+  }, [carrinho.itens, cupom, formaPagamento, form, parcelasCartao]);
 
   async function conferirCupom() {
     if (!cupom?.trim()) {

@@ -5,6 +5,7 @@ import {
   productTable,
   productGalleryImagesTable,
   productPricingTable,
+  produtosTiposLogisticosTable,
 } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
@@ -15,6 +16,7 @@ import type {
   ProductKind,
   ProductVariantFormInput,
 } from "@/features/products";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 
 function revalidateAdminProductsPath() {
   try {
@@ -22,6 +24,18 @@ function revalidateAdminProductsPath() {
   } catch (error) {
     console.warn("Nao foi possivel revalidar /admin/products:", error);
   }
+}
+
+function converterValorEmInteiro(valor?: string) {
+  if (!valor?.trim()) return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= 0 ? Math.round(numero) : null;
+}
+
+function converterPesoEmGramas(pesoEmKg?: string) {
+  if (!pesoEmKg?.trim()) return null;
+  const peso = Number(pesoEmKg);
+  return Number.isFinite(peso) && peso >= 0 ? Math.round(peso * 1000) : null;
 }
 
 interface CreateProductData {
@@ -65,7 +79,9 @@ interface CreateProductData {
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
+    classificacoesLogisticasIds?: string[];
   };
+  dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
 }
@@ -106,6 +122,13 @@ export async function createProduct(data: CreateProductData) {
         allowsOwnDelivery: data.entrega?.permiteEntregaPropria ?? false,
         modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
         prazoRetiradaCustom: data.entrega?.prazoCustom || null,
+
+        weight: converterPesoEmGramas(data.dimensoesFreteExterno?.pesoEmKg),
+        height: converterValorEmInteiro(data.dimensoesFreteExterno?.alturaEmCm),
+        width: converterValorEmInteiro(data.dimensoesFreteExterno?.larguraEmCm),
+        length: converterValorEmInteiro(
+          data.dimensoesFreteExterno?.comprimentoEmCm,
+        ),
 
         status: "draft",
         isActive: true,
@@ -153,6 +176,15 @@ export async function createProduct(data: CreateProductData) {
       await salvarPrecosEntregaPropriaProduto(
         product.id,
         data.entrega.precosEntregaPropria ?? [],
+      );
+    }
+
+    if (data.entrega?.classificacoesLogisticasIds?.length) {
+      await db.insert(produtosTiposLogisticosTable).values(
+        data.entrega.classificacoesLogisticasIds.map((tipoLogisticoId) => ({
+          produtoId: product.id,
+          tipoLogisticoId,
+        })),
       );
     }
 

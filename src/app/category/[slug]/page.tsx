@@ -122,7 +122,8 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
                   // ===================================================
                   const primaryImage =
                     product.galleryImages?.find((img) => img.isPrimary) ||
-                    product.galleryImages?.[0];
+                    product.galleryImages?.[0] ||
+                    product.variants?.find((variant) => variant.imageUrl);
 
                   // ===================================================
                   // 2. PEGAR PREÇO PRINCIPAL DA TABELA pricing
@@ -138,9 +139,18 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
                   );
 
                   // PREÇO ATUAL (se tiver promoção, usa o promocional, senão usa o normal)
-                  const productPrice = mainPricing?.hasPromo
-                    ? mainPricing.promoPrice
-                    : mainPricing?.price || 0;
+                  const variantPrices = (product.variants || [])
+                    .filter(
+                      (variant) => variant.isActive && variant.priceInCents > 0,
+                    )
+                    .map((variant) => variant.priceInCents);
+                  const productPrice =
+                    product.productKind === "variable" &&
+                    variantPrices.length > 0
+                      ? Math.min(...variantPrices)
+                      : mainPricing?.hasPromo
+                        ? mainPricing.promoPrice
+                        : mainPricing?.price || 0;
 
                   // PREÇO ORIGINAL (só existe se tiver promoção - para mostrar riscado)
                   const originalPrice = mainPricing?.hasPromo
@@ -163,6 +173,7 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
                       slug={product.slug}
                       imageUrl={primaryImage?.imageUrl}
                       price={productPrice ?? 0}
+                      fromPrice={product.productKind === "variable"}
                       originalPrice={originalPrice} // Se tiver promoção, mostra preço original riscado
                       hasFreeShipping={hasFreeShipping}
                       hasFlashSale={hasFlashSale}

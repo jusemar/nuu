@@ -148,6 +148,13 @@
       "when": 1779753600000,
       "tag": "0020_create_product_own_delivery_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779475846713,
+      "tag": "0028_disponibilidade_frete_profissional",
+      "breakpoints": true
     }
   ]
 }

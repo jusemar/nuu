@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
-import { CheckoutSucesso } from "@/features/checkout";
+import {
+  buscarStatusPagamentoPedidoSucesso,
+  CheckoutSucesso,
+  sincronizarPagamentoCheckoutStripe,
+} from "@/features/checkout";
 
 export const metadata: Metadata = {
   title: "Pedido recebido",
@@ -10,13 +14,25 @@ export const metadata: Metadata = {
 type CheckoutSuccessPageProps = {
   searchParams: Promise<{
     pedido?: string;
+    session_id?: string;
   }>;
 };
 
 export default async function CheckoutSuccessPage({
   searchParams,
 }: CheckoutSuccessPageProps) {
-  const { pedido } = await searchParams;
+  const { pedido, session_id: sessionId } = await searchParams;
 
-  return <CheckoutSucesso numeroPedido={pedido} />;
+  if (sessionId) {
+    await sincronizarPagamentoCheckoutStripe({
+      sessionId,
+      numeroPedido: pedido,
+    });
+  }
+
+  const pagamentoStatus = await buscarStatusPagamentoPedidoSucesso(pedido);
+
+  return (
+    <CheckoutSucesso numeroPedido={pedido} pagamentoStatus={pagamentoStatus} />
+  );
 }

@@ -108,17 +108,25 @@ export function PaginaDetalhePedidoCliente({
                         <p className="font-medium text-slate-950">
                           {item.nomeProduto}
                         </p>
+                        {Object.keys(item.atributosVariante).length > 0 ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {Object.entries(item.atributosVariante)
+                              .map(([nome, valor]) => `${nome}: ${valor}`)
+                              .join(" • ")}
+                          </p>
+                        ) : null}
                         <p className="mt-1 text-xs text-slate-500">
                           {item.quantidade} x{" "}
                           {formatarMoedaPedidoCliente(
                             item.precoUnitarioEmCentavos,
                           )}
                         </p>
-                        {item.modalidade && (
+                        {item.modalidade &&
+                        Object.keys(item.atributosVariante).length === 0 ? (
                           <p className="mt-1 text-xs text-slate-500">
                             {item.modalidade} {item.prazoModalidade ?? ""}
                           </p>
-                        )}
+                        ) : null}
                       </div>
                       <p className="text-sm font-semibold text-slate-950">
                         {formatarMoedaPedidoCliente(item.totalEmCentavos)}

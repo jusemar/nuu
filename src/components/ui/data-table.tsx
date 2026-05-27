@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -13,11 +13,11 @@ import {
   getSortedRowModel,
   useReactTable,
   Header,
-} from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Search } from "lucide-react"
+} from "@tanstack/react-table";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -26,8 +26,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -35,7 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 
 import {
   DndContext,
@@ -46,50 +46,58 @@ import {
   KeyboardSensor,
   closestCenter,
   type DragEndEvent,
-} from "@dnd-kit/core"
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers"
+} from "@dnd-kit/core";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
   horizontalListSortingStrategy,
   SortableContext,
   useSortable,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import type { CSSProperties } from "react"
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { CSSProperties } from "react";
 
 interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
-  onDeleteSelected?: (selectedRows: TData[]) => void
-  actionsContent?: (row: TData) => React.ReactNode // ← NOVO SLOT
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  onDeleteSelected?: (selectedRows: TData[]) => void;
+  actionsContent?: (row: TData) => React.ReactNode; // ← NOVO SLOT
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   onDeleteSelected,
-  actionsContent // ← NOVA PROP
+  actionsContent, // ← NOVA PROP
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({})
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState<
+    Record<string, boolean>
+  >({});
 
   // columnOrder inicial a partir das colunas passadas
   const initialOrder = React.useMemo(() => {
-    return columns.map((c) => c.id ?? String((c as any).accessorKey ?? ""))
-  }, [columns])
+    return columns.map((c) => c.id ?? String((c as any).accessorKey ?? ""));
+  }, [columns]);
 
-  const [columnOrder, setColumnOrder] = React.useState<string[]>(initialOrder)
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(initialOrder);
+  const identificadorColunaFiltro = initialOrder.includes("name")
+    ? "name"
+    : initialOrder[0];
 
   // Listener global para limpar seleção (usado pelo fluxo de exclusão)
   React.useEffect(() => {
     function clearSelection() {
-      setRowSelection({})
+      setRowSelection({});
     }
-    window.addEventListener("clearSelection", clearSelection)
-    return () => window.removeEventListener("clearSelection", clearSelection)
-  }, [])
+    window.addEventListener("clearSelection", clearSelection);
+    return () => window.removeEventListener("clearSelection", clearSelection);
+  }, []);
 
   const table = useReactTable({
     data,
@@ -110,29 +118,29 @@ export function DataTable<TData, TValue>({
       rowSelection,
       columnOrder,
     },
-  })
+  });
 
   // dnd-kit sensors
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
+    useSensor(KeyboardSensor, {}),
+  );
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
+    const { active, over } = event;
     if (active && over && active.id !== over.id) {
       setColumnOrder((prev) => {
-        const oldIndex = prev.indexOf(String(active.id))
-        const newIndex = prev.indexOf(String(over.id))
-        return arrayMove(prev, oldIndex, newIndex)
-      })
+        const oldIndex = prev.indexOf(String(active.id));
+        const newIndex = prev.indexOf(String(over.id));
+        return arrayMove(prev, oldIndex, newIndex);
+      });
     }
   }
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4 gap-2">
+      <div className="flex items-center gap-2 py-4">
         {/* Bulk Actions - Aparece só quando tem linhas selecionadas */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
           <div className="flex items-center gap-2">
@@ -140,9 +148,18 @@ export function DataTable<TData, TValue>({
             <Button
               variant="destructive"
               onClick={() => {
-                const selectedCount = table.getFilteredSelectedRowModel().rows.length
-                if (confirm(`Tem certeza que deseja excluir ${selectedCount} item(ns) selecionado(s)?`)) {
-                  onDeleteSelected?.(table.getFilteredSelectedRowModel().rows.map(row => row.original))
+                const selectedCount =
+                  table.getFilteredSelectedRowModel().rows.length;
+                if (
+                  confirm(
+                    `Tem certeza que deseja excluir ${selectedCount} item(ns) selecionado(s)?`,
+                  )
+                ) {
+                  onDeleteSelected?.(
+                    table
+                      .getFilteredSelectedRowModel()
+                      .rows.map((row) => row.original),
+                  );
                 }
               }}
             >
@@ -170,17 +187,24 @@ export function DataTable<TData, TValue>({
 
         {/* Filtro */}
         <div className="relative w-80">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Filtrar..."
-            value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+            value={
+              identificadorColunaFiltro
+                ? ((table
+                    .getColumn(identificadorColunaFiltro)
+                    ?.getFilterValue() as string) ?? "")
+                : ""
+            }
             onChange={(event) => {
-              const nameColumn = table.getColumn("name")
-              if (nameColumn) {
-                nameColumn.setFilterValue(event.target.value)
+              if (!identificadorColunaFiltro) return;
+              const colunaFiltro = table.getColumn(identificadorColunaFiltro);
+              if (colunaFiltro) {
+                colunaFiltro.setFilterValue(event.target.value);
               }
             }}
-            className="pl-10 bg-background border-input"
+            className="bg-background border-input pl-10"
           />
         </div>
 
@@ -207,7 +231,7 @@ export function DataTable<TData, TValue>({
                   >
                     {column.id}
                   </DropdownMenuCheckboxItem>
-                )
+                );
               })}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -225,18 +249,26 @@ export function DataTable<TData, TValue>({
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                  <SortableContext
+                    items={columnOrder}
+                    strategy={horizontalListSortingStrategy}
+                  >
                     {/* Checkbox select-all head cell */}
                     <TableHead>
                       <Checkbox
                         checked={table.getIsAllPageRowsSelected()}
-                        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                        onCheckedChange={(value) =>
+                          table.toggleAllPageRowsSelected(!!value)
+                        }
                         aria-label="Select all"
                       />
                     </TableHead>
 
                     {headerGroup.headers.map((header) => (
-                      <DraggableTableHeader key={header.id} header={header as Header<TData, unknown>} />
+                      <DraggableTableHeader
+                        key={header.id}
+                        header={header as Header<TData, unknown>}
+                      />
                     ))}
 
                     {/* Cabeçalho da coluna Ações - só aparece se actionsContent existir */}
@@ -252,7 +284,7 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className="group hover:bg-blue-50/30 transition-colors duration-150"
+                    className="group transition-colors duration-150 hover:bg-blue-50/30"
                   >
                     <TableCell>
                       <Checkbox
@@ -263,7 +295,10 @@ export function DataTable<TData, TValue>({
                     </TableCell>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
                       </TableCell>
                     ))}
 
@@ -271,11 +306,11 @@ export function DataTable<TData, TValue>({
                     {actionsContent && (
                       <TableCell>
                         <div className="flex gap-1">
-                          <div className="opacity-40 group-hover:opacity-0 transition-opacity duration-200">
+                          <div className="opacity-40 transition-opacity duration-200 group-hover:opacity-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </div>
 
-                          <div className="absolute gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex">
+                          <div className="absolute flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                             {actionsContent(row.original)}
                           </div>
                         </div>
@@ -285,8 +320,8 @@ export function DataTable<TData, TValue>({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell 
-                    colSpan={columns.length + (actionsContent ? 2 : 1)} 
+                  <TableCell
+                    colSpan={columns.length + (actionsContent ? 2 : 1)}
                     className="h-24 text-center"
                   >
                     Nenhum resultado.
@@ -299,7 +334,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="flex items-center justify-between px-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex-1 text-sm">
           {table.getFilteredSelectedRowModel().rows.length} de{" "}
           {table.getFilteredRowModel().rows.length} linha(s) selecionada(s).
         </div>
@@ -309,7 +344,7 @@ export function DataTable<TData, TValue>({
             <select
               value={table.getState().pagination.pageSize}
               onChange={(e) => table.setPageSize(Number(e.target.value))}
-              className="h-8 w-[70px] rounded-md border border-input bg-background"
+              className="border-input bg-background h-8 w-[70px] rounded-md border"
             >
               {[10, 20, 30, 40, 50].map((pageSize) => (
                 <option key={pageSize} value={pageSize}>
@@ -343,73 +378,110 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /* Draggable header component */
 const DraggableTableHeader = ({ header }: { header: Header<any, unknown> }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: header.column.id
-  })
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: header.column.id,
+  });
 
   const style: CSSProperties = {
     opacity: isDragging ? 0.8 : 1,
-    position: 'relative',
+    position: "relative",
     transform: CSS.Transform.toString(transform),
     transition,
-    whiteSpace: 'nowrap',
+    whiteSpace: "nowrap",
     width: header.column.getSize(),
-    zIndex: isDragging ? 10 : 0
-  }
+    zIndex: isDragging ? 10 : 0,
+  };
 
   return (
     <TableHead
       ref={setNodeRef}
-      className='before:bg-border relative h-10 border-t before:absolute before:inset-y-0 before:left-0 before:w-px first:before:bg-transparent'
+      className="before:bg-border relative h-10 border-t before:absolute before:inset-y-0 before:left-0 before:w-px first:before:bg-transparent"
       style={style}
       aria-sort={
-        header.column.getIsSorted() === 'asc'
-          ? 'ascending'
-          : header.column.getIsSorted() === 'desc'
-            ? 'descending'
-            : 'none'
+        header.column.getIsSorted() === "asc"
+          ? "ascending"
+          : header.column.getIsSorted() === "desc"
+            ? "descending"
+            : "none"
       }
     >
-      <div className='flex items-center justify-start gap-0.5'>
+      <div className="flex items-center justify-start gap-0.5">
         <Button
-          size='icon'
-          variant='ghost'
-          className='-ml-2 size-7 shadow-none'
+          size="icon"
+          variant="ghost"
+          className="-ml-2 size-7 shadow-none"
           {...attributes}
           {...listeners}
-          aria-label='Drag to reorder'
+          aria-label="Drag to reorder"
         >
           {/* small grab handle */}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M10 6H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M10 12H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            <path d="M10 18H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            <path
+              d="M10 6H14"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M10 12H14"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M10 18H14"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
         </Button>
-        <span className='grow truncate'>
-          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+        <span className="grow truncate">
+          {header.isPlaceholder
+            ? null
+            : flexRender(header.column.columnDef.header, header.getContext())}
         </span>
         <Button
-          size='icon'
-          variant='ghost'
-          className='group -mr-1 size-7 shadow-none'
+          size="icon"
+          variant="ghost"
+          className="group -mr-1 size-7 shadow-none"
           onClick={header.column.getToggleSortingHandler()}
-          onKeyDown={e => {
-            if (header.column.getCanSort() && (e.key === 'Enter' || e.key === ' ')) {
-              e.preventDefault()
-              header.column.getToggleSortingHandler()?.(e)
+          onKeyDown={(e) => {
+            if (
+              header.column.getCanSort() &&
+              (e.key === "Enter" || e.key === " ")
+            ) {
+              e.preventDefault();
+              header.column.getToggleSortingHandler()?.(e);
             }
           }}
-          aria-label='Toggle sorting'
+          aria-label="Toggle sorting"
         >
-          <ArrowUpDown className='shrink-0 opacity-60' size={16} aria-hidden='true' />
+          <ArrowUpDown
+            className="shrink-0 opacity-60"
+            size={16}
+            aria-hidden="true"
+          />
         </Button>
       </div>
     </TableHead>
-  )
-}
+  );
+};

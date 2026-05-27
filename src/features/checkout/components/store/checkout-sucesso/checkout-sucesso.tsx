@@ -7,12 +7,32 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useCarrinho } from "@/features/carrinho";
 
+import type { PagamentoStatusCheckout } from "../../../types/pedidos-pagamentos.types";
+
 type CheckoutSucessoProps = {
   numeroPedido?: string;
+  pagamentoStatus?: PagamentoStatusCheckout | null;
 };
 
-export function CheckoutSucesso({ numeroPedido }: CheckoutSucessoProps) {
+const mensagemPorStatus: Record<PagamentoStatusCheckout, string> = {
+  pending:
+    "Seu pedido foi criado. Aguardamos a confirmação do pagamento para seguir com o processamento.",
+  paid: "Pagamento confirmado. Seu pedido foi recebido e seguirá para processamento.",
+  failed:
+    "Seu pedido foi criado, mas o pagamento não foi confirmado. Tente pagar novamente.",
+  expired:
+    "Seu pedido foi criado, mas o pagamento expirou. Inicie uma nova compra para continuar.",
+};
+
+export function CheckoutSucesso({
+  numeroPedido,
+  pagamentoStatus,
+}: CheckoutSucessoProps) {
   const { limparCarrinho } = useCarrinho();
+  const mensagem =
+    pagamentoStatus && mensagemPorStatus[pagamentoStatus]
+      ? mensagemPorStatus[pagamentoStatus]
+      : "Seu pedido foi recebido. Acompanhe o status do pagamento na sua conta.";
 
   useEffect(() => {
     limparCarrinho();
@@ -30,8 +50,7 @@ export function CheckoutSucesso({ numeroPedido }: CheckoutSucessoProps) {
         </h1>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Seu pedido foi criado e o pagamento ficou pendente. A próxima etapa
-          será conectar o processamento real de pagamento.
+          {mensagem}
         </p>
 
         {numeroPedido ? (

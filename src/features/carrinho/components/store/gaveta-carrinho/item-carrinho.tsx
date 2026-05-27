@@ -49,6 +49,11 @@ export function ItemCarrinho({
       : "") ||
     (item.modalidadeTipo ? tituloModalidadePorTipo[item.modalidadeTipo] : "") ||
     (!textoParecePrazo(item.variante) ? item.variante : "");
+  const atributosVariante = Object.entries(item.atributosVariante || {}).filter(
+    ([nome, valor]) => nome.trim() && valor.trim(),
+  );
+  const exibirTituloModalidade =
+    tituloModalidade && atributosVariante.length === 0;
   const conteudoImagem = (
     <Image
       fill
@@ -95,10 +100,22 @@ export function ItemCarrinho({
               conteudoTitulo
             )}
 
-            {tituloModalidade ? (
+            {exibirTituloModalidade ? (
               <span className="mt-1 inline-flex max-w-full rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                 <span className="truncate">{tituloModalidade}</span>
               </span>
+            ) : null}
+            {atributosVariante.length > 0 ? (
+              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+                {atributosVariante
+                  .map(([nome, valor]) => `${nome}: ${valor}`)
+                  .join(" • ")}
+              </p>
+            ) : null}
+            {item.sku ? (
+              <p className="mt-1 text-[10px] font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
+                SKU: {item.sku}
+              </p>
             ) : null}
           </div>
 

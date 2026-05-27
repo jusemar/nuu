@@ -1,163 +1,114 @@
 "use server";
 
-import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
-import { getProductOwnDeliveryPrice } from "@/features/admin/logistics/entrega-propria/services/shippingService";
-import { registrarBairroPendenteEntregaPropria } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
-import { salvarEnderecoCepEntregaPropria } from "@/features/admin/logistics/entrega-propria/actions/shipping-zip-addresses.actions";
 import {
-  mapShippingZipAddressToEnderecoCep,
-  mapViaCepToEnderecoCep,
-} from "@/features/admin/logistics/entrega-propria/lib/shipping-zip-address-mapper";
-import { buscarEnderecoCepEntregaPropria } from "@/features/admin/logistics/entrega-propria/queries/shipping-zip-addresses.queries";
+  consultarEntregaPropriaLoja,
+  cotarFreteFluxoAtual,
+} from "@/features/logistica";
+import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
+import { adaptarCotacaoDisponivelParaConsultaFrete } from "../lib/frete/adaptar-cotacao-disponivel-para-consulta-frete";
+import { buscarDadosCotacaoFreteLoja } from "../queries/frete/buscar-dados-cotacao-frete-loja";
+import type { ConsultaFreteResult } from "../types/consulta-frete.types";
 
-export interface ConsultaFreteSucesso {
-  found: true;
-  shippingPrice: number;
-  level: "cep-especifico" | "regiao" | "bairro-avulso";
-  message: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  endereco: EnderecoFreteConsultado;
+export type {
+  ConsultaFreteFalha,
+  ConsultaFreteResult,
+  ConsultaFreteSucesso,
+} from "../types/consulta-frete.types";
+
+async function buscarEntradaCotacaoFreteLoja(
+  produtoId: string,
+  cep: string,
+  varianteId?: string | null,
+) {
+  const dadosCotacao = await buscarDadosCotacaoFreteLoja(produtoId, varianteId);
+
+  return dadosCotacao
+    ? {
+        ...dadosCotacao,
+        quantidade: 1,
+        cep,
+      }
+    : null;
 }
 
-export interface ConsultaFreteFalha {
-  found: false;
-  message: string;
-  endereco?: EnderecoFreteConsultado;
+function criarConsultaEntregaPropriaLojaParaCotacao(
+  produtoId: string,
+  cep: string,
+) {
+  return async () => {
+    const resultado = await consultarEntregaPropriaLoja({ produtoId, cep });
+
+    if (!resultado.disponivel) {
+      return {
+        disponivel: false as const,
+        motivo: resultado.mensagem,
+      };
+    }
+
+    return {
+      disponivel: true as const,
+      valorEmCentavos: resultado.valorEmCentavos,
+      descricao: resultado.descricao,
+      metadados: {
+        nivelEntregaPropriaAtual: resultado.nivel,
+        bairro: resultado.bairro,
+        cidade: resultado.cidade,
+        uf: resultado.uf,
+        endereco: resultado.endereco,
+      },
+    };
+  };
 }
 
-export type ConsultaFreteResult = ConsultaFreteSucesso | ConsultaFreteFalha;
+async function consultarFreteOficial(
+  produtoId: string,
+  cep: string,
+  varianteId?: string | null,
+): Promise<ConsultaFreteResult> {
+  try {
+    const entrada = await buscarEntradaCotacaoFreteLoja(
+      produtoId,
+      cep,
+      varianteId,
+    );
 
-export type EnderecoFreteConsultado = {
-  cep: string;
-  logradouro: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-};
+    if (!entrada) {
+      return {
+        found: false,
+        message: "Consulte o vendedor",
+      };
+    }
+
+    const resultado = await cotarFreteFluxoAtual({
+      ...entrada,
+      consultarEntregaPropriaAtual: criarConsultaEntregaPropriaLojaParaCotacao(
+        produtoId,
+        cep,
+      ),
+    });
+
+    const disponibilidade = await buscarDisponibilidadeFreteProduto({
+      produtoId,
+      varianteId: entrada.varianteAtual?.identificadorVariante ?? null,
+      categoriaId: entrada.categoriaId,
+    });
+
+    return adaptarCotacaoDisponivelParaConsultaFrete(
+      resultado,
+      disponibilidade,
+    );
+  } catch {
+    return {
+      found: false,
+      message: "Consulte o vendedor",
+    };
+  }
+}
 
 export async function consultarFreteAction(
   productId: string,
   cep: string,
+  varianteId?: string | null,
 ): Promise<ConsultaFreteResult> {
-  const cleanCep = cep.replace(/\D/g, "");
-
-  if (!productId) {
-    return { found: false, message: "Consulte o vendedor" };
-  }
-
-  if (cleanCep.length !== 8) {
-    return { found: false, message: "CEP inválido" };
-  }
-
-  let enderecoLocal: Awaited<
-    ReturnType<typeof buscarEnderecoCepEntregaPropria>
-  > = null;
-
-  try {
-    enderecoLocal = await buscarEnderecoCepEntregaPropria(cleanCep);
-  } catch (error) {
-    void error;
-  }
-  let endereco = enderecoLocal
-    ? mapShippingZipAddressToEnderecoCep(enderecoLocal)
-    : null;
-  let enderecoSource = enderecoLocal ? "local-db" : "external";
-
-  if (!endereco) {
-    const enderecoExterno = await fetchAddressByCep(cleanCep);
-    endereco = enderecoExterno
-      ? mapViaCepToEnderecoCep(enderecoExterno, "external")
-      : null;
-
-    if (endereco) {
-      enderecoSource = endereco.source;
-
-      try {
-        await salvarEnderecoCepEntregaPropria({
-          cep: endereco.cep,
-          street: endereco.logradouro,
-          complement: endereco.complemento || null,
-          neighborhood: endereco.bairro,
-          city: endereco.localidade,
-          state: endereco.uf,
-          ibgeCode: endereco.ibge || null,
-          source: endereco.source,
-        });
-      } catch (error) {
-        void error;
-      }
-    }
-  }
-
-  if (!endereco || !endereco.bairro) {
-    return {
-      found: false,
-      message: "Consulte o vendedor",
-    };
-  }
-
-  const bairro = endereco.bairro;
-  const cidade = endereco.localidade || "";
-  const uf = endereco.uf || "";
-  const enderecoConsultado: EnderecoFreteConsultado = {
-    cep: cleanCep,
-    logradouro: endereco.logradouro || "",
-    bairro,
-    cidade,
-    uf,
-  };
-
-  let result: Awaited<ReturnType<typeof getProductOwnDeliveryPrice>>;
-
-  try {
-    result = await getProductOwnDeliveryPrice(
-      productId,
-      cleanCep,
-      bairro,
-      cidade,
-      uf,
-    );
-  } catch (error) {
-    void error;
-
-    return {
-      found: false,
-      message: "Consulte o vendedor",
-      endereco: enderecoConsultado,
-    };
-  }
-
-  if (!result.found && result.pendingEligible) {
-    try {
-      await registrarBairroPendenteEntregaPropria({
-        cep: cleanCep,
-        neighborhood: bairro,
-        city: cidade,
-        state: uf,
-      });
-    } catch (error) {
-      void error;
-    }
-  }
-
-  if (!result.found) {
-    return {
-      found: false,
-      message: result.message,
-      endereco: enderecoConsultado,
-    };
-  }
-
-  return {
-    found: true,
-    shippingPrice: result.shippingPrice,
-    level: result.level,
-    message: result.message,
-    bairro,
-    cidade,
-    uf,
-    endereco: enderecoConsultado,
-  };
+  return consultarFreteOficial(productId, cep, varianteId);
 }

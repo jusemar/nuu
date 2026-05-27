@@ -58,7 +58,7 @@ const iconMap: Record<string, React.ElementType> = {
 /**
  * Dados do menu - estrutura hierárquica completa
  */
-const menuData = [
+export const menuAdmin = [
   // Item solto: Dashboard
   {
     id: "dashboard",
@@ -103,37 +103,34 @@ const menuData = [
     label: "Logística",
     icon: "Truck",
     items: [
-      // Regiões de Atendimento (subgrupo)
       {
-        id: "regions",
-        type: "subgroup" as const,
-        label: "Regiões",
-        icon: "MapPin",
-        items: [
-          {
-            id: "states",
-            label: "Estados",
-            href: "/admin/logistics/regions/states",
-            icon: "Navigation",
-          },
-          {
-            id: "cities",
-            label: "Cidades",
-            href: "/admin/logistics/regions/cities",
-            icon: "Building2",
-          },
-          {
-            id: "test-coverage",
-            label: "Testar Cobertura",
-            href: "/admin/logistics/regions/test",
-            icon: "MapPin",
-          },
-        ],
+        id: "visao-geral-logistica",
+        label: "Visão Geral",
+        href: "/admin/logistica/visao-geral",
+        icon: "LayoutDashboard",
+      },
+      {
+        id: "integracoes-logistica",
+        label: "Integrações",
+        href: "/admin/logistica/integracoes",
+        icon: "Truck",
+      },
+      {
+        id: "servicos-entrega-logistica",
+        label: "Serviços de Entrega",
+        href: "/admin/logistica/servicos-entrega",
+        icon: "PackageCheck",
+      },
+      {
+        id: "regras-disponibilidade-logistica",
+        label: "Regras de Disponibilidade",
+        href: "/admin/logistica/regras-disponibilidade",
+        icon: "Navigation",
       },
       {
         id: "retirada-local",
         type: "item" as const,
-        label: "Retirada no local",
+        label: "Retirada",
         href: "/admin/logistica/retirada-local",
         icon: "Store",
       },
@@ -143,18 +140,6 @@ const menuData = [
         label: "Entrega Própria",
         href: "/admin/logistics/entrega-propria",
         icon: "PackageCheck",
-      },
-      {
-        id: "methods",
-        label: "Entregas | Frete",
-        href: "/admin/logistics/modalidades-entrega",
-        icon: "Truck",
-      },
-      {
-        id: "suppliers",
-        label: "Fornecedores",
-        href: "/admin/logistics/fornecedores",
-        icon: "Store",
       },
     ],
   },
@@ -332,7 +317,7 @@ export function AdminSidebar() {
 
         {/* Menu */}
         <nav className="max-h-[calc(100vh-4rem)] space-y-1 overflow-y-auto p-3">
-          {menuData.map((item) =>
+          {menuAdmin.map((item) =>
             item.type === "item" ? renderItem(item) : renderGroup(item),
           )}
         </nav>

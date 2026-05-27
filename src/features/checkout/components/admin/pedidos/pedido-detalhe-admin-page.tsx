@@ -117,17 +117,29 @@ function ItensPedido({ pedido }: { pedido: PedidoAdminDetalhe }) {
         {pedido.itens.map((item) => (
           <TableRow key={item.id}>
             <TableCell className="font-medium text-slate-900">
-              {item.nomeProduto}
+              <div>{item.nomeProduto}</div>
+              {Object.keys(item.atributosVariante).length > 0 ? (
+                <div className="mt-1 text-xs font-normal text-slate-500">
+                  {Object.entries(item.atributosVariante)
+                    .map(([nome, valor]) => `${nome}: ${valor}`)
+                    .join(" • ")}
+                </div>
+              ) : null}
             </TableCell>
             <TableCell>{item.skuProduto || "-"}</TableCell>
             <TableCell>
-              {item.modalidade ? (
+              {item.modalidade &&
+              Object.keys(item.atributosVariante).length === 0 ? (
                 <div>
                   <div>{item.modalidade}</div>
                   <div className="text-xs text-slate-500">
                     {item.prazoModalidade}
                   </div>
                 </div>
+              ) : item.prazoModalidade ? (
+                <span className="text-xs text-slate-500">
+                  {item.prazoModalidade}
+                </span>
               ) : (
                 "-"
               )}

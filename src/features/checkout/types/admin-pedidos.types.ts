@@ -54,6 +54,9 @@ export type PedidoAdminDetalhe = {
   itens: {
     id: string;
     nomeProduto: string;
+    varianteId: string | null;
+    nomeVariante: string | null;
+    atributosVariante: Record<string, string>;
     skuProduto: string | null;
     modalidade: string | null;
     prazoModalidade: string | null;

@@ -70,6 +70,29 @@ export interface PrecoModalidade {
   isActive: boolean; // se esta modalidade está ativa
 }
 
+export interface VarianteProdutoLoja {
+  id: string;
+  sku: string;
+  name: string | null;
+  attributes: Record<string, string>;
+  priceInCents: number;
+  comparePriceInCents: number | null;
+  stockQuantity: number;
+  weightInGrams: number | null;
+  heightInCm: number | null;
+  widthInCm: number | null;
+  lengthInCm: number | null;
+  imageUrl: string | null;
+  isActive: boolean;
+  isDefault: boolean;
+}
+
+export interface AtributoProdutoLoja {
+  id: string;
+  name: string;
+  values: string[];
+}
+
 // ==========================================
 // INTERFACES MOCK (serão substituídas depois)
 // ==========================================

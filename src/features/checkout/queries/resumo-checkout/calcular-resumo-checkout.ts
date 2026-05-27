@@ -17,16 +17,15 @@ import {
   calcularFreteItensCheckout,
   resolverFreteItemCheckout,
 } from "../../lib/resumo-checkout/calcular-frete-itens-checkout";
-import { selecionarPrecoProdutoCheckout } from "../../lib/pedidos/normalizar-checkout-visitante";
-import type {
-  OpcaoFreteCheckoutId,
-  ResumoCheckoutCalculado,
-} from "../../types/checkout.types";
+import {
+  resolverItemVendavelCheckout,
+  selecionarPrecoProdutoCheckout,
+} from "../../lib/pedidos/normalizar-checkout-visitante";
+import type { ResumoCheckoutCalculado } from "../../types/checkout.types";
 
 type CalcularResumoCheckoutParams = {
   itens: ItemCarrinho[];
   cupom?: string;
-  freteFallbackId?: OpcaoFreteCheckoutId;
 };
 
 const configuracaoVisualModalidade: Record<
@@ -81,7 +80,6 @@ function obterTituloModalidade({
 export async function calcularResumoCheckout({
   itens,
   cupom,
-  freteFallbackId = "padrao",
 }: CalcularResumoCheckoutParams): Promise<ResumoCheckoutCalculado | null> {
   if (itens.length === 0) {
     return null;
@@ -93,6 +91,8 @@ export async function calcularResumoCheckout({
     where: inArray(productTable.id, produtosIds),
     with: {
       pricing: true,
+      galleryImages: true,
+      variants: true,
     },
   });
 
@@ -105,68 +105,121 @@ export async function calcularResumoCheckout({
       throw new Error(`Produto não encontrado: ${item.nome}`);
     }
 
-    const precoSelecionado = selecionarPrecoProdutoCheckout(
-      produto,
-      item.variante,
-      item.modalidadeTipo,
-    );
+    const itemVendavel = resolverItemVendavelCheckout({ item, produto });
+    const precoSelecionado =
+      itemVendavel.tipo === "simple"
+        ? selecionarPrecoProdutoCheckout(
+            produto,
+            item.variante,
+            item.modalidadeTipo,
+          )
+        : null;
     const precoBaseEmCentavos =
-      precoSelecionado.hasPromo && precoSelecionado.promoPrice
-        ? precoSelecionado.promoPrice
-        : precoSelecionado.price;
+      itemVendavel.tipo === "variant"
+        ? itemVendavel.variante.priceInCents
+        : precoSelecionado!.hasPromo && precoSelecionado!.promoPrice
+          ? precoSelecionado!.promoPrice
+          : precoSelecionado!.price;
+    const modalidadePreco =
+      itemVendavel.tipo === "variant"
+        ? `variant:${itemVendavel.variante.id}`
+        : precoSelecionado!.type;
     const precos = calcularPrecoProduto({
       entrada: {
         produtoId: produto.id,
-        modalidade: precoSelecionado.type,
+        modalidade: modalidadePreco,
         precoBaseEmCentavos,
       },
       configuracao: configuracaoPagamento,
     });
-    const frete = resolverFreteItemCheckout({ item, freteFallbackId });
+    const frete = resolverFreteItemCheckout(item);
     const visualModalidade =
-      configuracaoVisualModalidade[precoSelecionado.type] ??
-      configuracaoVisualModalidade.stock;
+      itemVendavel.tipo === "variant"
+        ? configuracaoVisualModalidade.stock
+        : (configuracaoVisualModalidade[precoSelecionado!.type] ??
+          configuracaoVisualModalidade.stock);
+    const tituloItem =
+      itemVendavel.tipo === "variant"
+        ? itemVendavel.variante.name ||
+          Object.values(itemVendavel.variante.attributes).join(" / ") ||
+          "Variante"
+        : item.modalidadeTitulo ||
+          obterTituloModalidade({
+            tipo: precoSelecionado!.type,
+            descricao: precoSelecionado!.pricingModalDescription,
+            prazo: precoSelecionado!.deliveryDays,
+          });
+    const prazoModalidade =
+      itemVendavel.tipo === "variant"
+        ? item.prazoModalidade || "Consulte prazo"
+        : precoSelecionado!.deliveryDays || "Consulte prazo";
 
     return {
       id: item.id,
       produtoId: produto.id,
+      produtoVarianteId:
+        itemVendavel.tipo === "variant" ? itemVendavel.variante.id : undefined,
       nome: produto.name,
-      imagemUrl: item.imagemUrl,
+      sku:
+        itemVendavel.tipo === "variant"
+          ? itemVendavel.variante.sku
+          : produto.sku,
+      atributosVariante:
+        itemVendavel.tipo === "variant"
+          ? itemVendavel.variante.attributes
+          : undefined,
+      imagemUrl: itemVendavel.imagemUrl || "/produto-sem-foto.webp",
       quantidade: item.quantidade,
-      modalidade:
-        item.modalidadeTitulo ||
-        obterTituloModalidade({
-          tipo: precoSelecionado.type,
-          descricao: precoSelecionado.pricingModalDescription,
-          prazo: precoSelecionado.deliveryDays,
-        }),
-      prazoModalidade: precoSelecionado.deliveryDays || "Consulte prazo",
+      modalidade: tituloItem,
+      prazoModalidade,
       modalidadeDetalhes: {
-        tipo: precoSelecionado.type,
-        titulo:
-          item.modalidadeTitulo ||
-          obterTituloModalidade({
-            tipo: precoSelecionado.type,
-            descricao: precoSelecionado.pricingModalDescription,
-            prazo: precoSelecionado.deliveryDays,
-          }),
-        badge: visualModalidade.badge,
+        tipo: modalidadePreco,
+        titulo: tituloItem,
+        badge:
+          itemVendavel.tipo === "variant"
+            ? "Variante selecionada"
+            : visualModalidade.badge,
         badgeBg: visualModalidade.badgeBg,
         badgeColor: visualModalidade.badgeColor,
         icone: visualModalidade.icone,
-        precoBaseEmCentavos: precoSelecionado.price,
-        precoBase: formatarPrecoEmReais(precoSelecionado.price),
-        possuiPromocao: Boolean(precoSelecionado.hasPromo),
-        precoPromocionalEmCentavos: precoSelecionado.promoPrice,
-        precoPromocional: precoSelecionado.promoPrice
-          ? formatarPrecoEmReais(precoSelecionado.promoPrice)
-          : null,
-        tipoPromocao: precoSelecionado.promoType,
-        promocaoTerminaEm: precoSelecionado.promoEndDate,
-        duracaoPromocao: precoSelecionado.promoDuration,
-        unidadeDuracaoPromocao: precoSelecionado.promoDurationUnit,
-        precoPrincipal: Boolean(precoSelecionado.mainCardPrice),
-        ativo: Boolean(precoSelecionado.isActive),
+        precoBaseEmCentavos:
+          itemVendavel.tipo === "variant"
+            ? itemVendavel.variante.priceInCents
+            : precoSelecionado!.price,
+        precoBase: formatarPrecoEmReais(
+          itemVendavel.tipo === "variant"
+            ? itemVendavel.variante.priceInCents
+            : precoSelecionado!.price,
+        ),
+        possuiPromocao:
+          itemVendavel.tipo === "simple" && Boolean(precoSelecionado!.hasPromo),
+        precoPromocionalEmCentavos:
+          itemVendavel.tipo === "simple" ? precoSelecionado!.promoPrice : null,
+        precoPromocional:
+          itemVendavel.tipo === "simple" && precoSelecionado!.promoPrice
+            ? formatarPrecoEmReais(precoSelecionado!.promoPrice)
+            : null,
+        tipoPromocao:
+          itemVendavel.tipo === "simple" ? precoSelecionado!.promoType : null,
+        promocaoTerminaEm:
+          itemVendavel.tipo === "simple"
+            ? precoSelecionado!.promoEndDate
+            : null,
+        duracaoPromocao:
+          itemVendavel.tipo === "simple"
+            ? precoSelecionado!.promoDuration
+            : null,
+        unidadeDuracaoPromocao:
+          itemVendavel.tipo === "simple"
+            ? precoSelecionado!.promoDurationUnit
+            : null,
+        precoPrincipal:
+          itemVendavel.tipo === "simple" &&
+          Boolean(precoSelecionado!.mainCardPrice),
+        ativo:
+          itemVendavel.tipo === "variant"
+            ? itemVendavel.variante.isActive
+            : Boolean(precoSelecionado!.isActive),
         garantia: "12 meses",
         origemEnvio: "Brasil",
       },
@@ -176,10 +229,7 @@ export async function calcularResumoCheckout({
     };
   });
 
-  const freteEmCentavos = calcularFreteItensCheckout({
-    itens,
-    freteFallbackId,
-  });
+  const freteEmCentavos = calcularFreteItensCheckout({ itens });
   const itensPix = itensCalculados.map((item) => ({
     precoEmCentavos: item.pix.valorEmCentavos,
     quantidade: item.quantidade,

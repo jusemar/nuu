@@ -14,14 +14,20 @@ import {
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Store, Truck, Loader2 } from "lucide-react";
+import { Store, Truck, Loader2, Package } from "lucide-react";
 
 import { SecaoRetiradaProduto } from "@/features/admin/logistica/components/retirada-local/SecaoRetiradaProduto";
 import { EntregaPropriaInfoCard } from "@/features/admin/logistics/entrega-propria/components/EntregaPropriaInfoCard";
 import { ProdutoEntregaPropriaPrecos } from "@/features/admin/logistics/entrega-propria/components/admin/produto-entrega-propria-precos";
 import { buscarModelosRetiradaAction } from "@/features/admin/logistica/actions/retirada/buscarModelos";
+import { buscarResumoLogisticaProduto } from "@/features/admin/logistica/actions/produto-logistica/buscar-resumo-logistica-produto";
+import { desvincularTipoLogisticoProduto } from "@/features/admin/logistica/actions/produto-logistica/desvincular-tipo-logistico-produto";
+import { vincularTipoLogisticoProduto } from "@/features/admin/logistica/actions/produto-logistica/vincular-tipo-logistico-produto";
 import type { ModeloRetirada } from "@/features/admin/logistica/types/logistica.types";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import { ResumoLogisticaProduto } from "@/features/admin/logistica/components/produto/ResumoLogisticaProduto";
+import { DimensoesFreteExterno } from "@/features/admin/logistica/components/produto/DimensoesFreteExterno";
 
 type Props = {
   data: {
@@ -30,20 +36,60 @@ type Props = {
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
+    classificacoesLogisticasIds?: string[];
   };
   productId?: string;
   onChange?: (updates: Partial<Props["data"]>) => void;
+  dimensoesFrete?: DimensoesFreteExternoProduto;
+  aoAlterarDimensoes?: (dimensoes: DimensoesFreteExternoProduto) => void;
 };
 
-export function EntregaTab({ data, productId, onChange }: Props) {
+export function EntregaTab({
+  data,
+  productId,
+  onChange,
+  dimensoesFrete = {},
+  aoAlterarDimensoes,
+}: Props) {
   const [modelos, setModelos] = useState<ModeloRetirada[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [tiposDisponiveis, setTiposDisponiveis] = useState<
+    Array<{ id: string; nome: string; ativo: boolean }>
+  >([]);
+  const [tiposVinculados, setTiposVinculados] = useState<
+    Array<{
+      vinculoId: string;
+      tipoLogisticoId: string;
+      tipoLogisticoNome: string;
+    }>
+  >([]);
+  const [regrasProduto, setRegrasProduto] = useState<
+    Array<{
+      id: string;
+      efeito: "permitir" | "bloquear";
+      ativo: boolean;
+      provedorNome: string | null;
+      transportadoraNome: string | null;
+      servicoNome: string | null;
+    }>
+  >([]);
+  const [carregandoResumoLogistica, setCarregandoResumoLogistica] =
+    useState(false);
+  const [mensagemResumoLogistica, setMensagemResumoLogistica] = useState<{
+    tipo: "sucesso" | "erro";
+    texto: string;
+  } | null>(null);
 
   useEffect(() => {
     async function loadModelos() {
       try {
         const result = await buscarModelosRetiradaAction();
-        setModelos(result);
+        setModelos(
+          result.map((modelo) => ({
+            ...modelo,
+            ativo: modelo.ativo ?? false,
+          })),
+        );
       } catch (error) {
         console.error("Erro ao carregar modelos:", error);
       } finally {
@@ -52,6 +98,36 @@ export function EntregaTab({ data, productId, onChange }: Props) {
     }
     loadModelos();
   }, []);
+
+  useEffect(() => {
+    async function carregarResumoLogistica() {
+      setCarregandoResumoLogistica(true);
+      try {
+        const resumo = await buscarResumoLogisticaProduto(productId);
+        setTiposDisponiveis(resumo.tiposDisponiveis);
+        setTiposVinculados(resumo.tiposVinculados);
+        setRegrasProduto(resumo.regrasProduto);
+      } catch {
+        setMensagemResumoLogistica({
+          tipo: "erro",
+          texto: "Não foi possível carregar as classificações logísticas.",
+        });
+      } finally {
+        setCarregandoResumoLogistica(false);
+      }
+    }
+    carregarResumoLogistica();
+  }, [productId]);
+
+  const recarregarResumoLogistica = async () => {
+    if (!productId) return;
+    setCarregandoResumoLogistica(true);
+    const resumo = await buscarResumoLogisticaProduto(productId);
+    setTiposDisponiveis(resumo.tiposDisponiveis);
+    setTiposVinculados(resumo.tiposVinculados);
+    setRegrasProduto(resumo.regrasProduto);
+    setCarregandoResumoLogistica(false);
+  };
 
   const handleRetiradaChange = (dados: {
     habilitado: boolean;
@@ -99,6 +175,10 @@ export function EntregaTab({ data, productId, onChange }: Props) {
         <TabsTrigger value="entrega-propria" className="gap-2">
           <Truck className="h-4 w-4" />
           Entrega Própria
+        </TabsTrigger>
+        <TabsTrigger value="regras-logisticas" className="gap-2">
+          <Package className="h-4 w-4" />
+          Frete Externo
         </TabsTrigger>
       </TabsList>
 
@@ -177,6 +257,77 @@ export function EntregaTab({ data, productId, onChange }: Props) {
               ) : null}
             </CardContent>
           </Card>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="regras-logisticas">
+        <div className="space-y-6">
+          <DimensoesFreteExterno
+            dimensoes={dimensoesFrete}
+            aoAlterar={aoAlterarDimensoes}
+          />
+          <ResumoLogisticaProduto
+            produtoId={productId}
+            tiposDisponiveis={tiposDisponiveis}
+            tiposVinculados={tiposVinculados}
+            regrasProduto={regrasProduto}
+            classificacoesSelecionadasNoCadastro={
+              data.classificacoesLogisticasIds ?? []
+            }
+            aoAlterarClassificacoesNoCadastro={(ids) =>
+              onChange?.({ classificacoesLogisticasIds: ids })
+            }
+            carregando={carregandoResumoLogistica}
+            mensagem={mensagemResumoLogistica}
+            aoVincularTipo={async (tipoLogisticoId) => {
+              if (!productId || !tipoLogisticoId) {
+                setMensagemResumoLogistica({
+                  tipo: "erro",
+                  texto: "Selecione um tipo logístico para vincular.",
+                });
+                return;
+              }
+
+              setCarregandoResumoLogistica(true);
+              const resposta = await vincularTipoLogisticoProduto({
+                produtoId: productId,
+                tipoLogisticoId,
+              });
+
+              if (!resposta.sucesso) {
+                setMensagemResumoLogistica({
+                  tipo: "erro",
+                  texto: resposta.erro,
+                });
+                setCarregandoResumoLogistica(false);
+                return;
+              }
+
+              await recarregarResumoLogistica();
+              setMensagemResumoLogistica({
+                tipo: "sucesso",
+                texto: "Classificação logística vinculada com sucesso.",
+              });
+            }}
+            aoDesvincularTipo={async (vinculoId) => {
+              setCarregandoResumoLogistica(true);
+              const resposta = await desvincularTipoLogisticoProduto(vinculoId);
+              if (!resposta.sucesso) {
+                setMensagemResumoLogistica({
+                  tipo: "erro",
+                  texto: resposta.erro,
+                });
+                setCarregandoResumoLogistica(false);
+                return;
+              }
+
+              await recarregarResumoLogistica();
+              setMensagemResumoLogistica({
+                tipo: "sucesso",
+                texto: "Classificação logística removida com sucesso.",
+              });
+            }}
+          />
         </div>
       </TabsContent>
     </Tabs>

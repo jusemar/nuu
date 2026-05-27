@@ -1,15 +1,6 @@
 import type { ItemCarrinho } from "@/features/carrinho";
 import type { ParcelamentoCartaoCalculado } from "@/features/precificacao";
 
-export type OpcaoFreteCheckoutId = "retirada" | "padrao" | "expresso";
-
-export type OpcaoFreteCheckout = {
-  id: OpcaoFreteCheckoutId;
-  nome: string;
-  prazo: string;
-  valorEmCentavos: number;
-};
-
 export type DadosIdentificacaoCheckout = {
   nome: string;
   email: string;
@@ -31,7 +22,6 @@ export type DadosEnderecoCheckout = {
 export type DadosCheckoutVisitante = DadosIdentificacaoCheckout &
   DadosEnderecoCheckout & {
     cupom?: string;
-    freteId: OpcaoFreteCheckoutId;
     formaPagamento: "pix" | "cartao";
     parcelasCartao?: number;
     itens: ItemCarrinho[];
@@ -47,7 +37,10 @@ export type TotaisCheckout = {
 export type ItemResumoCheckout = {
   id: string;
   produtoId: string;
+  produtoVarianteId?: string;
   nome: string;
+  sku?: string | null;
+  atributosVariante?: Record<string, string>;
   imagemUrl: string;
   quantidade: number;
   modalidade: string;

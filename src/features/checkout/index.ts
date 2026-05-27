@@ -1,6 +1,7 @@
 export { CheckoutVisitante } from "./components/store/checkout-visitante";
 export { CheckoutSucesso } from "./components/store/checkout-sucesso";
 export { criarPedidoCheckoutVisitante } from "./actions/pedido/criar-pedido-checkout-visitante";
+export { buscarStatusPagamentoPedidoSucesso } from "./queries/pedido/buscar-status-pedido-sucesso";
 export {
   PAGAMENTO_GATEWAYS_CHECKOUT,
   PAGAMENTO_METODOS_CHECKOUT,
@@ -20,6 +21,7 @@ export { criarCheckoutCartaoStripe } from "./lib/gateways/stripe/checkout-stripe
 export {
   construirEventoWebhookStripe,
   processarWebhookStripe,
+  sincronizarPagamentoCheckoutStripe,
 } from "./lib/gateways/stripe/webhook-stripe";
 export {
   criarClienteCheckoutSchema,

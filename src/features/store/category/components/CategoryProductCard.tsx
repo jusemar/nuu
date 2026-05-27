@@ -24,6 +24,7 @@ interface CategoryProductCardProps {
   slug: string;
   imageUrl?: string | null;
   price: number;
+  fromPrice?: boolean;
   originalPrice?: number | null;
   hasFreeShipping?: boolean;
   hasFlashSale?: boolean;
@@ -38,6 +39,7 @@ export function CategoryProductCard({
   slug,
   imageUrl,
   price,
+  fromPrice = false,
   originalPrice,
   hasFreeShipping,
   hasFlashSale,
@@ -175,6 +177,11 @@ export function CategoryProductCard({
           )}
 
           {/* Linha com preço atual, PIX e botão carrinho */}
+          {fromPrice ? (
+            <p className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
+              A partir de
+            </p>
+          ) : null}
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-5">
               <p className="text-xl font-bold tracking-tight text-gray-900">

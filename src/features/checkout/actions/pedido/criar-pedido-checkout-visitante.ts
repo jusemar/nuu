@@ -9,10 +9,12 @@ import {
   checkoutPagamentosTable,
   checkoutPedidoHistoricosTable,
   checkoutPedidoItensTable,
+  checkoutPedidoLogisticasTable,
   checkoutPedidosTable,
   productTable,
 } from "@/db/schema";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
+import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
 import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
@@ -33,7 +35,9 @@ import {
   normalizarTelefoneCheckout,
   normalizarTextoOpcionalCheckout,
 } from "../../lib/pedidos/normalizar-checkout-visitante";
-import { calcularFreteItensCheckout } from "../../lib/resumo-checkout/calcular-frete-itens-checkout";
+import { criarConsultaEntregaPropriaCheckout } from "../../lib/frete/criar-consulta-entrega-propria-checkout";
+import { revalidarFreteCheckout } from "../../lib/frete/revalidar-frete-checkout";
+import { montarRegistroSnapshotFretePedido } from "../../lib/frete/montar-registro-snapshot-frete-pedido";
 import {
   isValidCPFOrCNPJ,
   isValidNome,
@@ -268,6 +272,9 @@ async function criarPedidoCheckoutVisitanteInterno({
       where: inArray(productTable.id, produtosIds),
       with: {
         pricing: true,
+        galleryImages: true,
+        variants: true,
+        modeloRetirada: true,
       },
     });
 
@@ -288,10 +295,21 @@ async function criarPedidoCheckoutVisitanteInterno({
       });
     });
 
-    const freteEmCentavos = calcularFreteItensCheckout({
+    const revalidacaoFrete = await revalidarFreteCheckout({
       itens: dados.itens,
-      freteFallbackId: dados.freteId,
+      produtos,
+      cepFinal: dados.cep,
+      dependencias: {
+        consultarEntregaPropriaAtual: criarConsultaEntregaPropriaCheckout(),
+        buscarDisponibilidadeFreteProduto,
+      },
     });
+
+    if (!revalidacaoFrete.sucesso) {
+      throw new Error(revalidacaoFrete.mensagem);
+    }
+
+    const freteEmCentavos = revalidacaoFrete.freteEmCentavos;
     const totaisBase = calcularTotalCheckout({
       itens: itensPedido.map((item) => ({
         precoEmCentavos: item.precoUnitarioEmCentavos,
@@ -440,6 +458,13 @@ async function criarPedidoCheckoutVisitanteInterno({
         pedidoId: pedido.id,
         ...item,
       })),
+    );
+
+    await tx.insert(checkoutPedidoLogisticasTable).values(
+      montarRegistroSnapshotFretePedido({
+        pedidoId: pedido.id,
+        snapshot: revalidacaoFrete.snapshotFrete,
+      }),
     );
 
     const pagamento = (

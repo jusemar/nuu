@@ -91,7 +91,12 @@ export default function ProductsPage() {
     accessorKey: "name",
     header: "Nome",
     cell: ({ row }: { row: any }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
+      <Link
+        href={`/admin/products/${row.original.id}/edit`}
+        className="font-medium text-gray-900 underline-offset-4 hover:text-blue-700 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      >
+        {row.getValue("name")}
+      </Link>
     )
   }, 
   {

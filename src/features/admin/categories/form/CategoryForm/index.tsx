@@ -87,8 +87,9 @@ export function CategoryForm({
 
     items.forEach((item) => {
       const flatItem: SubcategoryItem = {
-        id: generateSubcategoryId(), // Gera ID temporário
+        id: item.id || generateSubcategoryId(),
         name: item.name,
+        slug: item.slug,
         level: item.level,
         parent: parentId,
         childrenCount: item.children?.length || 0,
@@ -181,8 +182,9 @@ export function CategoryForm({
           .replace(/\s+/g, "-");
 
         const node: any = {
+          id: s.id,
           name: s.name,
-          slug: generatedSlug,
+          slug: s.slug || generatedSlug,
           level: s.level,
           parentId: parentId === null ? undefined : parentId,
           orderIndex: idx + 1,

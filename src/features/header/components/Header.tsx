@@ -5,7 +5,6 @@ import {
   Bell,
   HelpCircle,
   Menu,
-  Search,
   TrendingUp,
   Zap,
   Tag,
@@ -15,6 +14,7 @@ import { useState } from "react";
 import { NavigationDrawer } from "../../store/menu/components/NavigationDrawer";
 import { GavetaCarrinho } from "@/features/carrinho";
 import { BotaoContaCliente } from "@/features/autenticacao";
+import { CampoBuscaProdutos } from "./CampoBuscaProdutos";
 
 // ─── Design system tokens (espelham o globals.css) ───────────────────────────
 const DS = {
@@ -88,31 +88,8 @@ export const Header = ({}: HeaderProps) => {
             </Link>
 
             {/* Busca */}
-            <div className="max-w-xl flex-grow">
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-                  style={{ color: DS.muted }}
-                />
-                <input
-                  type="search"
-                  placeholder="Buscar produtos..."
-                  className="w-full rounded-lg py-2.5 pr-4 pl-10 text-sm transition outline-none"
-                  style={{
-                    background: DS.bg,
-                    border: `1.5px solid ${DS.border}`,
-                    color: DS.text,
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.border = `1.5px solid ${DS.primary}`;
-                    e.currentTarget.style.background = "#fff";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.border = `1.5px solid ${DS.border}`;
-                    e.currentTarget.style.background = DS.bg;
-                  }}
-                />
-              </div>
+            <div className="flex-grow">
+              <CampoBuscaProdutos />
             </div>
 
             {/* Ações direita */}

@@ -39,15 +39,15 @@ import { ProductVariantSelector } from "../product-variant-selector";
 interface ProductInfoProps {
   // Dados básicos do produto
   nome: string;
-  marca: string;
+  marca?: string | null;
   sku: string;
-  rating: number;
-  totalAvaliacoes: number;
-  vendedor: string;
-  vendedorRating: number;
+  rating?: number;
+  totalAvaliacoes?: number;
+  vendedor?: string;
+  vendedorRating?: number;
   descricao: string;
-  cores: Record<Cor, string>;
-  tamanhos: Tamanho[];
+  cores?: Record<Cor, string>;
+  tamanhos?: Tamanho[];
   corInicial?: Cor;
 
   // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
@@ -71,13 +71,18 @@ export function ProductInfo({
   nome,
   marca,
   sku,
-  rating,
-  totalAvaliacoes,
+  rating = 0,
+  totalAvaliacoes = 0,
   vendedor,
-  vendedorRating,
+  vendedorRating = 0,
   descricao,
-  cores,
-  tamanhos,
+  cores = {
+    preto: "#111827",
+    branco: "#FFFFFF",
+    azul: "#2563EB",
+    vermelho: "#DC2626",
+  },
+  tamanhos = [],
   corInicial = "preto",
   // === NOVAS PROPS (estado global) ===
   modalidadesDisponiveis,
@@ -117,6 +122,10 @@ export function ProductInfo({
     variants.length > 0 &&
     Boolean(onSelectVariant);
   const isVariableProduct = productKind === "variable";
+  const mostrarAvaliacoes =
+    rating > 0 || totalAvaliacoes > 0 || Boolean(vendedor?.trim());
+  const mostrarPaletaCores = Object.keys(cores).length > 0;
+  const mostrarTamanhos = tamanhos.length > 0;
 
   // -----------------------------------------
   // RENDER
@@ -146,23 +155,37 @@ export function ProductInfo({
       {/* -----------------------------------------
           LINHA 3: RATING + AVALIAÇÕES + VENDEDOR
           ----------------------------------------- */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <Stars rating={rating} size="lg" />
-        <span className="text-[13px] font-bold">{rating}</span>
-        <a href="#" className="text-text-muted text-xs underline">
-          {totalAvaliacoes.toLocaleString("pt-BR")} avaliações
-        </a>
-        <span className="bg-surface-border-mid h-1 w-1 rounded-full" />
-        <span className="text-text-muted text-xs">
-          Vendido por{" "}
-          <a href="#" className="text-primary font-semibold no-underline">
-            {vendedor}
-          </a>
-        </span>
-        <span className="bg-success-light text-success inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold">
-          {vendedorRating}% positivo
-        </span>
-      </div>
+      {mostrarAvaliacoes ? (
+        <div className="flex flex-wrap items-center gap-2.5">
+          {rating > 0 ? (
+            <>
+              <Stars rating={rating} size="lg" />
+              <span className="text-[13px] font-bold">{rating}</span>
+            </>
+          ) : null}
+          {totalAvaliacoes > 0 ? (
+            <a href="#" className="text-text-muted text-xs underline">
+              {totalAvaliacoes.toLocaleString("pt-BR")} avaliações
+            </a>
+          ) : null}
+          {vendedor?.trim() ? (
+            <>
+              <span className="bg-surface-border-mid h-1 w-1 rounded-full" />
+              <span className="text-text-muted text-xs">
+                Vendido por{" "}
+                <a href="#" className="text-primary font-semibold no-underline">
+                  {vendedor}
+                </a>
+              </span>
+              {vendedorRating > 0 ? (
+                <span className="bg-success-light text-success inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold">
+                  {vendedorRating}% positivo
+                </span>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* DIVISOR */}
       <div className="bg-surface-border h-px w-full" />
@@ -191,7 +214,8 @@ export function ProductInfo({
           {/* -----------------------------------------
               SELETOR DE COR
               ----------------------------------------- */}
-          <div>
+          {mostrarPaletaCores ? (
+            <div>
             <div className="mb-2.5 flex items-center gap-2">
               <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
                 Cor
@@ -220,12 +244,14 @@ export function ProductInfo({
                 />
               ))}
             </div>
-          </div>
+            </div>
+          ) : null}
 
           {/* -----------------------------------------
               SELETOR DE TAMANHO
               ----------------------------------------- */}
-          <div>
+          {mostrarTamanhos ? (
+            <div>
             <div className="mb-2.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
@@ -246,23 +272,19 @@ export function ProductInfo({
               {tamanhos.map((t) => (
                 <button
                   key={t}
-                  onClick={() => t !== "40" && setTamSel(t)}
+                  onClick={() => setTamSel(t)}
                   className={`flex h-[38px] min-w-[42px] items-center justify-center rounded-lg border-[1.5px] bg-white px-2 text-[13px] font-semibold transition-all ${
                     tamSel === t
                       ? "border-primary bg-primary text-white"
-                      : t === "40"
-                        ? "border-surface-border text-text-primary cursor-not-allowed line-through opacity-35"
-                        : "border-surface-border text-text-primary hover:border-primary-mid"
+                      : "border-surface-border text-text-primary hover:border-primary-mid"
                   }`}
                 >
                   {t}
                 </button>
               ))}
             </div>
-            <div className="text-text-hint mt-1.5 text-[11px]">
-              Tam. 40 indisponível
             </div>
-          </div>
+          ) : null}
         </>
       )}
 
@@ -293,7 +315,7 @@ export function ProductInfo({
           CHAT COM VENDEDOR
           ----------------------------------------- */}
       <ChatVendedor
-        vendedorNome={vendedor}
+        vendedorNome={vendedor || "Atendimento da loja"}
         status="online"
         tempoResposta="Responde em minutos"
         onClick={() => {

@@ -12,12 +12,35 @@
 
 import { db } from "@/db/connection";
 import { categoryTable } from "@/db/table/categories/categories";
-import { sql, eq, desc, asc } from "drizzle-orm";
+import { productTable } from "@/db/table/products/products";
+import { sql, eq, desc, asc, inArray } from "drizzle-orm";
 import type {
   Category,
   CreateCategoryInput,
+  HierarchicalSubcategory,
   UpdateCategoryInput,
 } from "../types";
+
+type SubcategoryNode = HierarchicalSubcategory & {
+  id?: string;
+  imageUrl?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  isActive?: boolean;
+};
+
+type ExistingSubcategory = {
+  id: string;
+  name: string;
+  description: string | null;
+  parentId: string | null;
+  level: number;
+  orderIndex: number | null;
+  imageUrl: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  isActive: boolean;
+};
 
 // =====================================================================
 // FUNÇÃO AUXILIAR: inserir subcategorias recursivamente
@@ -48,6 +71,184 @@ async function insertSubcategories(subs: any[], parentId?: string) {
       await insertSubcategories(sub.children, newSub.id);
     }
   }
+}
+
+async function getDescendantCategories(
+  parentId: string,
+  tx: any = db,
+): Promise<ExistingSubcategory[]> {
+  const result = await tx.execute(sql`
+    WITH RECURSIVE category_tree AS (
+      SELECT
+        id, name, description, parent_id, level, order_index,
+        image_url, meta_title, meta_description, is_active
+      FROM category
+      WHERE parent_id = ${parentId}
+
+      UNION ALL
+
+      SELECT
+        c.id, c.name, c.description, c.parent_id, c.level, c.order_index,
+        c.image_url, c.meta_title, c.meta_description, c.is_active
+      FROM category c
+      INNER JOIN category_tree ct ON c.parent_id = ct.id
+    )
+    SELECT
+      id, name, description, parent_id, level, order_index,
+      image_url, meta_title, meta_description, is_active
+    FROM category_tree
+    ORDER BY level DESC, order_index;
+  `);
+
+  return result.rows.map((row: any): ExistingSubcategory => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    parentId: row.parent_id,
+    level: row.level,
+    orderIndex: row.order_index,
+    imageUrl: row.image_url,
+    metaTitle: row.meta_title,
+    metaDescription: row.meta_description,
+    isActive: row.is_active,
+  }));
+}
+
+async function getProductCountsByCategoryIds(
+  categoryIds: string[],
+  tx: any = db,
+): Promise<Map<string, number>> {
+  if (categoryIds.length === 0) return new Map<string, number>();
+
+  const rows = await tx
+    .select({
+      categoryId: productTable.categoryId,
+      total: sql<number>`count(*)::int`,
+    })
+    .from(productTable)
+    .where(inArray(productTable.categoryId, categoryIds))
+    .groupBy(productTable.categoryId);
+
+  return new Map(rows.map((row: any) => [row.categoryId, Number(row.total)]));
+}
+
+async function syncSubcategories(params: {
+  tx: any;
+  subcategories: SubcategoryNode[];
+  parentId: string;
+  existingById: Map<string, ExistingSubcategory>;
+  touchedIds: Set<string>;
+}) {
+  const { tx, subcategories, parentId, existingById, touchedIds } = params;
+
+  for (let i = 0; i < subcategories.length; i++) {
+    const subcategory = subcategories[i];
+    const orderIndex = subcategory.orderIndex || i + 1;
+
+    if (subcategory.id && existingById.has(subcategory.id)) {
+      const existing = existingById.get(subcategory.id)!;
+
+      await tx
+        .update(categoryTable)
+        .set({
+          name: subcategory.name,
+          description:
+            subcategory.description !== undefined
+              ? subcategory.description || null
+              : existing.description,
+          level: subcategory.level || existing.level,
+          parentId,
+          orderIndex,
+          imageUrl:
+            subcategory.imageUrl !== undefined
+              ? subcategory.imageUrl || null
+              : existing.imageUrl,
+          metaTitle:
+            subcategory.metaTitle !== undefined
+              ? subcategory.metaTitle || null
+              : existing.metaTitle,
+          metaDescription:
+            subcategory.metaDescription !== undefined
+              ? subcategory.metaDescription || null
+              : existing.metaDescription,
+          isActive: subcategory.isActive ?? existing.isActive,
+          updatedAt: new Date(),
+        })
+        .where(eq(categoryTable.id, subcategory.id));
+
+      touchedIds.add(subcategory.id);
+      console.log(
+        `🟢 [updateCategory] Subcategoria atualizada: ${subcategory.name} (${subcategory.id})`,
+      );
+
+      if (subcategory.children?.length) {
+        await syncSubcategories({
+          tx,
+          subcategories: subcategory.children,
+          parentId: subcategory.id,
+          existingById,
+          touchedIds,
+        });
+      }
+
+      continue;
+    }
+
+    const [newSubcategory] = await tx
+      .insert(categoryTable)
+      .values({
+        name: subcategory.name,
+        slug: subcategory.slug,
+        description: subcategory.description || null,
+        level: subcategory.level || 1,
+        parentId,
+        orderIndex,
+        imageUrl: subcategory.imageUrl || null,
+        metaTitle: subcategory.metaTitle || null,
+        metaDescription: subcategory.metaDescription || null,
+        isActive: subcategory.isActive ?? true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    touchedIds.add(newSubcategory.id);
+    console.log(
+      `🟢 [updateCategory] Subcategoria criada: ${newSubcategory.name} (${newSubcategory.id})`,
+    );
+
+    if (subcategory.children?.length) {
+      await syncSubcategories({
+        tx,
+        subcategories: subcategory.children,
+        parentId: newSubcategory.id,
+        existingById,
+        touchedIds,
+      });
+    }
+  }
+}
+
+function collectExistingSubcategoryIds(
+  subcategories: SubcategoryNode[],
+  existingById: Map<string, ExistingSubcategory>,
+  touchedIds = new Set<string>(),
+) {
+  for (const subcategory of subcategories) {
+    if (subcategory.id && existingById.has(subcategory.id)) {
+      touchedIds.add(subcategory.id);
+    }
+
+    if (subcategory.children?.length) {
+      collectExistingSubcategoryIds(
+        subcategory.children,
+        existingById,
+        touchedIds,
+      );
+    }
+  }
+
+  return touchedIds;
 }
 
 // =====================================================================
@@ -264,6 +465,43 @@ export async function createCategory(data: CreateCategoryInput) {
 export async function updateCategory(id: string, data: UpdateCategoryInput) {
   
   try {
+    let existingSubcategories: ExistingSubcategory[] = [];
+    let existingById = new Map<string, ExistingSubcategory>();
+    let removedSubcategories: ExistingSubcategory[] = [];
+
+    if (data.subcategories) {
+      existingSubcategories = await getDescendantCategories(id);
+      existingById = new Map(
+        existingSubcategories.map((subcategory) => [subcategory.id, subcategory]),
+      );
+
+      const incomingExistingIds = collectExistingSubcategoryIds(
+        data.subcategories,
+        existingById,
+      );
+
+      removedSubcategories = existingSubcategories.filter(
+        (subcategory) => !incomingExistingIds.has(subcategory.id),
+      );
+
+      const productCounts = await getProductCountsByCategoryIds(
+        removedSubcategories.map((subcategory) => subcategory.id),
+      );
+
+      for (const subcategory of removedSubcategories) {
+        const productsCount = productCounts.get(subcategory.id) || 0;
+
+        if (productsCount > 0) {
+          console.log(
+            `🟡 [updateCategory] Subcategoria bloqueada por produtos vinculados: ${subcategory.name} (${subcategory.id}) - ${productsCount} produto(s)`,
+          );
+          throw new Error(
+            `A subcategoria "${subcategory.name}" possui ${productsCount} produto(s) vinculado(s). Remova ou mova esses produtos antes de excluir a subcategoria.`,
+          );
+        }
+      }
+    }
+
     // =================================================================
     // PASSO 1: Atualiza a categoria principal
     // =================================================================
@@ -284,18 +522,29 @@ export async function updateCategory(id: string, data: UpdateCategoryInput) {
       .set(updateData)
       .where(eq(categoryTable.id, id))
 
+    console.log(`🟢 [updateCategory] Categoria atualizada: ${id}`)
+
     // =================================================================
-    // PASSO 2: Se houver subcategorias, substitui as antigas pelas novas
+    // PASSO 2: Sincroniza subcategorias sem apagar tudo e recriar
     // =================================================================
     if (data.subcategories) {
-      // 2.1: Deleta TODAS as subcategorias antigas desta categoria
-      await db
-        .delete(categoryTable)
-        .where(eq(categoryTable.parentId, id))
+      const touchedIds = new Set<string>();
 
-      // 2.2: Insere as novas subcategorias (usando a mesma função do create)
       if (data.subcategories.length > 0) {
-        await insertSubcategories(data.subcategories, id)
+        await syncSubcategories({
+          tx: db,
+          subcategories: data.subcategories,
+          parentId: id,
+          existingById,
+          touchedIds,
+        });
+      }
+
+      for (const subcategory of removedSubcategories) {
+        await db.delete(categoryTable).where(eq(categoryTable.id, subcategory.id));
+        console.log(
+          `🟢 [updateCategory] Subcategoria removida sem produtos vinculados: ${subcategory.name} (${subcategory.id})`,
+        );
       }
     }
 
@@ -304,7 +553,9 @@ export async function updateCategory(id: string, data: UpdateCategoryInput) {
     
   } catch (error) {
     console.error('❌ [updateCategory] Erro:', error)
-    throw new Error('Falha ao atualizar categoria')
+    throw new Error(
+      error instanceof Error ? error.message : 'Falha ao atualizar categoria',
+    )
   }
 }
 

@@ -14,6 +14,48 @@ type ProductVariantSelectorProps = {
   onSelectVariant: (variant: VarianteProdutoLoja) => void;
 };
 
+const MAPA_CORES_HEX: Record<string, string> = {
+  preto: "#111827",
+  branca: "#FFFFFF",
+  branco: "#FFFFFF",
+  azul: "#2563EB",
+  vermelho: "#DC2626",
+  cinza: "#9CA3AF",
+  verde: "#16A34A",
+  amarelo: "#EAB308",
+  rosa: "#EC4899",
+  roxo: "#7C3AED",
+  laranja: "#F97316",
+  bege: "#D6D3D1",
+  marrom: "#8B5E3C",
+};
+
+function normalizarValor(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function isColorAttribute(attributeName: string) {
+  const normalized = normalizarValor(attributeName);
+  return normalized === "cor" || normalized === "color";
+}
+
+function isSizeAttribute(attributeName: string) {
+  const normalized = normalizarValor(attributeName);
+  return normalized === "tamanho" || normalized === "size" || normalized === "numero";
+}
+
+function colorValueToHex(value: string) {
+  const normalized = normalizarValor(value);
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())) {
+    return value.trim();
+  }
+  return MAPA_CORES_HEX[normalized] || "#D1D5DB";
+}
+
 function variantMatchesSelection({
   variant,
   selectedVariant,
@@ -94,7 +136,7 @@ export function ProductVariantSelector({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {attribute.values.map((value) => {
               const directVariants = variants.filter(
                 (variant) => variant.attributes[attribute.name] === value,
@@ -107,6 +149,9 @@ export function ProductVariantSelector({
               );
               const selected =
                 selectedVariant?.attributes[attribute.name] === value;
+              const renderColor = isColorAttribute(attribute.name);
+              const renderSize = isSizeAttribute(attribute.name);
+              const colorHex = colorValueToHex(value);
 
               return (
                 <button
@@ -114,16 +159,45 @@ export function ProductVariantSelector({
                   type="button"
                   disabled={!hasActive}
                   onClick={() => selectAttributeValue(attribute.name, value)}
-                  className={`flex min-h-10 min-w-11 items-center justify-center rounded-lg border-[1.5px] px-3 text-[13px] font-semibold transition-all ${
-                    selected
-                      ? "border-primary bg-primary text-white"
-                      : hasActive
-                        ? "border-surface-border text-text-primary hover:border-primary-mid bg-white"
-                        : "border-surface-border text-text-hint cursor-not-allowed bg-white line-through opacity-45"
-                  } ${!selected && hasActive && !hasStock ? "border-dashed line-through opacity-60" : ""}`}
+                  className={
+                    renderColor
+                      ? `relative flex h-10 w-10 items-center justify-center rounded-full border bg-white transition-all ${
+                          selected
+                            ? "border-slate-900 ring-2 ring-slate-900 ring-offset-1"
+                            : hasActive
+                              ? "border-slate-300"
+                              : "cursor-not-allowed border-slate-200 opacity-45"
+                        }`
+                      : renderSize
+                        ? `flex h-10 min-w-12 items-center justify-center rounded-xl border bg-[#F3F4F6] px-3 text-[24px] font-semibold leading-none tracking-normal transition-all ${
+                            selected
+                              ? "border-slate-900 bg-white text-slate-900"
+                              : hasActive
+                                ? "border-[#E5E7EB] text-slate-800 hover:border-slate-400"
+                                : "cursor-not-allowed border-[#E5E7EB] text-slate-400 line-through opacity-60"
+                          } ${!selected && hasActive && !hasStock ? "border-dashed opacity-70" : ""}`
+                        : `flex min-h-10 min-w-11 items-center justify-center rounded-lg border-[1.5px] px-3 text-[13px] font-semibold transition-all ${
+                            selected
+                              ? "border-primary bg-primary text-white"
+                              : hasActive
+                                ? "border-surface-border text-text-primary bg-white hover:border-primary-mid"
+                                : "border-surface-border text-text-hint cursor-not-allowed bg-white line-through opacity-45"
+                          } ${!selected && hasActive && !hasStock ? "border-dashed line-through opacity-60" : ""}`
+                  }
                   title={!hasStock && hasActive ? "Sem estoque" : value}
                 >
-                  {value}
+                  {renderColor ? (
+                    <span
+                      className={`h-8 w-8 rounded-full border ${
+                        colorHex.toLowerCase() === "#ffffff"
+                          ? "border-slate-300"
+                          : "border-transparent"
+                      }`}
+                      style={{ backgroundColor: colorHex }}
+                    />
+                  ) : (
+                    value
+                  )}
                 </button>
               );
             })}

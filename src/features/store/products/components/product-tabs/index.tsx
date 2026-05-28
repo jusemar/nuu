@@ -7,12 +7,16 @@
 
 import { useState } from "react";
 import { Stars } from "@/components/ui/stars"; // 🆕 IMPORT DO COMPONENTE GLOBAL
-import type {
-  Avaliacao,
-  Especificacao,
-  ModalidadeInfo,
-} from "../../types/product.types";
+import type { Avaliacao, Especificacao } from "../../types/product.types";
 import { sanitizeProductRichText } from "../../utils/rich-text";
+
+interface ModalidadeInfo {
+  icon: string;
+  label: string;
+  prazo: string;
+  envia: string;
+  garantia: string;
+}
 
 interface ProductTabsProps {
   descricao: string;
@@ -34,6 +38,14 @@ export function ProductTabs({
   const [abaAtiva, setAbaAtiva] = useState<
     "descricao" | "especificacoes" | "avaliacoes" | "entrega"
   >("descricao");
+  const distribuicaoAvaliacoes = [5, 4, 3, 2, 1].map((estrela) => {
+    const totalPorNota = avaliacoes.filter((item) => item.estrelas === estrela).length;
+    const percentual =
+      totalAvaliacoes > 0
+        ? Math.round((totalPorNota / totalAvaliacoes) * 100)
+        : 0;
+    return { estrela, percentual };
+  });
 
   return (
     <div className="mt-16">
@@ -89,6 +101,12 @@ export function ProductTabs({
         {/* ABA: AVALIAÇÕES */}
         {abaAtiva === "avaliacoes" && (
           <div className="flex max-w-2xl animate-[fadeUp_0.3s_ease] flex-col gap-3.5">
+            {totalAvaliacoes === 0 ? (
+              <div className="border-surface-border text-text-muted rounded-xl border bg-white p-4 text-sm">
+                Este produto ainda não possui avaliações.
+              </div>
+            ) : (
+              <>
             {/* Resumo das avaliações */}
             <div className="border-surface-border flex flex-wrap items-center gap-7 rounded-xl border bg-white p-5">
               <div className="flex-shrink-0 text-center">
@@ -102,7 +120,7 @@ export function ProductTabs({
                 </div>
               </div>
               <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-                {[5, 4, 3, 2, 1].map((estrela) => (
+                {distribuicaoAvaliacoes.map(({ estrela, percentual }) => (
                   <div
                     key={estrela}
                     className="flex items-center gap-2 text-xs"
@@ -113,20 +131,12 @@ export function ProductTabs({
                       <div
                         className="bg-accent h-full rounded-full"
                         style={{
-                          width: `${estrela === 5 ? 82 : estrela === 4 ? 11 : estrela === 3 ? 4 : estrela === 2 ? 2 : 1}%`,
+                          width: `${percentual}%`,
                         }}
                       />
                     </div>
                     <span className="text-text-hint min-w-[30px] text-right">
-                      {estrela === 5
-                        ? "82%"
-                        : estrela === 4
-                          ? "11%"
-                          : estrela === 3
-                            ? "4%"
-                            : estrela === 2
-                              ? "2%"
-                              : "1%"}
+                      {percentual}%
                     </span>
                   </div>
                 ))}
@@ -160,6 +170,8 @@ export function ProductTabs({
                 </p>
               </div>
             ))}
+              </>
+            )}
           </div>
         )}
 

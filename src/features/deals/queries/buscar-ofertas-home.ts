@@ -8,8 +8,6 @@ import {
 } from "@/db/schema";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
-const SKUS_OFERTA_RELAMPAGO = ["CAM-M-389", "GEN-ORTH-862"];
-
 export type TipoPromocaoOferta = "normal" | "flash";
 
 export interface ProdutoPromocionalHome {
@@ -124,16 +122,13 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
     produtosOfertaRelampago: produtosPromocionais.filter((produto) => {
       const preco = produto.pricing[0];
       return (
-        SKUS_OFERTA_RELAMPAGO.includes(produto.sku) &&
         preco?.promoType === "flash" &&
         Boolean(preco.promoEndDate) &&
         preco.promoEndDate!.getTime() > agora.getTime()
       );
     }),
     produtosPromocaoNormal: produtosPromocionais.filter(
-      (produto) =>
-        produto.pricing[0]?.promoType === "normal" &&
-        !SKUS_OFERTA_RELAMPAGO.includes(produto.sku),
+      (produto) => produto.pricing[0]?.promoType === "normal",
     ),
   };
 }

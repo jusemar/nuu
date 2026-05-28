@@ -8,6 +8,7 @@
 
 // Tipo base para uma subcategoria (sem children por enquanto)
 export interface SubcategoryBase {
+  id?: string;
   name: string;
   slug: string;           // OBRIGATÓRIO: usado em URLs, SEO e navegação
   level: number;          // 1 para sub, 2 para sub-sub, etc.
@@ -65,6 +66,7 @@ export interface UpdateCategoryInput {
   metaTitle?: string;
   metaDescription?: string;
   orderIndex?: number;
+  subcategories?: HierarchicalSubcategory[];
 }
 
 // Input para criar subcategoria isolada (mantido para usos futuros)

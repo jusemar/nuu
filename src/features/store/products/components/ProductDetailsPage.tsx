@@ -33,11 +33,10 @@ import type { NovoItemCarrinho } from "@/features/carrinho";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 import { stripProductRichText } from "../utils/rich-text";
 
-// MOCKS temporários (apenas para dados que ainda não estão no banco)
-import { produto, cuponsValidos } from "../constants/mockData";
-
 import type {
   AtributoProdutoLoja,
+  Avaliacao,
+  Especificacao,
   Modalidade,
   PrecoModalidade,
   VarianteProdutoLoja,
@@ -206,9 +205,7 @@ export function ProductDetail({
 
   // Fallback: se não tiver imagens no DB, usa mock temporário
   const galleryImagesBase =
-    productImages.length > 0
-      ? productImages
-      : (produto.imagens as unknown as string[]);
+    productImages.length > 0 ? productImages : ["/produto-sem-foto.webp"];
   const galleryImages =
     selectedVariant?.imageUrl &&
     !galleryImagesBase.includes(selectedVariant.imageUrl)
@@ -226,6 +223,10 @@ export function ProductDetail({
 
   // Descrição longa: sempre a description completa (para abas)
   const productLongDescription = product.description;
+  const especificacoesProduto = mapearEspecificacoesProduto(product.attributes);
+  const avaliacoesProduto: Avaliacao[] = [];
+  const ratingProduto = calcularRating(avaliacoesProduto);
+  const totalAvaliacoesProduto = avaliacoesProduto.length;
 
   // -----------------------------------------
   // HANDLERS: Ações do usuário
@@ -233,9 +234,7 @@ export function ProductDetail({
 
   // Aplica cupom de desconto (ainda mock - futuro: validar no backend)
   function aplicarCupom(codigo: string) {
-    if (cuponsValidos[codigo]) {
-      setCupomAplicado({ ...cuponsValidos[codigo], code: codigo });
-    }
+    void codigo;
   }
 
   // Remove cupom aplicado
@@ -386,15 +385,13 @@ export function ProductDetail({
             <ProductInfo
               // Dados básicos do produto
               nome={product.name}
-              marca={product.brand || produto.marca}
+              marca={product.brand || ""}
               sku={product.sku}
-              rating={produto.rating}
-              totalAvaliacoes={produto.totalAvaliacoes}
-              vendedor={produto.vendedor}
-              vendedorRating={produto.vendedorRating}
+              rating={ratingProduto}
+              totalAvaliacoes={totalAvaliacoesProduto}
+              vendedor={product.brand ? `Loja ${product.brand}` : undefined}
+              vendedorRating={0}
               descricao={productShortDescription}
-              cores={produto.cores}
-              tamanhos={produto.tamanhos}
               // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
               // Antes: ProductInfo gerenciava sozinho (estado local)
               // Agora: Recebe do pai e comunica mudanças via callback
@@ -437,7 +434,7 @@ export function ProductDetail({
               // Dados reais de entrega
               estoque={
                 selectedVariant?.stockQuantity ??
-                (product.productKind === "variable" ? 0 : produto.estoque)
+                (product.productKind === "variable" ? 0 : 0)
               }
               selectedVariantLabel={
                 selectedVariant
@@ -467,10 +464,10 @@ export function ProductDetail({
             ========================================== */}
         <ProductTabs
           descricao={productLongDescription}
-          especificacoes={produto.especificacoes}
-          avaliacoes={produto.avaliacoes}
-          rating={produto.rating}
-          totalAvaliacoes={produto.totalAvaliacoes}
+          especificacoes={especificacoesProduto}
+          avaliacoes={avaliacoesProduto}
+          rating={ratingProduto}
+          totalAvaliacoes={totalAvaliacoesProduto}
           // Passa modalidades reais para a aba de preços (se existir)
           modalidades={modalidadesDisponiveis.reduce(
             (acc, mod) => {
@@ -523,7 +520,7 @@ export function ProductDetail({
         />
 
         {/* COMPRE JUNTO: Produtos relacionados */}
-        <UpsellSection produtos={produto.upsell} />
+        <UpsellSection produtos={[]} />
       </main>
 
       {/* FOOTER: Rodapé do site */}
@@ -585,4 +582,23 @@ function obterPrecoModalidadeVigente(modalidade: PrecoModalidade) {
   }
 
   return modalidade.promoPrice;
+}
+
+function mapearEspecificacoesProduto(
+  attributes: AtributoProdutoLoja[] | undefined,
+): Especificacao[] {
+  if (!attributes?.length) return [];
+
+  return attributes
+    .filter((attribute) => attribute.name.trim() && attribute.values.length > 0)
+    .map((attribute) => ({
+      label: attribute.name,
+      valor: attribute.values.join(", "),
+    }));
+}
+
+function calcularRating(avaliacoes: Avaliacao[]) {
+  if (avaliacoes.length === 0) return 0;
+  const soma = avaliacoes.reduce((acc, item) => acc + item.estrelas, 0);
+  return Number((soma / avaliacoes.length).toFixed(1));
 }

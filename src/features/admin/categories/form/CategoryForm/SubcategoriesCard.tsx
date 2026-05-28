@@ -23,6 +23,7 @@ import {
 export type SubcategoryItem = {
   id: string
   name: string
+  slug?: string
   level: number
   parent?: string
   childrenCount?: number

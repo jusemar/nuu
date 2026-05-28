@@ -73,6 +73,42 @@ const opcaoRetirada: OpcaoFrete = {
   valorEmCentavos: 0,
 };
 
+const opcaoPac: OpcaoFrete = {
+  identificador: "frenet-pac",
+  provedor: "frenet",
+  servico: "03298",
+  nome: "PAC",
+  tipo: "entrega",
+  valorEmCentavos: 3200,
+  metadados: {
+    transportadora: "Correios",
+  },
+};
+
+const opcaoSedex: OpcaoFrete = {
+  identificador: "frenet-sedex",
+  provedor: "frenet",
+  servico: "03220",
+  nome: "Sedex",
+  tipo: "entrega",
+  valorEmCentavos: 5400,
+  metadados: {
+    transportadora: "Correios",
+  },
+};
+
+const opcaoJadlog: OpcaoFrete = {
+  identificador: "frenet-jadlog",
+  provedor: "frenet",
+  servico: "f-3",
+  nome: "Jadlog Package",
+  tipo: "entrega",
+  valorEmCentavos: 4500,
+  metadados: {
+    transportadora: "Jadlog",
+  },
+};
+
 function criarConfiguracao(
   parcial: Partial<ConfiguracaoDisponibilidadeFrete> = {},
 ): ConfiguracaoDisponibilidadeFrete {
@@ -89,6 +125,18 @@ function criarConfiguracao(
         provedorIdentificador: "frenet",
         ativo: true,
       },
+      {
+        identificador: "correios",
+        nome: "Correios",
+        provedorIdentificador: "frenet",
+        ativo: true,
+      },
+      {
+        identificador: "jadlog",
+        nome: "Jadlog",
+        provedorIdentificador: "frenet",
+        ativo: true,
+      },
     ],
     servicos: [
       {
@@ -101,6 +149,24 @@ function criarConfiguracao(
         identificador: "economico",
         provedorIdentificador: "frenet",
         transportadoraIdentificador: "transportadora-nuu",
+        ativo: true,
+      },
+      {
+        identificador: "03298",
+        provedorIdentificador: "frenet",
+        transportadoraIdentificador: "correios",
+        ativo: true,
+      },
+      {
+        identificador: "03220",
+        provedorIdentificador: "frenet",
+        transportadoraIdentificador: "correios",
+        ativo: true,
+      },
+      {
+        identificador: "f-3",
+        provedorIdentificador: "frenet",
+        transportadoraIdentificador: "jadlog",
         ativo: true,
       },
     ],
@@ -205,6 +271,27 @@ descrever("resolver disponibilidade profissional de frete", () => {
     afirmacoes.deepEqual(
       opcoes.map((opcao) => opcao.servico),
       ["expresso"],
+    );
+  });
+
+  verificar("categoria colchoes bloqueia PAC e mantem SEDEX e Jadlog", () => {
+    const opcoes = filtrar(
+      [opcaoPac, opcaoSedex, opcaoJadlog],
+      criarConfiguracao({
+        regrasCategorias: [
+          {
+            categoriaId: "categoria-quarto",
+            efeito: "bloquear",
+            provedorIdentificador: "frenet",
+            servicoIdentificador: "03298",
+          },
+        ],
+      }),
+    );
+
+    afirmacoes.deepEqual(
+      opcoes.map((opcao) => opcao.nome),
+      ["Sedex", "Jadlog Package"],
     );
   });
 
@@ -384,6 +471,72 @@ descrever("resolver disponibilidade profissional de frete", () => {
     );
 
     afirmacoes.deepEqual(opcoes, [opcaoExpresso]);
+  });
+
+  verificar("classificacao produto pesado permite somente Jadlog", () => {
+    const opcoes = filtrar(
+      [opcaoPac, opcaoSedex, opcaoJadlog],
+      criarConfiguracao({
+        regrasCategorias: [
+          {
+            categoriaId: "categoria-quarto",
+            efeito: "bloquear",
+            provedorIdentificador: "frenet",
+            servicoIdentificador: "03298",
+          },
+        ],
+        regrasTiposLogisticos: [
+          {
+            tipoLogisticoIdentificador: "fragil",
+            efeito: "permitir",
+            provedorIdentificador: "frenet",
+            servicoIdentificador: "f-3",
+          },
+        ],
+      }),
+    );
+
+    afirmacoes.deepEqual(
+      opcoes.map((opcao) => opcao.nome),
+      ["Jadlog Package"],
+    );
+  });
+
+  verificar("produto especifico vence classificacao e categoria", () => {
+    const opcoes = filtrar(
+      [opcaoPac, opcaoSedex, opcaoJadlog],
+      criarConfiguracao({
+        regrasCategorias: [
+          {
+            categoriaId: "categoria-quarto",
+            efeito: "bloquear",
+            provedorIdentificador: "frenet",
+            servicoIdentificador: "03298",
+          },
+        ],
+        regrasTiposLogisticos: [
+          {
+            tipoLogisticoIdentificador: "fragil",
+            efeito: "permitir",
+            provedorIdentificador: "frenet",
+            servicoIdentificador: "f-3",
+          },
+        ],
+        regrasProdutos: [
+          {
+            produtoId: contextoProduto.produtoId,
+            efeito: "permitir",
+            provedorIdentificador: "frenet",
+            servicoIdentificador: "03298",
+          },
+        ],
+      }),
+    );
+
+    afirmacoes.deepEqual(
+      opcoes.map((opcao) => opcao.nome),
+      ["PAC"],
+    );
   });
 
   verificar("classificacao bloqueia transportadora", () => {

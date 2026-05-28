@@ -1,4 +1,7 @@
-import { getProducts, getNewProducts } from "@/features/store/products/service/getProducts";
+import {
+  getProducts,
+  getNewProducts,
+} from "@/features/store/products/service/getProducts";
 import { getCategories } from "@/data/categories/get";
 import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home";
 
@@ -16,63 +19,14 @@ import { Footer } from "@/components/common/footer";
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const BANNERS = [
   {
-    mobileSrc:  "/banner-promocao.webp",
+    mobileSrc: "/banner-promocao.webp",
     desktopSrc: "/banner-promocao.webp",
     alt: "Promoção Especial Do Rocha",
   },
   {
-    mobileSrc:  "/banner-promocao.webp",
+    mobileSrc: "/banner-promocao.webp",
     desktopSrc: "/banner-promocao.webp",
     alt: "Ofertas Exclusivas",
-  },
-];
-
-// Info cards — azul primário, teal (sucesso) e âmbar (destaque)
-// seguem o design system: #0C447C · #14B8A6 · #EF9F27
-const INFO_CARDS = [
-  {
-    icon: "🚚",
-    title: "Entrega Rápida",
-    description: "Entregamos em até 48h para SP e principais capitais",
-    link: "Ver zonas de entrega",
-    bg:        "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/20",
-    border:    "border-[#BFDBFE] dark:border-blue-900/30",
-    iconBg:    "bg-[#EFF6FF] dark:bg-blue-900/30",
-    linkColor: "text-[#0C447C] dark:text-blue-400",
-    divider:   "border-[#DBEAFE] dark:border-blue-900/20",
-  },
-  {
-    icon: "💳",
-    title: "Pagamento Seguro",
-    description: "Parcelamos em até 12x sem juros no cartão",
-    link: "Ver métodos de pagamento",
-    bg:        "from-white to-[#F0FDFA] dark:from-gray-900 dark:to-teal-950/20",
-    border:    "border-[#99F6E4] dark:border-teal-900/30",
-    iconBg:    "bg-[#F0FDFA] dark:bg-teal-900/30",
-    linkColor: "text-[#0F766E] dark:text-teal-400",
-    divider:   "border-[#CCFBF1] dark:border-teal-900/20",
-  },
-  {
-    icon: "⭐",
-    title: "Garantia Estendida",
-    description: "12 meses de garantia em todos os produtos",
-    link: "Saiba mais",
-    bg:        "from-white to-[#FFFBEB] dark:from-gray-900 dark:to-amber-950/20",
-    border:    "border-[#FDE68A] dark:border-amber-900/30",
-    iconBg:    "bg-[#FFFBEB] dark:bg-amber-900/30",
-    linkColor: "text-[#B45309] dark:text-amber-400",
-    divider:   "border-[#FEF3C7] dark:border-amber-900/20",
-  },
-  {
-    icon: "🛟",
-    title: "Suporte 24/7",
-    description: "Atendimento via chat, WhatsApp e telefone",
-    link: "Fale conosco",
-    bg:        "from-white to-[#EFF6FF] dark:from-gray-900 dark:to-blue-950/20",
-    border:    "border-[#BFDBFE] dark:border-blue-900/30",
-    iconBg:    "bg-[#EFF6FF] dark:bg-blue-900/30",
-    linkColor: "text-[#0C447C] dark:text-blue-400",
-    divider:   "border-[#DBEAFE] dark:border-blue-900/20",
   },
 ];
 
@@ -98,12 +52,13 @@ const SIDE_BANNERS = [
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
-  const [products, newlyCreatedProducts, categories, ofertasHome] = await Promise.all([
-    getProducts(),
-    getNewProducts(),
-    getCategories(),
-    buscarOfertasHome(),
-  ]);
+  const [products, newlyCreatedProducts, categories, ofertasHome] =
+    await Promise.all([
+      getProducts(),
+      getNewProducts(),
+      getCategories(),
+      buscarOfertasHome(),
+    ]);
 
   return (
     <>
@@ -117,58 +72,17 @@ const Home = async () => {
       <Header />
 
       {/* ── 3. Conteúdo ── */}
-      <main className="max-w-7xl mx-auto px-4 mt-6 mb-16 space-y-16">
-
+      <main className="mx-auto mt-6 mb-16 max-w-7xl space-y-16 px-4">
         {/* Banner carousel */}
-        <section aria-label="Banners promocionais" className="rounded-2xl overflow-hidden shadow-elevation">
+        <section
+          aria-label="Banners promocionais"
+          className="shadow-elevation overflow-hidden rounded-2xl"
+        >
           <BannerCarousel banners={BANNERS} />
         </section>
 
         {/* Info cards — confiança e conversão */}
-        <section aria-label="Diferenciais da loja">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {INFO_CARDS.map((card) => (
-              <div
-                key={card.title}
-                className={`
-                  group relative bg-gradient-to-br ${card.bg}
-                  rounded-2xl p-5 lg:p-6
-                  border ${card.border}
-                  shadow-sm hover:shadow-elevation
-                  transition-all duration-300 hover:-translate-y-1
-                `}
-              >
-                {/* Ícone flutuante */}
-                <div
-                  className={`
-                    absolute top-4 right-4 w-10 h-10 ${card.iconBg}
-                    rounded-full flex items-center justify-center
-                    group-hover:scale-110 transition-transform duration-300
-                  `}
-                >
-                  <span className="text-xl" role="img" aria-hidden="true">{card.icon}</span>
-                </div>
-
-                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1.5 pr-12">
-                  {card.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
-                  {card.description}
-                </p>
-                <div className={`pt-3 border-t ${card.divider}`}>
-                  <span className={`text-xs font-semibold ${card.linkColor} cursor-pointer`}>
-                    {card.link} →
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* InfoCards original preservado oculto — não remover */}
-        <div className="hidden" aria-hidden="true">
-          <InfoCards />
-        </div>
+        <InfoCards />
 
         {/* Deals / Flash sale */}
         <section aria-label="Ofertas em destaque">
@@ -187,34 +101,37 @@ const Home = async () => {
             <SectionTitle icon="star">Chegou agora</SectionTitle>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
             {/* Carousel de destaque */}
-            <div className="lg:col-span-2 h-80">
+            <div className="h-[360px] lg:col-span-2">
               <FeaturedProductsCarousel />
             </div>
 
             {/* Mini banners — design system */}
-            <div className="flex flex-col gap-4 h-80">
+            <div className="flex h-[360px] flex-col gap-4">
               {SIDE_BANNERS.map((banner) => (
-                <div key={banner.title} className="flex-1 min-h-0">
+                <div key={banner.title} className="min-h-0 flex-1">
                   <div
-                    className={`
-                      h-full rounded-2xl bg-gradient-to-br ${banner.bg}
-                      p-4 text-white shadow-elevation
-                      flex flex-col justify-center
-                      cursor-pointer hover:opacity-95 transition-opacity
-                    `}
+                    className={`h-full rounded-2xl bg-gradient-to-br ${banner.bg} shadow-elevation flex cursor-pointer flex-col justify-center p-4 text-white transition-opacity hover:opacity-95`}
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-white/20 p-2 rounded-full flex-shrink-0">
-                        <span className="text-lg" role="img" aria-hidden="true">{banner.icon}</span>
+                    <div className="mb-2 flex items-center gap-3">
+                      <div className="flex-shrink-0 rounded-full bg-white/20 p-2">
+                        <span className="text-lg" role="img" aria-hidden="true">
+                          {banner.icon}
+                        </span>
                       </div>
                       <div>
-                        <p className="font-bold text-sm leading-tight">{banner.title}</p>
-                        <p className={`text-xs ${banner.subtitleColor}`}>{banner.subtitle}</p>
+                        <p className="text-sm leading-tight font-bold">
+                          {banner.title}
+                        </p>
+                        <p className={`text-xs ${banner.subtitleColor}`}>
+                          {banner.subtitle}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-xs text-white/80 leading-relaxed">{banner.description}</p>
+                    <p className="text-xs leading-relaxed text-white/80">
+                      {banner.description}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -223,7 +140,7 @@ const Home = async () => {
         </section>
 
         {/* Categorias */}
-        <section aria-label="Categorias">
+        <section aria-label="Categorias" className="pt-8 md:pt-10 lg:pt-12">
           <CategorySelector
             categories={categories}
             isLoading={!categories?.length}

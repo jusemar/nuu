@@ -50,9 +50,9 @@ export const FeaturedProductsCarousel = () => {
     return () => clearInterval(interval);
   }, [sliderInstanceRef, isHovering]);
 
-  if (isLoading) return <div className="h-[450px] flex items-center justify-center">Carregando...</div>;
-  if (error) return <div className="h-[450px] flex items-center justify-center text-red-600">Erro ao carregar</div>;
-  if (products.length === 0) return <div className="h-[450px] flex items-center justify-center">Nenhum produto</div>;
+  if (isLoading) return <div className="h-[360px] flex items-center justify-center">Carregando...</div>;
+  if (error) return <div className="h-[360px] flex items-center justify-center text-red-600">Erro ao carregar</div>;
+  if (products.length === 0) return <div className="h-[360px] flex items-center justify-center">Nenhum produto</div>;
 
   return (
     <div className="wrapper">
@@ -64,7 +64,7 @@ export const FeaturedProductsCarousel = () => {
         <div className="carousel keen-slider" ref={sliderRef}>
           {products.map((product) => (
             <div key={product.id} className="carousel__cell">
-              <FeaturedProductCard {...product} />
+              <FeaturedProductCard {...product} className="max-w-[228px]" />
             </div>
           ))}
         </div>
@@ -75,10 +75,10 @@ export const FeaturedProductsCarousel = () => {
           display: flex;
           justify-content: center;
           align-items: center;
-          height: 420px; /* ALTURA FIXA IGUAL AOS BANNERS */
+          height: 360px;
         }
         .scene {
-          width: 320px;
+          width: 248px;
           height: 100%;
           perspective: 1000px;
           position: relative;
@@ -93,7 +93,7 @@ export const FeaturedProductsCarousel = () => {
         }
         .carousel__cell {
           position: absolute;
-          width: 300px;
+          width: 228px;
           left: 10px;
           height: auto;
           border-radius: 1rem;

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,14 @@ import type { listarTiposLogisticos } from "@/features/admin/logistica/queries/t
 import type { listarTransportadorasFrete } from "@/features/admin/logistica/queries/frete/transportadoras";
 
 import { NavegacaoLogisticaOperacional } from "../operacao/navegacao-logistica-operacional";
+import {
+  AjudaOperacional,
+  BarraEtapasFrete,
+  CabecalhoFreteOperacional,
+  ResumoOperacionalFrete,
+  SecaoFreteOperacional,
+  iconesSecoesFrete,
+} from "./layout-operacional-frete";
 import { LinhaAlternarAtivacao } from "./secao-alternar-ativacao";
 
 type ProvedorFrete = Awaited<ReturnType<typeof listarProvedoresFrete>>[number];
@@ -498,1346 +507,1741 @@ export function PaginaFreteAdminSimples({
       `${transportadorasSemServicoAtivo.length} transportadora(s) ativa(s) sem serviço ativo.`,
     );
   }
+  const catalogoSincronizado =
+    transportadoras.length > 0 && servicos.length > 0;
+  const servicosAtivosPorTransportadora = (transportadoraId: string) =>
+    servicos.filter(
+      (servico) =>
+        servico.ativo && servico.transportadoraFreteId === transportadoraId,
+    ).length;
+  const pesoMaximoTransportadora = (transportadoraId: string) => {
+    const pesos = servicos
+      .filter((servico) => servico.transportadoraFreteId === transportadoraId)
+      .map((servico) => servico.pesoMaximoEmGramas)
+      .filter((peso): peso is number => typeof peso === "number" && peso > 0);
+
+    if (pesos.length === 0) return "Não definido";
+    const maiorEmGramas = Math.max(...pesos);
+    return `${(maiorEmGramas / 1000).toFixed(1)} kg`;
+  };
+  const existemRegras =
+    regrasCategorias.length > 0 ||
+    regrasTiposLogisticos.length > 0 ||
+    regrasProdutos.length > 0;
+  const etapasOperacionais = [
+    {
+      titulo: "Ativar integração",
+      estado: statusIntegracaoFrenet.ativo ? "concluida" : "atual",
+    },
+    {
+      titulo: "Sincronizar catálogo",
+      estado: catalogoSincronizado
+        ? "concluida"
+        : statusIntegracaoFrenet.ativo
+          ? "atual"
+          : "pendente",
+    },
+    {
+      titulo: "Gerenciar serviços",
+      estado:
+        servicosAtivos.length > 0
+          ? "concluida"
+          : catalogoSincronizado
+            ? "atual"
+            : "pendente",
+    },
+    {
+      titulo: "Definir regras",
+      estado: existemRegras
+        ? "concluida"
+        : servicosAtivos.length > 0
+          ? "atual"
+          : "pendente",
+    },
+    {
+      titulo: "Validar no checkout",
+      estado: existemRegras ? "atual" : "pendente",
+    },
+  ] as const;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-stone-50/60 pb-8">
       <NavegacaoLogisticaOperacional />
+      <CabecalhoFreteOperacional />
       <MensagemResultado mensagem={mensagem} />
+      <BarraEtapasFrete etapas={[...etapasOperacionais]} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuração das Integrações</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground text-sm">
-            Frenet é a integração externa. Correios, Jadlog e demais
-            transportadoras/serviços são retornados por ela e podem ser
-            permitidos ou bloqueados nas regras.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Provedores Internos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {provedoresInternos.length === 0 ? (
-                  <span className="text-muted-foreground">
-                    Nenhum provedor interno cadastrado.
-                  </span>
-                ) : (
-                  provedoresInternos.map((provedor) => (
-                    <div
-                      key={provedor.id}
-                      className="flex items-center justify-between"
-                    >
-                      <span>{provedor.nome}</span>
-                      <StatusAtivo ativo={provedor.ativo} />
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Provedores Externos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {provedoresExternos.length === 0 ? (
-                  <span className="text-muted-foreground">
-                    Nenhum provedor externo cadastrado.
-                  </span>
-                ) : (
-                  provedoresExternos.map((provedor) => (
-                    <div
-                      key={provedor.id}
-                      className="flex items-center justify-between"
-                    >
-                      <span>{provedor.nome}</span>
-                      <StatusAtivo ativo={provedor.ativo} />
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card
-            id="configuracao-frenet"
-            className="border-primary/30 scroll-mt-6"
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <main className="space-y-4">
+          <SecaoFreteOperacional
+            valor="frenet"
+            numero={1}
+            titulo="Conexão com a Frenet"
+            descricao="Token, CEP de origem, ativação e sincronização do catálogo real."
+            ajuda="O que é: integração de frete externo.
+Para que serve: consultar serviços reais de transportadoras por CEP e pacote.
+Quando usar: sempre que ativar ou revisar catálogo operacional.
+Exemplo real: CEP de destino + peso + dimensões retornam PAC, SEDEX e Jadlog Package.
+Impacto no checkout: só opções ativas e válidas aparecem para o cliente."
+            contador={
+              <StatusAtivo
+                ativo={
+                  statusIntegracaoFrenet.ativo &&
+                  statusIntegracaoFrenet.tokenConfigurado
+                }
+              />
+            }
+            cor="azul"
+            icone={iconesSecoesFrete.frenet}
           >
-            <CardHeader className="space-y-2">
-              <CardTitle className="text-base">Configurar Frenet</CardTitle>
+            <div className="space-y-4">
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Card>
+                  <CardContent className="p-3">
+                    <p className="text-muted-foreground text-xs">
+                      Transportadoras
+                    </p>
+                    <p className="text-base font-semibold">
+                      {transportadoras.length}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3">
+                    <p className="text-muted-foreground text-xs">
+                      Serviços ativos
+                    </p>
+                    <p className="text-base font-semibold">
+                      {servicosAtivos.length}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3">
+                    <p className="text-muted-foreground text-xs">
+                      Última sincronização
+                    </p>
+                    <p className="text-sm font-medium">
+                      {statusIntegracaoFrenet.ultimaCotacaoTeste ??
+                        "Não disponível"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
               <p className="text-muted-foreground text-sm">
-                Ative a integração e confira os dados necessários para operar
-                com frete externo.
+                Frenet é a integração externa. Correios, Jadlog e demais
+                transportadoras/serviços são retornados por ela e podem ser
+                permitidos ou bloqueados nas regras.
               </p>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="grid gap-2 md:grid-cols-2">
-                <div>
-                  <span className="font-medium">Provedor:</span> Frenet
-                </div>
-                <div>
-                  <span className="font-medium">Tipo:</span> API externa
-                </div>
-                <div>
-                  <span className="font-medium">Status:</span>{" "}
-                  {statusIntegracaoFrenet.ativo ? "Ativo" : "Inativo"}
-                </div>
-                <div>
-                  <span className="font-medium">Token:</span>{" "}
-                  {statusIntegracaoFrenet.tokenConfigurado
-                    ? "Configurado"
-                    : "Não configurado"}
-                </div>
-                <div>
-                  <span className="font-medium">CEP origem:</span>{" "}
-                  {statusIntegracaoFrenet.cepOrigem ?? "Não configurado"}
-                </div>
-                <div>
-                  <span className="font-medium">Última cotação/teste:</span>{" "}
-                  {statusIntegracaoFrenet.ultimaCotacaoTeste ??
-                    "Não disponível"}
-                </div>
-                <div className="md:col-span-2">
-                  <span className="font-medium">Serviços conhecidos:</span>{" "}
-                  {servicosConhecidosFrenet.length > 0
-                    ? servicosConhecidosFrenet
-                        .map((servico) => servico.nome)
-                        .join(", ")
-                    : "PAC, SEDEX, Jadlog"}
-                </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">
+                      Provedores Internos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {provedoresInternos.length === 0 ? (
+                      <span className="text-muted-foreground">
+                        Nenhum provedor interno cadastrado.
+                      </span>
+                    ) : (
+                      provedoresInternos.map((provedor) => (
+                        <div
+                          key={provedor.id}
+                          className="flex items-center justify-between"
+                        >
+                          <span>{provedor.nome}</span>
+                          <StatusAtivo ativo={provedor.ativo} />
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">
+                      Provedores Externos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {provedoresExternos.length === 0 ? (
+                      <span className="text-muted-foreground">
+                        Nenhum provedor externo cadastrado.
+                      </span>
+                    ) : (
+                      provedoresExternos.map((provedor) => (
+                        <div
+                          key={provedor.id}
+                          className="flex items-center justify-between"
+                        >
+                          <span>{provedor.nome}</span>
+                          <StatusAtivo ativo={provedor.ativo} />
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-              <div className="rounded-md border border-dashed p-3 text-sm">
-                <p className="font-medium">Fluxo para ativar</p>
-                <p className="text-muted-foreground mt-1">
-                  1. Ative a Frenet. 2. Confira token e CEP de origem. 3. Valide
-                  transportadoras e serviços abaixo.
-                </p>
-              </div>
-              {provedorFrenet ? (
+
+              <Card
+                id="configuracao-frenet"
+                className="border-primary/30 scroll-mt-6"
+              >
+                <CardHeader className="space-y-2">
+                  <CardTitle className="text-base">Configurar Frenet</CardTitle>
+                  <p className="text-muted-foreground text-sm">
+                    Ative a integração e confira os dados necessários para
+                    operar com frete externo.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <span className="font-medium">Provedor:</span> Frenet
+                    </div>
+                    <div>
+                      <span className="font-medium">Tipo:</span> API externa
+                    </div>
+                    <div>
+                      <span className="font-medium">Status:</span>{" "}
+                      {statusIntegracaoFrenet.ativo ? "Ativo" : "Inativo"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Token:</span>{" "}
+                      {statusIntegracaoFrenet.tokenConfigurado
+                        ? "Configurado"
+                        : "Não configurado"}
+                    </div>
+                    <div>
+                      <span className="font-medium">CEP origem:</span>{" "}
+                      {statusIntegracaoFrenet.cepOrigem ?? "Não configurado"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Última cotação/teste:</span>{" "}
+                      {statusIntegracaoFrenet.ultimaCotacaoTeste ??
+                        "Não disponível"}
+                    </div>
+                    <div className="md:col-span-2">
+                      <span className="font-medium">Serviços conhecidos:</span>{" "}
+                      {servicosConhecidosFrenet.length > 0
+                        ? servicosConhecidosFrenet
+                            .map((servico) => servico.nome)
+                            .join(", ")
+                        : "PAC, SEDEX, Jadlog"}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-dashed p-3 text-sm">
+                    <p className="font-medium">Fluxo para ativar</p>
+                    <p className="text-muted-foreground mt-1">
+                      1. Ative a Frenet. 2. Confira token e CEP de origem. 3.
+                      Valide transportadoras e serviços abaixo.
+                    </p>
+                  </div>
+                  {provedorFrenet ? (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await alternarProvedor(
+                          provedorFrenet.id,
+                          !provedorFrenet.ativo,
+                        );
+                      }}
+                    >
+                      <Button type="submit" size="sm">
+                        {provedorFrenet.ativo
+                          ? "Desativar Frenet"
+                          : "Ativar Frenet"}
+                      </Button>
+                    </form>
+                  ) : (
+                    <form action={acaoCriarProvedor}>
+                      <input
+                        type="hidden"
+                        name="identificador"
+                        value="frenet"
+                      />
+                      <input type="hidden" name="nome" value="Frenet" />
+                      <Button type="submit" size="sm">
+                        Cadastrar e ativar Frenet
+                      </Button>
+                    </form>
+                  )}
+                  <p className="text-muted-foreground text-xs">
+                    Token e CEP de origem são exibidos para conferência e não
+                    são editados nesta tela.
+                  </p>
+                  {provedorFrenet?.ativo ? (
+                    <div className="space-y-3 rounded-md border p-4">
+                      <div>
+                        <p className="font-medium">
+                          Carregar transportadoras e serviços reais
+                        </p>
+                        <p className="text-muted-foreground mt-1">
+                          Informe um destino e pacote de referência. A Frenet
+                          retorna as opções disponíveis para este cenário.
+                        </p>
+                      </div>
+                      <form
+                        action={acaoSincronizarCatalogoFrenet}
+                        className="grid gap-3 md:grid-cols-6"
+                      >
+                        <div className="space-y-1 md:col-span-2">
+                          <Label htmlFor="cep-destino-sincronizacao">
+                            CEP de destino
+                          </Label>
+                          <Input
+                            id="cep-destino-sincronizacao"
+                            name="cepDestino"
+                            inputMode="numeric"
+                            placeholder="00000000"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="peso-sincronizacao">Peso (kg)</Label>
+                          <Input
+                            id="peso-sincronizacao"
+                            name="pesoEmKg"
+                            type="number"
+                            min="0.001"
+                            step="0.001"
+                            placeholder="1"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="altura-sincronizacao">
+                            Altura (cm)
+                          </Label>
+                          <Input
+                            id="altura-sincronizacao"
+                            name="alturaEmCm"
+                            type="number"
+                            min="1"
+                            placeholder="10"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="largura-sincronizacao">
+                            Largura (cm)
+                          </Label>
+                          <Input
+                            id="largura-sincronizacao"
+                            name="larguraEmCm"
+                            type="number"
+                            min="1"
+                            placeholder="10"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="comprimento-sincronizacao">
+                            Comprimento (cm)
+                          </Label>
+                          <Input
+                            id="comprimento-sincronizacao"
+                            name="comprimentoEmCm"
+                            type="number"
+                            min="1"
+                            placeholder="10"
+                            required
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          className="md:col-span-6 md:w-fit"
+                        >
+                          Buscar e salvar serviços retornados
+                        </Button>
+                      </form>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
+          </SecaoFreteOperacional>
+
+          <SecaoFreteOperacional
+            valor="transportadoras"
+            numero={2}
+            titulo="Transportadoras do catálogo"
+            descricao="Prontidão da base, filtros e gestão de transportadoras vinculadas."
+            ajuda="O que é: catálogo de transportadoras retornadas pela integração.
+Para que serve: controlar quem pode operar no frete externo.
+Quando usar: após sincronização e antes de validar regras.
+Exemplo real: desativar Correios bloqueia PAC/SEDEX dessa transportadora.
+Impacto no checkout: serviços da transportadora desativada deixam de aparecer."
+            contador={
+              <Badge variant="outline">
+                {transportadorasAtivas.length}/{transportadoras.length} ativas
+              </Badge>
+            }
+            cor="verde"
+            icone={iconesSecoesFrete.transportadoras}
+          >
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Provedores</CardTitle>
+                </CardHeader>
+                <CardContent className="text-2xl font-semibold">
+                  {provedores.length}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Transportadoras</CardTitle>
+                </CardHeader>
+                <CardContent className="text-2xl font-semibold">
+                  {transportadoras.length}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Serviços</CardTitle>
+                </CardHeader>
+                <CardContent className="text-2xl font-semibold">
+                  {servicos.length}
+                </CardContent>
+              </Card>
+            </div>
+          </SecaoFreteOperacional>
+
+          <SecaoFreteOperacional
+            valor="categoria"
+            numero={3}
+            titulo="Regras por categoria"
+            descricao="Bloqueios e permissões de base para grupos de produtos."
+            ajuda="O que é: regra aplicada à categoria do produto.
+Para que serve: criar política ampla sem tratar item por item.
+Quando usar: regra padrão por família de produto.
+Exemplo real: categoria Colchões bloqueia PAC.
+Impacto no checkout: produtos da categoria deixam de listar PAC, salvo regra mais prioritária."
+            contador={
+              <Badge variant="secondary">
+                {regrasCategoriasFiltradas.length} regra(s)
+              </Badge>
+            }
+            cor="amarelo"
+            icone={iconesSecoesFrete.categoria}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Checklist da Base Operacional</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant={consistenciaBase ? "default" : "destructive"}>
+                    {consistenciaBase
+                      ? "Base pronta para validação"
+                      : "Base incompleta"}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    Valide provedores, transportadoras e serviços antes das
+                    regras de disponibilidade.
+                  </span>
+                </div>
+                {pendenciasBaseOperacional.length === 0 ? (
+                  <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
+                    Sem pendências na estrutura base. Próximo passo: validar
+                    regras e vínculos.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {pendenciasBaseOperacional.map((pendencia) => (
+                      <div
+                        key={pendencia}
+                        className="rounded-md border border-amber-300/40 bg-amber-50/50 p-3 text-sm"
+                      >
+                        {pendencia}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <ControlesFiltros
+              filtros={filtros}
+              provedores={provedores}
+              transportadoras={transportadoras}
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Provedores de frete
+                  <AjudaOperacional texto="Provedor é a origem da cotação. Frenet é o provedor externo; entrega própria e retirada são fluxos internos." />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <form
-                  action={async () => {
-                    "use server";
-                    await alternarProvedor(
-                      provedorFrenet.id,
-                      !provedorFrenet.ativo,
-                    );
-                  }}
+                  action={acaoCriarProvedor}
+                  className="grid gap-2 sm:grid-cols-3"
                 >
-                  <Button type="submit">
-                    {provedorFrenet.ativo
-                      ? "Desativar Frenet"
-                      : "Ativar Frenet"}
+                  <Input
+                    name="identificador"
+                    placeholder="Identificador interno"
+                    required
+                  />
+                  <Input
+                    name="nome"
+                    placeholder="Nome para exibição"
+                    required
+                  />
+                  <Button type="submit" size="sm">
+                    Criar
                   </Button>
                 </form>
-              ) : (
-                <form action={acaoCriarProvedor}>
-                  <input type="hidden" name="identificador" value="frenet" />
-                  <input type="hidden" name="nome" value="Frenet" />
-                  <Button type="submit">Cadastrar e ativar Frenet</Button>
+
+                {provedoresPaginados.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhum provedor para este filtro.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {provedoresPaginados.map((provedor) => (
+                      <div key={provedor.id} className="rounded-md border p-3">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <StatusAtivo ativo={provedor.ativo} />
+                          <span className="text-muted-foreground text-sm">
+                            {provedor.identificador}
+                          </span>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarProvedor(provedor.id, formData);
+                          }}
+                          className="grid gap-2 sm:grid-cols-3"
+                        >
+                          <Input
+                            name="identificador"
+                            defaultValue={provedor.identificador}
+                            required
+                          />
+                          <Input
+                            name="nome"
+                            defaultValue={provedor.nome}
+                            required
+                          />
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                        </form>
+                        <LinhaAlternarAtivacao
+                          ativo={provedor.ativo}
+                          aoAlternar={async () => {
+                            "use server";
+                            await alternarProvedor(
+                              provedor.id,
+                              !provedor.ativo,
+                            );
+                          }}
+                        />
+                      </div>
+                    ))}
+                    <PaginacaoSimples
+                      chavePagina="paginaProvedores"
+                      paginaAtual={paginacao.paginaProvedores}
+                      totalItens={provedoresFiltrados.length}
+                      tamanhoPagina={paginacao.tamanhoPagina}
+                      filtros={filtros}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </SecaoFreteOperacional>
+
+          <SecaoFreteOperacional
+            valor="servicos"
+            numero={4}
+            titulo="Serviços de frete disponíveis"
+            descricao="Ativação operacional e limites de serviços por transportadora."
+            ajuda="O que é: opções de frete exibíveis ao cliente.
+Para que serve: definir quais serviços entram na cotação.
+Quando usar: após sincronizar catálogo ou ajustar operação.
+Exemplo real: manter Jadlog Package ativo e desativar SEDEX 10.
+Impacto no checkout: serviço inativo some da lista de opções."
+            contador={
+              <Badge variant="outline">
+                {servicosAtivos.length}/{servicos.length} ativos
+              </Badge>
+            }
+            cor="verde"
+            icone={iconesSecoesFrete.servicos}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Regras por categoria
+                  <AjudaOperacional texto="Aplicadas a todos os produtos da categoria. Têm menor prioridade que tipo logístico e produto específico." />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoCriarRegraCategoria}
+                  className="grid gap-2 sm:grid-cols-6"
+                >
+                  <select
+                    name="categoriaId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Categoria</option>
+                    {categorias.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {categoria.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="efeito"
+                    defaultValue="bloquear"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="bloquear">Bloquear</option>
+                    <option value="permitir">Permitir</option>
+                  </select>
+                  <select
+                    name="provedorFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem provedor</option>
+                    {provedores.map((provedor) => (
+                      <option key={provedor.id} value={provedor.id}>
+                        {provedor.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="transportadoraFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem transportadora</option>
+                    {transportadoras.map((transportadora) => (
+                      <option key={transportadora.id} value={transportadora.id}>
+                        {transportadora.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="servicoFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem serviço</option>
+                    {servicos.map((servico) => (
+                      <option key={servico.id} value={servico.id}>
+                        {servico.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" size="sm">
+                    Criar Regra
+                  </Button>
                 </form>
-              )}
-              <p className="text-muted-foreground text-xs">
-                Token e CEP de origem são exibidos para conferência e não são
-                editados nesta tela.
-              </p>
-              {provedorFrenet?.ativo ? (
-                <div className="space-y-3 rounded-md border p-4">
-                  <div>
-                    <p className="font-medium">
-                      Carregar transportadoras e serviços reais
-                    </p>
-                    <p className="text-muted-foreground mt-1">
-                      Informe um destino e pacote de referência. A Frenet
-                      retorna as opções disponíveis para este cenário.
-                    </p>
-                  </div>
-                  <form
-                    action={acaoSincronizarCatalogoFrenet}
-                    className="grid gap-3 md:grid-cols-6"
-                  >
-                    <div className="space-y-1 md:col-span-2">
-                      <Label htmlFor="cep-destino-sincronizacao">
-                        CEP de destino
-                      </Label>
-                      <Input
-                        id="cep-destino-sincronizacao"
-                        name="cepDestino"
-                        inputMode="numeric"
-                        placeholder="00000000"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="peso-sincronizacao">Peso (kg)</Label>
-                      <Input
-                        id="peso-sincronizacao"
-                        name="pesoEmKg"
-                        type="number"
-                        min="0.001"
-                        step="0.001"
-                        placeholder="1"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="altura-sincronizacao">Altura (cm)</Label>
-                      <Input
-                        id="altura-sincronizacao"
-                        name="alturaEmCm"
-                        type="number"
-                        min="1"
-                        placeholder="10"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="largura-sincronizacao">
-                        Largura (cm)
-                      </Label>
-                      <Input
-                        id="largura-sincronizacao"
-                        name="larguraEmCm"
-                        type="number"
-                        min="1"
-                        placeholder="10"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="comprimento-sincronizacao">
-                        Comprimento (cm)
-                      </Label>
-                      <Input
-                        id="comprimento-sincronizacao"
-                        name="comprimentoEmCm"
-                        type="number"
-                        min="1"
-                        placeholder="10"
-                        required
-                      />
-                    </div>
-                    <Button type="submit" className="md:col-span-6 md:w-fit">
-                      Buscar e salvar serviços retornados
-                    </Button>
-                  </form>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </CardContent>
-      </Card>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Provedores</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">
-            {provedores.length}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Transportadoras</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">
-            {transportadoras.length}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Serviços</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">
-            {servicos.length}
-          </CardContent>
-        </Card>
+                {regrasCategoriasFiltradas.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhuma regra de categoria para este filtro.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {regrasCategoriasFiltradas.map((regra) => (
+                      <div key={regra.id} className="rounded-md border p-3">
+                        <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
+                          <StatusAtivo ativo={regra.ativo} />
+                          <span>{regra.categoriaNome}</span>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarRegraCategoria(regra.id, formData);
+                          }}
+                          className="grid gap-2 sm:grid-cols-6"
+                        >
+                          <select
+                            name="categoriaId"
+                            defaultValue={regra.categoriaId}
+                            required
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            {categorias.map((categoria) => (
+                              <option key={categoria.id} value={categoria.id}>
+                                {categoria.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="efeito"
+                            defaultValue={regra.efeito}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="bloquear">Bloquear</option>
+                            <option value="permitir">Permitir</option>
+                          </select>
+                          <select
+                            name="provedorFreteId"
+                            defaultValue={regra.provedorFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem provedor</option>
+                            {provedores.map((provedor) => (
+                              <option key={provedor.id} value={provedor.id}>
+                                {provedor.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="transportadoraFreteId"
+                            defaultValue={regra.transportadoraFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem transportadora</option>
+                            {transportadoras.map((transportadora) => (
+                              <option
+                                key={transportadora.id}
+                                value={transportadora.id}
+                              >
+                                {transportadora.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="servicoFreteId"
+                            defaultValue={regra.servicoFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem serviço</option>
+                            {servicos.map((servico) => (
+                              <option key={servico.id} value={servico.id}>
+                                {servico.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                        </form>
+                        <div className="mt-3 flex gap-2">
+                          <LinhaAlternarAtivacao
+                            ativo={regra.ativo}
+                            aoAlternar={async () => {
+                              "use server";
+                              await acaoAlternarRegraCategoria(
+                                regra.id,
+                                !regra.ativo,
+                              );
+                            }}
+                          />
+                          <form
+                            action={async () => {
+                              "use server";
+                              await acaoRemoverRegraCategoria(regra.id);
+                            }}
+                          >
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="destructive"
+                            >
+                              Remover
+                            </Button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </SecaoFreteOperacional>
+
+          <SecaoFreteOperacional
+            valor="produto"
+            numero={5}
+            titulo="Regras por produto específico"
+            descricao="Exceções de maior prioridade para itens pontuais."
+            ajuda="O que é: regra exclusiva de um produto.
+Para que serve: sobrescrever categoria e tipo logístico em casos específicos.
+Quando usar: exceções operacionais pontuais.
+Exemplo real: produto X permite PAC mesmo com categoria bloqueando PAC.
+Impacto no checkout: este produto mostra opções diferentes dos demais."
+            contador={
+              <Badge variant="secondary">
+                {regrasProdutosFiltradas.length} regra(s)
+              </Badge>
+            }
+            cor="coral"
+            icone={iconesSecoesFrete.produto}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Transportadoras do catálogo
+                  <AjudaOperacional texto="Transportadoras são empresas retornadas pela Frenet, como Correios e Jadlog. Desativar uma transportadora remove seus serviços da operação." />
+                </CardTitle>
+                <p className="text-muted-foreground text-sm">
+                  Transportadoras retornadas pela Frenet aparecem aqui para
+                  ativação ou desativação operacional.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoCriarTransportadora}
+                  className="grid gap-2 sm:grid-cols-4"
+                >
+                  <select
+                    name="provedorFreteId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Selecione o provedor</option>
+                    {provedores.map((provedor) => (
+                      <option key={provedor.id} value={provedor.id}>
+                        {provedor.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    name="identificador"
+                    placeholder="Identificador interno"
+                    required
+                  />
+                  <Input
+                    name="nome"
+                    placeholder="Nome para exibição"
+                    required
+                  />
+                  <Button type="submit" size="sm">
+                    Criar
+                  </Button>
+                </form>
+
+                {transportadorasPaginadas.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhuma transportadora para este filtro.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {transportadorasPaginadas.map((transportadora) => (
+                      <div
+                        key={transportadora.id}
+                        className="rounded-md border p-3"
+                      >
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <StatusAtivo ativo={transportadora.ativo} />
+                          <span className="text-muted-foreground text-sm">
+                            {transportadora.identificador} •{" "}
+                            {transportadora.provedorIdentificador}
+                          </span>
+                          <Badge variant="outline">
+                            {servicosAtivosPorTransportadora(transportadora.id)}{" "}
+                            serviço(s) ativo(s)
+                          </Badge>
+                          <Badge variant="secondary">
+                            Peso máx:{" "}
+                            {pesoMaximoTransportadora(transportadora.id)}
+                          </Badge>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarTransportadora(
+                              transportadora.id,
+                              formData,
+                            );
+                          }}
+                          className="grid gap-2 sm:grid-cols-4"
+                        >
+                          <select
+                            name="provedorFreteId"
+                            defaultValue={transportadora.provedorFreteId}
+                            required
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            {provedores.map((provedor) => (
+                              <option key={provedor.id} value={provedor.id}>
+                                {provedor.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <Input
+                            name="identificador"
+                            defaultValue={transportadora.identificador}
+                            required
+                          />
+                          <Input
+                            name="nome"
+                            defaultValue={transportadora.nome}
+                            required
+                          />
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                          <Input
+                            name="pesoMaximoEmGramas"
+                            type="number"
+                            defaultValue={campoLimite(
+                              transportadora.pesoMaximoEmGramas,
+                            )}
+                            placeholder="pesoMaximoEmGramas"
+                          />
+                          <Input
+                            name="alturaMaximaEmCm"
+                            type="number"
+                            defaultValue={campoLimite(
+                              transportadora.alturaMaximaEmCm,
+                            )}
+                            placeholder="alturaMaximaEmCm"
+                          />
+                          <Input
+                            name="larguraMaximaEmCm"
+                            type="number"
+                            defaultValue={campoLimite(
+                              transportadora.larguraMaximaEmCm,
+                            )}
+                            placeholder="larguraMaximaEmCm"
+                          />
+                          <Input
+                            name="comprimentoMaximoEmCm"
+                            type="number"
+                            defaultValue={campoLimite(
+                              transportadora.comprimentoMaximoEmCm,
+                            )}
+                            placeholder="comprimentoMaximoEmCm"
+                          />
+                        </form>
+                        <LinhaAlternarAtivacao
+                          ativo={transportadora.ativo}
+                          aoAlternar={async () => {
+                            "use server";
+                            await alternarTransportadora(
+                              transportadora.id,
+                              !transportadora.ativo,
+                            );
+                          }}
+                        />
+                      </div>
+                    ))}
+                    <PaginacaoSimples
+                      chavePagina="paginaTransportadoras"
+                      paginaAtual={paginacao.paginaTransportadoras}
+                      totalItens={transportadorasFiltradas.length}
+                      tamanhoPagina={paginacao.tamanhoPagina}
+                      filtros={filtros}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </SecaoFreteOperacional>
+
+          <SecaoFreteOperacional
+            valor="tipo"
+            numero={6}
+            titulo="Regras por tipo / classificação logística"
+            descricao="Camada intermediária: vence categoria e perde para produto."
+            ajuda="O que é: regra por classificação logística (ex.: pesado, frágil).
+Para que serve: controlar grupos por comportamento logístico.
+Quando usar: quando vários produtos compartilham a mesma restrição.
+Exemplo real: tipo Produto pesado permite somente Jadlog.
+Impacto no checkout: filtra serviços para todos os produtos com esse tipo."
+            contador={
+              <Badge variant="secondary">
+                {regrasTiposLogisticos.length} regra(s)
+              </Badge>
+            }
+            cor="violeta"
+            icone={iconesSecoesFrete.tipo}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Serviços de frete disponíveis
+                  <AjudaOperacional texto="Serviços são opções exibíveis na cotação, como PAC, SEDEX e Jadlog Package, após filtros e regras." />
+                </CardTitle>
+                <p className="text-muted-foreground text-sm">
+                  Serviços retornados por transportadora, como PAC, SEDEX e
+                  opções Jadlog, podem ser ativados ou desativados abaixo.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoCriarServico}
+                  className="grid gap-2 sm:grid-cols-5"
+                >
+                  <select
+                    name="provedorFreteId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Selecione o provedor</option>
+                    {provedores.map((provedor) => (
+                      <option key={provedor.id} value={provedor.id}>
+                        {provedor.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="transportadoraFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem transportadora</option>
+                    {transportadoras.map((transportadora) => (
+                      <option key={transportadora.id} value={transportadora.id}>
+                        {transportadora.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    name="identificador"
+                    placeholder="Identificador interno"
+                    required
+                  />
+                  <Input
+                    name="nome"
+                    placeholder="Nome para exibição"
+                    required
+                  />
+                  <Button type="submit" size="sm">
+                    Criar
+                  </Button>
+                </form>
+
+                {servicosPaginados.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhum serviço para este filtro.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {servicosPaginados.map((servico) => (
+                      <div key={servico.id} className="rounded-md border p-3">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <StatusAtivo ativo={servico.ativo} />
+                          <span className="text-muted-foreground text-sm">
+                            {servico.identificador} •{" "}
+                            {servico.provedorIdentificador}
+                          </span>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarServico(servico.id, formData);
+                          }}
+                          className="grid gap-2 sm:grid-cols-5"
+                        >
+                          <select
+                            name="provedorFreteId"
+                            defaultValue={servico.provedorFreteId}
+                            required
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            {provedores.map((provedor) => (
+                              <option key={provedor.id} value={provedor.id}>
+                                {provedor.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="transportadoraFreteId"
+                            defaultValue={servico.transportadoraFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem transportadora</option>
+                            {transportadoras.map((transportadora) => (
+                              <option
+                                key={transportadora.id}
+                                value={transportadora.id}
+                              >
+                                {transportadora.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <Input
+                            name="identificador"
+                            defaultValue={servico.identificador}
+                            required
+                          />
+                          <Input
+                            name="nome"
+                            defaultValue={servico.nome}
+                            required
+                          />
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                          <Input
+                            name="pesoMaximoEmGramas"
+                            type="number"
+                            defaultValue={campoLimite(
+                              servico.pesoMaximoEmGramas,
+                            )}
+                            placeholder="pesoMaximoEmGramas"
+                          />
+                          <Input
+                            name="alturaMaximaEmCm"
+                            type="number"
+                            defaultValue={campoLimite(servico.alturaMaximaEmCm)}
+                            placeholder="alturaMaximaEmCm"
+                          />
+                          <Input
+                            name="larguraMaximaEmCm"
+                            type="number"
+                            defaultValue={campoLimite(
+                              servico.larguraMaximaEmCm,
+                            )}
+                            placeholder="larguraMaximaEmCm"
+                          />
+                          <Input
+                            name="comprimentoMaximoEmCm"
+                            type="number"
+                            defaultValue={campoLimite(
+                              servico.comprimentoMaximoEmCm,
+                            )}
+                            placeholder="comprimentoMaximoEmCm"
+                          />
+                        </form>
+                        <LinhaAlternarAtivacao
+                          ativo={servico.ativo}
+                          aoAlternar={async () => {
+                            "use server";
+                            await alternarServico(servico.id, !servico.ativo);
+                          }}
+                        />
+                      </div>
+                    ))}
+                    <PaginacaoSimples
+                      chavePagina="paginaServicos"
+                      paginaAtual={paginacao.paginaServicos}
+                      totalItens={servicosFiltrados.length}
+                      tamanhoPagina={paginacao.tamanhoPagina}
+                      filtros={filtros}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Regras por produto específico
+                  <AjudaOperacional texto="Maior prioridade. Use para exceções pontuais de um produto específico." />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoCriarRegraProduto}
+                  className="grid gap-2 sm:grid-cols-6"
+                >
+                  <select
+                    name="produtoId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Produto</option>
+                    {produtos.map((produto) => (
+                      <option key={produto.id} value={produto.id}>
+                        {produto.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="efeito"
+                    defaultValue="bloquear"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="bloquear">Bloquear</option>
+                    <option value="permitir">Permitir</option>
+                  </select>
+                  <select
+                    name="provedorFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem provedor</option>
+                    {provedores.map((provedor) => (
+                      <option key={provedor.id} value={provedor.id}>
+                        {provedor.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="transportadoraFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem transportadora</option>
+                    {transportadoras.map((transportadora) => (
+                      <option key={transportadora.id} value={transportadora.id}>
+                        {transportadora.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="servicoFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem serviço</option>
+                    {servicos.map((servico) => (
+                      <option key={servico.id} value={servico.id}>
+                        {servico.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" size="sm">
+                    Criar Regra
+                  </Button>
+                </form>
+
+                {regrasProdutosFiltradas.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhuma regra de produto para este filtro.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {regrasProdutosFiltradas.map((regra) => (
+                      <div key={regra.id} className="rounded-md border p-3">
+                        <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
+                          <StatusAtivo ativo={regra.ativo} />
+                          <span>{regra.produtoNome}</span>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarRegraProduto(regra.id, formData);
+                          }}
+                          className="grid gap-2 sm:grid-cols-6"
+                        >
+                          <select
+                            name="produtoId"
+                            defaultValue={regra.produtoId}
+                            required
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            {produtos.map((produto) => (
+                              <option key={produto.id} value={produto.id}>
+                                {produto.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="efeito"
+                            defaultValue={regra.efeito}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="bloquear">Bloquear</option>
+                            <option value="permitir">Permitir</option>
+                          </select>
+                          <select
+                            name="provedorFreteId"
+                            defaultValue={regra.provedorFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem provedor</option>
+                            {provedores.map((provedor) => (
+                              <option key={provedor.id} value={provedor.id}>
+                                {provedor.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="transportadoraFreteId"
+                            defaultValue={regra.transportadoraFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem transportadora</option>
+                            {transportadoras.map((transportadora) => (
+                              <option
+                                key={transportadora.id}
+                                value={transportadora.id}
+                              >
+                                {transportadora.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="servicoFreteId"
+                            defaultValue={regra.servicoFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem serviço</option>
+                            {servicos.map((servico) => (
+                              <option key={servico.id} value={servico.id}>
+                                {servico.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                        </form>
+                        <div className="mt-3 flex gap-2">
+                          <LinhaAlternarAtivacao
+                            ativo={regra.ativo}
+                            aoAlternar={async () => {
+                              "use server";
+                              await acaoAlternarRegraProduto(
+                                regra.id,
+                                !regra.ativo,
+                              );
+                            }}
+                          />
+                          <form
+                            action={async () => {
+                              "use server";
+                              await acaoRemoverRegraProduto(regra.id);
+                            }}
+                          >
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="destructive"
+                            >
+                              Remover
+                            </Button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Tipos / classificações logísticas
+                  <AjudaOperacional texto="Classificações como produto pesado, frágil ou grande volume. Elas ajudam a aplicar regras em grupos de produtos." />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoCriarTipoLogistico}
+                  className="grid gap-2 sm:grid-cols-4"
+                >
+                  <Input
+                    name="identificador"
+                    placeholder="identificador"
+                    required
+                  />
+                  <Input name="nome" placeholder="nome" required />
+                  <Input name="descricao" placeholder="descrição (opcional)" />
+                  <Button type="submit" size="sm">
+                    Criar Tipo
+                  </Button>
+                </form>
+
+                {tiposLogisticos.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhum tipo logístico cadastrado.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {tiposLogisticos.map((tipo) => (
+                      <div key={tipo.id} className="rounded-md border p-3">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <StatusAtivo ativo={tipo.ativo} />
+                          <span className="text-muted-foreground text-sm">
+                            {tipo.nome}
+                          </span>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarTipoLogistico(tipo.id, formData);
+                          }}
+                          className="grid gap-2 sm:grid-cols-4"
+                        >
+                          <Input
+                            name="identificador"
+                            defaultValue={tipo.identificador}
+                            required
+                          />
+                          <Input
+                            name="nome"
+                            defaultValue={tipo.nome}
+                            required
+                          />
+                          <Input
+                            name="descricao"
+                            defaultValue={tipo.descricao ?? ""}
+                          />
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                        </form>
+                        <div className="mt-3 flex gap-2">
+                          <LinhaAlternarAtivacao
+                            ativo={tipo.ativo}
+                            aoAlternar={async () => {
+                              "use server";
+                              await acaoAlternarTipoLogistico(
+                                tipo.id,
+                                !tipo.ativo,
+                              );
+                            }}
+                          />
+                          <form
+                            action={async () => {
+                              "use server";
+                              await acaoRemoverTipoLogistico(tipo.id);
+                            }}
+                          >
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="destructive"
+                            >
+                              Remover
+                            </Button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Vínculos produto x classificação logística
+                  <AjudaOperacional texto="Define quais classificações logísticas estão vinculadas aos produtos." />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoVincularProdutoTipoLogistico}
+                  className="grid gap-2 sm:grid-cols-3"
+                >
+                  <select
+                    name="produtoId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Produto</option>
+                    {produtos.map((produto) => (
+                      <option key={produto.id} value={produto.id}>
+                        {produto.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="tipoLogisticoId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Tipo logístico</option>
+                    {tiposLogisticos.map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>
+                        {tipo.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" size="sm">
+                    Vincular
+                  </Button>
+                </form>
+
+                {produtosVinculadosTiposLogisticos.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhum vínculo encontrado.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {produtosVinculadosTiposLogisticos.map((vinculo) => (
+                      <div
+                        key={vinculo.id}
+                        className="flex items-center justify-between rounded-md border p-3"
+                      >
+                        <span className="text-sm">
+                          {vinculo.produtoNome} • {vinculo.tipoLogisticoNome}
+                        </span>
+                        <form
+                          action={async () => {
+                            "use server";
+                            await acaoDesvincularProdutoTipoLogistico(
+                              vinculo.id,
+                            );
+                          }}
+                        >
+                          <Button type="submit" size="sm" variant="destructive">
+                            Desvincular
+                          </Button>
+                        </form>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Regras por tipo / classificação logística
+                  <AjudaOperacional texto="Prioridade intermediária. Vence categoria e perde para regra de produto específico." />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  action={acaoCriarRegraTipoLogistico}
+                  className="grid gap-2 sm:grid-cols-6"
+                >
+                  <select
+                    name="tipoLogisticoId"
+                    required
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Tipo logístico</option>
+                    {tiposLogisticos.map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>
+                        {tipo.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="efeito"
+                    defaultValue="bloquear"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="bloquear">Bloquear</option>
+                    <option value="permitir">Permitir</option>
+                  </select>
+                  <select
+                    name="provedorFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem provedor</option>
+                    {provedores.map((provedor) => (
+                      <option key={provedor.id} value={provedor.id}>
+                        {provedor.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="transportadoraFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem transportadora</option>
+                    {transportadoras.map((transportadora) => (
+                      <option key={transportadora.id} value={transportadora.id}>
+                        {transportadora.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    name="servicoFreteId"
+                    className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                  >
+                    <option value="">Sem serviço</option>
+                    {servicos.map((servico) => (
+                      <option key={servico.id} value={servico.id}>
+                        {servico.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" size="sm">
+                    Criar Regra
+                  </Button>
+                </form>
+
+                {regrasTiposLogisticos.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-muted-foreground py-6 text-center text-sm">
+                      Nenhuma regra de tipo logístico cadastrada.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {regrasTiposLogisticos.map((regra) => (
+                      <div key={regra.id} className="rounded-md border p-3">
+                        <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
+                          <StatusAtivo ativo={regra.ativo} />
+                          <span>{regra.tipoLogisticoNome}</span>
+                        </div>
+                        <form
+                          action={async (formData) => {
+                            "use server";
+                            await acaoEditarRegraTipoLogistico(
+                              regra.id,
+                              formData,
+                            );
+                          }}
+                          className="grid gap-2 sm:grid-cols-6"
+                        >
+                          <select
+                            name="tipoLogisticoId"
+                            defaultValue={regra.tipoLogisticoId}
+                            required
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            {tiposLogisticos.map((tipo) => (
+                              <option key={tipo.id} value={tipo.id}>
+                                {tipo.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="efeito"
+                            defaultValue={regra.efeito}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="bloquear">Bloquear</option>
+                            <option value="permitir">Permitir</option>
+                          </select>
+                          <select
+                            name="provedorFreteId"
+                            defaultValue={regra.provedorFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem provedor</option>
+                            {provedores.map((provedor) => (
+                              <option key={provedor.id} value={provedor.id}>
+                                {provedor.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="transportadoraFreteId"
+                            defaultValue={regra.transportadoraFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem transportadora</option>
+                            {transportadoras.map((transportadora) => (
+                              <option
+                                key={transportadora.id}
+                                value={transportadora.id}
+                              >
+                                {transportadora.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            name="servicoFreteId"
+                            defaultValue={regra.servicoFreteId ?? ""}
+                            className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
+                          >
+                            <option value="">Sem serviço</option>
+                            {servicos.map((servico) => (
+                              <option key={servico.id} value={servico.id}>
+                                {servico.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <Button type="submit" size="sm" variant="outline">
+                            Salvar
+                          </Button>
+                        </form>
+                        <div className="mt-3 flex gap-2">
+                          <LinhaAlternarAtivacao
+                            ativo={regra.ativo}
+                            aoAlternar={async () => {
+                              "use server";
+                              await acaoAlternarRegraTipoLogistico(
+                                regra.id,
+                                !regra.ativo,
+                              );
+                            }}
+                          />
+                          <form
+                            action={async () => {
+                              "use server";
+                              await acaoRemoverRegraTipoLogistico(regra.id);
+                            }}
+                          >
+                            <Button
+                              type="submit"
+                              size="sm"
+                              variant="destructive"
+                            >
+                              Remover
+                            </Button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </SecaoFreteOperacional>
+
+          <SecaoFreteOperacional
+            valor="retirada"
+            numero={7}
+            titulo="Entrega própria e retirada"
+            descricao="Fluxos independentes da Frenet, mantidos nas áreas operacionais próprias."
+            ajuda="O que é: modalidades internas da operação.
+Para que serve: oferecer retirada e entrega da loja em paralelo ao frete externo.
+Quando usar: em estratégias locais e regionais.
+Exemplo real: retirada ativa com frete externo desligado para um item.
+Impacto no checkout: cliente pode ver opções internas junto do frete externo, conforme regra."
+            contador={<Badge variant="outline">Separado da Frenet</Badge>}
+            cor="neutro"
+            icone={iconesSecoesFrete.retirada}
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="bg-muted/30 rounded-md border p-4 text-sm">
+                <p className="font-medium">Entrega própria</p>
+                <p className="text-muted-foreground mt-1">
+                  Regras de regiões, bairros e prazos continuam na área de
+                  entrega própria.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <Link href="/admin/logistics/entrega-propria">
+                    Abrir entrega própria
+                  </Link>
+                </Button>
+              </div>
+              <div className="bg-muted/30 rounded-md border p-4 text-sm">
+                <p className="font-medium">Retirada</p>
+                <p className="text-muted-foreground mt-1">
+                  Modelos e prazos de retirada continuam na página de retirada
+                  local.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <Link href="/admin/logistica/retirada-local">
+                    Abrir retirada
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </SecaoFreteOperacional>
+        </main>
+
+        <ResumoOperacionalFrete
+          pronto={consistenciaBase}
+          pendencias={pendenciasBaseOperacional}
+          statusIntegracaoFrenet={statusIntegracaoFrenet}
+          transportadoras={transportadoras}
+          servicos={servicos}
+          quantidadeRegrasCategoria={regrasCategorias.length}
+          quantidadeRegrasTipo={regrasTiposLogisticos.length}
+          quantidadeRegrasProduto={regrasProdutos.length}
+        />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Checklist da Base Operacional</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant={consistenciaBase ? "default" : "destructive"}>
-              {consistenciaBase
-                ? "Base pronta para validação"
-                : "Base incompleta"}
-            </Badge>
-            <span className="text-muted-foreground">
-              Valide provedores, transportadoras e serviços antes das regras de
-              disponibilidade.
-            </span>
-          </div>
-          {pendenciasBaseOperacional.length === 0 ? (
-            <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
-              Sem pendências na estrutura base. Próximo passo: validar regras e
-              vínculos.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {pendenciasBaseOperacional.map((pendencia) => (
-                <div
-                  key={pendencia}
-                  className="rounded-md border border-amber-300/40 bg-amber-50/50 p-3 text-sm"
-                >
-                  {pendencia}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <ControlesFiltros
-        filtros={filtros}
-        provedores={provedores}
-        transportadoras={transportadoras}
-      />
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Provedores de Frete</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoCriarProvedor}
-            className="grid gap-2 sm:grid-cols-3"
-          >
-            <Input
-              name="identificador"
-              placeholder="Identificador interno"
-              required
-            />
-            <Input name="nome" placeholder="Nome para exibição" required />
-            <Button type="submit">Criar</Button>
-          </form>
-
-          {provedoresPaginados.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhum provedor para este filtro.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {provedoresPaginados.map((provedor) => (
-                <div key={provedor.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusAtivo ativo={provedor.ativo} />
-                    <span className="text-muted-foreground text-sm">
-                      {provedor.identificador}
-                    </span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarProvedor(provedor.id, formData);
-                    }}
-                    className="grid gap-2 sm:grid-cols-3"
-                  >
-                    <Input
-                      name="identificador"
-                      defaultValue={provedor.identificador}
-                      required
-                    />
-                    <Input name="nome" defaultValue={provedor.nome} required />
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                  </form>
-                  <LinhaAlternarAtivacao
-                    ativo={provedor.ativo}
-                    aoAlternar={async () => {
-                      "use server";
-                      await alternarProvedor(provedor.id, !provedor.ativo);
-                    }}
-                  />
-                </div>
-              ))}
-              <PaginacaoSimples
-                chavePagina="paginaProvedores"
-                paginaAtual={paginacao.paginaProvedores}
-                totalItens={provedoresFiltrados.length}
-                tamanhoPagina={paginacao.tamanhoPagina}
-                filtros={filtros}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Regras por Categoria</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoCriarRegraCategoria}
-            className="grid gap-2 sm:grid-cols-6"
-          >
-            <select
-              name="categoriaId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Categoria</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="efeito"
-              defaultValue="bloquear"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="bloquear">Bloquear</option>
-              <option value="permitir">Permitir</option>
-            </select>
-            <select
-              name="provedorFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem provedor</option>
-              {provedores.map((provedor) => (
-                <option key={provedor.id} value={provedor.id}>
-                  {provedor.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="transportadoraFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem transportadora</option>
-              {transportadoras.map((transportadora) => (
-                <option key={transportadora.id} value={transportadora.id}>
-                  {transportadora.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="servicoFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem serviço</option>
-              {servicos.map((servico) => (
-                <option key={servico.id} value={servico.id}>
-                  {servico.nome}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">Criar Regra</Button>
-          </form>
-
-          {regrasCategoriasFiltradas.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhuma regra de categoria para este filtro.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {regrasCategoriasFiltradas.map((regra) => (
-                <div key={regra.id} className="rounded-md border p-3">
-                  <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
-                    <StatusAtivo ativo={regra.ativo} />
-                    <span>{regra.categoriaNome}</span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarRegraCategoria(regra.id, formData);
-                    }}
-                    className="grid gap-2 sm:grid-cols-6"
-                  >
-                    <select
-                      name="categoriaId"
-                      defaultValue={regra.categoriaId}
-                      required
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      {categorias.map((categoria) => (
-                        <option key={categoria.id} value={categoria.id}>
-                          {categoria.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="efeito"
-                      defaultValue={regra.efeito}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="bloquear">Bloquear</option>
-                      <option value="permitir">Permitir</option>
-                    </select>
-                    <select
-                      name="provedorFreteId"
-                      defaultValue={regra.provedorFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem provedor</option>
-                      {provedores.map((provedor) => (
-                        <option key={provedor.id} value={provedor.id}>
-                          {provedor.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="transportadoraFreteId"
-                      defaultValue={regra.transportadoraFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem transportadora</option>
-                      {transportadoras.map((transportadora) => (
-                        <option
-                          key={transportadora.id}
-                          value={transportadora.id}
-                        >
-                          {transportadora.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="servicoFreteId"
-                      defaultValue={regra.servicoFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem serviço</option>
-                      {servicos.map((servico) => (
-                        <option key={servico.id} value={servico.id}>
-                          {servico.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                  </form>
-                  <div className="mt-3 flex gap-2">
-                    <LinhaAlternarAtivacao
-                      ativo={regra.ativo}
-                      aoAlternar={async () => {
-                        "use server";
-                        await acaoAlternarRegraCategoria(
-                          regra.id,
-                          !regra.ativo,
-                        );
-                      }}
-                    />
-                    <form
-                      action={async () => {
-                        "use server";
-                        await acaoRemoverRegraCategoria(regra.id);
-                      }}
-                    >
-                      <Button type="submit" size="sm" variant="destructive">
-                        Remover
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Transportadoras</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Transportadoras retornadas pela Frenet aparecem aqui para ativação
-            ou desativação operacional.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoCriarTransportadora}
-            className="grid gap-2 sm:grid-cols-4"
-          >
-            <select
-              name="provedorFreteId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Selecione o provedor</option>
-              {provedores.map((provedor) => (
-                <option key={provedor.id} value={provedor.id}>
-                  {provedor.nome}
-                </option>
-              ))}
-            </select>
-            <Input
-              name="identificador"
-              placeholder="Identificador interno"
-              required
-            />
-            <Input name="nome" placeholder="Nome para exibição" required />
-            <Button type="submit">Criar</Button>
-          </form>
-
-          {transportadorasPaginadas.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhuma transportadora para este filtro.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {transportadorasPaginadas.map((transportadora) => (
-                <div key={transportadora.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusAtivo ativo={transportadora.ativo} />
-                    <span className="text-muted-foreground text-sm">
-                      {transportadora.identificador} •{" "}
-                      {transportadora.provedorIdentificador}
-                    </span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarTransportadora(
-                        transportadora.id,
-                        formData,
-                      );
-                    }}
-                    className="grid gap-2 sm:grid-cols-4"
-                  >
-                    <select
-                      name="provedorFreteId"
-                      defaultValue={transportadora.provedorFreteId}
-                      required
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      {provedores.map((provedor) => (
-                        <option key={provedor.id} value={provedor.id}>
-                          {provedor.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <Input
-                      name="identificador"
-                      defaultValue={transportadora.identificador}
-                      required
-                    />
-                    <Input
-                      name="nome"
-                      defaultValue={transportadora.nome}
-                      required
-                    />
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                    <Input
-                      name="pesoMaximoEmGramas"
-                      type="number"
-                      defaultValue={campoLimite(
-                        transportadora.pesoMaximoEmGramas,
-                      )}
-                      placeholder="pesoMaximoEmGramas"
-                    />
-                    <Input
-                      name="alturaMaximaEmCm"
-                      type="number"
-                      defaultValue={campoLimite(
-                        transportadora.alturaMaximaEmCm,
-                      )}
-                      placeholder="alturaMaximaEmCm"
-                    />
-                    <Input
-                      name="larguraMaximaEmCm"
-                      type="number"
-                      defaultValue={campoLimite(
-                        transportadora.larguraMaximaEmCm,
-                      )}
-                      placeholder="larguraMaximaEmCm"
-                    />
-                    <Input
-                      name="comprimentoMaximoEmCm"
-                      type="number"
-                      defaultValue={campoLimite(
-                        transportadora.comprimentoMaximoEmCm,
-                      )}
-                      placeholder="comprimentoMaximoEmCm"
-                    />
-                  </form>
-                  <LinhaAlternarAtivacao
-                    ativo={transportadora.ativo}
-                    aoAlternar={async () => {
-                      "use server";
-                      await alternarTransportadora(
-                        transportadora.id,
-                        !transportadora.ativo,
-                      );
-                    }}
-                  />
-                </div>
-              ))}
-              <PaginacaoSimples
-                chavePagina="paginaTransportadoras"
-                paginaAtual={paginacao.paginaTransportadoras}
-                totalItens={transportadorasFiltradas.length}
-                tamanhoPagina={paginacao.tamanhoPagina}
-                filtros={filtros}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Serviços</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Serviços retornados por transportadora, como PAC, SEDEX e opções
-            Jadlog, podem ser ativados ou desativados abaixo.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form action={acaoCriarServico} className="grid gap-2 sm:grid-cols-5">
-            <select
-              name="provedorFreteId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Selecione o provedor</option>
-              {provedores.map((provedor) => (
-                <option key={provedor.id} value={provedor.id}>
-                  {provedor.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="transportadoraFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem transportadora</option>
-              {transportadoras.map((transportadora) => (
-                <option key={transportadora.id} value={transportadora.id}>
-                  {transportadora.nome}
-                </option>
-              ))}
-            </select>
-            <Input
-              name="identificador"
-              placeholder="Identificador interno"
-              required
-            />
-            <Input name="nome" placeholder="Nome para exibição" required />
-            <Button type="submit">Criar</Button>
-          </form>
-
-          {servicosPaginados.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhum serviço para este filtro.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {servicosPaginados.map((servico) => (
-                <div key={servico.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusAtivo ativo={servico.ativo} />
-                    <span className="text-muted-foreground text-sm">
-                      {servico.identificador} • {servico.provedorIdentificador}
-                    </span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarServico(servico.id, formData);
-                    }}
-                    className="grid gap-2 sm:grid-cols-5"
-                  >
-                    <select
-                      name="provedorFreteId"
-                      defaultValue={servico.provedorFreteId}
-                      required
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      {provedores.map((provedor) => (
-                        <option key={provedor.id} value={provedor.id}>
-                          {provedor.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="transportadoraFreteId"
-                      defaultValue={servico.transportadoraFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem transportadora</option>
-                      {transportadoras.map((transportadora) => (
-                        <option
-                          key={transportadora.id}
-                          value={transportadora.id}
-                        >
-                          {transportadora.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <Input
-                      name="identificador"
-                      defaultValue={servico.identificador}
-                      required
-                    />
-                    <Input name="nome" defaultValue={servico.nome} required />
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                    <Input
-                      name="pesoMaximoEmGramas"
-                      type="number"
-                      defaultValue={campoLimite(servico.pesoMaximoEmGramas)}
-                      placeholder="pesoMaximoEmGramas"
-                    />
-                    <Input
-                      name="alturaMaximaEmCm"
-                      type="number"
-                      defaultValue={campoLimite(servico.alturaMaximaEmCm)}
-                      placeholder="alturaMaximaEmCm"
-                    />
-                    <Input
-                      name="larguraMaximaEmCm"
-                      type="number"
-                      defaultValue={campoLimite(servico.larguraMaximaEmCm)}
-                      placeholder="larguraMaximaEmCm"
-                    />
-                    <Input
-                      name="comprimentoMaximoEmCm"
-                      type="number"
-                      defaultValue={campoLimite(servico.comprimentoMaximoEmCm)}
-                      placeholder="comprimentoMaximoEmCm"
-                    />
-                  </form>
-                  <LinhaAlternarAtivacao
-                    ativo={servico.ativo}
-                    aoAlternar={async () => {
-                      "use server";
-                      await alternarServico(servico.id, !servico.ativo);
-                    }}
-                  />
-                </div>
-              ))}
-              <PaginacaoSimples
-                chavePagina="paginaServicos"
-                paginaAtual={paginacao.paginaServicos}
-                totalItens={servicosFiltrados.length}
-                tamanhoPagina={paginacao.tamanhoPagina}
-                filtros={filtros}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Regras por Produto</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoCriarRegraProduto}
-            className="grid gap-2 sm:grid-cols-6"
-          >
-            <select
-              name="produtoId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Produto</option>
-              {produtos.map((produto) => (
-                <option key={produto.id} value={produto.id}>
-                  {produto.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="efeito"
-              defaultValue="bloquear"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="bloquear">Bloquear</option>
-              <option value="permitir">Permitir</option>
-            </select>
-            <select
-              name="provedorFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem provedor</option>
-              {provedores.map((provedor) => (
-                <option key={provedor.id} value={provedor.id}>
-                  {provedor.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="transportadoraFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem transportadora</option>
-              {transportadoras.map((transportadora) => (
-                <option key={transportadora.id} value={transportadora.id}>
-                  {transportadora.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="servicoFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem serviço</option>
-              {servicos.map((servico) => (
-                <option key={servico.id} value={servico.id}>
-                  {servico.nome}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">Criar Regra</Button>
-          </form>
-
-          {regrasProdutosFiltradas.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhuma regra de produto para este filtro.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {regrasProdutosFiltradas.map((regra) => (
-                <div key={regra.id} className="rounded-md border p-3">
-                  <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
-                    <StatusAtivo ativo={regra.ativo} />
-                    <span>{regra.produtoNome}</span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarRegraProduto(regra.id, formData);
-                    }}
-                    className="grid gap-2 sm:grid-cols-6"
-                  >
-                    <select
-                      name="produtoId"
-                      defaultValue={regra.produtoId}
-                      required
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      {produtos.map((produto) => (
-                        <option key={produto.id} value={produto.id}>
-                          {produto.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="efeito"
-                      defaultValue={regra.efeito}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="bloquear">Bloquear</option>
-                      <option value="permitir">Permitir</option>
-                    </select>
-                    <select
-                      name="provedorFreteId"
-                      defaultValue={regra.provedorFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem provedor</option>
-                      {provedores.map((provedor) => (
-                        <option key={provedor.id} value={provedor.id}>
-                          {provedor.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="transportadoraFreteId"
-                      defaultValue={regra.transportadoraFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem transportadora</option>
-                      {transportadoras.map((transportadora) => (
-                        <option
-                          key={transportadora.id}
-                          value={transportadora.id}
-                        >
-                          {transportadora.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="servicoFreteId"
-                      defaultValue={regra.servicoFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem serviço</option>
-                      {servicos.map((servico) => (
-                        <option key={servico.id} value={servico.id}>
-                          {servico.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                  </form>
-                  <div className="mt-3 flex gap-2">
-                    <LinhaAlternarAtivacao
-                      ativo={regra.ativo}
-                      aoAlternar={async () => {
-                        "use server";
-                        await acaoAlternarRegraProduto(regra.id, !regra.ativo);
-                      }}
-                    />
-                    <form
-                      action={async () => {
-                        "use server";
-                        await acaoRemoverRegraProduto(regra.id);
-                      }}
-                    >
-                      <Button type="submit" size="sm" variant="destructive">
-                        Remover
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Tipos Logísticos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoCriarTipoLogistico}
-            className="grid gap-2 sm:grid-cols-4"
-          >
-            <Input name="identificador" placeholder="identificador" required />
-            <Input name="nome" placeholder="nome" required />
-            <Input name="descricao" placeholder="descrição (opcional)" />
-            <Button type="submit">Criar Tipo</Button>
-          </form>
-
-          {tiposLogisticos.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhum tipo logístico cadastrado.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {tiposLogisticos.map((tipo) => (
-                <div key={tipo.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusAtivo ativo={tipo.ativo} />
-                    <span className="text-muted-foreground text-sm">
-                      {tipo.nome}
-                    </span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarTipoLogistico(tipo.id, formData);
-                    }}
-                    className="grid gap-2 sm:grid-cols-4"
-                  >
-                    <Input
-                      name="identificador"
-                      defaultValue={tipo.identificador}
-                      required
-                    />
-                    <Input name="nome" defaultValue={tipo.nome} required />
-                    <Input
-                      name="descricao"
-                      defaultValue={tipo.descricao ?? ""}
-                    />
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                  </form>
-                  <div className="mt-3 flex gap-2">
-                    <LinhaAlternarAtivacao
-                      ativo={tipo.ativo}
-                      aoAlternar={async () => {
-                        "use server";
-                        await acaoAlternarTipoLogistico(tipo.id, !tipo.ativo);
-                      }}
-                    />
-                    <form
-                      action={async () => {
-                        "use server";
-                        await acaoRemoverTipoLogistico(tipo.id);
-                      }}
-                    >
-                      <Button type="submit" size="sm" variant="destructive">
-                        Remover
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Vínculos Produto x Tipo Logístico</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoVincularProdutoTipoLogistico}
-            className="grid gap-2 sm:grid-cols-3"
-          >
-            <select
-              name="produtoId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Produto</option>
-              {produtos.map((produto) => (
-                <option key={produto.id} value={produto.id}>
-                  {produto.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="tipoLogisticoId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Tipo logístico</option>
-              {tiposLogisticos.map((tipo) => (
-                <option key={tipo.id} value={tipo.id}>
-                  {tipo.nome}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">Vincular</Button>
-          </form>
-
-          {produtosVinculadosTiposLogisticos.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhum vínculo encontrado.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {produtosVinculadosTiposLogisticos.map((vinculo) => (
-                <div
-                  key={vinculo.id}
-                  className="flex items-center justify-between rounded-md border p-3"
-                >
-                  <span className="text-sm">
-                    {vinculo.produtoNome} • {vinculo.tipoLogisticoNome}
-                  </span>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await acaoDesvincularProdutoTipoLogistico(vinculo.id);
-                    }}
-                  >
-                    <Button type="submit" size="sm" variant="destructive">
-                      Desvincular
-                    </Button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Regras por Tipo Logístico</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={acaoCriarRegraTipoLogistico}
-            className="grid gap-2 sm:grid-cols-6"
-          >
-            <select
-              name="tipoLogisticoId"
-              required
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Tipo logístico</option>
-              {tiposLogisticos.map((tipo) => (
-                <option key={tipo.id} value={tipo.id}>
-                  {tipo.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="efeito"
-              defaultValue="bloquear"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="bloquear">Bloquear</option>
-              <option value="permitir">Permitir</option>
-            </select>
-            <select
-              name="provedorFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem provedor</option>
-              {provedores.map((provedor) => (
-                <option key={provedor.id} value={provedor.id}>
-                  {provedor.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="transportadoraFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem transportadora</option>
-              {transportadoras.map((transportadora) => (
-                <option key={transportadora.id} value={transportadora.id}>
-                  {transportadora.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              name="servicoFreteId"
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              <option value="">Sem serviço</option>
-              {servicos.map((servico) => (
-                <option key={servico.id} value={servico.id}>
-                  {servico.nome}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">Criar Regra</Button>
-          </form>
-
-          {regrasTiposLogisticos.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="text-muted-foreground py-6 text-center text-sm">
-                Nenhuma regra de tipo logístico cadastrada.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {regrasTiposLogisticos.map((regra) => (
-                <div key={regra.id} className="rounded-md border p-3">
-                  <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
-                    <StatusAtivo ativo={regra.ativo} />
-                    <span>{regra.tipoLogisticoNome}</span>
-                  </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await acaoEditarRegraTipoLogistico(regra.id, formData);
-                    }}
-                    className="grid gap-2 sm:grid-cols-6"
-                  >
-                    <select
-                      name="tipoLogisticoId"
-                      defaultValue={regra.tipoLogisticoId}
-                      required
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      {tiposLogisticos.map((tipo) => (
-                        <option key={tipo.id} value={tipo.id}>
-                          {tipo.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="efeito"
-                      defaultValue={regra.efeito}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="bloquear">Bloquear</option>
-                      <option value="permitir">Permitir</option>
-                    </select>
-                    <select
-                      name="provedorFreteId"
-                      defaultValue={regra.provedorFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem provedor</option>
-                      {provedores.map((provedor) => (
-                        <option key={provedor.id} value={provedor.id}>
-                          {provedor.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="transportadoraFreteId"
-                      defaultValue={regra.transportadoraFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem transportadora</option>
-                      {transportadoras.map((transportadora) => (
-                        <option
-                          key={transportadora.id}
-                          value={transportadora.id}
-                        >
-                          {transportadora.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      name="servicoFreteId"
-                      defaultValue={regra.servicoFreteId ?? ""}
-                      className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm"
-                    >
-                      <option value="">Sem serviço</option>
-                      {servicos.map((servico) => (
-                        <option key={servico.id} value={servico.id}>
-                          {servico.nome}
-                        </option>
-                      ))}
-                    </select>
-                    <Button type="submit" variant="outline">
-                      Salvar
-                    </Button>
-                  </form>
-                  <div className="mt-3 flex gap-2">
-                    <LinhaAlternarAtivacao
-                      ativo={regra.ativo}
-                      aoAlternar={async () => {
-                        "use server";
-                        await acaoAlternarRegraTipoLogistico(
-                          regra.id,
-                          !regra.ativo,
-                        );
-                      }}
-                    />
-                    <form
-                      action={async () => {
-                        "use server";
-                        await acaoRemoverRegraTipoLogistico(regra.id);
-                      }}
-                    >
-                      <Button type="submit" size="sm" variant="destructive">
-                        Remover
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -1,0 +1,691 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.page{background:#f5f4f1;min-height:100vh;padding-bottom:60px;font-family:var(--font-sans)}
+.nav{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:0 28px;display:flex;align-items:center;gap:4px;height:48px}
+.nav span{font-size:13px;color:var(--color-text-tertiary);padding:0 4px}
+.nav a{font-size:13px;color:var(--color-text-secondary);padding:5px 9px;border-radius:var(--border-radius-md);cursor:pointer;text-decoration:none}
+.nav a:hover{background:var(--color-background-secondary)}
+.nav a.active{color:var(--color-text-primary);font-weight:500}
+.topbar{padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.page-title{font-size:20px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.page-sub{font-size:13px;color:var(--color-text-secondary)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:0 14px;height:34px;border-radius:var(--border-radius-md);font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);transition:background .15s}
+.btn:hover{background:var(--color-background-secondary)}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn-primary:hover{background:#0C447C;border-color:#0C447C}
+.btn-success{background:#0F6E56;color:#fff;border-color:#0F6E56}
+.btn-success:hover{background:#085041}
+.btn-danger{background:transparent;color:#A32D2D;border-color:#F09595}
+.btn-danger:hover{background:#FCEBEB}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;line-height:1.5}
+.b-green{background:#E1F5EE;color:#085041}
+.b-blue{background:#E6F1FB;color:#0C447C}
+.b-amber{background:#FAEEDA;color:#633806}
+.b-red{background:#FCEBEB;color:#791F1F}
+.b-gray{background:#F1EFE8;color:#444441}
+.b-purple{background:#EEEDFE;color:#3C3489}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.flow-bar{display:flex;align-items:stretch;margin:18px 28px 0;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.flow-step{flex:1;padding:10px 14px;display:flex;flex-direction:column;gap:3px;border-right:0.5px solid var(--color-border-tertiary);cursor:default;transition:background .15s}
+.flow-step:last-child{border-right:none}
+.flow-step.done{background:#f9fffe}
+.flow-step.current{background:#EAF3DE}
+.flow-step .fs-num{font-size:10px;font-weight:500;color:var(--color-text-tertiary);display:flex;align-items:center;gap:5px}
+.flow-step.done .fs-num{color:#0F6E56}
+.flow-step.current .fs-num{color:#3B6D11}
+.flow-step .fs-label{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.flow-step.done .fs-label{color:#085041}
+.flow-step.current .fs-label{color:#27500A}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:14px;padding:16px 28px 0}
+.main{display:flex;flex-direction:column;gap:12px}
+.side{display:flex;flex-direction:column;gap:12px}
+.section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.section.open .sec-body{display:block}
+.sec-head{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;user-select:none;transition:background .15s}
+.sec-head:hover{background:var(--color-background-secondary)}
+.sec-icon{width:30px;height:30px;border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.si-blue{background:#E6F1FB;color:#185FA5}
+.si-teal{background:#E1F5EE;color:#0F6E56}
+.si-amber{background:#FAEEDA;color:#854F0B}
+.si-purple{background:#EEEDFE;color:#534AB7}
+.si-coral{background:#FAECE7;color:#993C1D}
+.si-gray{background:#F1EFE8;color:#5F5E5A}
+.sec-info{flex:1;min-width:0}
+.sec-title{font-size:13px;font-weight:500;color:var(--color-text-primary);display:flex;align-items:center;gap:7px}
+.sec-sub{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.sec-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.sec-chevron{font-size:15px;color:var(--color-text-tertiary);transition:transform .2s}
+.section.open .sec-chevron{transform:rotate(180deg)}
+.sec-body{display:none;border-top:0.5px solid var(--color-border-tertiary)}
+.sb-inner{padding:18px}
+.help-btn{width:22px;height:22px;border-radius:50%;border:0.5px solid var(--color-border-secondary);background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--color-text-secondary);flex-shrink:0;transition:background .15s}
+.help-btn:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;color:var(--color-text-secondary)}
+.field input,.field select,.field textarea{height:34px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:0 11px;font-size:13px;color:var(--color-text-primary);background:var(--color-background-primary);outline:none;font-family:var(--font-sans)}
+.field input:focus,.field select:focus{border-color:#378ADD;box-shadow:0 0 0 2px #E6F1FB}
+.field input.ro{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:14px 0}
+.info-box{background:#E6F1FB;border:0.5px solid #B5D4F4;border-radius:var(--border-radius-md);padding:11px 13px;display:flex;gap:9px;margin-bottom:14px}
+.info-box i{font-size:15px;color:#185FA5;flex-shrink:0;margin-top:1px}
+.info-box p{font-size:12px;color:#0C447C;line-height:1.5}
+.warn-box{background:#FAEEDA;border:0.5px solid #FAC775;border-radius:var(--border-radius-md);padding:11px 13px;display:flex;gap:9px;margin-bottom:14px}
+.warn-box i{font-size:15px;color:#854F0B;flex-shrink:0;margin-top:1px}
+.warn-box p{font-size:12px;color:#633806;line-height:1.5}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:11px 13px}
+.stat-val{font-size:20px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.stat-lbl{font-size:11px;color:var(--color-text-secondary)}
+.sec-lbl{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-align:left;padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{font-size:13px;color:var(--color-text-primary);padding:9px 12px;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--color-background-secondary)}
+.tbl-wrap{overflow-x:auto}
+.filter-bar{display:flex;align-items:center;gap:8px;padding:10px 18px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.filter-bar input,.filter-bar select{height:30px;font-size:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:0 10px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none}
+.filter-bar input{flex:1;max-width:200px}
+.pill-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.tgl{width:34px;height:18px;border-radius:9px;border:none;cursor:pointer;position:relative;flex-shrink:0;transition:background .2s}
+.tgl.on{background:#1D9E75}
+.tgl.off{background:#B4B2A9}
+.tgl::after{content:'';position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;top:3px;transition:left .18s}
+.tgl.on::after{left:19px}
+.tgl.off::after{left:3px}
+.rule-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.rule-row:last-child{border-bottom:none}
+.rule-info{flex:1;min-width:0}
+.rule-name{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.rule-desc{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.chk-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.chk-row:last-child{border-bottom:none}
+.chk-ic{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px}
+.ok{background:#E1F5EE;color:#0F6E56}
+.warn{background:#FAEEDA;color:#854F0B}
+.fail{background:#FCEBEB;color:#A32D2D}
+.chk-txt{flex:1;font-size:12px;color:var(--color-text-primary)}
+.chk-sub{font-size:11px;color:var(--color-text-secondary);margin-top:1px}
+.carrier-av{width:26px;height:26px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:var(--color-text-secondary);flex-shrink:0;border:0.5px solid var(--color-border-tertiary)}
+.modal-overlay{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);z-index:100;align-items:flex-start;justify-content:center;padding-top:40px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);width:100%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal-head{padding:16px 18px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.modal-title{font-size:14px;font-weight:500;color:var(--color-text-primary);display:flex;align-items:center;gap:8px}
+.modal-body{padding:18px}
+.modal-body p{font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:12px}
+.modal-body p:last-child{margin-bottom:0}
+.modal-body .ex-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px;margin-bottom:12px}
+.modal-body .ex-box p{margin-bottom:6px;color:var(--color-text-primary);font-size:12px}
+.modal-body .ex-box p:last-child{margin-bottom:0}
+.modal-body .ex-box span{font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary)}
+.flow-mini{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.flow-mini .fm-step{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:4px 9px;font-size:11px;color:var(--color-text-primary)}
+.flow-mini i{font-size:13px;color:var(--color-text-tertiary)}
+.sec-num{width:18px;height:18px;border-radius:50%;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:var(--color-text-secondary);flex-shrink:0}
+</style>
+
+<div class="page" id="root">
+
+<div class="nav">
+  <a href="#">Logística</a>
+  <span>/</span>
+  <a class="active" href="#">Transportadoras e integrações</a>
+</div>
+
+<div class="topbar">
+  <div>
+    <div class="page-title">Transportadoras e integrações</div>
+    <div class="page-sub">Configure a integração, catálogo de serviços e regras de disponibilidade para o checkout</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn"><i class="ti ti-refresh" aria-hidden="true"></i> Sincronizar</button>
+  </div>
+</div>
+
+<div class="flow-bar">
+  <div class="flow-step done">
+    <div class="fs-num"><i class="ti ti-check" style="font-size:10px"></i> Etapa 1</div>
+    <div class="fs-label">Ativar integração</div>
+  </div>
+  <div class="flow-step current">
+    <div class="fs-num">→ Etapa 2</div>
+    <div class="fs-label">Sincronizar catálogo</div>
+  </div>
+  <div class="flow-step">
+    <div class="fs-num">Etapa 3</div>
+    <div class="fs-label">Gerenciar serviços</div>
+  </div>
+  <div class="flow-step">
+    <div class="fs-num">Etapa 4</div>
+    <div class="fs-label">Definir regras</div>
+  </div>
+  <div class="flow-step">
+    <div class="fs-num">Etapa 5</div>
+    <div class="fs-label">Validar no checkout</div>
+  </div>
+</div>
+
+<div class="layout">
+<div class="main">
+
+  <!-- 1. CONEXÃO FRENET -->
+  <div class="section open" id="s1">
+    <div class="sec-head" onclick="toggle('s1')">
+      <div class="sec-icon si-blue"><i class="ti ti-plug" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">1</span>
+          Conexão com a Frenet
+          <button class="help-btn" onclick="openModal('m1');event.stopPropagation()" aria-label="Ajuda sobre conexão Frenet"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Token de acesso, CEP de origem e status da integração</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-green"><span class="dot"></span> Conectada</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="sb-inner">
+        <div class="stat3">
+          <div class="stat-box"><div class="stat-val">3</div><div class="stat-lbl">Transportadoras</div></div>
+          <div class="stat-box"><div class="stat-val">12</div><div class="stat-lbl">Serviços importados</div></div>
+          <div class="stat-box"><div class="stat-val" style="font-size:13px;padding-top:5px">Hoje 09:41</div><div class="stat-lbl">Última sincronização</div></div>
+        </div>
+        <div class="sec-lbl">Credenciais</div>
+        <div class="fg2">
+          <div class="field"><label>Token de acesso</label><input class="ro" type="password" value="frn_live_k9x2mTq••••••" readonly></div>
+          <div class="field"><label>CEP de origem padrão</label><input type="text" value="01310-100" style="max-width:140px"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-lbl">Sincronizar serviços reais da API</div>
+        <div class="info-box"><i class="ti ti-info-circle" aria-hidden="true"></i><p>Informe um endereço de teste para que a Frenet retorne as transportadoras e serviços disponíveis. Os resultados serão salvos como catálogo ativo do sistema.</p></div>
+        <div class="fg3">
+          <div class="field"><label>CEP destino (teste)</label><input type="text" placeholder="20040-020"></div>
+          <div class="field"><label>Peso (kg)</label><input type="number" placeholder="1.5"></div>
+          <div class="field"><label>Dimensões A×L×C (cm)</label><input type="text" placeholder="20×15×10"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-success"><i class="ti ti-cloud-download" aria-hidden="true"></i> Buscar e salvar serviços</button>
+          <button class="btn btn-danger"><i class="ti ti-power" aria-hidden="true"></i> Desativar Frenet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. TRANSPORTADORAS -->
+  <div class="section" id="s2">
+    <div class="sec-head" onclick="toggle('s2')">
+      <div class="sec-icon si-teal"><i class="ti ti-truck" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">2</span>
+          Transportadoras do catálogo
+          <button class="help-btn" onclick="openModal('m2');event.stopPropagation()" aria-label="Ajuda sobre transportadoras"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Transportadoras importadas via Frenet — ative ou desative para o checkout</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-blue">3 cadastradas</span>
+        <span class="badge b-green">3 ativas</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="filter-bar">
+        <input type="text" placeholder="Buscar transportadora...">
+        <select><option>Todas</option><option>Ativas</option><option>Inativas</option></select>
+        <button class="btn btn-sm" style="margin-left:auto"><i class="ti ti-plus" aria-hidden="true"></i> Adicionar</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <colgroup><col style="width:34%"><col style="width:22%"><col style="width:14%"><col style="width:14%"><col style="width:16%"></colgroup>
+          <thead><tr><th>Transportadora</th><th>Código interno</th><th>Serviços</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            <tr><td><div style="display:flex;align-items:center;gap:9px"><div class="carrier-av">CTX</div><span style="font-weight:500">Correios Total</span></div></td><td><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary)">correios-total</span></td><td>5 serviços</td><td><span class="badge b-green"><span class="dot"></span> Ativa</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl on" aria-label="Desativar"></button></div></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:9px"><div class="carrier-av">JDB</div><span style="font-weight:500">Jadlog</span></div></td><td><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary)">jadlog</span></td><td>4 serviços</td><td><span class="badge b-green"><span class="dot"></span> Ativa</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl on" aria-label="Desativar"></button></div></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:9px"><div class="carrier-av">TNT</div><span style="font-weight:500">TNT Fedex</span></div></td><td><span style="font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary)">tnt-fedex</span></td><td>3 serviços</td><td><span class="badge b-amber"><span class="dot"></span> Inativa</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl off" aria-label="Ativar"></button></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. SERVIÇOS -->
+  <div class="section" id="s3">
+    <div class="sec-head" onclick="toggle('s3')">
+      <div class="sec-icon si-teal"><i class="ti ti-package" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">3</span>
+          Serviços de frete disponíveis
+          <button class="help-btn" onclick="openModal('m3');event.stopPropagation()" aria-label="Ajuda sobre serviços"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Serviços exibidos no checkout — gerencie prazos, limites e disponibilidade</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-blue">12 totais</span>
+        <span class="badge b-green">9 ativos</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="filter-bar">
+        <input type="text" placeholder="Buscar serviço...">
+        <select><option>Todas as transportadoras</option><option>Correios Total</option><option>Jadlog</option></select>
+        <select><option>Todos</option><option>Ativos</option><option>Inativos</option></select>
+        <button class="btn btn-sm" style="margin-left:auto"><i class="ti ti-plus" aria-hidden="true"></i> Criar serviço</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <colgroup><col style="width:20%"><col style="width:22%"><col style="width:14%"><col style="width:13%"><col style="width:14%"><col style="width:17%"></colgroup>
+          <thead><tr><th>Serviço</th><th>Transportadora</th><th>Prazo</th><th>Peso máx.</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            <tr><td><span style="font-weight:500">PAC</span></td><td>Correios Total</td><td>5–8 dias</td><td>30 kg</td><td><span class="badge b-green"><span class="dot"></span> Ativo</span></td><td><div style="display:flex;gap:5px;align-items:center"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl on" aria-label="Desativar"></button></div></td></tr>
+            <tr><td><span style="font-weight:500">SEDEX</span></td><td>Correios Total</td><td>1–3 dias</td><td>30 kg</td><td><span class="badge b-green"><span class="dot"></span> Ativo</span></td><td><div style="display:flex;gap:5px;align-items:center"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl on" aria-label="Desativar"></button></div></td></tr>
+            <tr><td><span style="font-weight:500">Package</span></td><td>Jadlog</td><td>3–5 dias</td><td>20 kg</td><td><span class="badge b-green"><span class="dot"></span> Ativo</span></td><td><div style="display:flex;gap:5px;align-items:center"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl on" aria-label="Desativar"></button></div></td></tr>
+            <tr><td><span style="font-weight:500">SEDEX 10</span></td><td>Correios Total</td><td>1 dia</td><td>10 kg</td><td><span class="badge b-amber"><span class="dot"></span> Inativo</span></td><td><div style="display:flex;gap:5px;align-items:center"><button class="btn btn-sm"><i class="ti ti-edit" style="font-size:13px"></i></button><button class="tgl off" aria-label="Ativar"></button></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. REGRAS POR CATEGORIA -->
+  <div class="section" id="s4">
+    <div class="sec-head" onclick="toggle('s4')">
+      <div class="sec-icon si-amber"><i class="ti ti-category" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">4</span>
+          Regras por categoria de produto
+          <button class="help-btn" onclick="openModal('m4');event.stopPropagation()" aria-label="Ajuda sobre regras por categoria"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Bloqueios e permissões aplicados pela categoria — menor prioridade na hierarquia</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-amber">2 regras</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="sb-inner">
+        <div class="warn-box"><i class="ti ti-alert-triangle" aria-hidden="true"></i><p>Regras de categoria têm a menor prioridade. Se houver uma regra por tipo ou por produto para o mesmo serviço, ela vence esta.</p></div>
+        <div class="rule-row">
+          <div class="rule-info">
+            <div class="rule-name">Bloquear SEDEX para eletrônicos frágeis</div>
+            <div class="rule-desc">Categoria: Eletrônicos · Bloqueados: SEDEX, SEDEX 10 · Tipo de regra: bloqueio</div>
+          </div>
+          <span class="badge b-red">Bloqueio</span>
+          <button class="tgl on" aria-label="Desativar regra"></button>
+          <button class="btn btn-sm"><i class="ti ti-edit" style="font-size:12px"></i></button>
+        </div>
+        <div class="rule-row">
+          <div class="rule-info">
+            <div class="rule-name">Frete grátis acima de R$ 300 — Sul</div>
+            <div class="rule-desc">Categoria: Todos · Regiões: PR, SC, RS · Serviço padrão: PAC</div>
+          </div>
+          <span class="badge b-green">Permissão</span>
+          <button class="tgl on" aria-label="Desativar regra"></button>
+          <button class="btn btn-sm"><i class="ti ti-edit" style="font-size:12px"></i></button>
+        </div>
+        <div style="margin-top:12px"><button class="btn"><i class="ti ti-plus" aria-hidden="true"></i> Nova regra por categoria</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. REGRAS POR TIPO/CLASSIFICAÇÃO -->
+  <div class="section" id="s5">
+    <div class="sec-head" onclick="toggle('s5')">
+      <div class="sec-icon si-purple"><i class="ti ti-tag" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">5</span>
+          Regras por tipo / classificação logística
+          <button class="help-btn" onclick="openModal('m5');event.stopPropagation()" aria-label="Ajuda sobre regras por tipo"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Aplicadas sobre o tipo do produto — vence categoria, perde para produto específico</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-purple">1 regra</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="sb-inner">
+        <div class="info-box"><i class="ti ti-info-circle" aria-hidden="true"></i><p>Tipos logísticos são classificações como "frágil", "perigoso", "refrigerado". Uma regra aqui se aplica a todos os produtos com aquele tipo, independente da categoria.</p></div>
+        <div class="rule-row">
+          <div class="rule-info">
+            <div class="rule-name">Somente Jadlog para produtos perigosos</div>
+            <div class="rule-desc">Tipo: Produto perigoso · Permitidos: Jadlog Package · Bloqueados: todos os demais</div>
+          </div>
+          <span class="badge b-red">Bloqueio</span>
+          <button class="tgl on" aria-label="Desativar regra"></button>
+          <button class="btn btn-sm"><i class="ti ti-edit" style="font-size:12px"></i></button>
+        </div>
+        <div style="margin-top:12px"><button class="btn"><i class="ti ti-plus" aria-hidden="true"></i> Nova regra por tipo</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. REGRAS POR PRODUTO -->
+  <div class="section" id="s6">
+    <div class="sec-head" onclick="toggle('s6')">
+      <div class="sec-icon si-coral"><i class="ti ti-box" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">6</span>
+          Regras por produto específico
+          <button class="help-btn" onclick="openModal('m6');event.stopPropagation()" aria-label="Ajuda sobre regras por produto"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Máxima prioridade — sempre vence tipo e categoria para o produto definido</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-red">Maior prioridade</span>
+        <span class="badge b-blue">0 regras</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="sb-inner">
+        <div class="info-box" style="background:#FAECE7;border-color:#F5C4B3"><i class="ti ti-info-circle" style="color:#993C1D" aria-hidden="true"></i><p style="color:#712B13">Regras por produto têm precedência absoluta. Se um produto específico tiver uma regra, ela ignora tipo e categoria. Use com cuidado — ideal para exceções pontuais.</p></div>
+        <div style="text-align:center;padding:24px 0;color:var(--color-text-secondary)">
+          <i class="ti ti-box" style="font-size:28px;display:block;margin-bottom:8px;opacity:.3" aria-hidden="true"></i>
+          <div style="font-size:13px">Nenhuma regra por produto ainda</div>
+          <div style="font-size:12px;margin-top:4px;margin-bottom:16px">Crie regras para produtos que precisam de comportamento exclusivo</div>
+          <button class="btn"><i class="ti ti-plus" aria-hidden="true"></i> Nova regra por produto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. ENTREGA PRÓPRIA E RETIRADA -->
+  <div class="section" id="s7">
+    <div class="sec-head" onclick="toggle('s7')">
+      <div class="sec-icon si-gray"><i class="ti ti-building-store" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">
+          <span class="sec-num">7</span>
+          Entrega própria e retirada em loja
+          <button class="help-btn" onclick="openModal('m7');event.stopPropagation()" aria-label="Ajuda sobre entrega própria"><i class="ti ti-help" style="font-size:12px"></i></button>
+        </div>
+        <div class="sec-sub">Opções independentes da Frenet — funcionam em paralelo com as transportadoras</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-gray">Separado da Frenet</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div class="sb-inner">
+        <div class="info-box"><i class="ti ti-info-circle" aria-hidden="true"></i><p>Estas modalidades são exibidas no checkout junto com os serviços da Frenet, mas são configuradas e validadas de forma independente.</p></div>
+        <div class="rule-row">
+          <div class="rule-info">
+            <div class="rule-name">Entrega própria</div>
+            <div class="rule-desc">Entrega feita pela loja — prazo e valor configuráveis</div>
+          </div>
+          <span class="badge b-gray">Não configurado</span>
+          <button class="tgl off" aria-label="Ativar entrega própria"></button>
+          <button class="btn btn-sm"><i class="ti ti-settings" style="font-size:12px"></i></button>
+        </div>
+        <div class="rule-row">
+          <div class="rule-info">
+            <div class="rule-name">Retirada em loja</div>
+            <div class="rule-desc">Cliente retira no endereço da loja — frete grátis opcional</div>
+          </div>
+          <span class="badge b-green"><span class="dot"></span> Ativa</span>
+          <button class="tgl on" aria-label="Desativar retirada em loja"></button>
+          <button class="btn btn-sm"><i class="ti ti-settings" style="font-size:12px"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SIDEBAR -->
+<div class="side">
+
+  <div class="section open" id="sc1">
+    <div class="sec-head" onclick="toggle('sc1')" style="cursor:pointer">
+      <div class="sec-icon si-teal"><i class="ti ti-checklist" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">Prontidão operacional</div>
+        <div class="sec-sub">O que ainda precisa ser feito</div>
+      </div>
+      <div class="sec-right">
+        <span class="badge b-amber">2 pendências</span>
+        <i class="ti ti-chevron-down sec-chevron"></i>
+      </div>
+    </div>
+    <div class="sec-body">
+      <div style="padding:10px 16px">
+        <div class="chk-row"><div class="chk-ic ok"><i class="ti ti-check" style="font-size:10px"></i></div><div><div class="chk-txt">Frenet ativada</div></div></div>
+        <div class="chk-row"><div class="chk-ic ok"><i class="ti ti-check" style="font-size:10px"></i></div><div><div class="chk-txt">CEP de origem configurado</div></div></div>
+        <div class="chk-row"><div class="chk-ic ok"><i class="ti ti-check" style="font-size:10px"></i></div><div><div class="chk-txt">Catálogo sincronizado</div></div></div>
+        <div class="chk-row"><div class="chk-ic ok"><i class="ti ti-check" style="font-size:10px"></i></div><div><div class="chk-txt">Ao menos 1 serviço ativo</div></div></div>
+        <div class="chk-row"><div class="chk-ic fail"><i class="ti ti-x" style="font-size:10px"></i></div><div><div class="chk-txt">Serviço padrão definido</div><div class="chk-sub">Defina um serviço fallback</div></div></div>
+        <div class="chk-row"><div class="chk-ic fail"><i class="ti ti-x" style="font-size:10px"></i></div><div><div class="chk-txt">Simulação de cotação feita</div><div class="chk-sub">Teste antes de ir ao ar</div></div></div>
+        <div style="padding:10px 0 4px"><button class="btn btn-sm" style="width:100%;justify-content:center"><i class="ti ti-player-play" aria-hidden="true"></i> Simular cotação agora</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section open" id="sc2">
+    <div class="sec-head" onclick="toggle('sc2')">
+      <div class="sec-icon si-blue"><i class="ti ti-activity" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">Diagnóstico da API</div>
+        <div class="sec-sub">Status da conexão em tempo real</div>
+      </div>
+      <i class="ti ti-chevron-down sec-chevron"></i>
+    </div>
+    <div class="sec-body">
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--color-text-secondary)">Último teste</span><span class="badge b-green">Sucesso</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--color-text-secondary)">Latência</span><span style="font-size:12px;font-weight:500;color:var(--color-text-primary)">340 ms</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--color-text-secondary)">Erros (24h)</span><span style="font-size:12px;font-weight:500;color:var(--color-text-primary)">0</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--color-text-secondary)">Ambiente</span><span class="badge b-blue">Produção</span></div>
+        <div style="padding-top:4px"><button class="btn btn-sm" style="width:100%;justify-content:center"><i class="ti ti-refresh" aria-hidden="true"></i> Testar agora</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section open" id="sc3">
+    <div class="sec-head" onclick="toggle('sc3')">
+      <div class="sec-icon si-gray"><i class="ti ti-tags" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">Serviços ativos por transportadora</div>
+      </div>
+      <i class="ti ti-chevron-down sec-chevron"></i>
+    </div>
+    <div class="sec-body">
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:12px">
+        <div><div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Correios Total</div><div class="pill-wrap"><span class="badge b-green">PAC</span><span class="badge b-green">SEDEX</span><span class="badge b-green">SEDEX 12</span><span class="badge b-gray">SEDEX 10</span></div></div>
+        <div><div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Jadlog</div><div class="pill-wrap"><span class="badge b-green">Package</span><span class="badge b-green">.Com</span><span class="badge b-gray">Cargo</span></div></div>
+        <div><div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">TNT Fedex</div><div class="pill-wrap"><span class="badge b-gray">Economy</span><span class="badge b-gray">Express</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sc4">
+    <div class="sec-head" onclick="toggle('sc4')">
+      <div class="sec-icon si-purple"><i class="ti ti-sitemap" aria-hidden="true"></i></div>
+      <div class="sec-info">
+        <div class="sec-title">Como a prioridade de regras funciona</div>
+        <div class="sec-sub">Toque para ver o fluxo de decisão</div>
+      </div>
+      <i class="ti ti-chevron-down sec-chevron"></i>
+    </div>
+    <div class="sec-body">
+      <div style="padding:14px 16px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="background:#FAECE7;border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid #F5C4B3"><div style="font-size:12px;font-weight:500;color:#712B13;margin-bottom:2px"><i class="ti ti-box" style="font-size:13px;margin-right:5px" aria-hidden="true"></i>Produto específico</div><div style="font-size:11px;color:#993C1D">Máxima prioridade — sempre vence</div></div>
+          <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary)">↓ se não houver regra de produto</div>
+          <div style="background:#EEEDFE;border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid #CECBF6"><div style="font-size:12px;font-weight:500;color:#3C3489;margin-bottom:2px"><i class="ti ti-tag" style="font-size:13px;margin-right:5px" aria-hidden="true"></i>Tipo / classificação</div><div style="font-size:11px;color:#534AB7">Vence categoria, perde para produto</div></div>
+          <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary)">↓ se não houver regra de tipo</div>
+          <div style="background:#FAEEDA;border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid #FAC775"><div style="font-size:12px;font-weight:500;color:#633806;margin-bottom:2px"><i class="ti ti-category" style="font-size:13px;margin-right:5px" aria-hidden="true"></i>Categoria</div><div style="font-size:11px;color:#854F0B">Menor prioridade entre as regras</div></div>
+          <div style="text-align:center;font-size:11px;color:var(--color-text-tertiary)">↓ regra de bloqueio sempre vence permissão</div>
+          <div style="background:#E1F5EE;border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid #9FE1CB"><div style="font-size:12px;font-weight:500;color:#085041;margin-bottom:2px"><i class="ti ti-check" style="font-size:13px;margin-right:5px" aria-hidden="true"></i>Cliente vê opções válidas</div><div style="font-size:11px;color:#0F6E56">Apenas serviços liberados aparecem</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- MODAIS -->
+<div style="position:relative">
+
+<div id="m1" class="modal-overlay" onclick="closeModal('m1')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-plug" style="font-size:16px;color:#185FA5" aria-hidden="true"></i> Como funciona a conexão Frenet</div>
+      <button class="help-btn" onclick="closeModal('m1')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>A Frenet é o motor de cotação de fretes do sistema. Ela consulta várias transportadoras ao mesmo tempo e retorna os serviços disponíveis para cada envio.</p>
+      <div class="flow-mini"><div class="fm-step">Token configurado</div><i class="ti ti-arrow-right"></i><div class="fm-step">CEP de origem</div><i class="ti ti-arrow-right"></i><div class="fm-step">API Frenet ativa</div><i class="ti ti-arrow-right"></i><div class="fm-step">Catálogo salvo</div></div>
+      <div class="ex-box">
+        <p style="font-weight:500">Exemplo prático</p>
+        <p>Você informa CEP destino 01310-100, peso 2 kg e dimensões 30×20×15 cm. A Frenet retorna: PAC (7 dias / R$ 18), SEDEX (2 dias / R$ 32), Jadlog Package (4 dias / R$ 22). Esses serviços são salvos como catálogo ativo.</p>
+      </div>
+      <p>O campo "CEP de origem" é o endereço de onde seus pedidos saem. Use o CEP do seu depósito ou loja.</p>
+    </div>
+  </div>
+</div>
+
+<div id="m2" class="modal-overlay" onclick="closeModal('m2')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-truck" style="font-size:16px;color:#0F6E56" aria-hidden="true"></i> O que são transportadoras do catálogo</div>
+      <button class="help-btn" onclick="closeModal('m2')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>Transportadoras são as empresas que aparecem após a sincronização com a Frenet. Cada uma pode ter vários serviços (ex: PAC, SEDEX são serviços dos Correios).</p>
+      <div class="ex-box">
+        <p style="font-weight:500">Exemplo</p>
+        <p>Correios Total → PAC, SEDEX, SEDEX 10, SEDEX 12</p>
+        <p>Jadlog → Package, .Com, Cargo</p>
+      </div>
+      <p>Desativar uma transportadora aqui remove todos os seus serviços do checkout de uma vez. Para gerenciar serviço por serviço, use a seção "Serviços".</p>
+    </div>
+  </div>
+</div>
+
+<div id="m3" class="modal-overlay" onclick="closeModal('m3')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-package" style="font-size:16px;color:#0F6E56" aria-hidden="true"></i> Como os serviços funcionam no checkout</div>
+      <button class="help-btn" onclick="closeModal('m3')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>Cada serviço de frete é uma opção que o cliente pode escolher no checkout. O sistema filtra automaticamente quais serviços são válidos para aquele pedido (considerando peso, dimensões e regras).</p>
+      <div class="flow-mini"><div class="fm-step">Pedido criado</div><i class="ti ti-arrow-right"></i><div class="fm-step">Frenet cotada</div><i class="ti ti-arrow-right"></i><div class="fm-step">Regras aplicadas</div><i class="ti ti-arrow-right"></i><div class="fm-step">Cliente vê opções</div></div>
+      <div class="ex-box">
+        <p style="font-weight:500">Exemplo</p>
+        <p>Produto pesa 500g, cliente em São Paulo. Frenet retorna PAC e SEDEX. Regra bloqueia SEDEX para essa categoria. Cliente vê apenas PAC.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="m4" class="modal-overlay" onclick="closeModal('m4')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-category" style="font-size:16px;color:#854F0B" aria-hidden="true"></i> Regras por categoria — menor prioridade</div>
+      <button class="help-btn" onclick="closeModal('m4')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>Regras de categoria se aplicam a todos os produtos de uma categoria. São a camada de menor prioridade: se existir uma regra de tipo ou produto para o mesmo serviço, ela vence.</p>
+      <div class="ex-box">
+        <p style="font-weight:500">Exemplo</p>
+        <p>Categoria "Eletrônicos" bloqueia SEDEX. Um produto eletrônico específico tem regra que permite SEDEX. O produto específico vence — SEDEX aparece para ele.</p>
+      </div>
+      <p>Regras de bloqueio sempre vencem regras de permissão dentro da mesma camada.</p>
+    </div>
+  </div>
+</div>
+
+<div id="m5" class="modal-overlay" onclick="closeModal('m5')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-tag" style="font-size:16px;color:#534AB7" aria-hidden="true"></i> Regras por tipo — prioridade intermediária</div>
+      <button class="help-btn" onclick="closeModal('m5')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>Tipos logísticos são classificações que você atribui ao produto: "frágil", "perigoso", "refrigerado", "volumoso" etc. Regras de tipo se aplicam a todos os produtos com aquela classificação.</p>
+      <div class="ex-box">
+        <p style="font-weight:500">Exemplo</p>
+        <p>Tipo "Produto perigoso" bloqueia todos os serviços exceto Jadlog Package. Um produto classificado como perigoso, de qualquer categoria, só verá Jadlog Package no checkout.</p>
+      </div>
+      <p>Regras de tipo vencem categoria mas perdem para produto específico.</p>
+    </div>
+  </div>
+</div>
+
+<div id="m6" class="modal-overlay" onclick="closeModal('m6')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-box" style="font-size:16px;color:#993C1D" aria-hidden="true"></i> Regras por produto — máxima prioridade</div>
+      <button class="help-btn" onclick="closeModal('m6')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>Regras por produto específico têm precedência absoluta. Elas ignoram completamente as regras de tipo e categoria para aquele produto.</p>
+      <div class="ex-box">
+        <p style="font-weight:500">Quando usar</p>
+        <p>Produto "Mesa de vidro 2m" precisa de transportadora especial que não aparece para outros produtos da categoria "Móveis". Crie uma regra de produto para ele.</p>
+      </div>
+      <p>Use com moderação — ideal para exceções pontuais, não para regras gerais.</p>
+    </div>
+  </div>
+</div>
+
+<div id="m7" class="modal-overlay" onclick="closeModal('m7')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title"><i class="ti ti-building-store" style="font-size:16px;color:#5F5E5A" aria-hidden="true"></i> Entrega própria e retirada em loja</div>
+      <button class="help-btn" onclick="closeModal('m7')" aria-label="Fechar"><i class="ti ti-x" style="font-size:13px"></i></button>
+    </div>
+    <div class="modal-body">
+      <p>Estas opções são independentes da Frenet. Elas aparecem no checkout junto com os serviços normais, mas não passam pelo cálculo de frete da API.</p>
+      <div class="ex-box">
+        <p style="font-weight:500">Entrega própria</p>
+        <p>Você entrega com frota própria ou motoboy. Configure prazo e valor fixo ou grátis.</p>
+        <p style="font-weight:500;margin-top:8px">Retirada em loja</p>
+        <p>Cliente busca no endereço da loja. Normalmente frete R$ 0,00.</p>
+      </div>
+      <p>As regras de bloqueio por produto/tipo/categoria não afetam estas modalidades — elas seguem configuração própria.</p>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+function toggle(id){
+  var s=document.getElementById(id);
+  s.classList.toggle('open');
+}
+function openModal(id){
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('show');
+}
+document.querySelectorAll('.tgl').forEach(function(t){
+  t.addEventListener('click',function(e){
+    e.stopPropagation();
+    this.classList.toggle('on');
+    this.classList.toggle('off');
+  });
+});
+</script>

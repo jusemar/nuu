@@ -78,12 +78,16 @@ function criarPagina(
 describe("pagina frete admin simples", () => {
   it("renderiza secoes principais", () => {
     const html = criarPagina();
-    assert.equal(html.includes("Provedores de Frete"), true);
-    assert.equal(html.includes("Transportadoras"), true);
-    assert.equal(html.includes("Serviços"), true);
-    assert.equal(html.includes("Regras por Categoria"), true);
-    assert.equal(html.includes("Regras por Produto"), true);
-    assert.equal(html.includes("Tipos Logísticos"), true);
+    assert.equal(html.includes("Transportadoras e integrações"), true);
+    assert.equal(html.includes("Ativar integração"), true);
+    assert.equal(html.includes("Conexão com a Frenet"), true);
+    assert.equal(html.includes("Provedores de frete"), true);
+    assert.equal(html.includes("Transportadoras do catálogo"), true);
+    assert.equal(html.includes("Serviços de frete disponíveis"), true);
+    assert.equal(html.includes("Regras por categoria"), true);
+    assert.equal(html.includes("Regras por produto específico"), true);
+    assert.equal(html.includes("Tipos / classificações logísticas"), true);
+    assert.equal(html.includes("Prontidão operacional"), true);
     assert.equal(html.includes("Checklist da Base Operacional"), true);
   });
 
@@ -270,6 +274,8 @@ describe("pagina frete admin simples", () => {
       true,
     );
     assert.equal(html.includes("Buscar e salvar serviços retornados"), true);
+    assert.equal(html.includes("Diagnóstico da API"), true);
+    assert.equal(html.includes("Prioridade das regras"), true);
   });
 
   it("renderiza listagem de regra por produto", () => {

@@ -162,6 +162,20 @@
       "when": 1780405200000,
       "tag": "0029_create_marcas_e_vinculo_produto",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1780272000000,
+      "tag": "0030_create_banners_home",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1780358400000,
+      "tag": "0031_carrossel_banners_home",
+      "breakpoints": true
     }
   ]
 }

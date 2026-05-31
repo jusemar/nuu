@@ -7,7 +7,10 @@ import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home"
 
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 import { Header } from "@/features/header";
-import { BannerCarousel } from "@/components/ui/BannerCarousel";
+import {
+  AreaBannersHome,
+  buscarBannersHomeAtivos,
+} from "@/features/banners-home";
 import { DealsGrid } from "@/features/deals/components/DealsGrid";
 import { CategorySelector } from "@/features/category-selector/components/CategorySkeleton";
 import FeaturedProductsCarousel from "@/features/featured-products-carousel/components/FeaturedProductsCarousel";
@@ -15,20 +18,6 @@ import { ProductGridWithLoadMore } from "@/features/product-grid-with-load-more/
 import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import { Footer } from "@/components/common/footer";
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const BANNERS = [
-  {
-    mobileSrc: "/banner-promocao.webp",
-    desktopSrc: "/banner-promocao.webp",
-    alt: "Promoção Especial Do Rocha",
-  },
-  {
-    mobileSrc: "/banner-promocao.webp",
-    desktopSrc: "/banner-promocao.webp",
-    alt: "Ofertas Exclusivas",
-  },
-];
 
 // Mini banners laterais — design system: azul primário e âmbar
 const SIDE_BANNERS = [
@@ -52,12 +41,13 @@ const SIDE_BANNERS = [
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
-  const [products, newlyCreatedProducts, categories, ofertasHome] =
+  const [products, newlyCreatedProducts, categories, ofertasHome, bannersHome] =
     await Promise.all([
       getProducts(),
       getNewProducts(),
       getCategories(),
       buscarOfertasHome(),
+      buscarBannersHomeAtivos(),
     ]);
 
   return (
@@ -78,7 +68,7 @@ const Home = async () => {
           aria-label="Banners promocionais"
           className="shadow-elevation overflow-hidden rounded-2xl"
         >
-          <BannerCarousel banners={BANNERS} />
+          <AreaBannersHome banners={bannersHome} />
         </section>
 
         {/* Info cards — confiança e conversão */}

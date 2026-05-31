@@ -32,6 +32,9 @@ import {
   DollarSign,
   PackageCheck,
   Percent,
+  Settings,
+  Image,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "../hooks/useSidebar";
@@ -53,6 +56,9 @@ const iconMap: Record<string, React.ElementType> = {
   DollarSign,
   PackageCheck,
   Percent,
+  Settings,
+  Image,
+  Tag,
 };
 
 /**
@@ -157,6 +163,22 @@ export const menuAdmin = [
     label: "Pedidos",
     href: "/admin/orders",
     icon: "ShoppingCart",
+  },
+
+  // Grupo: Configurações
+  {
+    id: "configuracoes",
+    type: "group" as const,
+    label: "Configurações",
+    icon: "Settings",
+    items: [
+      {
+        id: "banners-home",
+        label: "Banners da Home",
+        href: "/admin/configuracoes/banners-home",
+        icon: "Image",
+      },
+    ],
   },
 
   // Item solto: Clientes

@@ -502,6 +502,14 @@ export {
   perfisClientesTable,
   userTable,
 } from "./tables/autenticacao";
+export {
+  bannerHomeDestaqueEnum,
+  bannerHomePosicaoEnum,
+  bannerHomeTipoEnum,
+  bannersHomeTable,
+  type BannerHome,
+  type NovoBannerHome,
+} from "./tables/banners-home";
 export { categoryTable } from "./table/categories/categories";
 export { marcaTable } from "./table/marcas/marcas";
 export { productTable } from "./table/products/products";

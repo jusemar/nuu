@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -16,8 +17,85 @@ interface Filters {
   categories: string[];
   brands: string[];
   sizes: string[];
+  colors: string[];
   priceRange: [number, number];
   rating: string;
+}
+
+interface ItemFiltro {
+  id: string;
+  name: string;
+  count: number;
+}
+
+interface DadosFiltroCategoria {
+  categories: ItemFiltro[];
+  brands: ItemFiltro[];
+  sizes: ItemFiltro[];
+  colors: ItemFiltro[];
+  priceRange: [number, number];
+}
+
+const CHAVES_FILTRO = [
+  'categories',
+  'brands',
+  'sizes',
+  'colors',
+  'minPrice',
+  'maxPrice',
+  'rating',
+] as const;
+
+type ModoFiltro = 'desktop' | 'mobile';
+
+function formatarCentavosParaBr(valorEmCentavos: number) {
+  return (valorEmCentavos / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function parseBrParaCentavos(valor: string) {
+  const normalizado = valor.replace(/\./g, '').replace(',', '.').trim();
+  const numero = Number(normalizado);
+  if (!Number.isFinite(numero)) return 0;
+  return Math.round(numero * 100);
+}
+
+function parseLista(valor: string | null) {
+  if (!valor) return [];
+  return valor
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseFiltrosDaUrl(
+  params: URLSearchParams,
+  faixaMinima: number,
+  faixaMaxima: number,
+): Filters {
+  const parseNumero = (valor: string | null) => {
+    if (valor === null) return null;
+    const limpo = valor.trim();
+    if (!limpo) return null;
+    const numero = Number(limpo);
+    return Number.isFinite(numero) ? numero : null;
+  };
+
+  const minUrl = parseNumero(params.get('minPrice'));
+  const maxUrl = parseNumero(params.get('maxPrice'));
+  const minPrice = minUrl ?? faixaMinima;
+  const maxPrice = maxUrl ?? faixaMaxima;
+
+  return {
+    categories: parseLista(params.get('categories')),
+    brands: parseLista(params.get('brands')),
+    sizes: parseLista(params.get('sizes')),
+    colors: parseLista(params.get('colors')),
+    priceRange: [Math.min(minPrice, maxPrice), Math.max(minPrice, maxPrice)],
+    rating: params.get('rating') || 'all',
+  };
 }
 
 // =====================================================================
@@ -141,54 +219,31 @@ function FilterCheckbox({
 // =====================================================================
 // COMPONENTE PRINCIPAL: CategoryFilter
 // =====================================================================
-export const CategoryFilter = () => {
-  const [filters, setFilters] = useState<Filters>({
-    categories: [],
-    brands: [],
-    sizes: [],
-    priceRange: [0, 1000],
-    rating: 'all',
-  });
+export const CategoryFilter = ({
+  dados,
+  modo = 'desktop',
+}: {
+  dados: DadosFiltroCategoria;
+  modo?: ModoFiltro;
+}) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const faixaMinima = dados.priceRange[0];
+  const faixaMaxima =
+    dados.priceRange[1] > dados.priceRange[0]
+      ? dados.priceRange[1]
+      : dados.priceRange[0] + 1;
 
-  // =================================================================
-  // DADOS FICTÍCIOS
-  // =================================================================
-  const categories = [
-    { id: '1', name: 'Botas', count: 45 },
-    { id: '2', name: 'Sapatilhas', count: 32 },
-    { id: '3', name: 'Tênis', count: 78 },
-    { id: '4', name: 'Sandálias', count: 23 },
-    { id: '5', name: 'Scarpin', count: 18 },
-    { id: '6', name: 'Mocassim', count: 15 },
-    { id: '7', name: 'Oxford', count: 12 },
-    { id: '8', name: 'Anabela', count: 9 },
-  ];
+  const filtrosUrl = useMemo(
+    () => parseFiltrosDaUrl(new URLSearchParams(searchParams.toString()), faixaMinima, faixaMaxima),
+    [searchParams, faixaMinima, faixaMaxima],
+  );
+  const [filters, setFilters] = useState<Filters>(filtrosUrl);
 
-  const brands = [
-    { id: '1', name: 'Amanner', count: 12 },
-    { id: '2', name: 'Anacapri', count: 18 },
-    { id: '3', name: 'Andacco', count: 9 },
-    { id: '4', name: 'Arezzo', count: 15 },
-    { id: '5', name: 'Beira Rio', count: 22 },
-    { id: '6', name: 'Capodarte', count: 8 },
-    { id: '7', name: 'Cristófoli', count: 14 },
-    { id: '8', name: 'Dijean', count: 11 },
-    { id: '9', name: 'Dumond', count: 7 },
-    { id: '10', name: 'Ferracini', count: 13 },
-  ];
-
-  const sizes = [
-    { id: '33', name: '33', count: 5 },
-    { id: '34', name: '34', count: 12 },
-    { id: '35', name: '35', count: 18 },
-    { id: '36', name: '36', count: 25 },
-    { id: '37', name: '37', count: 32 },
-    { id: '38', name: '38', count: 28 },
-    { id: '39', name: '39', count: 20 },
-    { id: '40', name: '40', count: 15 },
-    { id: '41', name: '41', count: 8 },
-    { id: '42', name: '42', count: 4 },
-  ];
+  useEffect(() => {
+    setFilters(filtrosUrl);
+  }, [filtrosUrl]);
 
   // =================================================================
   // HANDLERS
@@ -220,6 +275,23 @@ export const CategoryFilter = () => {
     }));
   };
 
+  const aplicarFiltros = (filtros: Filters) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    CHAVES_FILTRO.forEach((chave) => params.delete(chave));
+
+    if (filtros.categories.length > 0) params.set('categories', filtros.categories.join(','));
+    if (filtros.brands.length > 0) params.set('brands', filtros.brands.join(','));
+    if (filtros.sizes.length > 0) params.set('sizes', filtros.sizes.join(','));
+    if (filtros.colors.length > 0) params.set('colors', filtros.colors.join(','));
+    if (filtros.priceRange[0] > faixaMinima) params.set('minPrice', String(filtros.priceRange[0]));
+    if (filtros.priceRange[1] < faixaMaxima) params.set('maxPrice', String(filtros.priceRange[1]));
+    if (filtros.rating !== 'all') params.set('rating', filtros.rating);
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
   // =================================================================
   // Contador de filtros ativos
   // =================================================================
@@ -227,8 +299,19 @@ export const CategoryFilter = () => {
     filters.categories.length +
     filters.brands.length +
     filters.sizes.length +
-    (filters.priceRange[0] > 0 || filters.priceRange[1] < 1000 ? 1 : 0) +
+    filters.colors.length +
+    (filters.priceRange[0] > faixaMinima ||
+    filters.priceRange[1] < faixaMaxima
+      ? 1
+      : 0) +
     (filters.rating !== 'all' ? 1 : 0);
+
+  useEffect(() => {
+    if (modo === 'desktop') {
+      aplicarFiltros(filters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo, filters]);
 
   return (
     <div className="w-full">
@@ -250,77 +333,104 @@ export const CategoryFilter = () => {
       <div className="divide-y divide-gray-100">
         
         {/* Categoria */}
-        <FilterAccordion
-          title="Categoria"
-          icon={ChevronDown}
-          iconColor="blue"
-          defaultOpen
-        >
-          {categories.map((cat) => (
-            <FilterCheckbox
-              key={cat.id}
-              id={`cat-${cat.id}`}
-              label={cat.name}
-              count={cat.count}
-              checked={filters.categories.includes(cat.id)}
-              onChange={(checked) =>
-                handleCheckboxChange('categories', cat.id, checked)
-              }
-            />
-          ))}
-        </FilterAccordion>
+        {dados.categories.length > 0 && (
+          <FilterAccordion
+            title="Categoria"
+            icon={ChevronDown}
+            iconColor="blue"
+            defaultOpen
+          >
+            {dados.categories.map((cat) => (
+              <FilterCheckbox
+                key={cat.id}
+                id={`cat-${cat.id}`}
+                label={cat.name}
+                count={cat.count}
+                checked={filters.categories.includes(cat.id)}
+                onChange={(checked) =>
+                  handleCheckboxChange('categories', cat.id, checked)
+                }
+              />
+            ))}
+          </FilterAccordion>
+        )}
 
         {/* Marca */}
-        <FilterAccordion
-          title="Marca"
-          icon={ChevronDown}
-          iconColor="purple"
-          showSearch
-          searchPlaceholder="Buscar marca"
-        >
-          {brands.map((brand) => (
-            <FilterCheckbox
-              key={brand.id}
-              id={`brand-${brand.id}`}
-              label={brand.name}
-              count={brand.count}
-              checked={filters.brands.includes(brand.id)}
-              onChange={(checked) =>
-                handleCheckboxChange('brands', brand.id, checked)
-              }
-            />
-          ))}
-        </FilterAccordion>
+        {dados.brands.length > 0 && (
+          <FilterAccordion
+            title="Marca"
+            icon={ChevronDown}
+            iconColor="purple"
+            showSearch
+            searchPlaceholder="Buscar marca"
+          >
+            {dados.brands.map((brand) => (
+              <FilterCheckbox
+                key={brand.id}
+                id={`brand-${brand.id}`}
+                label={brand.name}
+                count={brand.count}
+                checked={filters.brands.includes(brand.id)}
+                onChange={(checked) =>
+                  handleCheckboxChange('brands', brand.id, checked)
+                }
+              />
+            ))}
+          </FilterAccordion>
+        )}
 
         {/* Tamanho */}
-        <FilterAccordion
-          title="Tamanho"
-          icon={ChevronDown}
-          iconColor="green"
-        >
-          <div className="grid grid-cols-4 gap-1">
-            {sizes.map((size) => (
-              <button
-                key={size.id}
-                onClick={() =>
-                  handleCheckboxChange(
-                    'sizes',
-                    size.id,
-                    !filters.sizes.includes(size.id)
-                  )
+        {dados.sizes.length > 0 && (
+          <FilterAccordion
+            title="Tamanho"
+            icon={ChevronDown}
+            iconColor="green"
+          >
+            <div className="grid grid-cols-4 gap-1">
+              {dados.sizes.map((size) => (
+                <button
+                  key={size.id}
+                  onClick={() =>
+                    handleCheckboxChange(
+                      'sizes',
+                      size.id,
+                      !filters.sizes.includes(size.id)
+                    )
+                  }
+                  className={cn(
+                    'py-2 text-sm font-medium rounded border transition-colors',
+                    filters.sizes.includes(size.id)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                  )}
+                >
+                  {size.name}
+                </button>
+              ))}
+            </div>
+          </FilterAccordion>
+        )}
+
+        {dados.colors.length > 0 && (
+          <FilterAccordion
+            title="Cores"
+            icon={ChevronDown}
+            iconColor="rose"
+          >
+            {dados.colors.map((color) => (
+              <FilterCheckbox
+                key={color.id}
+                id={`color-${color.id}`}
+                label={color.name}
+                count={color.count}
+                checked={filters.colors.includes(color.id)}
+                onChange={(checked) =>
+                  handleCheckboxChange('colors', color.id, checked)
                 }
-                className={cn(
-                  'py-2 text-sm font-medium rounded border transition-colors',
-                  filters.sizes.includes(size.id)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                )}
-              >
-                {size.name}
-              </button>
+              />
             ))}
-          </div>
-        </FilterAccordion>
+          </FilterAccordion>
+        )}
 
         {/* Faixa de Preço */}
         <FilterAccordion
@@ -328,12 +438,12 @@ export const CategoryFilter = () => {
           icon={ChevronDown}
           iconColor="orange"
         >
-          <div className="space-y-4 px-1">
+          <div className="space-y-4 px-1 pt-1">
             <Slider
               value={filters.priceRange}
               onValueChange={handlePriceChange}
-              min={0}
-              max={1000}
+              min={faixaMinima}
+              max={faixaMaxima}
               step={10}
               className="w-full"
             />
@@ -341,10 +451,14 @@ export const CategoryFilter = () => {
               <div className="flex-1">
                 <label className="text-xs text-gray-500">Mínimo</label>
                 <Input
-                  type="number"
-                  value={filters.priceRange[0]}
+                  type="text"
+                  inputMode="decimal"
+                  value={formatarCentavosParaBr(filters.priceRange[0])}
                   onChange={(e) =>
-                    handlePriceChange([Number(e.target.value), filters.priceRange[1]])
+                    handlePriceChange([
+                      parseBrParaCentavos(e.target.value),
+                      filters.priceRange[1],
+                    ])
                   }
                   className="h-8 text-sm mt-1"
                 />
@@ -353,10 +467,14 @@ export const CategoryFilter = () => {
               <div className="flex-1">
                 <label className="text-xs text-gray-500">Máximo</label>
                 <Input
-                  type="number"
-                  value={filters.priceRange[1]}
+                  type="text"
+                  inputMode="decimal"
+                  value={formatarCentavosParaBr(filters.priceRange[1])}
                   onChange={(e) =>
-                    handlePriceChange([filters.priceRange[0], Number(e.target.value)])
+                    handlePriceChange([
+                      filters.priceRange[0],
+                      parseBrParaCentavos(e.target.value),
+                    ])
                   }
                   className="h-8 text-sm mt-1"
                 />
@@ -405,15 +523,28 @@ export const CategoryFilter = () => {
       {/* Botão limpar filtros */}
       {activeFiltersCount > 0 && (
         <div className="p-4 border-t border-gray-100">
+          {modo === 'mobile' && (
+            <button
+              onClick={() => aplicarFiltros(filters)}
+              className="w-full py-2 px-4 mb-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <span>Aplicar filtros</span>
+            </button>
+          )}
           <button
             onClick={() =>
-              setFilters({
+              (() => {
+                const limpos: Filters = {
                 categories: [],
                 brands: [],
                 sizes: [],
-                priceRange: [0, 1000],
+                colors: [],
+                priceRange: [faixaMinima, faixaMaxima],
                 rating: 'all',
-              })
+              };
+                setFilters(limpos);
+                aplicarFiltros(limpos);
+              })()
             }
             className="w-full py-2 px-4 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
           >

@@ -59,7 +59,15 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
           <aside className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0 lg:sticky lg:top-20 self-start">
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
               <h3 className="text-lg font-semibold text-gray-900">Filtrar por</h3>
-              <CategoryFilter />
+              <CategoryFilter
+                dados={{
+                  categories: [],
+                  brands: [],
+                  sizes: [],
+                  colors: [],
+                  priceRange: [0, 1000],
+                }}
+              />
             </div>
           </aside>
 
@@ -68,7 +76,16 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
             
             {/* MOBILE: Drawer para filtro */}
             <div className="lg:hidden mb-6">
-              <MobileFilterDrawer activeFiltersCount={activeFiltersCount} />
+              <MobileFilterDrawer
+                activeFiltersCount={activeFiltersCount}
+                dadosFiltro={{
+                  categories: [],
+                  brands: [],
+                  sizes: [],
+                  colors: [],
+                  priceRange: [0, 1000],
+                }}
+              />
             </div>
 
             {/* BREADCRUMB + ORDENAÇÃO (desktop) */}

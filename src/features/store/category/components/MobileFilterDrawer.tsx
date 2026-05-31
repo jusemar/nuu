@@ -15,9 +15,19 @@ import { CategoryFilter } from './CategoryFilter';
 
 interface MobileFilterDrawerProps {
   activeFiltersCount?: number;
+  dadosFiltro: {
+    categories: Array<{ id: string; name: string; count: number }>;
+    brands: Array<{ id: string; name: string; count: number }>;
+    sizes: Array<{ id: string; name: string; count: number }>;
+    colors: Array<{ id: string; name: string; count: number }>;
+    priceRange: [number, number];
+  };
 }
 
-export function MobileFilterDrawer({ activeFiltersCount = 0 }: MobileFilterDrawerProps) {
+export function MobileFilterDrawer({
+  activeFiltersCount = 0,
+  dadosFiltro,
+}: MobileFilterDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -48,7 +58,7 @@ export function MobileFilterDrawer({ activeFiltersCount = 0 }: MobileFilterDrawe
         </SheetHeader>
         
         <div className="overflow-y-auto h-[calc(100vh-80px)] pb-8">
-          <CategoryFilter />
+          <CategoryFilter dados={dadosFiltro} modo="mobile" />
         </div>
       </SheetContent>
     </Sheet>

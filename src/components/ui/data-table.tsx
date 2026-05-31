@@ -62,6 +62,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   onDeleteSelected?: (selectedRows: TData[]) => void;
   actionsContent?: (row: TData) => React.ReactNode; // ← NOVO SLOT
+  filtroExtra?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -69,6 +70,7 @@ export function DataTable<TData, TValue>({
   data,
   onDeleteSelected,
   actionsContent, // ← NOVA PROP
+  filtroExtra,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -207,6 +209,8 @@ export function DataTable<TData, TValue>({
             className="bg-background border-input pl-10"
           />
         </div>
+
+        {filtroExtra}
 
         {/* Colunas - Mantém igual mas com ml-auto */}
         <DropdownMenu>

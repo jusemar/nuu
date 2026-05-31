@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { ChevronsUpDown, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { EditableCell } from "@/components/admin/editable-cell"
@@ -10,6 +10,8 @@ import { useProductBulkActions } from "@/hooks/admin/mutations/products/useProdu
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "sonner"
 import { EditableSwitch } from "@/components/admin/editable-switch"
+import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface Product {
   id: string;
@@ -24,14 +26,38 @@ interface Product {
 export default function ProductsPage() {
   const { data: products, isLoading } = useProducts()
   const { handleDeleteSelected } = useProductBulkActions()
-  const [searchTerm, setSearchTerm] = useState("")
+  const [categoriaSelecionadaId, setCategoriaSelecionadaId] = useState("")
+  const [buscaCategoria, setBuscaCategoria] = useState("")
+  const [popoverCategoriaAberto, setPopoverCategoriaAberto] = useState(false)
   const [localProducts, setLocalProducts] = useState<Product[]>([])
   const [originalProducts, setOriginalProducts] = useState<Product[]>([])
 
-  // Filtro simples por nome
-  const filteredProducts = products?.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || []
+  const categoriasDisponiveis = useMemo(() => {
+    const mapa = new Map<string, string>()
+    localProducts.forEach((produto) => {
+      if (produto.categoryId && produto.categoryName) {
+        mapa.set(produto.categoryId, produto.categoryName)
+      }
+    })
+    return Array.from(mapa.entries())
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+  }, [localProducts])
+
+  const categoriaSelecionada = categoriasDisponiveis.find(
+    (categoria) => categoria.id === categoriaSelecionadaId,
+  )
+
+  const categoriasFiltradas = categoriasDisponiveis.filter((categoria) =>
+    categoria.nome.toLowerCase().includes(buscaCategoria.toLowerCase()),
+  )
+
+  const filteredProducts = localProducts.filter((product) => {
+    const correspondeCategoria =
+      !categoriaSelecionadaId || product.categoryId === categoriaSelecionadaId
+
+    return correspondeCategoria
+  })
 
   useEffect(() => {
     if (products) {
@@ -211,36 +237,6 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* LINHA DE FILTROS */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <input 
-              type="text" 
-              placeholder="Buscar produtos..." 
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <select className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option>Todas as categorias</option>
-          </select>
-          
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-            Aplicar Filtros
-          </button>
-          
-          <button 
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-            onClick={() => setSearchTerm("")}
-          >
-            Limpar
-          </button>
-        </div>
-      </div>
-
       {/* LISTA DE PRODUTOS */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="p-6">
@@ -271,11 +267,65 @@ export default function ProductsPage() {
               </Button>
             </div>
           </div>
-          
+
           <DataTable 
             columns={columns} 
-            data={localProducts}
+            data={filteredProducts}
             onDeleteSelected={handleDeleteSelected}
+            filtroExtra={
+              <Popover
+                open={popoverCategoriaAberto}
+                onOpenChange={setPopoverCategoriaAberto}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="h-10 w-[280px] justify-between"
+                  >
+                    <span className="truncate">
+                      {categoriaSelecionada?.nome || "Selecionar categoria"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[320px] p-2" align="start">
+                  <Input
+                    value={buscaCategoria}
+                    onChange={(e) => setBuscaCategoria(e.target.value)}
+                    placeholder="Buscar categoria..."
+                    className="mb-2 h-9"
+                  />
+                  <div className="max-h-56 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoriaSelecionadaId("")
+                        setPopoverCategoriaAberto(false)
+                        setBuscaCategoria("")
+                      }}
+                      className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                    >
+                      Todas as categorias
+                    </button>
+                    {categoriasFiltradas.map((categoria) => (
+                      <button
+                        key={categoria.id}
+                        type="button"
+                        onClick={() => {
+                          setCategoriaSelecionadaId(categoria.id)
+                          setPopoverCategoriaAberto(false)
+                          setBuscaCategoria("")
+                        }}
+                        className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                      >
+                        {categoria.nome}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            }
             actionsContent={(row) => (
               <Link href={`/admin/products/${row.id}/edit`}>
                 ✏️

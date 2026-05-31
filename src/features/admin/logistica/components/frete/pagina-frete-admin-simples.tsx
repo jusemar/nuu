@@ -243,6 +243,52 @@ function PaginacaoSimples({
   );
 }
 
+function descreverTipoAlvoRegra({
+  servicoFreteId,
+  transportadoraFreteId,
+  provedorFreteId,
+}: {
+  servicoFreteId: string | null;
+  transportadoraFreteId: string | null;
+  provedorFreteId: string | null;
+}) {
+  if (servicoFreteId) return "Serviço";
+  if (transportadoraFreteId) return "Transportadora";
+  if (provedorFreteId) return "Provedor";
+  return "Todos";
+}
+
+function descreverAlvoRegra({
+  servicoNome,
+  transportadoraNome,
+  provedorNome,
+}: {
+  servicoNome: string | null;
+  transportadoraNome: string | null;
+  provedorNome: string | null;
+}) {
+  if (servicoNome) return servicoNome;
+  if (transportadoraNome) return transportadoraNome;
+  if (provedorNome) return provedorNome;
+  return "Todos os serviços da classificação";
+}
+
+function descreverImpactoRegraClassificacao({
+  classificacao,
+  efeito,
+  alvo,
+}: {
+  classificacao: string;
+  efeito: "permitir" | "bloquear";
+  alvo: string;
+}) {
+  if (efeito === "bloquear") {
+    return `Produtos classificados como ${classificacao} não mostrarão ${alvo}.`;
+  }
+
+  return `Produtos classificados como ${classificacao} exibirão ${alvo}.`;
+}
+
 export function PaginaFreteAdminSimples({
   provedores,
   transportadoras,
@@ -573,6 +619,9 @@ export function PaginaFreteAdminSimples({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="space-y-4">
+          <div className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs font-medium">
+            BLOCO 1 — Integração e catálogo operacional
+          </div>
           <SecaoFreteOperacional
             valor="frenet"
             numero={1}
@@ -914,20 +963,20 @@ Impacto no checkout: serviços da transportadora desativada deixam de aparecer."
           <SecaoFreteOperacional
             valor="categoria"
             numero={3}
-            titulo="Regras por categoria"
-            descricao="Bloqueios e permissões de base para grupos de produtos."
-            ajuda="O que é: regra aplicada à categoria do produto.
-Para que serve: criar política ampla sem tratar item por item.
-Quando usar: regra padrão por família de produto.
-Exemplo real: categoria Colchões bloqueia PAC.
-Impacto no checkout: produtos da categoria deixam de listar PAC, salvo regra mais prioritária."
+            titulo="Base operacional e provedores"
+            descricao="Checklist operacional, filtros e gestão de provedores de frete."
+            ajuda="O que é: base mínima para operar o frete externo.
+Para que serve: validar consistência de provedor, transportadora e serviço.
+Quando usar: antes de começar a criar regras de disponibilidade.
+Exemplo real: sem provedor ativo e sem serviço ativo a cotação não deve ser validada.
+Impacto no checkout: evita cenário com catálogo incompleto."
             contador={
               <Badge variant="secondary">
-                {regrasCategoriasFiltradas.length} regra(s)
+                {provedoresAtivos.length}/{provedores.length} ativos
               </Badge>
             }
-            cor="amarelo"
-            icone={iconesSecoesFrete.categoria}
+            cor="azul"
+            icone={iconesSecoesFrete.frenet}
           >
             <Card>
               <CardHeader>
@@ -1060,23 +1109,27 @@ Impacto no checkout: produtos da categoria deixam de listar PAC, salvo regra mai
             </Card>
           </SecaoFreteOperacional>
 
+          <div className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs font-medium">
+            BLOCO 2 — Motor de regras logísticas
+          </div>
+
           <SecaoFreteOperacional
             valor="servicos"
             numero={4}
-            titulo="Serviços de frete disponíveis"
-            descricao="Ativação operacional e limites de serviços por transportadora."
-            ajuda="O que é: opções de frete exibíveis ao cliente.
-Para que serve: definir quais serviços entram na cotação.
-Quando usar: após sincronizar catálogo ou ajustar operação.
-Exemplo real: manter Jadlog Package ativo e desativar SEDEX 10.
-Impacto no checkout: serviço inativo some da lista de opções."
+            titulo="Regras por categoria"
+            descricao="Bloqueios e permissões de base para grupos de produtos."
+            ajuda="O que é: regra aplicada à categoria do produto.
+Para que serve: criar política ampla sem tratar item por item.
+Quando usar: regra padrão por família de produto.
+Exemplo real: categoria Colchões bloqueia PAC.
+Impacto no checkout: produtos da categoria deixam de listar PAC, salvo regra mais prioritária."
             contador={
-              <Badge variant="outline">
-                {servicosAtivos.length}/{servicos.length} ativos
+              <Badge variant="secondary">
+                {regrasCategoriasFiltradas.length} regra(s)
               </Badge>
             }
-            cor="verde"
-            icone={iconesSecoesFrete.servicos}
+            cor="amarelo"
+            icone={iconesSecoesFrete.categoria}
           >
             <Card>
               <CardHeader>
@@ -1269,20 +1322,20 @@ Impacto no checkout: serviço inativo some da lista de opções."
           <SecaoFreteOperacional
             valor="produto"
             numero={5}
-            titulo="Regras por produto específico"
-            descricao="Exceções de maior prioridade para itens pontuais."
-            ajuda="O que é: regra exclusiva de um produto.
-Para que serve: sobrescrever categoria e tipo logístico em casos específicos.
-Quando usar: exceções operacionais pontuais.
-Exemplo real: produto X permite PAC mesmo com categoria bloqueando PAC.
-Impacto no checkout: este produto mostra opções diferentes dos demais."
+            titulo="Transportadoras do catálogo"
+            descricao="CRUD de transportadoras, status e capacidade operacional."
+            ajuda="O que é: catálogo de transportadoras retornadas pela integração.
+Para que serve: controlar quem pode operar no frete externo.
+Quando usar: após sincronização e antes de validar regras.
+Exemplo real: desativar Correios bloqueia PAC/SEDEX dessa transportadora.
+Impacto no checkout: serviços da transportadora desativada deixam de aparecer."
             contador={
-              <Badge variant="secondary">
-                {regrasProdutosFiltradas.length} regra(s)
+              <Badge variant="outline">
+                {transportadorasAtivas.length}/{transportadoras.length} ativas
               </Badge>
             }
-            cor="coral"
-            icone={iconesSecoesFrete.produto}
+            cor="verde"
+            icone={iconesSecoesFrete.transportadoras}
           >
             <Card>
               <CardHeader>
@@ -1451,16 +1504,17 @@ Impacto no checkout: este produto mostra opções diferentes dos demais."
           <SecaoFreteOperacional
             valor="tipo"
             numero={6}
-            titulo="Regras por tipo / classificação logística"
-            descricao="Camada intermediária: vence categoria e perde para produto."
-            ajuda="O que é: regra por classificação logística (ex.: pesado, frágil).
-Para que serve: controlar grupos por comportamento logístico.
-Quando usar: quando vários produtos compartilham a mesma restrição.
-Exemplo real: tipo Produto pesado permite somente Jadlog.
-Impacto no checkout: filtra serviços para todos os produtos com esse tipo."
+            titulo="Serviços e regras logísticas"
+            descricao="Catálogo de serviços e políticas por categoria, produto e classificação logística."
+            ajuda="O que é: painel consolidado de serviços, regras e classificações.
+Para que serve: gerir exceções e políticas de disponibilidade.
+Quando usar: após catálogo operacional estar consistente.
+Exemplo real: tipo Produto pesado permite somente Jadlog e produto específico sobrescreve.
+Impacto no checkout: aplica filtros finais antes da exibição para o cliente."
             contador={
               <Badge variant="secondary">
-                {regrasTiposLogisticos.length} regra(s)
+                {regrasTiposLogisticos.length + regrasProdutosFiltradas.length}{" "}
+                regra(s)
               </Badge>
             }
             cor="violeta"
@@ -2000,9 +2054,13 @@ Impacto no checkout: filtra serviços para todos os produtos com esse tipo."
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Regras por tipo / classificação logística
+                  Regras por classificação logística
                   <AjudaOperacional texto="Prioridade intermediária. Vence categoria e perde para regra de produto específico." />
                 </CardTitle>
+                <p className="text-muted-foreground text-sm">
+                  Classificação define comportamento logístico em lote. Categoria
+                  organiza o catálogo; classificação refina a operação de frete.
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <form
@@ -2063,7 +2121,7 @@ Impacto no checkout: filtra serviços para todos os produtos com esse tipo."
                     ))}
                   </select>
                   <Button type="submit" size="sm">
-                    Criar Regra
+                    + Nova regra
                   </Button>
                 </form>
 
@@ -2077,9 +2135,76 @@ Impacto no checkout: filtra serviços para todos os produtos com esse tipo."
                   <div className="space-y-2">
                     {regrasTiposLogisticos.map((regra) => (
                       <div key={regra.id} className="rounded-md border p-3">
-                        <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-2 text-sm">
-                          <StatusAtivo ativo={regra.ativo} />
-                          <span>{regra.tipoLogisticoNome}</span>
+                        <div className="mb-3 rounded-md border p-3">
+                          <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                            Classificação
+                          </p>
+                          <p className="text-sm font-medium">
+                            {regra.tipoLogisticoNome}
+                          </p>
+                        </div>
+                        <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                          <div>
+                            <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                              Ação
+                            </p>
+                            <p className="text-sm font-medium">
+                              {regra.efeito === "bloquear"
+                                ? "Bloquear"
+                                : "Permitir"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                              Tipo do alvo
+                            </p>
+                            <p className="text-sm font-medium">
+                              {descreverTipoAlvoRegra({
+                                servicoFreteId: regra.servicoFreteId,
+                                transportadoraFreteId:
+                                  regra.transportadoraFreteId,
+                                provedorFreteId: regra.provedorFreteId,
+                              })}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                              Alvo
+                            </p>
+                            <p className="text-sm font-medium">
+                              {descreverAlvoRegra({
+                                servicoNome: regra.servicoNome,
+                                transportadoraNome: regra.transportadoraNome,
+                                provedorNome: regra.provedorNome,
+                              })}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                              Status
+                            </p>
+                            <StatusAtivo ativo={regra.ativo} />
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                              Impacto
+                            </p>
+                            <p className="text-sm">
+                              {descreverImpactoRegraClassificacao({
+                                classificacao: regra.tipoLogisticoNome,
+                                efeito:
+                                  regra.efeito === "permitir"
+                                    ? "permitir"
+                                    : "bloquear",
+                                alvo: descreverAlvoRegra({
+                                  servicoNome: regra.servicoNome,
+                                  transportadoraNome:
+                                    regra.transportadoraNome,
+                                  provedorNome: regra.provedorNome,
+                                }),
+                              })}
+                            </p>
+                          </div>
                         </div>
                         <form
                           action={async (formData) => {
@@ -2188,9 +2313,13 @@ Impacto no checkout: filtra serviços para todos os produtos com esse tipo."
             </Card>
           </SecaoFreteOperacional>
 
+          <div className="text-muted-foreground rounded-md border border-dashed px-3 py-2 text-xs font-medium">
+            BLOCO 3 — Modalidades independentes
+          </div>
+
           <SecaoFreteOperacional
             valor="retirada"
-            numero={7}
+            numero={9}
             titulo="Entrega própria e retirada"
             descricao="Fluxos independentes da Frenet, mantidos nas áreas operacionais próprias."
             ajuda="O que é: modalidades internas da operação.

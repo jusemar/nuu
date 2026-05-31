@@ -45,6 +45,11 @@ const CategoryTree = ({
   onItemClick?: () => void;
 }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const categoriasOrdenadas = [...categories].sort((a, b) =>
+    String(a.name ?? "").localeCompare(String(b.name ?? ""), "pt-BR", {
+      sensitivity: "base",
+    }),
+  );
 
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,7 +89,7 @@ const CategoryTree = ({
 
   return (
     <div className="space-y-1">
-      {categories.map((category) => {
+      {categoriasOrdenadas.map((category) => {
         const hasChildren = category.children && category.children.length > 0;
         const isExpanded = expandedItems.has(category.id);
         const isRootLevel = depth === 0;
@@ -250,7 +255,7 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-80 sm:w-96 p-0">
+      <SheetContent side="left" className="w-64 sm:w-72 p-0">
         <SheetHeader className="p-4 border-b border-gray-200">
           <SheetTitle className="font-bold text-lg text-gray-900">
             Categorias

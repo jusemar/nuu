@@ -23,7 +23,7 @@ type CategoryToDelete = {
 interface DeleteCategoryModalProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: (type: 'hard') => void  // Agora só aceita 'hard'
+  onConfirm: (type: 'soft' | 'hard') => void
   category: CategoryToDelete | null
   type: 'ok' | 'blocked' // 'ok' = pode excluir, 'blocked' = tem subcategorias
 }
@@ -177,7 +177,7 @@ export function DeleteCategoryModal({
             <Button
               type="button"
               onClick={() => {
-                onConfirm('hard')  // Sempre 'hard' (exclusão definitiva)
+                onConfirm('hard')
                 onClose()
               }}
               className="flex-1 bg-red-600 text-white hover:bg-red-700"

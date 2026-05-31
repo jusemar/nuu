@@ -2,7 +2,10 @@ import "server-only";
 
 import { db } from "@/db/connection";
 import { provedoresFreteTable, transportadorasFreteTable } from "@/db/schema";
-import { erroTabelaLogisticaAusente } from "@/features/admin/logistica/lib/erro-tabela-logistica-ausente";
+import {
+  erroConexaoLogisticaIndisponivel,
+  erroTabelaLogisticaAusente,
+} from "@/features/admin/logistica/lib/erro-tabela-logistica-ausente";
 import { asc, eq } from "drizzle-orm";
 
 export async function listarTransportadorasFrete() {
@@ -33,7 +36,12 @@ export async function listarTransportadorasFrete() {
         asc(transportadorasFreteTable.nome),
       );
   } catch (erro) {
-    if (erroTabelaLogisticaAusente(erro)) return [];
+    if (
+      erroTabelaLogisticaAusente(erro) ||
+      erroConexaoLogisticaIndisponivel(erro)
+    ) {
+      return [];
+    }
     throw erro;
   }
 }

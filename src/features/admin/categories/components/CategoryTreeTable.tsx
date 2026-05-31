@@ -33,6 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { DeleteCategoryModal } from "./DeleteCategoryModal";
 import Link from "next/link";
@@ -40,6 +46,7 @@ import { useDeleteCategory } from "../hooks/useDeleteCategory";
 import { useRestoreCategory } from "../hooks/useRestoreCategory";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCategoryList } from "../hooks/useCategoryList";
+import { getProdutosVinculadosDaCategoria } from "../services/categoryService";
 
 // Tipo usado na árvore de categorias
 type TreeCategory = {
@@ -124,6 +131,7 @@ const TreeRow = ({
   onDeleteClick,
   onRestoreClick,
   onStatusChange,
+  onAbrirProdutosVinculados,
   searchTerm,
 }: {
   category: TreeCategory;
@@ -132,11 +140,13 @@ const TreeRow = ({
   toggleExpand: (id: string) => void;
   onDeleteClick: (category: TreeCategory) => void;
   onRestoreClick: (categoryId: string) => void;
-  onStatusChange: (id: string, status: boolean) => void
+  onStatusChange: (id: string, status: boolean) => void;
+  onAbrirProdutosVinculados: (category: TreeCategory) => void;
   searchTerm: string;
 }) => {
   const hasChildren = category.children && category.children.length > 0;
   const isExpanded = expandedItems.has(category.id);
+  const possuiProdutosVinculados = (category.productCount ?? 0) > 0;
 
   // Destacar texto quando corresponder à busca
   const highlightText = (text: string) => {
@@ -168,6 +178,7 @@ const TreeRow = ({
 
   // Verifica se pode excluir (não pode se tiver filhos E deve ser nível 0)
   const canDelete = !hasChildren && level === 0;
+  const podeExcluirPermanentemente = canDelete && !possuiProdutosVinculados;
 
   return (
     <>
@@ -280,8 +291,18 @@ const TreeRow = ({
 
                 {/* Badge de produtos */}
                 {category.productCount && category.productCount > 0 && (
-                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">
+                  <button
+                    type="button"
+                    onClick={() => onAbrirProdutosVinculados(category)}
+                    className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 transition-colors hover:bg-blue-200"
+                    title="Ver produtos vinculados"
+                  >
                     {category.productCount} itens
+                  </button>
+                )}
+                {canDelete && possuiProdutosVinculados && (
+                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] text-red-700">
+                    Excluir bloqueado
                   </span>
                 )}
               </div>
@@ -367,9 +388,22 @@ const TreeRow = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-slate-500 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => onDeleteClick(category)}
-                    title="Excluir categoria"
+                    className={cn(
+                      "h-7 w-7",
+                      podeExcluirPermanentemente
+                        ? "text-slate-500 hover:bg-red-50 hover:text-red-600"
+                        : "cursor-not-allowed text-slate-300 hover:bg-transparent hover:text-slate-300",
+                    )}
+                    onClick={() => {
+                      if (!podeExcluirPermanentemente) return;
+                      onDeleteClick(category);
+                    }}
+                    disabled={!podeExcluirPermanentemente}
+                    title={
+                      podeExcluirPermanentemente
+                        ? "Excluir categoria"
+                        : "Categoria com produtos vinculados. Altere a categoria dos produtos antes de excluir."
+                    }
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -410,6 +444,7 @@ const TreeRow = ({
               onDeleteClick={onDeleteClick}
               onRestoreClick={onRestoreClick}
               onStatusChange={onStatusChange}
+              onAbrirProdutosVinculados={onAbrirProdutosVinculados}
               searchTerm={searchTerm}
             />
           ))}
@@ -436,6 +471,13 @@ export function CategoryTreeTable() {
   const [categoryToDelete, setCategoryToDelete] = useState<TreeCategory | null>(
     null,
   );
+  const [modalProdutosAberto, setModalProdutosAberto] = useState(false);
+  const [categoriaProdutosNome, setCategoriaProdutosNome] = useState("");
+  const [carregandoProdutosVinculados, setCarregandoProdutosVinculados] =
+    useState(false);
+  const [produtosVinculados, setProdutosVinculados] = useState<
+    { id: string; sku: string; nome: string }[]
+  >([]);
 
   // ✅ HOOK NOVO - substitui o fetch manual
   const {
@@ -477,7 +519,7 @@ export function CategoryTreeTable() {
         updatedAt: item.updatedAt ?? item.createdAt ?? "",
         deleted_at: null,
         status: item.isActive ? "active" : "inactive",
-        productCount: undefined,
+        productCount: Number(item.productCount || 0),
         children: [],
       });
     });
@@ -550,6 +592,25 @@ export function CategoryTreeTable() {
         },
       },
     );
+  };
+
+  const handleAbrirProdutosVinculados = async (category: TreeCategory) => {
+    setCategoriaProdutosNome(category.name);
+    setModalProdutosAberto(true);
+    setCarregandoProdutosVinculados(true);
+    setProdutosVinculados([]);
+
+    try {
+      const produtos = await getProdutosVinculadosDaCategoria(category.id);
+      setProdutosVinculados(produtos);
+    } catch (error) {
+      console.error(
+        "[CategoryTreeTable] Erro ao buscar produtos vinculados:",
+        error,
+      );
+    } finally {
+      setCarregandoProdutosVinculados(false);
+    }
   };
 
   // Função para restaurar uma categoria inativa
@@ -825,7 +886,8 @@ export function CategoryTreeTable() {
                     toggleExpand={toggleExpand}
                     onDeleteClick={handleDeleteClick}
                     onRestoreClick={handleRestoreClick}
-                     onStatusChange={handleStatusChange}
+                    onStatusChange={handleStatusChange}
+                    onAbrirProdutosVinculados={handleAbrirProdutosVinculados}
                     searchTerm={searchTerm}
                   />
                 ))
@@ -955,6 +1017,40 @@ export function CategoryTreeTable() {
         }
         type={deleteModalType}
       />
+
+      <Dialog open={modalProdutosAberto} onOpenChange={setModalProdutosAberto}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Produtos vinculados: {categoriaProdutosNome}</DialogTitle>
+          </DialogHeader>
+
+          <div className="max-h-80 overflow-y-auto rounded border border-slate-200">
+            {carregandoProdutosVinculados ? (
+              <div className="p-4 text-sm text-slate-500">Carregando...</div>
+            ) : produtosVinculados.length === 0 ? (
+              <div className="p-4 text-sm text-slate-500">
+                Nenhum produto vinculado.
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-200">
+                {produtosVinculados.map((produto) => (
+                  <li
+                    key={produto.id}
+                    className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
+                  >
+                    <span className="font-medium text-slate-700">
+                      {produto.sku}
+                    </span>
+                    <span className="flex-1 truncate text-right text-slate-600">
+                      {produto.nome}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
         <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-900">

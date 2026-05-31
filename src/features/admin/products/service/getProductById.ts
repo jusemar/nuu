@@ -15,6 +15,7 @@ import {
   productAttributeTable,
   productVariantTable,
   categoryTable, // Tabela de categorias (para buscar o nome da categoria)
+  marcaTable,
   modelosRetiradaTable, // Tabela de modelos de retirada
 } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
@@ -45,6 +46,7 @@ export async function getProductById(id: string) {
         description: productTable.description,
         cardShortText: productTable.cardShortText,
         brand: productTable.brand,
+        brandId: productTable.marcaId,
         sku: productTable.sku,
         isActive: productTable.isActive,
         collection: productTable.collection,
@@ -107,6 +109,7 @@ export async function getProductById(id: string) {
       .from(productTable)
       // LEFT JOIN: traz o nome da categoria mesmo se o produto não tiver categoria
       .leftJoin(categoryTable, eq(categoryTable.id, productTable.categoryId))
+      .leftJoin(marcaTable, eq(marcaTable.id, productTable.marcaId))
       // LEFT JOIN: traz o modelo de retirada relacionado
       .leftJoin(
         modelosRetiradaTable,

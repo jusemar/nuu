@@ -269,6 +269,11 @@ export async function getAllCategories(): Promise<Category[]> {
         metaTitle: categoryTable.metaTitle,
         metaDescription: categoryTable.metaDescription,
         isActive: categoryTable.isActive,
+        productCount: sql<number>`(
+          select count(*)::int
+          from product p
+          where p.category_id = category.id
+        )`,
         createdAt: categoryTable.createdAt,
         updatedAt: categoryTable.updatedAt,
       })
@@ -288,6 +293,7 @@ export async function getAllCategories(): Promise<Category[]> {
       metaTitle: cat.metaTitle,
       metaDescription: cat.metaDescription,
       isActive: cat.isActive,
+      productCount: Number(cat.productCount || 0),
       createdAt: cat.createdAt,
       updatedAt: cat.updatedAt,
     }));
@@ -571,7 +577,25 @@ export async function deleteCategory(
 ) {
   try {
     if (type === "hard") {
+      const subcategorias = await getDescendantCategories(id);
+
+      if (subcategorias.length > 0) {
+        throw new Error(
+          "Não é possível excluir permanentemente: a categoria possui subcategorias vinculadas.",
+        );
+      }
+
+      const contagemProdutos = await getProductCountsByCategoryIds([id]);
+      const totalProdutos = Number(contagemProdutos.get(id) || 0);
+
+      if (totalProdutos > 0) {
+        throw new Error(
+          `Não é possível excluir permanentemente: existem ${totalProdutos} produto(s) vinculado(s) a esta categoria.`,
+        );
+      }
+
       await db.delete(categoryTable).where(eq(categoryTable.id, id));
+      console.log(`🟢 [deleteCategory] Categoria removida em hard delete: ${id}`);
     } else {
       await db
         .update(categoryTable)
@@ -580,11 +604,14 @@ export async function deleteCategory(
           updatedAt: new Date(),
         })
         .where(eq(categoryTable.id, id));
+      console.log(`🟢 [deleteCategory] Categoria marcada como inativa (soft delete): ${id}`);
     }
     return { success: true };
   } catch (error) {
     console.error("❌ [deleteCategory] Erro:", error);
-    throw new Error("Falha ao excluir categoria");
+    throw new Error(
+      error instanceof Error ? error.message : "Falha ao excluir categoria",
+    );
   }
 }
 
@@ -625,5 +652,29 @@ export async function getCategoriesByLevel(level: number = 0) {
   } catch (error) {
     console.error("❌ [getCategoriesByLevel] Erro:", error);
     throw new Error("Falha ao buscar categorias por nível");
+  }
+}
+
+export async function getProdutosVinculadosDaCategoria(categoryId: string) {
+  try {
+    const produtos = await db
+      .select({
+        id: productTable.id,
+        sku: productTable.sku,
+        nome: productTable.name,
+      })
+      .from(productTable)
+      .where(eq(productTable.categoryId, categoryId))
+      .orderBy(asc(productTable.name))
+      .limit(200);
+
+    return produtos.map((produto) => ({
+      id: produto.id,
+      sku: produto.sku,
+      nome: produto.nome,
+    }));
+  } catch (error) {
+    console.error("❌ [getProdutosVinculadosDaCategoria] Erro:", error);
+    throw new Error("Falha ao buscar produtos vinculados da categoria");
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, LayoutGrid, Search } from "lucide-react";
 import {
@@ -262,32 +263,62 @@ export function CampoBuscaProdutos() {
               <ul className="pb-2">
                 {produtosEncontrados.map((produto) => (
                   <li key={produto.id}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
-                    >
-                      <img
-                        src={produto.imagemUrl ?? "/produto-sem-foto.webp"}
-                        alt=""
-                        className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-800">
-                          {produto.nome}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {produto.categoriaNome ?? "Sem categoria"}
-                        </p>
+                    {produto.slug ? (
+                      <Link
+                        href={`/product/${produto.slug}`}
+                        onClick={() => {
+                          setSugestoesAbertas(false);
+                          setDropdownAberto(false);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
+                      >
+                        <img
+                          src={produto.imagemUrl ?? "/produto-sem-foto.webp"}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-800">
+                            {produto.nome}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {produto.categoriaNome ?? "Sem categoria"}
+                          </p>
+                        </div>
+                        {produto.precoEmCentavos !== null && (
+                          <span
+                            className="shrink-0 text-sm font-semibold"
+                            style={{ color: marca.navy }}
+                          >
+                            {formatarPreco(produto.precoEmCentavos)}
+                          </span>
+                        )}
+                      </Link>
+                    ) : (
+                      <div className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+                        <img
+                          src={produto.imagemUrl ?? "/produto-sem-foto.webp"}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-800">
+                            {produto.nome}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {produto.categoriaNome ?? "Sem categoria"}
+                          </p>
+                        </div>
+                        {produto.precoEmCentavos !== null && (
+                          <span
+                            className="shrink-0 text-sm font-semibold"
+                            style={{ color: marca.navy }}
+                          >
+                            {formatarPreco(produto.precoEmCentavos)}
+                          </span>
+                        )}
                       </div>
-                      {produto.precoEmCentavos !== null && (
-                        <span
-                          className="shrink-0 text-sm font-semibold"
-                          style={{ color: marca.navy }}
-                        >
-                          {formatarPreco(produto.precoEmCentavos)}
-                        </span>
-                      )}
-                    </button>
+                    )}
                   </li>
                 ))}
               </ul>

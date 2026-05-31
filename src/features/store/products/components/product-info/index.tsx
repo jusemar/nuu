@@ -16,17 +16,13 @@
 
 "use client";
 
-import { useState } from "react";
-
 import { Stars } from "@/components/ui/stars";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 
 import type {
   AtributoProdutoLoja,
-  Cor,
   Modalidade,
   PrecoModalidade,
-  Tamanho,
   VarianteProdutoLoja,
 } from "../../types/product.types";
 import { PricingModalities } from "../PricingModalities";
@@ -46,9 +42,6 @@ interface ProductInfoProps {
   vendedor?: string;
   vendedorRating?: number;
   descricao: string;
-  cores?: Record<Cor, string>;
-  tamanhos?: Tamanho[];
-  corInicial?: Cor;
 
   // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===
   // Antes: ProductInfo gerenciava sozinho (estado local)
@@ -76,14 +69,6 @@ export function ProductInfo({
   vendedor,
   vendedorRating = 0,
   descricao,
-  cores = {
-    preto: "#111827",
-    branco: "#FFFFFF",
-    azul: "#2563EB",
-    vermelho: "#DC2626",
-  },
-  tamanhos = [],
-  corInicial = "preto",
   // === NOVAS PROPS (estado global) ===
   modalidadesDisponiveis,
   modalidadeAtiva,
@@ -95,28 +80,6 @@ export function ProductInfo({
   selectedVariant = null,
   onSelectVariant,
 }: ProductInfoProps) {
-  // -----------------------------------------
-  // ESTADOS LOCAIS (mantidos - não afetam outros componentes)
-  // -----------------------------------------
-  // Cor selecionada (independente por produto)
-  const [corSel, setCorSel] = useState<Cor>(corInicial);
-
-  // Tamanho selecionado
-  const [tamSel, setTamSel] = useState<Tamanho | null>(null);
-
-  // -----------------------------------------
-  // DADOS AUXILIARES
-  // -----------------------------------------
-  // Descrição de cada tamanho em centímetros
-  const tamDesc: Record<Tamanho, string> = {
-    "38": "23.5cm",
-    "39": "24.5cm",
-    "40": "25cm",
-    "41": "25.5cm",
-    "42": "26cm",
-    "43": "27cm",
-    "44": "27.5cm",
-  };
   const hasRealVariants =
     productKind === "variable" &&
     variants.length > 0 &&
@@ -124,8 +87,6 @@ export function ProductInfo({
   const isVariableProduct = productKind === "variable";
   const mostrarAvaliacoes =
     rating > 0 || totalAvaliacoes > 0 || Boolean(vendedor?.trim());
-  const mostrarPaletaCores = Object.keys(cores).length > 0;
-  const mostrarTamanhos = tamanhos.length > 0;
 
   // -----------------------------------------
   // RENDER
@@ -210,82 +171,7 @@ export function ProductInfo({
           Este produto está sem variantes disponíveis no momento.
         </p>
       ) : (
-        <>
-          {/* -----------------------------------------
-              SELETOR DE COR
-              ----------------------------------------- */}
-          {mostrarPaletaCores ? (
-            <div>
-            <div className="mb-2.5 flex items-center gap-2">
-              <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
-                Cor
-              </span>
-              <span className="text-text-muted text-xs font-medium capitalize">
-                {corSel}
-              </span>
-            </div>
-
-            <div className="flex gap-2">
-              {(Object.keys(cores) as Cor[]).map((cor) => (
-                <button
-                  key={cor}
-                  onClick={() => setCorSel(cor)}
-                  title={cor}
-                  className={`h-7 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 transition-all ${
-                    corSel === cor
-                      ? "outline-primary outline outline-2 outline-offset-2"
-                      : ""
-                  }`}
-                  style={{
-                    backgroundColor: cores[cor],
-                    borderColor:
-                      cores[cor] === "#f5f5f0" ? "#D1D5DB" : cores[cor],
-                  }}
-                />
-              ))}
-            </div>
-            </div>
-          ) : null}
-
-          {/* -----------------------------------------
-              SELETOR DE TAMANHO
-              ----------------------------------------- */}
-          {mostrarTamanhos ? (
-            <div>
-            <div className="mb-2.5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-text-primary text-xs font-bold tracking-wider uppercase">
-                  Tamanho
-                </span>
-                {tamSel && (
-                  <span className="text-text-muted text-xs">
-                    — {tamDesc[tamSel]}
-                  </span>
-                )}
-              </div>
-              <a href="#" className="text-primary text-xs underline">
-                Guia de tamanhos
-              </a>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {tamanhos.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTamSel(t)}
-                  className={`flex h-[38px] min-w-[42px] items-center justify-center rounded-lg border-[1.5px] bg-white px-2 text-[13px] font-semibold transition-all ${
-                    tamSel === t
-                      ? "border-primary bg-primary text-white"
-                      : "border-surface-border text-text-primary hover:border-primary-mid"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            </div>
-          ) : null}
-        </>
+        null
       )}
 
       {/* DIVISOR */}

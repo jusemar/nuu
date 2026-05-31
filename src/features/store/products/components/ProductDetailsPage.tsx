@@ -76,6 +76,7 @@ interface ProductDetailProps {
       ativo: boolean | null;
     } | null;
   };
+  breadcrumbCategorias: string[];
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
   precosCalculadosPorVariante: PrecosProdutoPorModalidade;
 }
@@ -85,9 +86,15 @@ interface ProductDetailProps {
 // ==========================================
 export function ProductDetail({
   product,
+  breadcrumbCategorias,
   precosCalculadosPorModalidade,
   precosCalculadosPorVariante,
 }: ProductDetailProps) {
+  const caminhoCategorias =
+    breadcrumbCategorias.length > 0
+      ? `${breadcrumbCategorias.join(" / ")} / `
+      : "";
+
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
 
@@ -351,7 +358,7 @@ export function ProductDetail({
       <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6">
         <div className="text-text-hint flex gap-1.5 text-xs">
           <span>
-            Home / Tênis / Corrida /
+            Home / {caminhoCategorias}
             <span className="text-primary ml-1 font-semibold">
               {product.name}
             </span>

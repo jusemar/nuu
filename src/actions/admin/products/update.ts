@@ -6,6 +6,7 @@ import {
   productTable,
   productPricingTable,
   productGalleryImagesTable,
+  marcaTable,
 } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
@@ -44,6 +45,7 @@ interface UpdateProductData {
   description?: string;
   cardShortText?: string;
   categoryId?: string;
+  brandId?: string;
   brand?: string;
   sku?: string;
   isActive?: boolean;
@@ -96,6 +98,27 @@ interface UpdateProductData {
   variants?: ProductVariantFormInput[];
 }
 
+async function buscarMarcaPadrao() {
+  const [marcaPadrao] = await db
+    .select({ id: marcaTable.id, nome: marcaTable.nome })
+    .from(marcaTable)
+    .where(eq(marcaTable.slug, "generico"))
+    .limit(1);
+
+  if (!marcaPadrao) throw new Error("Marca padrão Genérico não encontrada");
+  return marcaPadrao;
+}
+
+async function buscarMarcaPorId(id: string) {
+  const [marca] = await db
+    .select({ id: marcaTable.id, nome: marcaTable.nome })
+    .from(marcaTable)
+    .where(eq(marcaTable.id, id))
+    .limit(1);
+
+  return marca ?? null;
+}
+
 export async function updateProduct(id: string, data: UpdateProductData) {
   try {
     const [existingProduct] = await db
@@ -116,6 +139,16 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updatedAt: new Date(), // Sempre atualiza
     };
 
+    if (data.brandId !== undefined) {
+      const marcaPadrao = await buscarMarcaPadrao();
+      const marcaSelecionada = data.brandId
+        ? await buscarMarcaPorId(data.brandId)
+        : null;
+      const marcaFinal = marcaSelecionada ?? marcaPadrao;
+      updateFields.marcaId = marcaFinal.id;
+      updateFields.brand = marcaFinal.nome;
+    }
+
     // Apenas adiciona campos que foram explicitamente enviados
     if (data.name !== undefined) updateFields.name = data.name;
     if (data.slug !== undefined) updateFields.slug = data.slug;
@@ -125,7 +158,6 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updateFields.cardShortText = data.cardShortText;
     if (data.categoryId !== undefined)
       updateFields.categoryId = data.categoryId;
-    if (data.brand !== undefined) updateFields.brand = data.brand;
     if (data.sku !== undefined) updateFields.sku = data.sku;
     if (data.isActive !== undefined) updateFields.isActive = data.isActive;
     if (data.collection !== undefined)

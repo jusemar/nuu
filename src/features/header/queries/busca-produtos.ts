@@ -36,8 +36,16 @@ export async function buscarCategoriasPrincipais(): Promise<
   const resultado = await db.execute(sql`
     SELECT id, name, slug
     FROM category
-    WHERE parent_id IS NULL
-      AND level = 0
+    WHERE (
+      parent_id IS NULL
+      OR level = 0
+      OR EXISTS (
+        SELECT 1
+        FROM category filha
+        WHERE filha.parent_id = category.id
+          AND filha.is_active = true
+      )
+    )
       AND is_active = true
     ORDER BY name ASC;
   `);

@@ -97,6 +97,7 @@ export default function EditProductPage() {
         description: product.description || "",
         cardShortText: product.cardShortText || "",
         categoryId: product.categoryId || "",
+        brandId: product.brandId || "",
         brand: product.brand || "",
         sku: product.sku || "",
         isActive: product.isActive ?? true,

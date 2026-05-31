@@ -9,6 +9,7 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import { categoryTable } from "../categories/categories";
+import { marcaTable } from "../marcas/marcas";
 import { sql } from "drizzle-orm";
 import { modelosRetiradaTable } from "../retirada/modelos-retirada";
 
@@ -30,6 +31,11 @@ export const productTable = pgTable("product", {
   cardShortText: text("card_short_text"),
   description: text().notNull(),
   brand: text("brand"),
+  marcaId: uuid("marca_id")
+    .notNull()
+    .references(() => marcaTable.id, {
+      onDelete: "restrict",
+    }),
   storeProductFlags: text("store_product_flags").array().default([]),
 
   // Modelo comercial do produto: simples ou com variantes.

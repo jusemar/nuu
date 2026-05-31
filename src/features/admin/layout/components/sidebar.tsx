@@ -88,6 +88,12 @@ export const menuAdmin = [
         icon: "FolderIcon",
       },
       {
+        id: "marcas",
+        label: "Marcas",
+        href: "/admin/marcas",
+        icon: "Tag",
+      },
+      {
         id: "precificacao",
         label: "Precificação",
         href: "/admin/precificacao",

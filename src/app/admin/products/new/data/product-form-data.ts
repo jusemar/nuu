@@ -28,6 +28,7 @@ export interface ProductFormData {
   description: string;
   cardShortText: string;
   categoryId: string;
+  brandId: string;
   brand: string;
   sku: string;
   isActive: boolean;
@@ -110,6 +111,7 @@ export const initialProductData: ProductFormData = {
   description: "",
   cardShortText: "",
   categoryId: "",
+  brandId: "",
   brand: "",
   sku: "",
   isActive: true,

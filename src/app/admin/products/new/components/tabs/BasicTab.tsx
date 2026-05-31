@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -21,8 +22,10 @@ import {
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Box,
+  ChevronsUpDown,
   CheckCircle2,
   DollarSign,
   Info,
@@ -44,6 +47,7 @@ import {
 import { StoreProductFlags } from "@/components/admin/store-product-flags";
 import { CategoryTreeSelector } from "@/features/admin/products/components/CategoryTreeSelector";
 import type { ProductKind } from "@/features/products";
+import { listarMarcasAtivas } from "@/features/admin/marcas/services/marcaService";
 
 interface BasicTabProps {
   data: {
@@ -51,6 +55,7 @@ interface BasicTabProps {
     slug: string;
     description: string;
     categoryId: string;
+    brandId: string;
     brand: string;
     sku: string;
     isActive: boolean;
@@ -72,6 +77,9 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
   const { generateSlug } = useSlugGenerator();
   const { generateSku } = useSkuGenerator();
   const [tagInput, setTagInput] = useState("");
+  const [marcas, setMarcas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [buscaMarca, setBuscaMarca] = useState("");
+  const [popoverMarcaAberto, setPopoverMarcaAberto] = useState(false);
 
   // Geração automática do SKU
   useEffect(() => {
@@ -92,6 +100,22 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
     generateSku,
     onChange,
   ]);
+
+  useEffect(() => {
+    let ativo = true;
+    listarMarcasAtivas().then((resultado) => {
+      if (!ativo) return;
+      setMarcas(resultado.map((item) => ({ id: item.id, nome: item.nome })));
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const marcaSelecionada = marcas.find((marca) => marca.id === data.brandId);
+  const marcasFiltradas = marcas.filter((marca) =>
+    marca.nome.toLowerCase().includes(buscaMarca.toLowerCase()),
+  );
 
   const addTag = (e: React.KeyboardEvent | React.MouseEvent) => {
     e.preventDefault();
@@ -263,14 +287,48 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="brand">Marca</Label>
-                <Input
-                  id="brand"
-                  placeholder="Samsung, Nike, Apple..."
-                  value={data.brand}
-                  onChange={(e) => onChange({ brand: e.target.value })}
-                  className="text-sm"
-                />
+                <Label>Marca</Label>
+                <Popover
+                  open={popoverMarcaAberto}
+                  onOpenChange={setPopoverMarcaAberto}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between text-sm"
+                    >
+                      <span className="truncate">
+                        {marcaSelecionada?.nome || "Selecione uma marca"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[320px] p-2" align="start">
+                    <Input
+                      value={buscaMarca}
+                      onChange={(e) => setBuscaMarca(e.target.value)}
+                      placeholder="Buscar marca..."
+                      className="mb-2 h-9"
+                    />
+                    <div className="max-h-56 overflow-y-auto">
+                      {marcasFiltradas.map((marca) => (
+                        <button
+                          key={marca.id}
+                          type="button"
+                          onClick={() => {
+                            onChange({ brandId: marca.id, brand: marca.nome });
+                            setPopoverMarcaAberto(false);
+                            setBuscaMarca("");
+                          }}
+                          className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                        >
+                          {marca.nome}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">

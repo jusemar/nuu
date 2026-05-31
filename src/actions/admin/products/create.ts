@@ -6,7 +6,9 @@ import {
   productGalleryImagesTable,
   productPricingTable,
   produtosTiposLogisticosTable,
+  marcaTable,
 } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
@@ -44,6 +46,7 @@ interface CreateProductData {
   description: string;
   cardShortText: string;
   categoryId: string;
+  brandId?: string;
   brand?: string;
   sku: string;
   productType?: string;
@@ -86,8 +89,35 @@ interface CreateProductData {
   variants?: ProductVariantFormInput[];
 }
 
+async function buscarMarcaPadrao() {
+  const [marcaPadrao] = await db
+    .select({ id: marcaTable.id, nome: marcaTable.nome })
+    .from(marcaTable)
+    .where(eq(marcaTable.slug, "generico"))
+    .limit(1);
+
+  if (!marcaPadrao) throw new Error("Marca padrão Genérico não encontrada");
+  return marcaPadrao;
+}
+
+async function buscarMarcaPorId(id: string) {
+  const [marca] = await db
+    .select({ id: marcaTable.id, nome: marcaTable.nome })
+    .from(marcaTable)
+    .where(eq(marcaTable.id, id))
+    .limit(1);
+
+  return marca ?? null;
+}
+
 export async function createProduct(data: CreateProductData) {
   try {
+    const marcaPadrao = await buscarMarcaPadrao();
+    const marcaSelecionada = data.brandId
+      ? await buscarMarcaPorId(data.brandId)
+      : null;
+    const marcaFinal = marcaSelecionada ?? marcaPadrao;
+
     // 1. Criar o produto principal
     const [product] = await db
       .insert(productTable)
@@ -96,7 +126,8 @@ export async function createProduct(data: CreateProductData) {
         slug: data.slug,
         description: data.description,
         categoryId: data.categoryId,
-        brand: data.brand,
+        marcaId: marcaFinal.id,
+        brand: marcaFinal.nome,
         sku: data.sku,
         productType: data.productType,
         productCode: data.productCode,

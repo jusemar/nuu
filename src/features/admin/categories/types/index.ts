@@ -39,6 +39,7 @@ export interface Category {
   level?: number;               
   imageUrl?: string | null;    
   subcategoriesCount?: number;
+  productCount?: number;
   subcategories?: HierarchicalSubcategory[];
 }
 

@@ -15,6 +15,7 @@ import {
 // ============================================
 
 import { categoryTable } from "./table/categories/categories";
+import { marcaTable } from "./table/marcas/marcas";
 import { productVariantTable } from "./table/products/product-variants";
 import { productTable } from "./table/products/products";
 import { productImageTable } from "./table/products/product-images";
@@ -295,6 +296,10 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
     fields: [productTable.categoryId],
     references: [categoryTable.id],
   }),
+  marca: one(marcaTable, {
+    fields: [productTable.marcaId],
+    references: [marcaTable.id],
+  }),
   variants: many(productVariantTable),
   attributes: many(productAttributeTable),
   pricing: many(productPricingTable),
@@ -309,6 +314,10 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
     fields: [productTable.modeloRetiradaId],
     references: [modelosRetiradaTable.id],
   }),
+}));
+
+export const marcaRelations = relations(marcaTable, ({ many }) => ({
+  produtos: many(productTable),
 }));
 
 export const shippingAddressRelations = relations(
@@ -494,6 +503,7 @@ export {
   userTable,
 } from "./tables/autenticacao";
 export { categoryTable } from "./table/categories/categories";
+export { marcaTable } from "./table/marcas/marcas";
 export { productTable } from "./table/products/products";
 export { productVariantTable } from "./table/products/product-variants";
 export { productImageTable } from "./table/products/product-images";

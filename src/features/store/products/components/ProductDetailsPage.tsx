@@ -58,6 +58,10 @@ interface ProductDetailProps {
     allowsPickup: boolean | null;
     prazoRetiradaCustom: string | null;
     allowsOwnDelivery: boolean | null;
+    weight: number | null;
+    height: number | null;
+    width: number | null;
+    length: number | null;
     galleryImages?: Array<{
       id: string;
       imageUrl: string;
@@ -231,6 +235,12 @@ export function ProductDetail({
   // Descrição longa: sempre a description completa (para abas)
   const productLongDescription = product.description;
   const especificacoesProduto = mapearEspecificacoesProduto(product.attributes);
+  const medidasEPeso = mapearMedidasEPesoProduto({
+    peso: product.weight,
+    altura: product.height,
+    largura: product.width,
+    comprimento: product.length,
+  });
   const avaliacoesProduto: Avaliacao[] = [];
   const ratingProduto = calcularRating(avaliacoesProduto);
   const totalAvaliacoesProduto = avaliacoesProduto.length;
@@ -472,6 +482,7 @@ export function ProductDetail({
         <ProductTabs
           descricao={productLongDescription}
           especificacoes={especificacoesProduto}
+          medidasEPeso={medidasEPeso}
           avaliacoes={avaliacoesProduto}
           rating={ratingProduto}
           totalAvaliacoes={totalAvaliacoesProduto}
@@ -602,6 +613,37 @@ function mapearEspecificacoesProduto(
       label: attribute.name,
       valor: attribute.values.join(", "),
     }));
+}
+
+function mapearMedidasEPesoProduto({
+  peso,
+  altura,
+  largura,
+  comprimento,
+}: {
+  peso: number | null;
+  altura: number | null;
+  largura: number | null;
+  comprimento: number | null;
+}): Especificacao[] {
+  const linhas: Especificacao[] = [];
+  const formatarPesoEmKg = (pesoEmGramas: number) =>
+    `${(pesoEmGramas / 1000).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} kg`;
+
+  if (typeof peso === "number") {
+    linhas.push({ label: "Peso", valor: formatarPesoEmKg(peso) });
+  }
+  if (typeof altura === "number")
+    linhas.push({ label: "Altura", valor: `${altura} cm` });
+  if (typeof largura === "number")
+    linhas.push({ label: "Largura", valor: `${largura} cm` });
+  if (typeof comprimento === "number")
+    linhas.push({ label: "Comprimento", valor: `${comprimento} cm` });
+
+  return linhas;
 }
 
 function calcularRating(avaliacoes: Avaliacao[]) {

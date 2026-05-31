@@ -21,6 +21,7 @@ interface ModalidadeInfo {
 interface ProductTabsProps {
   descricao: string;
   especificacoes: Especificacao[];
+  medidasEPeso: Especificacao[];
   avaliacoes: Avaliacao[];
   rating: number;
   totalAvaliacoes: number;
@@ -30,6 +31,7 @@ interface ProductTabsProps {
 export function ProductTabs({
   descricao,
   especificacoes,
+  medidasEPeso,
   avaliacoes,
   rating,
   totalAvaliacoes,
@@ -83,18 +85,49 @@ export function ProductTabs({
 
         {/* ABA: ESPECIFICAÇÕES */}
         {abaAtiva === "especificacoes" && (
-          <div className="border-surface-border max-w-lg animate-[fadeUp_0.3s_ease] overflow-hidden rounded-xl border bg-white">
-            {especificacoes.map((esp, i) => (
-              <div
-                key={i}
-                className={`flex items-center justify-between px-4 py-3 ${i % 2 === 0 ? "bg-[#FAFAFA]" : "bg-white"} ${i !== especificacoes.length - 1 ? "border-b border-[#F3F4F6]" : ""}`}
-              >
-                <span className="text-text-muted text-sm">{esp.label}</span>
-                <span className="text-text-primary text-sm font-semibold">
-                  {esp.valor}
-                </span>
+          <div className="flex max-w-lg animate-[fadeUp_0.3s_ease] flex-col gap-4">
+            {medidasEPeso.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-text-primary text-sm font-semibold">
+                  Medidas e peso
+                </h3>
+                <div className="border-surface-border overflow-hidden rounded-xl border bg-white">
+                  {medidasEPeso.map((esp, i) => (
+                    <div
+                      key={`${esp.label}-${i}`}
+                      className={`flex items-center justify-between px-4 py-3 ${i % 2 === 0 ? "bg-white" : "bg-[#F3F4F6]"} ${i !== medidasEPeso.length - 1 ? "border-b border-[#F3F4F6]" : ""}`}
+                    >
+                      <span className="text-text-muted text-sm">{esp.label}</span>
+                      <span className="text-text-primary text-sm font-semibold">
+                        {esp.valor}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            {especificacoes.length > 0 && (
+              <div className="border-surface-border overflow-hidden rounded-xl border bg-white">
+                {especificacoes.map((esp, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between px-4 py-3 ${i % 2 === 0 ? "bg-[#F3F4F6]" : "bg-white"} ${i !== especificacoes.length - 1 ? "border-b border-[#F3F4F6]" : ""}`}
+                  >
+                    <span className="text-text-muted text-sm">{esp.label}</span>
+                    <span className="text-text-primary text-sm font-semibold">
+                      {esp.valor}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {medidasEPeso.length === 0 && especificacoes.length === 0 && (
+              <div className="border-surface-border text-text-muted rounded-xl border bg-white p-4 text-sm">
+                Nenhuma especificação disponível para este produto.
+              </div>
+            )}
           </div>
         )}
 

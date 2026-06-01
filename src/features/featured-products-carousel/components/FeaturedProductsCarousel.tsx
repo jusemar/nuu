@@ -1,43 +1,43 @@
 // FeaturedProductsCarousel.tsx - VERSÃO LIMPA
-'use client';
+"use client";
 
-import { useKeenSlider, KeenSliderPlugin } from 'keen-slider/react';
-import 'keen-slider/keen-slider.min.css';
-import { useEffect, useState } from 'react';
-import FeaturedProductCard from './FeaturedProductCard';
-import { useFeaturedProducts } from '../hooks/useFeaturedProducts';
+import { useKeenSlider, KeenSliderPlugin } from "keen-slider/react";
+import "keen-slider/keen-slider.min.css";
+import { useEffect, useState } from "react";
+import FeaturedProductCard from "./FeaturedProductCard";
+import { useFeaturedProducts } from "../hooks/useFeaturedProducts";
 
 const carousel: KeenSliderPlugin = (slider) => {
   const z = 300;
-  
+
   function rotate() {
     const deg = 360 * slider.track.details.progress;
     slider.container.style.transform = `translateZ(-${z}px) rotateY(${-deg}deg)`;
   }
-  
-  slider.on('created', () => {
+
+  slider.on("created", () => {
     const deg = 360 / slider.slides.length;
     slider.slides.forEach((element, idx) => {
       element.style.transform = `rotateY(${deg * idx}deg) translateZ(${z}px)`;
     });
     rotate();
   });
-  
-  slider.on('detailsChanged', rotate);
+
+  slider.on("detailsChanged", rotate);
 };
 
 export const FeaturedProductsCarousel = () => {
   const [isHovering, setIsHovering] = useState(false);
   const { products, isLoading, error } = useFeaturedProducts();
-  
+
   const [sliderRef, sliderInstanceRef] = useKeenSlider<HTMLDivElement>(
     {
       loop: true,
-      selector: '.carousel__cell',
-      renderMode: 'custom',
-      mode: 'free-snap',
+      selector: ".carousel__cell",
+      renderMode: "custom",
+      mode: "free-snap",
     },
-    [carousel]
+    [carousel],
   );
 
   useEffect(() => {
@@ -50,13 +50,28 @@ export const FeaturedProductsCarousel = () => {
     return () => clearInterval(interval);
   }, [sliderInstanceRef, isHovering]);
 
-  if (isLoading) return <div className="h-[360px] flex items-center justify-center">Carregando...</div>;
-  if (error) return <div className="h-[360px] flex items-center justify-center text-red-600">Erro ao carregar</div>;
-  if (products.length === 0) return <div className="h-[360px] flex items-center justify-center">Nenhum produto</div>;
+  if (isLoading)
+    return (
+      <div className="text-muted-foreground flex h-[320px] items-center justify-center sm:h-[360px]">
+        Carregando...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex h-[320px] items-center justify-center text-red-600 sm:h-[360px]">
+        Erro ao carregar
+      </div>
+    );
+  if (products.length === 0)
+    return (
+      <div className="text-muted-foreground flex h-[320px] items-center justify-center sm:h-[360px]">
+        Nenhum produto
+      </div>
+    );
 
   return (
     <div className="wrapper">
-      <div 
+      <div
         className="scene"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
@@ -75,7 +90,7 @@ export const FeaturedProductsCarousel = () => {
           display: flex;
           justify-content: center;
           align-items: center;
-          height: 360px;
+          height: 320px;
         }
         .scene {
           width: 248px;
@@ -98,6 +113,12 @@ export const FeaturedProductsCarousel = () => {
           height: auto;
           border-radius: 1rem;
           overflow: visible;
+        }
+
+        @media (min-width: 640px) {
+          .wrapper {
+            height: 360px;
+          }
         }
       `}</style>
     </div>

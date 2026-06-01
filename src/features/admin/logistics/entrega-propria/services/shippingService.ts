@@ -338,6 +338,7 @@ export async function getProductOwnDeliveryPrice(
         found: true,
         level: "cep-especifico",
         shippingPrice: preco.shippingPrice,
+        deliveryDeadline: preco.deliveryDeadline ?? null,
         message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
         cep: cepEspecifico.cep,
         neighborhood: cepEspecifico.neighborhood,
@@ -374,6 +375,7 @@ export async function getProductOwnDeliveryPrice(
         found: true,
         level: "regiao",
         shippingPrice: preco.shippingPrice,
+        deliveryDeadline: preco.deliveryDeadline ?? null,
         message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
         region: {
           id: faixaRegiao.region.id,
@@ -426,6 +428,7 @@ export async function getProductOwnDeliveryPrice(
           found: true,
           level: "regiao",
           shippingPrice: preco.shippingPrice,
+          deliveryDeadline: preco.deliveryDeadline ?? null,
           message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
           region: {
             id: regiaoComPreco.regiao.id,
@@ -466,6 +469,7 @@ export async function getProductOwnDeliveryPrice(
       found: true,
       level: "bairro-avulso",
       shippingPrice: preco.shippingPrice,
+      deliveryDeadline: preco.deliveryDeadline ?? null,
       message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
       bairro: {
         id: bairroAvulso.id,
@@ -902,6 +906,7 @@ export type ShippingPriceResult =
       found: true;
       level: "cep-especifico" | "regiao" | "bairro-avulso";
       shippingPrice: number;
+      deliveryDeadline?: string | null;
       message: string;
       cep?: string;
       neighborhood?: string;

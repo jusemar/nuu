@@ -42,7 +42,7 @@ export const FeaturedProductCard = ({
   slug,
   image,
   title,
-  description,
+  description: _description,
   originalPrice,
   currentPrice,
   discount,
@@ -77,13 +77,13 @@ export const FeaturedProductCard = ({
         label: badgePromocao === "relampago" ? "Relâmpago" : "Promoção",
         className:
           badgePromocao === "relampago"
-            ? "from-red-600 to-orange-500"
-            : "from-emerald-500 to-teal-500",
+            ? "bg-accent-brand text-white"
+            : "bg-accent-brand-light text-accent-dark",
       }
     : isFeatured
       ? {
           label: "Destaque",
-          className: "from-purple-600 to-pink-600",
+          className: "bg-primary text-primary-foreground",
         }
       : null;
 
@@ -132,7 +132,7 @@ export const FeaturedProductCard = ({
   if (isLoading) {
     return (
       <div
-        className={`group relative w-full max-w-[296px] animate-pulse overflow-hidden rounded-2xl bg-gray-100 ${className}`}
+        className={`group bg-muted relative w-full max-w-[296px] animate-pulse overflow-hidden rounded-xl ${className}`}
         role="status"
         aria-label="Carregando produto em destaque"
       >
@@ -148,7 +148,7 @@ export const FeaturedProductCard = ({
 
   return (
     <article
-      className={`group relative w-full max-w-[296px] overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-b from-white to-gray-50 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${slug ? "cursor-pointer" : ""} ${className}`}
+      className={`group border-border/80 bg-card hover:border-primary/20 hover:shadow-elevation relative w-full max-w-[296px] overflow-hidden rounded-xl border shadow-sm transition-all duration-200 hover:-translate-y-1 ${slug ? "cursor-pointer" : ""} ${className}`}
       data-product-id={id}
       itemScope
       itemType="https://schema.org/Product"
@@ -167,7 +167,7 @@ export const FeaturedProductCard = ({
       {dadosBadgePrincipal && (
         <div className="absolute top-3 left-3 z-10">
           <span
-            className={`inline-flex items-center gap-1 rounded-full bg-gradient-to-r ${dadosBadgePrincipal.className} px-3 py-1.5 text-xs font-bold tracking-wide text-white uppercase shadow-lg`}
+            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase shadow-sm ${dadosBadgePrincipal.className}`}
           >
             <Sparkles className="h-3 w-3" />
             {dadosBadgePrincipal.label}
@@ -176,11 +176,11 @@ export const FeaturedProductCard = ({
       )}
 
       {/* Container da Imagem */}
-      <div className="relative aspect-[1/0.75] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="bg-muted/60 relative aspect-[1/0.75] overflow-hidden">
         {/* Badge EXCLUSIVO ou TRENDING na imagem */}
         {isExclusive && (
           <div className="absolute top-3 right-3 z-10">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white uppercase">
+            <span className="bg-accent-brand inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide text-white uppercase">
               <Star className="h-2.5 w-2.5" />
               Exclusivo
             </span>
@@ -189,7 +189,7 @@ export const FeaturedProductCard = ({
 
         {isTrending && (
           <div className="absolute top-3 right-3 z-10">
-            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-2.5 py-1 text-[10px] font-bold tracking-wide text-white uppercase">
+            <span className="bg-primary text-primary-foreground inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase">
               <TrendingUp className="h-2.5 w-2.5" />
               Em Alta
             </span>
@@ -211,11 +211,11 @@ export const FeaturedProductCard = ({
       </div>
 
       {/* Conteúdo */}
-      <div className="p-3 pt-2">
+      <div className="p-3 pt-2.5">
         {/* Cabeçalho com Título e Favorito */}
         <div className="mb-2 flex items-start justify-between gap-2">
           <h3
-            className="line-clamp-2 flex-1 text-sm leading-tight font-bold text-gray-900"
+            className="text-foreground line-clamp-2 flex-1 text-sm leading-tight font-semibold"
             itemProp="name"
           >
             {title}
@@ -227,10 +227,10 @@ export const FeaturedProductCard = ({
               event.stopPropagation();
               handleToggleFavorite();
             }}
-            className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-all duration-300 hover:scale-110 focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:outline-none ${
+            className={`focus:ring-primary flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-200 focus:ring-2 focus:ring-offset-1 focus:outline-none ${
               isFavorite
                 ? "bg-red-50 text-red-500"
-                : "text-gray-400 hover:bg-red-50 hover:text-red-500"
+                : "text-muted-foreground hover:bg-red-50 hover:text-red-500"
             }`}
             aria-label={
               isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"
@@ -253,38 +253,28 @@ export const FeaturedProductCard = ({
                 key={i}
                 className={`h-3 w-3 ${
                   i < Math.floor(rating)
-                    ? "fill-yellow-400 text-yellow-400"
-                    : "fill-gray-200 text-gray-200"
+                    ? "fill-accent-brand text-accent-brand"
+                    : "fill-muted text-muted"
                 }`}
               />
             ))}
           </div>
-          <span className="text-xs font-medium text-gray-700">
+          <span className="text-foreground text-xs font-medium">
             {rating.toFixed(1)}
           </span>
-          <span className="text-xs text-gray-500">({reviewCount})</span>
+          <span className="text-muted-foreground text-xs">({reviewCount})</span>
         </div>
-
-        {/* Descrição */}
-        {description && (
-          <p
-            className="mb-3 line-clamp-2 text-xs leading-relaxed text-gray-600"
-            itemProp="description"
-          >
-            {description}
-          </p>
-        )}
 
         {/* Seção de Preço */}
         <div className="space-y-2">
           {/* Linha com preço original e desconto */}
           {originalPrice && originalPrice > currentPrice && (
             <div className="flex items-center gap-5">
-              <p className="text-xs text-gray-400 line-through">
+              <p className="text-muted-foreground text-xs line-through">
                 {formatPrice(originalPrice)}
               </p>
               {calculatedDiscount && calculatedDiscount > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                <span className="bg-accent-brand inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white">
                   <Sparkles className="h-2.5 w-2.5" />-{calculatedDiscount}%
                 </span>
               )}
@@ -295,7 +285,7 @@ export const FeaturedProductCard = ({
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-baseline gap-3">
               <p
-                className="text-xl font-bold tracking-tight text-gray-900"
+                className="text-foreground text-lg font-bold tracking-tight sm:text-xl"
                 itemProp="offers"
                 itemScope
                 itemType="https://schema.org/Offer"
@@ -306,7 +296,7 @@ export const FeaturedProductCard = ({
               </p>
 
               {/* Badge PIX - com gradiente */}
-              <span className="rounded-md bg-gradient-to-r from-yellow-400 to-yellow-500 px-2 py-1 text-[10px] font-bold tracking-wide text-yellow-900 uppercase shadow">
+              <span className="bg-accent-brand-light text-accent-dark rounded-md px-2 py-1 text-[10px] font-bold tracking-wide uppercase">
                 PIX
               </span>
             </div>
@@ -318,8 +308,8 @@ export const FeaturedProductCard = ({
                 handleAddToCart();
               }}
               disabled={isAddingToCart}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white transition-all duration-300 hover:from-purple-700 hover:to-pink-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 focus:outline-none ${
-                isAddingToCart ? "scale-95" : "hover:scale-105 active:scale-95"
+              className={`bg-primary text-primary-foreground hover:bg-primary-hover focus:ring-primary flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 focus:ring-2 focus:ring-offset-1 focus:outline-none ${
+                isAddingToCart ? "scale-95" : "active:scale-95"
               }`}
               aria-label="Adicionar ao carrinho"
               type="button"
@@ -334,7 +324,7 @@ export const FeaturedProductCard = ({
         {/* Badges - FRETE GRÁTIS */}
         {hasFreeShipping && (
           <div className="mt-2">
-            <span className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 px-3 py-1.5 text-xs font-semibold tracking-wide text-white uppercase shadow">
+            <span className="bg-success-light text-success-dark inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase">
               <Truck className="h-3 w-3" />
               Frete Grátis
             </span>

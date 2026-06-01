@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUpdateProduct } from "@/hooks/admin/mutations/products/useUpdateProduct";
 import { useProductId } from "@/hooks/admin/queries/products/use-Product-Id";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ProductFormData,
   initialProductData,
@@ -19,22 +19,35 @@ import { PricingTab } from "../../new/components/tabs/PricingTab";
 import { ShippingTab } from "../../../../../features/admin/products/components/ShippingTab";
 import { EntregaTab } from "../../new/components/tabs/EntregaTab";
 import { WarrantyTab } from "../../new/components/tabs/WarrantyTab";
-import { VariantsTab } from "../../new/components/tabs/VariantsTab";
+import {
+  clearVariantsDraft,
+  VariantsTab,
+} from "../../new/components/tabs/VariantsTab";
 import { SellerTab } from "../../new/components/tabs/SellerTab";
 import { SeoTab } from "../../new/components/tabs/SeoTab";
 
 export default function EditProductPage() {
   const params = useParams();
   const productId = params.id as string;
+  const variantsDraftKey = `produto-${productId}`;
 
   const { data: productResponse, isLoading } = useProductId(productId);
   const updateProductMutation = useUpdateProduct();
 
   const [productData, setProductData] =
     useState<ProductFormData>(initialProductData);
+  const carregamentoInicialAplicadoRef = useRef(false);
 
   useEffect(() => {
-    if (productResponse?.success && productResponse.data) {
+    carregamentoInicialAplicadoRef.current = false;
+  }, [productId]);
+
+  useEffect(() => {
+    if (
+      productResponse?.success &&
+      productResponse.data &&
+      !carregamentoInicialAplicadoRef.current
+    ) {
       const product = productResponse.data;
       // Função para mapear modalidades do banco para estrutura do frontend
       const mapModalitiesFromDB = (dbModalities: any) => {
@@ -166,6 +179,8 @@ export default function EditProductPage() {
               widthInCm: variant.widthInCm,
               lengthInCm: variant.lengthInCm,
               imageUrl: variant.imageUrl,
+              classificacoesLogisticasIds:
+                variant.classificacoesLogisticasIds ?? [],
               isActive: Boolean(variant.isActive),
               isDefault: Boolean(variant.isDefault),
             }))
@@ -197,6 +212,8 @@ export default function EditProductPage() {
           prazoCustom: product.prazoRetiradaCustom || "",
           permiteEntregaPropria: product.allowsOwnDelivery ?? false,
           precosEntregaPropria: product.precosEntregaPropria || [],
+          classificacoesLogisticasIds:
+            product.classificacoesLogisticasIds || [],
         },
 
         // Campos de vendedor (valores padrão)
@@ -206,8 +223,9 @@ export default function EditProductPage() {
           sellerInfo: product.sellerInfo || "",
         },
       });
+      carregamentoInicialAplicadoRef.current = true;
     }
-  }, [productResponse]);
+  }, [productResponse, productId]);
 
   const tabs = [
     {
@@ -290,6 +308,7 @@ export default function EditProductPage() {
       component: (
         <VariantsTab
           data={productData}
+          draftKey={variantsDraftKey}
           onChange={(updates: Partial<ProductFormData>) =>
             setProductData((prev) => ({ ...prev, ...updates }))
           }
@@ -321,6 +340,7 @@ export default function EditProductPage() {
         id: productId,
         data: productData,
       });
+      clearVariantsDraft(variantsDraftKey);
     } catch (error) {
       console.error("Erro ao atualizar produto:", error);
     }

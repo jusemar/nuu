@@ -176,6 +176,13 @@
       "when": 1780358400000,
       "tag": "0031_carrossel_banners_home",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1780271868478,
+      "tag": "0032_create_variantes_tipos_logisticos",
+      "breakpoints": true
     }
   ]
 }

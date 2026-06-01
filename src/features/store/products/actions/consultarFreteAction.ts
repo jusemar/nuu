@@ -51,6 +51,7 @@ function criarConsultaEntregaPropriaLojaParaCotacao(
       descricao: resultado.descricao,
       metadados: {
         nivelEntregaPropriaAtual: resultado.nivel,
+        prazoEntregaPropriaAtual: resultado.prazoEntrega ?? null,
         bairro: resultado.bairro,
         cidade: resultado.cidade,
         uf: resultado.uf,

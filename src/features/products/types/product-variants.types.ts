@@ -23,6 +23,7 @@ export type ProductVariantInput = {
   widthInCm?: number | null;
   lengthInCm?: number | null;
   imageUrl?: string | null;
+  classificacoesLogisticasIds?: string[];
   isActive: boolean;
   isDefault: boolean;
 };

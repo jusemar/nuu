@@ -10,21 +10,6 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
-// No componente:
-<Carousel
-  plugins={[
-    Autoplay({
-      delay: 20000, // 0 segundos
-      stopOnInteraction: false,
-    }),
-  ]}
-  opts={{
-    align: "start",
-    loop: true,
-  }}
-  className="mx-auto w-full max-w-7xl" // Centraliza e limita largura
-></Carousel>;
-
 // O carousel de ofertas usa o mesmo contrato visual dos cards de "Os mais queridos".
 interface DealProduct {
   id: string;
@@ -51,7 +36,7 @@ const DealsCarousel = ({ products: propProducts }: DealsCarouselProps) => {
   if (products.length === 0) return null;
 
   return (
-    <div className="relative px-4 lg:flex lg:h-full lg:min-h-[490px] lg:items-center lg:pt-14">
+    <div className="border-border/80 bg-card shadow-elevation relative rounded-xl border px-3 py-4 sm:px-4 lg:flex lg:h-full lg:min-h-[468px] lg:items-center lg:pt-12">
       {/* Carousel */}
       <Carousel
         plugins={[
@@ -72,7 +57,7 @@ const DealsCarousel = ({ products: propProducts }: DealsCarouselProps) => {
             <CarouselItem
               key={product.id}
               // A largura fixa evita que o carousel comprima o card dentro da coluna de ofertas.
-              className="basis-[224px] pl-2 md:basis-[232px]"
+              className="basis-[218px] pl-2 sm:basis-[232px]"
             >
               <div className="px-1 pb-1">
                 <FeaturedProductCard {...product} className="h-full" />
@@ -80,8 +65,8 @@ const DealsCarousel = ({ products: propProducts }: DealsCarouselProps) => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="-left-4" /> {/* Ajusta posição setas */}
-        <CarouselNext className="-right-4" />
+        <CarouselPrevious className="border-border bg-card text-primary hover:bg-primary-light -left-2 shadow-sm" />
+        <CarouselNext className="border-border bg-card text-primary hover:bg-primary-light -right-2 shadow-sm" />
       </Carousel>
     </div>
   );

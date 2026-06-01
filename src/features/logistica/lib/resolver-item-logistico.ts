@@ -113,6 +113,23 @@ function montarDimensoesPacote(medidas: MedidasItemLogisticoResolvidas) {
   } satisfies DimensoesPacote;
 }
 
+function resolverMedidasItem({
+  produto,
+  variante,
+}: {
+  produto: ProdutoParaItemLogistico;
+  variante?: VarianteParaItemLogistico | null;
+}): MedidasItemLogistico {
+  if (!variante) return produto;
+
+  return {
+    pesoEmGramas: variante.pesoEmGramas ?? produto.pesoEmGramas,
+    alturaEmCm: variante.alturaEmCm ?? produto.alturaEmCm,
+    larguraEmCm: variante.larguraEmCm ?? produto.larguraEmCm,
+    comprimentoEmCm: variante.comprimentoEmCm ?? produto.comprimentoEmCm,
+  };
+}
+
 export function resolverItemLogistico({
   produto,
   variante,
@@ -134,8 +151,10 @@ export function resolverItemLogistico({
     );
   }
 
-  // Produto simples usa o cadastro do produto; produto com variante usa a variante.
-  const origemMedidas = produto.tipo === "simples" ? produto : variante!;
+  const origemMedidas =
+    produto.tipo === "simples"
+      ? produto
+      : resolverMedidasItem({ produto, variante });
 
   if (!temMedidasCompletas(origemMedidas)) {
     return montarErroResolucaoItemLogistico(

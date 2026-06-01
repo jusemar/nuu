@@ -91,7 +91,7 @@ export function ProductGridWithLoadMore() {
   // - Laptop: 4 colunas
   // - Desktop grande: 5 colunas para preservar a largura do card padrao
   const gridClasses =
-    "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6";
+    "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
 
   // 🌀 PRIMEIRO CARREGAMENTO: Mostra esqueletos enquanto busca dados
   if (isLoading && allProducts.length === 0) {
@@ -101,14 +101,14 @@ export function ProductGridWithLoadMore() {
   // ⚠️ SEM PRODUTOS: Se não encontrar nenhum produto
   if (allProducts.length === 0) {
     return (
-      <div className="py-12 text-center">
-        <p className="text-gray-500">Nenhum produto encontrado.</p>
+      <div className="border-border bg-card rounded-xl border py-12 text-center">
+        <p className="text-muted-foreground">Nenhum produto encontrado.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7">
       {/* 🔲 GRID DE PRODUTOS */}
       <div className={gridClasses}>
         {allProducts.map((product) => (
@@ -127,7 +127,7 @@ export function ProductGridWithLoadMore() {
           <button
             onClick={() => fetchNextPage()} // 📥 Carrega mais produtos
             disabled={isFetchingNextPage} // 🚫 Desabilita enquanto carrega
-            className="rounded-lg bg-blue-600 px-8 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg px-8 py-3 text-sm font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isFetchingNextPage ? (
               // 🔄 MOSTRANDO QUE ESTÁ CARREGANDO
@@ -143,7 +143,7 @@ export function ProductGridWithLoadMore() {
 
           {/* 📊 INFO DA PÁGINA ATUAL (opcional) */}
           {data?.pages.length && (
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="text-muted-foreground mt-2 text-sm">
               Página {data.pages.length} • {allProducts.length} produtos
             </p>
           )}
@@ -152,8 +152,8 @@ export function ProductGridWithLoadMore() {
 
       {/* 🏁 SEM MAIS PRODUTOS PARA CARREGAR */}
       {!hasNextPage && allProducts.length > 0 && (
-        <div className="border-t py-6 text-center">
-          <p className="text-gray-500">
+        <div className="border-border border-t py-6 text-center">
+          <p className="text-muted-foreground">
             Você viu todos os {allProducts.length} produtos
           </p>
         </div>

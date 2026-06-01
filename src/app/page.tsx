@@ -4,6 +4,7 @@ import {
 } from "@/features/store/products/service/getProducts";
 import { getCategories } from "@/data/categories/get";
 import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home";
+import { BadgePercent, Truck } from "lucide-react";
 
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 import { Header } from "@/features/header";
@@ -19,23 +20,26 @@ import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import { Footer } from "@/components/common/footer";
 
-// Mini banners laterais — design system: azul primário e âmbar
+// Mini banners laterais seguem o header: azul como identidade e âmbar só comercial.
 const SIDE_BANNERS = [
   {
-    icon: "🚚",
+    Icone: Truck,
     title: "Frete Grátis",
     subtitle: "Acima de R$ 299",
     description: "Entregas em todo o Brasil",
-    bg: "from-[#0C447C] to-[#1E3A8A]",
-    subtitleColor: "text-blue-200",
+    className: "border-primary/15 bg-primary text-primary-foreground",
+    iconClassName: "bg-white/12 text-white",
+    subtitleClassName: "text-blue-100",
   },
   {
-    icon: "🎁",
+    Icone: BadgePercent,
     title: "Primeira Compra",
     subtitle: "10% de desconto",
     description: "Use o cupom PRIMEIRA10 no checkout",
-    bg: "from-[#EF9F27] to-[#B45309]",
-    subtitleColor: "text-amber-100",
+    className:
+      "border-accent-brand/30 bg-accent-brand-light text-accent-foreground",
+    iconClassName: "bg-accent-brand text-white",
+    subtitleClassName: "text-accent-dark",
   },
 ];
 
@@ -62,11 +66,11 @@ const Home = async () => {
       <Header />
 
       {/* ── 3. Conteúdo ── */}
-      <main className="mx-auto mt-6 mb-16 max-w-7xl space-y-16 px-4">
+      <main className="mx-auto mb-14 w-full max-w-7xl space-y-10 px-4 pt-4 sm:px-6 sm:pt-5 md:space-y-12 lg:px-8">
         {/* Banner carousel */}
         <section
           aria-label="Banners promocionais"
-          className="shadow-elevation overflow-hidden rounded-2xl"
+          className="border-border/80 bg-card shadow-elevation overflow-hidden rounded-xl border"
         >
           <AreaBannersHome banners={bannersHome} />
         </section>
@@ -76,7 +80,7 @@ const Home = async () => {
 
         {/* Deals / Flash sale */}
         <section aria-label="Ofertas em destaque">
-          <div className="mb-8">
+          <div className="mb-5 md:mb-6">
             <SectionTitle icon="flame">Ofertas Especiais</SectionTitle>
           </div>
           <DealsGrid
@@ -87,42 +91,43 @@ const Home = async () => {
 
         {/* Novidades — carousel + mini banners */}
         <section aria-label="Novidades">
-          <div className="mb-8">
+          <div className="mb-5 md:mb-6">
             <SectionTitle icon="star">Chegou agora</SectionTitle>
           </div>
 
-          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3 lg:gap-5">
             {/* Carousel de destaque */}
-            <div className="h-[360px] lg:col-span-2">
+            <div className="border-border/80 bg-card shadow-elevation min-h-[320px] rounded-xl border lg:col-span-2">
               <FeaturedProductsCarousel />
             </div>
 
             {/* Mini banners — design system */}
-            <div className="flex h-[360px] flex-col gap-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
               {SIDE_BANNERS.map((banner) => (
-                <div key={banner.title} className="min-h-0 flex-1">
-                  <div
-                    className={`h-full rounded-2xl bg-gradient-to-br ${banner.bg} shadow-elevation flex cursor-pointer flex-col justify-center p-4 text-white transition-opacity hover:opacity-95`}
-                  >
-                    <div className="mb-2 flex items-center gap-3">
-                      <div className="flex-shrink-0 rounded-full bg-white/20 p-2">
-                        <span className="text-lg" role="img" aria-hidden="true">
-                          {banner.icon}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm leading-tight font-bold">
-                          {banner.title}
-                        </p>
-                        <p className={`text-xs ${banner.subtitleColor}`}>
-                          {banner.subtitle}
-                        </p>
-                      </div>
+                <div
+                  key={banner.title}
+                  className={`shadow-elevation hover:shadow-elevation-lg flex min-h-[150px] flex-col justify-center rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 sm:min-h-[170px] lg:min-h-0 lg:flex-1 ${banner.className}`}
+                >
+                  <div className="mb-3 flex items-center gap-3">
+                    <div
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${banner.iconClassName}`}
+                    >
+                      <banner.Icone className="h-5 w-5" aria-hidden="true" />
                     </div>
-                    <p className="text-xs leading-relaxed text-white/80">
-                      {banner.description}
-                    </p>
+                    <div>
+                      <p className="text-sm leading-tight font-semibold">
+                        {banner.title}
+                      </p>
+                      <p
+                        className={`mt-0.5 text-xs font-medium ${banner.subtitleClassName}`}
+                      >
+                        {banner.subtitle}
+                      </p>
+                    </div>
                   </div>
+                  <p className="text-xs leading-relaxed opacity-75">
+                    {banner.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -130,7 +135,7 @@ const Home = async () => {
         </section>
 
         {/* Categorias */}
-        <section aria-label="Categorias" className="pt-8 md:pt-10 lg:pt-12">
+        <section aria-label="Categorias">
           <CategorySelector
             categories={categories}
             isLoading={!categories?.length}
@@ -139,7 +144,7 @@ const Home = async () => {
 
         {/* Produtos em destaque */}
         <section aria-label="Produtos em destaque">
-          <div className="mb-8">
+          <div className="mb-5 md:mb-6">
             <SectionTitle icon="flame">Os mais queridos</SectionTitle>
           </div>
           <ProductGridWithLoadMore />

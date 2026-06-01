@@ -214,13 +214,17 @@ export function ProductDetail({
     })
     .map((img) => img.imageUrl);
 
+  const imagemVarianteResolvida = resolverImagemVariante({
+    varianteSelecionada: selectedVariant,
+    variantes: publicVariants,
+  });
+
   // Fallback: se não tiver imagens no DB, usa mock temporário
   const galleryImagesBase =
     productImages.length > 0 ? productImages : ["/produto-sem-foto.webp"];
   const galleryImages =
-    selectedVariant?.imageUrl &&
-    !galleryImagesBase.includes(selectedVariant.imageUrl)
-      ? [selectedVariant.imageUrl, ...galleryImagesBase]
+    imagemVarianteResolvida && !galleryImagesBase.includes(imagemVarianteResolvida)
+      ? [imagemVarianteResolvida, ...galleryImagesBase]
       : galleryImagesBase;
 
   // -----------------------------------------
@@ -572,6 +576,58 @@ function textoParecePrazo(texto?: string | null) {
   return /(\d+\s*(dia|dias|hora|horas)|consulte prazo|entrega|úteis|uteis)/i.test(
     texto,
   );
+}
+
+function normalizarTextoComparacao(texto: string) {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function isAtributoCor(nomeAtributo: string) {
+  const normalizado = normalizarTextoComparacao(nomeAtributo);
+  return normalizado === "cor" || normalizado === "color";
+}
+
+function obterValorCorVariante(variante: VarianteProdutoLoja | null) {
+  if (!variante) return null;
+
+  const entradaCor = Object.entries(variante.attributes || {}).find(([nome]) =>
+    isAtributoCor(nome),
+  );
+  return entradaCor?.[1] ?? null;
+}
+
+function resolverImagemVariante({
+  varianteSelecionada,
+  variantes,
+}: {
+  varianteSelecionada: VarianteProdutoLoja | null;
+  variantes: VarianteProdutoLoja[];
+}) {
+  if (!varianteSelecionada) return null;
+
+  if (varianteSelecionada.imageUrl?.trim()) {
+    return varianteSelecionada.imageUrl;
+  }
+
+  const valorCorSelecionado = obterValorCorVariante(varianteSelecionada);
+  if (!valorCorSelecionado) return null;
+
+  const corNormalizadaSelecionada = normalizarTextoComparacao(valorCorSelecionado);
+  const varianteMesmaCorComImagem = variantes.find((variante) => {
+    const valorCorAtual = obterValorCorVariante(variante);
+    if (!valorCorAtual) return false;
+
+    return (
+      normalizarTextoComparacao(valorCorAtual) === corNormalizadaSelecionada &&
+      Boolean(variante.imageUrl?.trim())
+    );
+  });
+
+  return varianteMesmaCorComImagem?.imageUrl ?? null;
 }
 
 function converterDataPromocao(data: Date | string | null | undefined) {

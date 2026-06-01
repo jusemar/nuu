@@ -14,13 +14,15 @@ import { PricingTab } from "./components/tabs/PricingTab";
 import { ShippingTab } from "../../../../features/admin/products/components/ShippingTab";
 import { EntregaTab } from "./components/tabs/EntregaTab";
 import { WarrantyTab } from "./components/tabs/WarrantyTab";
-import { VariantsTab } from "./components/tabs/VariantsTab";
+import { clearVariantsDraft, VariantsTab } from "./components/tabs/VariantsTab";
 import { SellerTab } from "./components/tabs/SellerTab";
 import { SeoTab } from "./components/tabs/SeoTab";
 
 export default function NewProductPage() {
+  const variantsDraftKey = "novo-produto";
   const createProductMutation = useCreateProduct({
     onSuccess: () => {
+      clearVariantsDraft(variantsDraftKey);
       // RESETA O FORMULÁRIO APÓS SUCESSO
       setProductData(initialProductData);
     },
@@ -118,6 +120,7 @@ export default function NewProductPage() {
       component: (
         <VariantsTab
           data={productData}
+          draftKey={variantsDraftKey}
           onChange={(updates: Partial<ProductFormData>) =>
             setProductData((prev) => ({ ...prev, ...updates }))
           }

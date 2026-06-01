@@ -14,12 +14,71 @@ import {
   productPricingTable, // Tabela de modalidades de preço
   productAttributeTable,
   productVariantTable,
+  produtosTiposLogisticosTable,
+  tiposLogisticosTable,
+  variantesTiposLogisticosTable,
   categoryTable, // Tabela de categorias (para buscar o nome da categoria)
   marcaTable,
   modelosRetiradaTable, // Tabela de modelos de retirada
 } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray } from "drizzle-orm";
 import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
+
+function obterDetalhesErro(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+      cause: "cause" in error ? error.cause : undefined,
+    };
+  }
+
+  return {
+    message: String(error),
+    stack: undefined,
+  };
+}
+
+async function carregarClassificacoesLogisticasVariantes(
+  productId: string,
+  variants: Array<{ id: string }>,
+) {
+  if (variants.length === 0) {
+    return [];
+  }
+
+  try {
+    return await db
+      .select({
+        vinculoId: variantesTiposLogisticosTable.id,
+        varianteId: variantesTiposLogisticosTable.varianteId,
+        tipoLogisticoId: variantesTiposLogisticosTable.tipoLogisticoId,
+        tipoLogisticoNome: tiposLogisticosTable.nome,
+      })
+      .from(variantesTiposLogisticosTable)
+      .innerJoin(
+        tiposLogisticosTable,
+        eq(variantesTiposLogisticosTable.tipoLogisticoId, tiposLogisticosTable.id),
+      )
+      .where(
+        inArray(
+          variantesTiposLogisticosTable.varianteId,
+          variants.map((variant) => variant.id),
+        ),
+      );
+  } catch (error) {
+    console.warn(
+      "[getProductById] Falha ao carregar classificações logísticas das variantes. O produto será aberto com classificações vazias.",
+      {
+        productId,
+        variantCount: variants.length,
+        error: obterDetalhesErro(error),
+      },
+    );
+
+    return [];
+  }
+}
 
 /**
  * Busca um produto completo pelo seu ID.
@@ -153,6 +212,13 @@ export async function getProductById(id: string) {
       .from(productPricingTable)
       .where(eq(productPricingTable.productId, id));
 
+    const classificacoesLogisticasProduto = await db
+      .select({
+        tipoLogisticoId: produtosTiposLogisticosTable.tipoLogisticoId,
+      })
+      .from(produtosTiposLogisticosTable)
+      .where(eq(produtosTiposLogisticosTable.produtoId, id));
+
     const attributes = await db
       .select({
         id: productAttributeTable.id,
@@ -185,6 +251,41 @@ export async function getProductById(id: string) {
       .from(productVariantTable)
       .where(eq(productVariantTable.productId, id))
       .orderBy(asc(productVariantTable.createdAt));
+
+    const vinculosClassificacoesVariantes =
+      await carregarClassificacoesLogisticasVariantes(id, variants);
+
+    const classificacoesPorVariante = new Map<
+      string,
+      Array<{
+        vinculoId: string;
+        tipoLogisticoId: string;
+        tipoLogisticoNome: string;
+      }>
+    >();
+    for (const vinculo of vinculosClassificacoesVariantes) {
+      if (!vinculo.varianteId || !vinculo.tipoLogisticoId) {
+        continue;
+      }
+
+      const atuais = classificacoesPorVariante.get(vinculo.varianteId) ?? [];
+      atuais.push({
+        vinculoId: vinculo.vinculoId,
+        tipoLogisticoId: vinculo.tipoLogisticoId,
+        tipoLogisticoNome: vinculo.tipoLogisticoNome,
+      });
+      classificacoesPorVariante.set(vinculo.varianteId, atuais);
+    }
+    const variantsWithClassifications = variants.map((variant) => {
+      const classificacoes = classificacoesPorVariante.get(variant.id) ?? [];
+      return {
+        ...variant,
+        classificacoesLogisticasIds: classificacoes.map(
+          (classificacao) => classificacao.tipoLogisticoId,
+        ),
+        classificacoesLogisticas: classificacoes,
+      };
+    });
 
     const precosEntregaPropria = await listarPrecosEntregaPropriaProduto(id);
 
@@ -287,8 +388,11 @@ export async function getProductById(id: string) {
         storeProductFlags: flags,
         images: normalizedImages,
         pricing: { modalities, mainCardPriceType },
+        classificacoesLogisticasIds: classificacoesLogisticasProduto.map(
+          (classificacao) => classificacao.tipoLogisticoId,
+        ),
         attributes,
-        variants,
+        variants: variantsWithClassifications,
         // Dados de retirada local
         allowsPickup: product.allowsPickup,
         allowsOwnDelivery: product.allowsOwnDelivery,
@@ -303,12 +407,15 @@ export async function getProductById(id: string) {
         })),
       },
     };
-  } catch (error: any) {
-    // Em caso de erro, loga no console e retorna mensagem de erro
-    console.error("Erro ao buscar produto:", error);
+  } catch (error: unknown) {
+    console.error("[getProductById] Erro ao carregar produto para edição", {
+      productId: id,
+      error: obterDetalhesErro(error),
+    });
+
     return {
       success: false,
-      message: "Erro interno ao buscar produto",
+      message: "Erro interno ao carregar produto para edição",
       data: null,
     };
   }

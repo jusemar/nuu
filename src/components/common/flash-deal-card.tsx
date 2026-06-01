@@ -39,7 +39,7 @@ interface CartaoOfertaRelampagoProps {
 }
 
 const unidadesRestantes = [7, 12, 3];
-const fundosImagem = ["bg-[#f5f0e8]", "bg-[#e8f0f5]", "bg-[#f0ede8]"];
+const fundosImagem = ["bg-accent-brand-light", "bg-primary-light", "bg-muted"];
 
 export const CartaoOfertaRelampago = ({
   produtos,
@@ -125,39 +125,41 @@ export const CartaoOfertaRelampago = ({
   };
 
   return (
-    <section className="flex h-full min-w-0 flex-col py-2 font-sans">
+    <section className="border-border/80 bg-card shadow-elevation flex h-full min-w-0 flex-col rounded-xl border p-3 font-sans sm:p-4">
       <h2 className="sr-only">
         Seção de ofertas relâmpago com contagem regressiva
       </h2>
 
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <div className="inline-flex items-center gap-2 rounded bg-[#1a1a1a] px-3.5 py-1.5 text-[13px] font-bold tracking-[0.08em] text-white uppercase">
-          <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#ff3b3b]" />
+      <header className="mb-4 flex items-center justify-between gap-4">
+        <div className="bg-accent-brand inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[12px] font-bold tracking-[0.08em] text-white uppercase">
+          <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-white" />
           Oferta relâmpago
         </div>
-        <p className="shrink-0 text-[13px] text-gray-500">
+        <p className="text-muted-foreground shrink-0 text-[13px]">
           produto{" "}
-          <span className="font-medium text-gray-900">{indiceProduto + 1}</span>{" "}
+          <span className="text-foreground font-medium">
+            {indiceProduto + 1}
+          </span>{" "}
           de{" "}
-          <span className="font-medium text-gray-900">{produtos.length}</span>
+          <span className="text-foreground font-medium">{produtos.length}</span>
         </p>
       </header>
 
       <article
         key={produto.id}
-        className="animate-in fade-in grid min-h-[390px] flex-1 grid-cols-1 overflow-hidden rounded-xl border border-gray-200 bg-white duration-300 sm:grid-cols-2"
+        className="animate-in fade-in border-border bg-card grid min-h-[368px] flex-1 grid-cols-1 overflow-hidden rounded-xl border duration-300 sm:grid-cols-2"
       >
         <Link
           href={`/product/${produto.slug}`}
-          className={`relative flex min-h-[250px] items-center justify-center overflow-hidden sm:min-h-[390px] ${fundosImagem[indiceProduto % fundosImagem.length]}`}
+          className={`relative flex min-h-[240px] items-center justify-center overflow-hidden sm:min-h-[368px] ${fundosImagem[indiceProduto % fundosImagem.length]}`}
           aria-label={`Ver ${produto.name}`}
         >
           {desconto > 0 && (
-            <span className="absolute top-4 left-4 z-10 rounded bg-[#ff3b3b] px-3 py-1.5 text-lg leading-none font-extrabold text-white">
+            <span className="bg-accent-brand absolute top-4 left-4 z-10 rounded-md px-3 py-1.5 text-lg leading-none font-extrabold text-white">
               -{desconto}%
             </span>
           )}
-          <span className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-red-600 to-orange-500 px-3 py-1.5 text-xs font-extrabold tracking-[0.08em] text-white uppercase shadow-lg shadow-red-500/30">
+          <span className="bg-accent-brand absolute top-4 right-4 z-10 inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-extrabold tracking-[0.08em] text-white uppercase shadow-sm">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
             Relâmpago
           </span>
@@ -172,51 +174,49 @@ export const CartaoOfertaRelampago = ({
           ) : (
             <span className="text-sm text-gray-500">Imagem não disponível</span>
           )}
-          <span className="absolute bottom-4 left-4 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-500">
-            apenas <strong className="text-[#ff3b3b]">{estoque}</strong>{" "}
+          <span className="border-border bg-card text-muted-foreground absolute bottom-4 left-4 rounded-md border px-2.5 py-1 text-xs shadow-sm">
+            apenas <strong className="text-accent-dark">{estoque}</strong>{" "}
             restantes
           </span>
         </Link>
 
-        <div className="flex flex-col justify-between px-5 py-6 sm:px-6 sm:py-7">
+        <div className="flex flex-col justify-between px-5 py-5 sm:px-6">
           <div>
-            <p className="mb-1.5 text-[11px] font-medium tracking-[0.1em] text-gray-500 uppercase">
+            <p className="text-muted-foreground mb-1.5 text-[11px] font-medium tracking-[0.1em] uppercase">
               {produto.brand || "Oferta especial"}
             </p>
             <Link href={`/product/${produto.slug}`}>
-              <h3 className="mb-2 line-clamp-2 text-[22px] leading-[1.2] font-extrabold text-gray-900">
+              <h3 className="text-foreground mb-2 line-clamp-2 text-xl leading-[1.2] font-bold sm:text-[22px]">
                 {produto.name}
               </h3>
             </Link>
-            <p className="mb-4 line-clamp-2 text-[13px] leading-[1.6] text-gray-500">
-              {produto.cardShortText || produto.description}
-            </p>
-
             <div className="mb-4 flex items-baseline gap-2.5">
-              <span className="text-[30px] leading-none font-extrabold text-gray-900">
+              <span className="text-foreground text-[28px] leading-none font-bold">
                 {precoAtual ? formatCentsToBRL(precoAtual) : "Consulte"}
               </span>
               {desconto > 0 && (
-                <span className="text-base text-gray-500 line-through">
+                <span className="text-muted-foreground text-base line-through">
                   {formatCentsToBRL(precoOriginal)}
                 </span>
               )}
             </div>
 
             <div className="mb-4 flex items-center gap-2">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
+              <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
                 <div
-                  className="h-full rounded-full bg-[#ff3b3b]"
+                  className="bg-accent-brand h-full rounded-full"
                   style={{ width: `${percentualVendido}%` }}
                 />
               </div>
-              <span className="text-xs whitespace-nowrap text-gray-500">
-                <strong className="text-[#ff3b3b]">{percentualVendido}%</strong>{" "}
+              <span className="text-muted-foreground text-xs whitespace-nowrap">
+                <strong className="text-accent-dark">
+                  {percentualVendido}%
+                </strong>{" "}
                 vendido
               </span>
             </div>
 
-            <p className="mb-2 flex items-center gap-1 text-[11px] font-medium tracking-[0.08em] text-gray-500 uppercase">
+            <p className="text-muted-foreground mb-2 flex items-center gap-1 text-[11px] font-medium tracking-[0.08em] uppercase">
               <Clock3 className="h-3 w-3" />
               termina em
             </p>
@@ -235,9 +235,9 @@ export const CartaoOfertaRelampago = ({
                 urgente={urgente}
               />
             </div>
-            <div className="mb-5 h-[3px] overflow-hidden rounded-full bg-gray-100">
+            <div className="bg-muted mb-5 h-[3px] overflow-hidden rounded-full">
               <div
-                className="h-full rounded-full bg-[#ff3b3b] transition-[width] duration-1000"
+                className="bg-accent-brand h-full rounded-full transition-[width] duration-1000"
                 style={{ width: `${percentualTempo}%` }}
               />
             </div>
@@ -245,7 +245,7 @@ export const CartaoOfertaRelampago = ({
 
           <div className="flex gap-2.5">
             <button
-              className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-85 ${produtoAdicionado ? "bg-[#1a7a4a]" : "bg-[#1a1a1a]"}`}
+              className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white transition-colors ${produtoAdicionado ? "bg-success-dark" : "bg-primary hover:bg-primary-hover"}`}
               onClick={adicionarAoCarrinho}
               type="button"
             >
@@ -260,7 +260,7 @@ export const CartaoOfertaRelampago = ({
               aria-label={
                 favorito ? "Remover dos favoritos" : "Adicionar aos favoritos"
               }
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border bg-white transition-colors hover:border-[#ff3b3b] hover:text-[#ff3b3b] ${favorito ? "border-[#ff3b3b] text-[#ff3b3b]" : "border-gray-200 text-gray-500"}`}
+              className={`bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition-colors hover:border-red-300 hover:text-red-500 ${favorito ? "border-red-300 text-red-500" : "border-border text-muted-foreground"}`}
               onClick={alternarFavorito}
               type="button"
             >
@@ -281,7 +281,7 @@ export const CartaoOfertaRelampago = ({
             <button
               key={item.id}
               aria-label={`Ver produto ${indice + 1}`}
-              className={`h-1.5 w-1.5 rounded-full transition-transform ${indice === indiceProduto ? "scale-150 bg-[#1a1a1a]" : "bg-gray-300"}`}
+              className={`h-1.5 w-1.5 rounded-full transition-transform ${indice === indiceProduto ? "bg-primary scale-150" : "bg-muted-foreground/30"}`}
               onClick={() => setIndiceProduto(indice)}
               type="button"
             />
@@ -301,20 +301,20 @@ const BlocoTempo = ({
   rotulo: string;
   urgente: boolean;
 }) => (
-  <div className="flex min-w-[46px] flex-col items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-2">
+  <div className="border-border bg-muted flex min-w-[46px] flex-col items-center rounded-md border px-2 py-2">
     <span
-      className={`text-[21px] leading-none font-bold tabular-nums ${urgente ? "text-[#ff3b3b]" : "text-gray-900"}`}
+      className={`text-[21px] leading-none font-bold tabular-nums ${urgente ? "text-accent-dark" : "text-foreground"}`}
     >
       {String(valor).padStart(2, "0")}
     </span>
-    <span className="mt-1 text-[9px] font-medium tracking-[0.08em] text-gray-500 uppercase">
+    <span className="text-muted-foreground mt-1 text-[9px] font-medium tracking-[0.08em] uppercase">
       {rotulo}
     </span>
   </div>
 );
 
 const SeparadorTempo = () => (
-  <span className="mb-3 text-lg font-bold text-gray-400">:</span>
+  <span className="text-muted-foreground mb-3 text-lg font-bold">:</span>
 );
 
 // Mantem consumidores antigos funcionando enquanto a home usa a nova lista rotativa.

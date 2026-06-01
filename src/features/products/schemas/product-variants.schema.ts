@@ -28,6 +28,7 @@ export const productVariantSchema = z.object({
   widthInCm: z.coerce.number().int().min(0).optional().nullable(),
   lengthInCm: z.coerce.number().int().min(0).optional().nullable(),
   imageUrl: z.string().trim().optional().nullable(),
+  classificacoesLogisticasIds: z.array(z.string().uuid()).default([]),
   isActive: z.boolean().default(true),
   isDefault: z.boolean().default(false),
 });

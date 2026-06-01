@@ -24,6 +24,7 @@ export type ResultadoConsultaEntregaPropriaLoja =
       valorEmCentavos: number;
       nivel: "cep-especifico" | "regiao" | "bairro-avulso";
       descricao: string;
+      prazoEntrega?: string | null;
       bairro: string;
       cidade: string;
       uf: string;
@@ -159,6 +160,7 @@ export async function consultarEntregaPropriaLoja({
     valorEmCentavos: resultado.shippingPrice,
     nivel: resultado.level,
     descricao: resultado.message,
+    prazoEntrega: resultado.deliveryDeadline ?? null,
     bairro,
     cidade,
     uf,

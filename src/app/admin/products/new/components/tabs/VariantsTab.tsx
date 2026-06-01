@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Box,
@@ -11,14 +11,16 @@ import {
   Image as ImageIcon,
   Info,
   Layers,
+  Loader2,
   MoreHorizontal,
-  Package,
   Plus,
   Ruler,
+  Settings,
   Sparkles,
   Star,
   Tag,
   Trash2,
+  Upload,
   Wand2,
   X,
 } from "lucide-react";
@@ -33,9 +35,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { buscarResumoLogisticaProduto } from "@/features/admin/logistica/actions/produto-logistica/buscar-resumo-logistica-produto";
 import {
   buildVariantSku,
   centsToCurrencyInput,
@@ -43,7 +53,6 @@ import {
   currencyInputToCents,
   getCombinationFormula,
   summarizeVariantEditor,
-  variantHasCompleteDimensions,
 } from "@/features/products";
 import type {
   ProductAttributeInput,
@@ -55,6 +64,13 @@ import type { ProductFormData } from "../../data/product-form-data";
 type VariantsTabProps = {
   data: ProductFormData;
   onChange: (updates: Partial<ProductFormData>) => void;
+  draftKey?: string;
+};
+
+type ClassificacaoLogisticaDisponivel = {
+  id: string;
+  nome: string;
+  ativo: boolean | null;
 };
 
 type DraftAttribute = {
@@ -65,11 +81,23 @@ type DraftAttribute = {
 type BulkDraft = {
   price: string;
   stock: string;
-  weight: string;
-  height: string;
-  width: string;
-  length: string;
 };
+
+type VariantsDraft = {
+  productKind: ProductFormData["productKind"];
+  attributes: ProductAttributeInput[];
+  variants: ProductVariantFormInput[];
+  savedAt: number;
+};
+
+function buildVariantsDraftStorageKey(draftKey: string) {
+  return `admin:produto:variantes:rascunho:${draftKey}`;
+}
+
+export function clearVariantsDraft(draftKey: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(buildVariantsDraftStorageKey(draftKey));
+}
 
 function formatPrice(cents: number) {
   if (!cents) return "R$ 0,00";
@@ -85,11 +113,51 @@ function toNullableInteger(value: string) {
   return Number.isFinite(parsed) ? Math.round(parsed) : null;
 }
 
+function parseDecimalValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const normalized = String(value).replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 function getVariantKey(variant: ProductVariantFormInput, index: number) {
   return variant.id || `${variant.sku}-${index}`;
 }
 
-function getVariantStatus(variant: ProductVariantFormInput) {
+function hasPositiveValue(value: unknown) {
+  return parseDecimalValue(value) !== null;
+}
+
+function parentHasCompleteLogistics(data: ProductFormData) {
+  const dimensoes = data.dimensoesFreteExterno;
+  return Boolean(
+    hasPositiveValue(dimensoes?.pesoEmKg) &&
+      hasPositiveValue(dimensoes?.alturaEmCm) &&
+      hasPositiveValue(dimensoes?.larguraEmCm) &&
+      hasPositiveValue(dimensoes?.comprimentoEmCm),
+  );
+}
+
+function variantHasEffectiveDimensions(
+  variant: ProductVariantFormInput,
+  data: ProductFormData,
+) {
+  return Boolean(
+    (hasPositiveValue(variant.weightInGrams) ||
+      hasPositiveValue(data.dimensoesFreteExterno?.pesoEmKg)) &&
+      (hasPositiveValue(variant.heightInCm) ||
+        hasPositiveValue(data.dimensoesFreteExterno?.alturaEmCm)) &&
+      (hasPositiveValue(variant.widthInCm) ||
+        hasPositiveValue(data.dimensoesFreteExterno?.larguraEmCm)) &&
+      (hasPositiveValue(variant.lengthInCm) ||
+        hasPositiveValue(data.dimensoesFreteExterno?.comprimentoEmCm)),
+  );
+}
+
+function getVariantStatus(
+  variant: ProductVariantFormInput,
+  data: ProductFormData,
+) {
   if (!variant.isActive) {
     return {
       label: "Inativa",
@@ -114,11 +182,22 @@ function getVariantStatus(variant: ProductVariantFormInput) {
     };
   }
 
-  if (!variantHasCompleteDimensions(variant)) {
+  if (!variantHasEffectiveDimensions(variant, data)) {
     return {
       label: "Sem frete",
       className: "border-sky-200 bg-sky-50 text-sky-700",
       icon: Ruler,
+    };
+  }
+
+  if (
+    !variantHasLogisticsOverride(variant) &&
+    parentHasCompleteLogistics(data)
+  ) {
+    return {
+      label: "Herdando",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      icon: CheckCircle2,
     };
   }
 
@@ -127,6 +206,61 @@ function getVariantStatus(variant: ProductVariantFormInput) {
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: CheckCircle2,
   };
+}
+
+function variantHasLogisticsOverride(variant: ProductVariantFormInput) {
+  return Boolean(
+    hasPositiveValue(variant.weightInGrams) ||
+      hasPositiveValue(variant.heightInCm) ||
+      hasPositiveValue(variant.widthInCm) ||
+      hasPositiveValue(variant.lengthInCm) ||
+      (variant.classificacoesLogisticasIds?.length ?? 0) > 0,
+  );
+}
+
+function getClassificacoesNames(
+  ids: string[] | undefined,
+  classificacoes: ClassificacaoLogisticaDisponivel[],
+) {
+  if (!ids?.length) return [];
+
+  return ids.map((id) => {
+    const classificacao = classificacoes.find((item) => item.id === id);
+    return classificacao?.nome ?? "Classificação removida";
+  });
+}
+
+function formatWeightFromKg(value: unknown) {
+  const kg = parseDecimalValue(value);
+  if (!kg) return "Não informado";
+
+  const grams = Math.round(kg * 1000);
+  const kgLabel = new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 3,
+  }).format(kg);
+
+  return `${kgLabel} kg (${grams}g)`;
+}
+
+function formatDimensionValue(value: unknown) {
+  const parsed = parseDecimalValue(value);
+  if (!parsed) return "Não informado";
+
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 2,
+  }).format(parsed)}cm`;
+}
+
+function formatParentDimensions(data: ProductFormData) {
+  const dimensoes = data.dimensoesFreteExterno;
+  const partes = [
+    dimensoes?.pesoEmKg ? `${dimensoes.pesoEmKg} kg` : null,
+    dimensoes?.alturaEmCm ? `${dimensoes.alturaEmCm}A` : null,
+    dimensoes?.larguraEmCm ? `${dimensoes.larguraEmCm}L` : null,
+    dimensoes?.comprimentoEmCm ? `${dimensoes.comprimentoEmCm}C cm` : null,
+  ].filter(Boolean);
+
+  return partes.length > 0 ? partes.join(" / ") : "Não informado no produto";
 }
 
 function StatCard({
@@ -180,7 +314,7 @@ function ValueChip({
   );
 }
 
-export function VariantsTab({ data, onChange }: VariantsTabProps) {
+export function VariantsTab({ data, onChange, draftKey }: VariantsTabProps) {
   const [draftAttribute, setDraftAttribute] = useState<DraftAttribute>({
     name: "",
     value: "",
@@ -190,14 +324,24 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
   const [bulkDraft, setBulkDraft] = useState<BulkDraft>({
     price: "",
     stock: "",
-    weight: "",
-    height: "",
-    width: "",
-    length: "",
   });
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [variantesComUploadEmAndamento, setVariantesComUploadEmAndamento] =
+    useState<string[]>([]);
+  const [logisticsVariantIndex, setLogisticsVariantIndex] = useState<
+    number | null
+  >(null);
+  const [ownLogisticsVariantKeys, setOwnLogisticsVariantKeys] = useState<
+    string[]
+  >([]);
+  const [classificacoesDisponiveis, setClassificacoesDisponiveis] = useState<
+    ClassificacaoLogisticaDisponivel[]
+  >([]);
+  const restoredDraftRef = useRef(false);
 
   const attributes = data.attributes || [];
   const variants = data.variants || [];
+  const hasVariantsData = attributes.length > 0 || variants.length > 0;
   const summary = useMemo(() => summarizeVariantEditor(variants), [variants]);
   const formula = useMemo(
     () => getCombinationFormula(attributes),
@@ -218,6 +362,97 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
   );
   const allSelected =
     variants.length > 0 && selectedVariantIds.length === variants.length;
+  const logisticsVariant =
+    logisticsVariantIndex !== null ? variants[logisticsVariantIndex] : null;
+  const logisticsVariantKey =
+    logisticsVariant && logisticsVariantIndex !== null
+      ? getVariantKey(logisticsVariant, logisticsVariantIndex)
+      : null;
+  const logisticsVariantHasOwnData = logisticsVariant
+    ? variantHasLogisticsOverride(logisticsVariant)
+    : false;
+  const logisticsVariantEditingOwn =
+    Boolean(logisticsVariantKey) &&
+    (logisticsVariantHasOwnData ||
+      ownLogisticsVariantKeys.includes(logisticsVariantKey as string));
+  const logisticsVariantInheriting =
+    Boolean(logisticsVariant) && !logisticsVariantEditingOwn;
+  const parentClassificationNames = getClassificacoesNames(
+    data.entrega?.classificacoesLogisticasIds,
+    classificacoesDisponiveis,
+  );
+
+  useEffect(() => {
+    const keysAtuais = new Set(
+      variants.map((variant, index) => getVariantKey(variant, index)),
+    );
+    setPriceDrafts((prev) => {
+      const next: Record<string, string> = {};
+      for (const [key, value] of Object.entries(prev)) {
+        if (keysAtuais.has(key)) next[key] = value;
+      }
+      return next;
+    });
+  }, [variants]);
+
+  useEffect(() => {
+    async function carregarClassificacoesLogisticas() {
+      try {
+        const resumo = await buscarResumoLogisticaProduto();
+        setClassificacoesDisponiveis(resumo.tiposDisponiveis);
+      } catch {
+        setClassificacoesDisponiveis([]);
+      }
+    }
+    carregarClassificacoesLogisticas();
+  }, []);
+
+  useEffect(() => {
+    if (!draftKey || restoredDraftRef.current || hasVariantsData) return;
+    if (typeof window === "undefined") return;
+
+    const rawDraft = window.localStorage.getItem(
+      buildVariantsDraftStorageKey(draftKey),
+    );
+    if (!rawDraft) {
+      restoredDraftRef.current = true;
+      return;
+    }
+
+    try {
+      const parsedDraft = JSON.parse(rawDraft) as VariantsDraft;
+      onChange({
+        productKind: parsedDraft.productKind,
+        attributes: parsedDraft.attributes,
+        variants: parsedDraft.variants,
+      });
+    } catch {
+      window.localStorage.removeItem(buildVariantsDraftStorageKey(draftKey));
+    } finally {
+      restoredDraftRef.current = true;
+    }
+  }, [draftKey, hasVariantsData, onChange]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    if (typeof window === "undefined") return;
+
+    if (!hasVariantsData) {
+      window.localStorage.removeItem(buildVariantsDraftStorageKey(draftKey));
+      return;
+    }
+
+    const draft: VariantsDraft = {
+      productKind: data.productKind,
+      attributes,
+      variants,
+      savedAt: Date.now(),
+    };
+    window.localStorage.setItem(
+      buildVariantsDraftStorageKey(draftKey),
+      JSON.stringify(draft),
+    );
+  }, [attributes, data.productKind, draftKey, hasVariantsData, variants]);
 
   function updateAttributes(nextAttributes: ProductAttributeInput[]) {
     onChange({ attributes: nextAttributes });
@@ -239,6 +474,76 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
           : variant,
       ),
     );
+  }
+
+  function startOwnLogistics(variantKey: string) {
+    setOwnLogisticsVariantKeys((current) =>
+      current.includes(variantKey) ? current : [...current, variantKey],
+    );
+  }
+
+  function resetVariantLogistics(
+    variant: ProductVariantFormInput,
+    index: number,
+    variantKey: string,
+  ) {
+    updateVariant(variant.id, index, {
+      weightInGrams: null,
+      heightInCm: null,
+      widthInCm: null,
+      lengthInCm: null,
+      classificacoesLogisticasIds: [],
+    });
+    setOwnLogisticsVariantKeys((current) =>
+      current.filter((key) => key !== variantKey),
+    );
+  }
+
+  async function uploadImagemVariante(
+    arquivo: File,
+    variantId: string | undefined,
+    index: number,
+    variantKey: string,
+  ) {
+    setVariantesComUploadEmAndamento((prev) =>
+      prev.includes(variantKey) ? prev : [...prev, variantKey],
+    );
+
+    try {
+      const formData = new FormData();
+      formData.append("file", arquivo);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro no upload: ${response.statusText}`);
+      }
+
+      const payload = await response.json();
+      const imageUrl =
+        payload?.url ??
+        payload?.imageUrl ??
+        payload?.data?.url ??
+        Object.values(payload ?? {})[0];
+
+      if (typeof imageUrl !== "string" || !imageUrl.trim()) {
+        throw new Error("Resposta de upload sem URL válida");
+      }
+
+      updateVariant(variantId, index, {
+        imageUrl,
+      });
+    } catch (error) {
+      console.error("Erro ao enviar imagem da variante:", error);
+      alert("Não foi possível enviar a imagem da variante.");
+    } finally {
+      setVariantesComUploadEmAndamento((prev) =>
+        prev.filter((item) => item !== variantKey),
+      );
+    }
   }
 
   function addAttribute() {
@@ -673,8 +978,8 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
         <CardHeader className="border-b">
           <CardTitle>Variantes geradas</CardTitle>
           <CardDescription>
-            Edite preço, estoque, peso e dimensões inline. Use ações em massa
-            para acelerar cadastros grandes.
+            Edite preço e estoque na tabela. Dados logísticos ficam organizados
+            por variante no modal dedicado.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -756,48 +1061,6 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                       type="button"
                       size="sm"
                       variant="secondary"
-                      onClick={() =>
-                        applyBulkUpdate({
-                          weightInGrams: toNullableInteger(bulkDraft.weight),
-                          heightInCm: toNullableInteger(bulkDraft.height),
-                          widthInCm: toNullableInteger(bulkDraft.width),
-                          lengthInCm: toNullableInteger(bulkDraft.length),
-                        })
-                      }
-                    >
-                      <Ruler className="mr-1 h-3.5 w-3.5" />
-                      Aplicar peso/dimensões
-                    </Button>
-                    <div className="grid grid-cols-4 gap-1">
-                      {(["weight", "height", "width", "length"] as const).map(
-                        (field) => (
-                          <Input
-                            key={field}
-                            placeholder={
-                              field === "weight"
-                                ? "g"
-                                : field === "height"
-                                  ? "A"
-                                  : field === "width"
-                                    ? "L"
-                                    : "C"
-                            }
-                            value={bulkDraft[field]}
-                            onChange={(event) =>
-                              setBulkDraft((current) => ({
-                                ...current,
-                                [field]: event.target.value,
-                              }))
-                            }
-                            className="h-8 w-14 border-white/20 bg-white/10 text-center text-white placeholder:text-white/60"
-                          />
-                        ),
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
                       onClick={applyBulkSku}
                     >
                       <Wand2 className="mr-1 h-3.5 w-3.5" />
@@ -849,7 +1112,7 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1280px] border-separate border-spacing-0 text-sm">
+                <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 text-[11px] tracking-wide text-slate-500 uppercase">
                       <th className="border-b px-4 py-3 text-left">
@@ -867,18 +1130,17 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                         />
                       </th>
                       <th className="border-b px-3 py-3 text-left">Padrão</th>
-                      <th className="border-b px-3 py-3 text-left">Imagem</th>
+                      <th className="border-b px-3 py-3 text-left">
+                        Imagem da variante (opcional)
+                      </th>
                       <th className="border-b px-3 py-3 text-left">
                         Combinação
                       </th>
                       <th className="border-b px-3 py-3 text-left">SKU</th>
                       <th className="border-b px-3 py-3 text-right">Preço</th>
                       <th className="border-b px-3 py-3 text-right">Estoque</th>
-                      <th className="border-b px-3 py-3 text-right">
-                        Peso (g)
-                      </th>
-                      <th className="border-b px-3 py-3 text-right">
-                        A/L/C (cm)
+                      <th className="border-b px-3 py-3 text-left">
+                        Logística
                       </th>
                       <th className="border-b px-3 py-3 text-left">Status</th>
                       <th className="border-b px-3 py-3 text-right">Ativo</th>
@@ -889,7 +1151,7 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                     {variants.map((variant, index) => {
                       const variantKey = getVariantKey(variant, index);
                       const selected = selectedVariantIds.includes(variantKey);
-                      const status = getVariantStatus(variant);
+                      const status = getVariantStatus(variant, data);
                       const StatusIcon = status.icon;
 
                       return (
@@ -934,18 +1196,75 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                             </button>
                           </td>
                           <td className="border-b border-slate-100 px-3 py-3 align-middle">
-                            <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50">
-                              {variant.imageUrl ? (
-                                <img
-                                  src={variant.imageUrl}
-                                  alt={variant.name || variant.sku}
-                                  className="h-full w-full object-cover"
+                            <div className="flex min-w-[140px] items-center gap-2">
+                              <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50">
+                                {variant.imageUrl ? (
+                                  <img
+                                    src={variant.imageUrl}
+                                    alt={variant.name || variant.sku}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="grid h-full w-full place-items-center text-slate-400">
+                                    <ImageIcon className="h-4 w-4" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <input
+                                  id={`upload-variante-${variantKey}`}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(event) => {
+                                    const arquivo = event.target.files?.[0];
+                                    if (!arquivo) return;
+                                    void uploadImagemVariante(
+                                      arquivo,
+                                      variant.id,
+                                      index,
+                                      variantKey,
+                                    );
+                                    event.target.value = "";
+                                  }}
                                 />
-                              ) : (
-                                <div className="grid h-full w-full place-items-center text-slate-400">
-                                  <ImageIcon className="h-4 w-4" />
-                                </div>
-                              )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const input = document.getElementById(
+                                      `upload-variante-${variantKey}`,
+                                    ) as HTMLInputElement | null;
+                                    input?.click();
+                                  }}
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900"
+                                  disabled={variantesComUploadEmAndamento.includes(
+                                    variantKey,
+                                  )}
+                                >
+                                  {variantesComUploadEmAndamento.includes(
+                                    variantKey,
+                                  ) ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Upload className="h-3 w-3" />
+                                  )}
+                                  Upload
+                                </button>
+                                {variant.imageUrl ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateVariant(variant.id, index, {
+                                        imageUrl: null,
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Remover
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                           </td>
                           <td className="border-b border-slate-100 px-3 py-3 align-middle">
@@ -985,14 +1304,51 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                           </td>
                           <td className="border-b border-slate-100 px-3 py-3 text-right align-middle">
                             <Input
-                              value={centsToCurrencyInput(variant.priceInCents)}
+                              type="text"
+                              inputMode="decimal"
+                              value={
+                                priceDrafts[variantKey] ??
+                                centsToCurrencyInput(variant.priceInCents)
+                              }
                               placeholder="0,00"
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                const valorDigitado = event.target.value;
+                                setPriceDrafts((prev) => ({
+                                  ...prev,
+                                  [variantKey]: valorDigitado,
+                                }));
                                 updateVariant(variant.id, index, {
-                                  priceInCents: currencyInputToCents(
-                                    event.target.value,
-                                  ),
+                                  priceInCents:
+                                    currencyInputToCents(valorDigitado),
+                                });
+                              }}
+                              onBlur={() =>
+                                setPriceDrafts((prev) => {
+                                  const {
+                                    [variantKey]: _valorRemovido,
+                                    ...rest
+                                  } = prev;
+                                  return rest;
                                 })
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  setPriceDrafts((prev) => {
+                                    const {
+                                      [variantKey]: _valorRemovido,
+                                      ...rest
+                                    } = prev;
+                                    return rest;
+                                  });
+                                }
+                              }}
+                              onFocus={() =>
+                                setPriceDrafts((prev) => ({
+                                  ...prev,
+                                  [variantKey]:
+                                    prev[variantKey] ??
+                                    centsToCurrencyInput(variant.priceInCents),
+                                }))
                               }
                               className="h-9 text-right"
                             />
@@ -1009,51 +1365,20 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                               className="h-9 text-right"
                             />
                           </td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-right align-middle">
-                            <Input
-                              type="number"
-                              value={variant.weightInGrams ?? ""}
-                              onChange={(event) =>
-                                updateVariant(variant.id, index, {
-                                  weightInGrams: event.target.value,
-                                })
-                              }
-                              className="h-9 text-right"
-                            />
-                          </td>
-                          <td className="border-b border-slate-100 px-3 py-3 text-right align-middle">
-                            <div className="grid grid-cols-3 gap-1">
-                              <Input
-                                type="number"
-                                value={variant.heightInCm ?? ""}
-                                onChange={(event) =>
-                                  updateVariant(variant.id, index, {
-                                    heightInCm: event.target.value,
-                                  })
-                                }
-                                className="h-9 text-center"
-                              />
-                              <Input
-                                type="number"
-                                value={variant.widthInCm ?? ""}
-                                onChange={(event) =>
-                                  updateVariant(variant.id, index, {
-                                    widthInCm: event.target.value,
-                                  })
-                                }
-                                className="h-9 text-center"
-                              />
-                              <Input
-                                type="number"
-                                value={variant.lengthInCm ?? ""}
-                                onChange={(event) =>
-                                  updateVariant(variant.id, index, {
-                                    lengthInCm: event.target.value,
-                                  })
-                                }
-                                className="h-9 text-center"
-                              />
-                            </div>
+                          <td className="border-b border-slate-100 px-3 py-3 align-middle">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => setLogisticsVariantIndex(index)}
+                            >
+                              <Settings className="h-3.5 w-3.5" />
+                              Logística
+                              {variantHasLogisticsOverride(variant) ? (
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              ) : null}
+                            </Button>
                           </td>
                           <td className="border-b border-slate-100 px-3 py-3 align-middle">
                             <Badge
@@ -1081,11 +1406,7 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
                                 variant="ghost"
                                 size="icon"
                                 className="opacity-70 group-hover:opacity-100"
-                                onClick={() =>
-                                  updateVariant(variant.id, index, {
-                                    imageUrl: variant.imageUrl || "",
-                                  })
-                                }
+                                onClick={() => setLogisticsVariantIndex(index)}
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
@@ -1127,6 +1448,371 @@ export function VariantsTab({ data, onChange }: VariantsTabProps) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={logisticsVariantIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setLogisticsVariantIndex(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Logística da variante
+            </DialogTitle>
+            <DialogDescription>
+              Configure apenas quando esta variante precisar sobrescrever os
+              dados logísticos do produto principal.
+            </DialogDescription>
+          </DialogHeader>
+
+          {logisticsVariant && logisticsVariantIndex !== null ? (
+            <div className="space-y-6">
+              <div className="rounded-lg border bg-slate-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {logisticsVariant.name || logisticsVariant.sku}
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      logisticsVariantInheriting
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-sky-200 bg-sky-50 text-sky-700"
+                    }
+                  >
+                    {logisticsVariantInheriting
+                      ? "Usando dados logísticos do produto principal"
+                      : "Configuração própria da variante"}
+                  </Badge>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {Object.entries(logisticsVariant.attributes || {}).map(
+                    ([name, value]) => (
+                      <Badge key={name} variant="secondary">
+                        {name}: {value}
+                      </Badge>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {logisticsVariantInheriting ? (
+                <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <h3 className="text-sm font-semibold text-emerald-950">
+                    Resumo herdado do produto principal
+                  </h3>
+                  <dl className="mt-3 grid gap-2 text-sm text-emerald-950 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs font-medium text-emerald-700">
+                        Peso
+                      </dt>
+                      <dd>
+                        {formatWeightFromKg(
+                          data.dimensoesFreteExterno?.pesoEmKg,
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-emerald-700">
+                        Altura
+                      </dt>
+                      <dd>
+                        {formatDimensionValue(
+                          data.dimensoesFreteExterno?.alturaEmCm,
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-emerald-700">
+                        Largura
+                      </dt>
+                      <dd>
+                        {formatDimensionValue(
+                          data.dimensoesFreteExterno?.larguraEmCm,
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-emerald-700">
+                        Comprimento
+                      </dt>
+                      <dd>
+                        {formatDimensionValue(
+                          data.dimensoesFreteExterno?.comprimentoEmCm,
+                        )}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs font-medium text-emerald-700">
+                        Classificações
+                      </dt>
+                      <dd>
+                        {parentClassificationNames.length > 0
+                          ? parentClassificationNames.join(", ")
+                          : "Nenhuma classificação no produto principal"}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+              ) : null}
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Medidas
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {logisticsVariantInheriting
+                      ? "Campos bloqueados enquanto a variante herda do produto principal."
+                      : "Preencha apenas o que esta variante precisa sobrescrever."}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="variante-peso">Peso (g)</Label>
+                    <Input
+                      id="variante-peso"
+                      type="number"
+                      min="0"
+                      step="1"
+                      disabled={logisticsVariantInheriting}
+                      placeholder={`Herdando: ${formatWeightFromKg(
+                        data.dimensoesFreteExterno?.pesoEmKg,
+                      )}`}
+                      value={logisticsVariant.weightInGrams ?? ""}
+                      className={
+                        logisticsVariantInheriting
+                          ? "bg-slate-100 text-slate-500"
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        updateVariant(
+                          logisticsVariant.id,
+                          logisticsVariantIndex,
+                          {
+                            weightInGrams: event.target.value,
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="variante-altura">Altura (cm)</Label>
+                    <Input
+                      id="variante-altura"
+                      type="number"
+                      min="0"
+                      step="1"
+                      disabled={logisticsVariantInheriting}
+                      placeholder={`Herdando: ${formatDimensionValue(
+                        data.dimensoesFreteExterno?.alturaEmCm,
+                      )}`}
+                      value={logisticsVariant.heightInCm ?? ""}
+                      className={
+                        logisticsVariantInheriting
+                          ? "bg-slate-100 text-slate-500"
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        updateVariant(
+                          logisticsVariant.id,
+                          logisticsVariantIndex,
+                          {
+                            heightInCm: event.target.value,
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="variante-largura">Largura (cm)</Label>
+                    <Input
+                      id="variante-largura"
+                      type="number"
+                      min="0"
+                      step="1"
+                      disabled={logisticsVariantInheriting}
+                      placeholder={`Herdando: ${formatDimensionValue(
+                        data.dimensoesFreteExterno?.larguraEmCm,
+                      )}`}
+                      value={logisticsVariant.widthInCm ?? ""}
+                      className={
+                        logisticsVariantInheriting
+                          ? "bg-slate-100 text-slate-500"
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        updateVariant(
+                          logisticsVariant.id,
+                          logisticsVariantIndex,
+                          {
+                            widthInCm: event.target.value,
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="variante-comprimento">
+                      Comprimento (cm)
+                    </Label>
+                    <Input
+                      id="variante-comprimento"
+                      type="number"
+                      min="0"
+                      step="1"
+                      disabled={logisticsVariantInheriting}
+                      placeholder={`Herdando: ${formatDimensionValue(
+                        data.dimensoesFreteExterno?.comprimentoEmCm,
+                      )}`}
+                      value={logisticsVariant.lengthInCm ?? ""}
+                      className={
+                        logisticsVariantInheriting
+                          ? "bg-slate-100 text-slate-500"
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        updateVariant(
+                          logisticsVariant.id,
+                          logisticsVariantIndex,
+                          {
+                            lengthInCm: event.target.value,
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Classificação logística
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {logisticsVariantInheriting
+                      ? "As classificações abaixo ficam bloqueadas enquanto a variante herda do produto."
+                      : "Marque apenas as classificações próprias desta variante."}
+                  </p>
+                </div>
+
+                {classificacoesDisponiveis.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-4 text-sm text-slate-500">
+                    Nenhuma classificação logística disponível.
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {classificacoesDisponiveis.map((classificacao) => {
+                      const selecionada = (
+                        logisticsVariant.classificacoesLogisticasIds ?? []
+                      ).includes(classificacao.id);
+
+                      return (
+                        <label
+                          key={classificacao.id}
+                          className={`flex items-center gap-2 rounded-md border p-3 text-sm ${
+                            !logisticsVariantInheriting && classificacao.ativo
+                              ? "bg-white"
+                              : "bg-slate-50 text-slate-400"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={selecionada}
+                            disabled={
+                              logisticsVariantInheriting || !classificacao.ativo
+                            }
+                            onCheckedChange={(checked) => {
+                              const atuais =
+                                logisticsVariant.classificacoesLogisticasIds ??
+                                [];
+                              updateVariant(
+                                logisticsVariant.id,
+                                logisticsVariantIndex,
+                                {
+                                  classificacoesLogisticasIds: checked
+                                    ? Array.from(
+                                        new Set([...atuais, classificacao.id]),
+                                      )
+                                    : atuais.filter(
+                                        (id) => id !== classificacao.id,
+                                      ),
+                                },
+                              );
+                            }}
+                          />
+                          <span>{classificacao.nome}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-lg border border-sky-100 bg-sky-50 p-4">
+                <h3 className="text-sm font-semibold text-sky-950">
+                  Resumo operacional
+                </h3>
+                <div className="mt-2 space-y-1 text-sm text-sky-900">
+                  <p>
+                    {logisticsVariantInheriting
+                      ? "Esta variante usará o fallback logístico do produto principal."
+                      : "Esta variante possui configuração logística própria."}
+                  </p>
+                  <p>
+                    Produto principal:{" "}
+                    <span className="font-medium">
+                      {formatParentDimensions(data)}
+                    </span>
+                    .
+                  </p>
+                  <p>
+                    Classificações do produto principal:{" "}
+                    <span className="font-medium">
+                      {(data.entrega?.classificacoesLogisticasIds?.length ??
+                        0) > 0
+                        ? `${data.entrega?.classificacoesLogisticasIds?.length} selecionada(s)`
+                        : "nenhuma"}
+                    </span>
+                    .
+                  </p>
+                </div>
+              </section>
+
+              <div className="flex justify-between gap-2 border-t pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (!logisticsVariantKey) return;
+                    if (logisticsVariantInheriting) {
+                      startOwnLogistics(logisticsVariantKey);
+                      return;
+                    }
+                    resetVariantLogistics(
+                      logisticsVariant,
+                      logisticsVariantIndex,
+                      logisticsVariantKey,
+                    );
+                  }}
+                >
+                  {logisticsVariantInheriting
+                    ? "Usar dados próprios"
+                    : "Herdar do produto"}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setLogisticsVariantIndex(null)}
+                >
+                  Concluir
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

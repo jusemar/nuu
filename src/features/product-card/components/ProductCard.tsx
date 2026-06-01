@@ -31,7 +31,7 @@ export const ProductCard = ({
   slug,
   image,
   title,
-  description,
+  description: _description,
   originalPrice,
   currentPrice,
   discount,
@@ -183,16 +183,6 @@ export const ProductCard = ({
             />
           </button>
         </div>
-
-        {/* Descrição - MANTIDA */}
-        {description && (
-          <p
-            className="mb-3 line-clamp-2 text-xs leading-relaxed text-gray-600" /* margin-bottom adicionado */
-            itemProp="description"
-          >
-            {description}
-          </p>
-        )}
 
         {/* Seção de Preço */}
         <div className="space-y-2">

@@ -1,7 +1,11 @@
 "use server";
 
 import { db } from "@/db/connection";
-import { productAttributeTable, productVariantTable } from "@/db/schema";
+import {
+  productAttributeTable,
+  productVariantTable,
+  variantesTiposLogisticosTable,
+} from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 import {
@@ -97,7 +101,7 @@ export async function salvarEstruturaVariantesProduto({
     .map((result) => result.data);
 
   if (parsedVariants.length > 0) {
-    await db.insert(productVariantTable).values(
+    const variantesInseridas = await db.insert(productVariantTable).values(
       parsedVariants.map((variant) => ({
         productId,
         sku: variant.sku,
@@ -115,6 +119,32 @@ export async function salvarEstruturaVariantesProduto({
         isDefault: variant.isDefault,
         updatedAt: new Date(),
       })),
+    ).returning({
+      id: productVariantTable.id,
+      sku: productVariantTable.sku,
+    });
+
+    const varianteIdPorSku = new Map(
+      variantesInseridas.map((variante) => [variante.sku, variante.id]),
     );
+    const vinculosClassificacoes = parsedVariants.flatMap((variant) => {
+      const varianteId = varianteIdPorSku.get(variant.sku);
+      if (!varianteId) return [];
+
+      return (variant.classificacoesLogisticasIds ?? []).map(
+        (tipoLogisticoId) => ({
+          varianteId,
+          tipoLogisticoId,
+          updatedAt: new Date(),
+        }),
+      );
+    });
+
+    if (vinculosClassificacoes.length > 0) {
+      await db
+        .insert(variantesTiposLogisticosTable)
+        .values(vinculosClassificacoes)
+        .onConflictDoNothing();
+    }
   }
 }

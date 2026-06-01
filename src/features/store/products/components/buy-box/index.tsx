@@ -144,6 +144,10 @@ export function BuyBox({
   const resultadoDoCepAtual =
     cepConsultadoLimpo === cepAtualLimpo ? entregaPropriaResult : null;
   const enderecoConsultado = resultadoDoCepAtual?.endereco;
+  const prazoEntregaPropria =
+    resultadoDoCepAtual?.found && resultadoDoCepAtual.deliveryDeadline?.trim()
+      ? resultadoDoCepAtual.deliveryDeadline.trim()
+      : prazoEntrega || "Consulte prazo";
   const opcoesEntregaCotadas = resultadoDoCepAtual?.opcoesEntrega ?? [];
   const opcaoFrenetSelecionada =
     transportadoraSelecionada &&
@@ -526,7 +530,7 @@ export function BuyBox({
                         Entrega Própria
                       </div>
                       <div className="text-text-hint text-[11px]">
-                        {prazoEntrega}
+                        {prazoEntregaPropria}
                       </div>
                       {resultadoDoCepAtual?.found && (
                         <div className="text-text-primary text-xs font-bold">
@@ -627,7 +631,7 @@ export function BuyBox({
                           Entrega Própria
                         </div>
                         <div className="text-text-hint text-[11px]">
-                          {prazoEntrega}
+                          {prazoEntregaPropria}
                         </div>
                         <div className="text-text-primary text-xs font-bold">
                           R${" "}

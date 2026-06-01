@@ -135,26 +135,29 @@ descrever("resolverItemLogistico", () => {
     afirmacoes.deepEqual(resultado.erro.camposAusentes, []);
   });
 
-  verificar("retorna erro para variante sem dimensoes", () => {
+  verificar("herda dimensoes do produto quando variante nao informa", () => {
     const resultado = resolverItemLogistico({
       produto: produtoComVariantes,
       variante: {
         ...varianteCompleta,
+        pesoEmGramas: null,
+        alturaEmCm: null,
         larguraEmCm: null,
         comprimentoEmCm: null,
       },
       quantidade: 1,
     });
 
-    afirmacoes.equal(resultado.sucesso, false);
+    afirmacoes.equal(resultado.sucesso, true);
 
-    if (resultado.sucesso) return;
+    if (!resultado.sucesso) return;
 
-    afirmacoes.equal(resultado.erro.codigo, "dimensoes-incompletas");
-    afirmacoes.deepEqual(resultado.erro.camposAusentes, [
-      "larguraEmCm",
-      "comprimentoEmCm",
-    ]);
+    afirmacoes.equal(resultado.item.pesoEmGramas, produtoComVariantes.pesoEmGramas);
+    afirmacoes.deepEqual(resultado.item.dimensoes, {
+      alturaEmCm: produtoComVariantes.alturaEmCm,
+      larguraEmCm: produtoComVariantes.larguraEmCm,
+      comprimentoEmCm: produtoComVariantes.comprimentoEmCm,
+    });
   });
 
   verificar("retorna erro para quantidade invalida", () => {

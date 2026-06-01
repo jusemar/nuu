@@ -50,9 +50,7 @@ export const DealsGrid = ({
     : "lg:grid-cols-1";
 
   return (
-    <div
-      className={`mb-8 grid grid-cols-1 items-stretch gap-6 px-4 ${classeGrid}`}
-    >
+    <div className={`grid grid-cols-1 items-stretch gap-5 ${classeGrid}`}>
       {temOfertaRelampago && (
         <div className="min-w-0">
           <CartaoOfertaRelampago produtos={produtosOfertaRelampago} />

@@ -39,7 +39,9 @@ export function centsToCurrencyInput(
 }
 
 export function currencyInputToCents(value: string) {
-  const parsed = Number(value.replace(/\./g, "").replace(",", "."));
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return 0;
+  const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
 }
 
@@ -149,6 +151,7 @@ export function createMissingVariants({
       widthInCm: null,
       lengthInCm: null,
       imageUrl: null,
+      classificacoesLogisticasIds: [],
       isActive: true,
       isDefault: variants.length === 0 && index === 0,
     }));

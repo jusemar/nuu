@@ -1,6 +1,7 @@
 export interface ConsultaFreteSucesso {
   found: true;
   shippingPrice: number;
+  deliveryDeadline?: string | null;
   level: "cep-especifico" | "regiao" | "bairro-avulso";
   message: string;
   bairro: string;

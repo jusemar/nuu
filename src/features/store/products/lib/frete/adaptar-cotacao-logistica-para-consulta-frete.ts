@@ -8,6 +8,7 @@ import type {
 
 type MetadadosEntregaPropriaAtual = {
   nivelEntregaPropriaAtual?: ConsultaFreteSucesso["level"];
+  prazoEntregaPropriaAtual?: string | null;
   bairro?: string;
   cidade?: string;
   uf?: string;
@@ -78,6 +79,7 @@ export function adaptarCotacaoLogisticaParaConsultaFrete(
   return {
     found: true,
     shippingPrice: opcao.valorEmCentavos,
+    deliveryDeadline: metadados.prazoEntregaPropriaAtual ?? null,
     level: metadados.nivelEntregaPropriaAtual ?? "regiao",
     message: opcao.descricao || opcao.nome,
     bairro: metadados.bairro ?? "",

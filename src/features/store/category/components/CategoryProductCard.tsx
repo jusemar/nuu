@@ -10,10 +10,14 @@
 
 "use client";
 
-import { Heart, ShoppingCart, Sparkles, Truck, Zap } from "lucide-react";
+import { Heart, ShoppingCart, Truck } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  BadgePromocional,
+  type TipoBadgePromocionalVisual,
+} from "@/features/promocoes/components/store/badge-promocional";
 
 // =====================================================================
 // TIPO: CategoryProductCardProps
@@ -26,6 +30,9 @@ interface CategoryProductCardProps {
   price: number;
   fromPrice?: boolean;
   originalPrice?: number | null;
+  discount?: number | null;
+  economyInCents?: number | null;
+  badgePromocional?: TipoBadgePromocionalVisual | null;
   hasFreeShipping?: boolean;
   hasFlashSale?: boolean;
   hasBestPrice?: boolean;
@@ -41,6 +48,8 @@ export function CategoryProductCard({
   price,
   fromPrice = false,
   originalPrice,
+  discount,
+  badgePromocional,
   hasFreeShipping,
   hasFlashSale,
   hasBestPrice,
@@ -49,14 +58,6 @@ export function CategoryProductCard({
 }: CategoryProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-
-  // =================================================================
-  // Calcula desconto se houver preço original
-  // =================================================================
-  const discount =
-    originalPrice && originalPrice > price
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : undefined;
 
   // =================================================================
   // Formata preço para Real brasileiro
@@ -169,9 +170,10 @@ export function CategoryProductCard({
                 {formatPrice(originalPrice)}
               </p>
               {discount && discount > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
-                  <Sparkles className="h-2.5 w-2.5" />-{discount}%
-                </span>
+                <BadgePromocional
+                  tipo={badgePromocional ?? "promocao"}
+                  percentualOff={discount}
+                />
               )}
             </div>
           )}
@@ -221,10 +223,11 @@ export function CategoryProductCard({
             )}
 
             {hasFlashSale && (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-red-800 uppercase">
-                <Zap className="h-3 w-3" />
-                Promoção
-              </span>
+              <BadgePromocional
+                tipo={badgePromocional ?? "relampago"}
+                percentualOff={discount}
+                className="rounded-lg px-2.5 py-1 font-semibold"
+              />
             )}
           </div>
         )}

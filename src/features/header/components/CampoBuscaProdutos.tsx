@@ -9,6 +9,7 @@ import {
   type CategoriaPrincipalBusca,
   type ProdutoAutocomplete,
 } from "../queries/busca-produtos";
+import { BadgePromocional } from "@/features/promocoes/components/store/badge-promocional";
 
 const marca = {
   navy: "#1e2a78",
@@ -154,7 +155,9 @@ export function CampoBuscaProdutos() {
                     }}
                   >
                     <span>Categorias</span>
-                    {categoriaSelecionada === null && <Check className="h-4 w-4" />}
+                    {categoriaSelecionada === null && (
+                      <Check className="h-4 w-4" />
+                    )}
                   </button>
                 </li>
                 {categoriasPrincipais.map((itemCategoria) => {
@@ -284,6 +287,14 @@ export function CampoBuscaProdutos() {
                           <p className="text-xs text-slate-500">
                             {produto.categoriaNome ?? "Sem categoria"}
                           </p>
+                          {produto.badgePromocional && produto.percentualOff ? (
+                            <div className="mt-1">
+                              <BadgePromocional
+                                tipo={produto.badgePromocional}
+                                percentualOff={produto.percentualOff}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                         {produto.precoEmCentavos !== null && (
                           <span
@@ -308,6 +319,14 @@ export function CampoBuscaProdutos() {
                           <p className="text-xs text-slate-500">
                             {produto.categoriaNome ?? "Sem categoria"}
                           </p>
+                          {produto.badgePromocional && produto.percentualOff ? (
+                            <div className="mt-1">
+                              <BadgePromocional
+                                tipo={produto.badgePromocional}
+                                percentualOff={produto.percentualOff}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                         {produto.precoEmCentavos !== null && (
                           <span

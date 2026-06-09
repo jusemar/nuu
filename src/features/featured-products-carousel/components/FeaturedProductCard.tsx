@@ -1,18 +1,15 @@
 "use client";
 
-import {
-  Heart,
-  ShoppingCart,
-  Sparkles,
-  Star,
-  TrendingUp,
-  Truck,
-} from "lucide-react";
+import { Heart, ShoppingCart, Star, TrendingUp, Truck } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useCarrinho } from "@/features/carrinho";
+import {
+  BadgePromocional,
+  type TipoBadgePromocionalVisual,
+} from "@/features/promocoes/components/store/badge-promocional";
 
 interface FeaturedProductCardProps {
   id: string;
@@ -27,7 +24,7 @@ interface FeaturedProductCardProps {
   isFeatured?: boolean;
   isExclusive?: boolean;
   isTrending?: boolean;
-  badgePromocao?: "normal" | "relampago";
+  badgePromocao?: TipoBadgePromocionalVisual | null;
   rating?: number;
   reviewCount?: number;
   isFavorite?: boolean;
@@ -67,20 +64,9 @@ export const FeaturedProductCard = ({
   const isFavorite =
     externalIsFavorite !== undefined ? externalIsFavorite : internalIsFavorite;
 
-  const calculatedDiscount =
-    discount ||
-    (originalPrice && originalPrice > currentPrice
-      ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-      : undefined);
-  const dadosBadgePrincipal = badgePromocao
-    ? {
-        label: badgePromocao === "relampago" ? "Relâmpago" : "Promoção",
-        className:
-          badgePromocao === "relampago"
-            ? "bg-accent-brand text-white"
-            : "bg-accent-brand-light text-accent-dark",
-      }
-    : isFeatured
+  const calculatedDiscount = discount;
+  const dadosBadgePrincipal =
+    !badgePromocao && isFeatured
       ? {
           label: "Destaque",
           className: "bg-primary text-primary-foreground",
@@ -164,16 +150,22 @@ export const FeaturedProductCard = ({
       tabIndex={slug ? 0 : undefined}
     >
       {/* Badge principal no topo */}
-      {dadosBadgePrincipal && (
+      {badgePromocao ? (
+        <div className="absolute top-3 left-3 z-10">
+          <BadgePromocional
+            tipo={badgePromocao}
+            percentualOff={calculatedDiscount}
+          />
+        </div>
+      ) : dadosBadgePrincipal ? (
         <div className="absolute top-3 left-3 z-10">
           <span
             className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase shadow-sm ${dadosBadgePrincipal.className}`}
           >
-            <Sparkles className="h-3 w-3" />
             {dadosBadgePrincipal.label}
           </span>
         </div>
-      )}
+      ) : null}
 
       {/* Container da Imagem */}
       <div className="bg-muted/60 relative aspect-[1/0.75] overflow-hidden">
@@ -274,9 +266,10 @@ export const FeaturedProductCard = ({
                 {formatPrice(originalPrice)}
               </p>
               {calculatedDiscount && calculatedDiscount > 0 && (
-                <span className="bg-accent-brand inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold text-white">
-                  <Sparkles className="h-2.5 w-2.5" />-{calculatedDiscount}%
-                </span>
+                <BadgePromocional
+                  tipo={badgePromocao ?? "promocao"}
+                  percentualOff={calculatedDiscount}
+                />
               )}
             </div>
           )}

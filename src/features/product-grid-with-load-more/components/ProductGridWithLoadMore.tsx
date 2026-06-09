@@ -15,6 +15,7 @@ function formatProductForCard(product: any) {
   // 💰 CONVERSÃO DE PREÇOS: Banco armazena em centavos
   const originalPriceInCents = product.mainPrice?.price;
   const promoPriceInCents = product.mainPrice?.promoPrice;
+  const percentualOff = product.mainPrice?.percentualOff;
 
   const originalPrice = originalPriceInCents
     ? originalPriceInCents / 100
@@ -24,10 +25,10 @@ function formatProductForCard(product: any) {
 
   const currentPrice = promoPrice || originalPrice || 0;
 
-  let discount: number | undefined;
-  if (originalPrice && promoPrice && originalPrice > promoPrice) {
-    discount = Math.round(((originalPrice - promoPrice) / originalPrice) * 100);
-  }
+  const discount =
+    typeof percentualOff === "number" && percentualOff > 0
+      ? percentualOff
+      : undefined;
 
   // 🖼️ IMAGEM: Usa a imagem principal do produto ou um placeholder genérico
   let imageUrl = "/produto-sem-foto.webp"; // Coloque uma imagem placeholder na pasta public
@@ -46,6 +47,7 @@ function formatProductForCard(product: any) {
     originalPrice,
     currentPrice,
     discount,
+    badgePromocao: product.mainPrice?.badgePromocional ?? undefined,
     hasFreeShipping: product.hasFreeShipping || false,
     isFeatured: product.storeProductFlags?.includes("featured") || false,
     isExclusive: product.storeProductFlags?.includes("exclusive") || false,

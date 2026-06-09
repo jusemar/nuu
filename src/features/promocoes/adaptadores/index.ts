@@ -1,0 +1,1 @@
+export { adaptarPromocoesLegadasParaEngine } from "./legado";

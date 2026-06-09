@@ -35,4 +35,5 @@ export type OpcaoEntregaCotada = {
   nome: string;
   prazo: string | null;
   valorEmCentavos: number;
+  transportadora?: string | null;
 };

@@ -35,6 +35,10 @@ import {
   Settings,
   Image,
   Tag,
+  TicketPercent,
+  Megaphone,
+  ShieldCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "../hooks/useSidebar";
@@ -59,6 +63,10 @@ const iconMap: Record<string, React.ElementType> = {
   Settings,
   Image,
   Tag,
+  TicketPercent,
+  Megaphone,
+  ShieldCheck,
+  FileSpreadsheet,
 };
 
 /**
@@ -156,6 +164,22 @@ export const menuAdmin = [
     ],
   },
 
+  // Grupo: Fornecedores
+  {
+    id: "fornecedores",
+    type: "group" as const,
+    label: "Fornecedores",
+    icon: "Building2",
+    items: [
+      {
+        id: "fornecedores-importacoes",
+        label: "Importações",
+        href: "/admin/fornecedores/importacoes",
+        icon: "FileSpreadsheet",
+      },
+    ],
+  },
+
   // Item solto: Pedidos
   {
     id: "orders",
@@ -163,6 +187,40 @@ export const menuAdmin = [
     label: "Pedidos",
     href: "/admin/orders",
     icon: "ShoppingCart",
+  },
+
+  // Grupo: Marketing
+  {
+    id: "marketing",
+    type: "group" as const,
+    label: "Marketing",
+    icon: "Megaphone",
+    items: [
+      {
+        id: "promocoes",
+        label: "Promoções",
+        href: "/admin/marketing/promocoes",
+        icon: "Percent",
+      },
+      {
+        id: "cupons-promocao",
+        label: "Cupons",
+        href: "/admin/marketing/cupons",
+        icon: "TicketPercent",
+      },
+      {
+        id: "auditoria-cupons",
+        label: "Auditoria Cupons",
+        href: "/admin/marketing/auditoria-cupons",
+        icon: "ShieldCheck",
+      },
+      {
+        id: "auditoria-frete-gratis",
+        label: "Auditoria Frete Grátis",
+        href: "/admin/marketing/auditoria-frete-gratis",
+        icon: "Truck",
+      },
+    ],
   },
 
   // Grupo: Configurações

@@ -13,6 +13,10 @@ import { MobileFilterDrawer } from "@/features/store/category/components/MobileF
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { SortSection } from "@/components/common/wrappers/sort-section";
 import { CategoryProductCard } from "@/features/store/category/components/CategoryProductCard";
+import {
+  adaptarPrecosVitrine,
+  type PrecosVitrineNormalizados,
+} from "@/features/precificacao";
 
 // Services
 import { getSubcategoryTabs } from "@/features/store/category/services/categoryTabsService";
@@ -56,6 +60,15 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
       pricing: true,
     },
   });
+  const precosVitrineCategoria: PrecosVitrineNormalizados =
+    await adaptarPrecosVitrine(products).catch((error) => {
+      console.error("Erro ao adaptar precos da categoria", error);
+
+      return {
+        precosPorChave: {},
+        produtosPorId: {},
+      };
+    });
 
   // =================================================================
   // PASSO 3: Buscar subcategorias para as tabs
@@ -96,6 +109,13 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   const precosEmCentavos: number[] = [];
 
   const obterPrecoProduto = (product: (typeof products)[number]) => {
+    const precoVitrine =
+      precosVitrineCategoria.produtosPorId[product.id]?.precoPrincipal;
+
+    if (precoVitrine) {
+      return precoVitrine.precoFinalEmCentavos;
+    }
+
     const mainPricing = product.pricing?.find((p) => p.mainCardPrice === true);
     const variantPrices = (product.variants || [])
       .filter((variant) => variant.isActive && variant.priceInCents > 0)
@@ -173,8 +193,15 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
 
   const parseLista = (valor: string | string[] | undefined) => {
     if (!valor) return [];
-    if (Array.isArray(valor)) return valor.flatMap((item) => item.split(",")).map((item) => item.trim()).filter(Boolean);
-    return valor.split(",").map((item) => item.trim()).filter(Boolean);
+    if (Array.isArray(valor))
+      return valor
+        .flatMap((item) => item.split(","))
+        .map((item) => item.trim())
+        .filter(Boolean);
+    return valor
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
   };
   const parseNumero = (valor: string | string[] | undefined) => {
     const bruto = Array.isArray(valor) ? valor[0] : valor;
@@ -207,8 +234,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   const minAplicado = precoMinSelecionado ?? precoMin;
   const maxAplicado = precoMaxSelecionado ?? precoMax;
   const faixaPrecoAtiva =
-    precoMinSelecionado !== null ||
-    precoMaxSelecionado !== null;
+    precoMinSelecionado !== null || precoMaxSelecionado !== null;
   const temFiltroAtivo =
     categoriasSelecionadas.size > 0 ||
     marcasSelecionadas.size > 0 ||
@@ -220,51 +246,57 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   const productsFiltrados = !temFiltroAtivo
     ? products
     : products.filter((product) => {
-    if (categoriasSelecionadas.size > 0 && !categoriasSelecionadas.has(product.categoryId)) {
-      return false;
-    }
+        if (
+          categoriasSelecionadas.size > 0 &&
+          !categoriasSelecionadas.has(product.categoryId)
+        ) {
+          return false;
+        }
 
-    const marca = product.brand?.trim().toLowerCase();
-    if (marcasSelecionadas.size > 0 && (!marca || !marcasSelecionadas.has(marca))) {
-      return false;
-    }
+        const marca = product.brand?.trim().toLowerCase();
+        if (
+          marcasSelecionadas.size > 0 &&
+          (!marca || !marcasSelecionadas.has(marca))
+        ) {
+          return false;
+        }
 
-    if (tamanhosSelecionados.size > 0) {
-      const possuiTamanho = product.variants.some((variant) =>
-        Object.entries(variant.attributes || {}).some(
-          ([chave, valor]) =>
-            ["tamanho", "size"].includes(chave.toLowerCase()) &&
-            tamanhosSelecionados.has(String(valor).trim().toLowerCase()),
-        ),
-      );
-      if (!possuiTamanho) return false;
-    }
+        if (tamanhosSelecionados.size > 0) {
+          const possuiTamanho = product.variants.some((variant) =>
+            Object.entries(variant.attributes || {}).some(
+              ([chave, valor]) =>
+                ["tamanho", "size"].includes(chave.toLowerCase()) &&
+                tamanhosSelecionados.has(String(valor).trim().toLowerCase()),
+            ),
+          );
+          if (!possuiTamanho) return false;
+        }
 
-    if (coresSelecionadas.size > 0) {
-      const possuiCor = product.variants.some((variant) =>
-        Object.entries(variant.attributes || {}).some(
-          ([chave, valor]) =>
-            ["cor", "color", "colour"].includes(chave.toLowerCase()) &&
-            coresSelecionadas.has(String(valor).trim().toLowerCase()),
-        ),
-      );
-      if (!possuiCor) return false;
-    }
+        if (coresSelecionadas.size > 0) {
+          const possuiCor = product.variants.some((variant) =>
+            Object.entries(variant.attributes || {}).some(
+              ([chave, valor]) =>
+                ["cor", "color", "colour"].includes(chave.toLowerCase()) &&
+                coresSelecionadas.has(String(valor).trim().toLowerCase()),
+            ),
+          );
+          if (!possuiCor) return false;
+        }
 
-    if (faixaPrecoAtiva) {
-      const precoProduto = obterPrecoProduto(product);
-      if (precoProduto < minAplicado || precoProduto > maxAplicado) {
-        return false;
-      }
-    }
+        if (faixaPrecoAtiva) {
+          const precoProduto = obterPrecoProduto(product);
+          if (precoProduto < minAplicado || precoProduto > maxAplicado) {
+            return false;
+          }
+        }
 
-    // Mantém visual de avaliação sem inventar nota: sem dados reais, não restringe.
-    if (ratingSelecionado && ratingSelecionado !== "all") {
-      return true;
-    }
+        // Mantém visual de avaliação sem inventar nota: sem dados reais, não restringe.
+        if (ratingSelecionado && ratingSelecionado !== "all") {
+          return true;
+        }
 
-      return true;
-    });
+        return true;
+      });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -365,6 +397,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
                   const mainPricing = product.pricing?.find(
                     (p) => p.mainCardPrice === true,
                   );
+                  const precoVitrine =
+                    precosVitrineCategoria.produtosPorId[product.id]
+                      ?.precoPrincipal;
 
                   // PREÇO ATUAL (se tiver promoção, usa o promocional, senão usa o normal)
                   const variantPrices = (product.variants || [])
@@ -373,17 +408,20 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
                     )
                     .map((variant) => variant.priceInCents);
                   const productPrice =
-                    product.productKind === "variable" &&
+                    precoVitrine?.precoFinalEmCentavos ??
+                    (product.productKind === "variable" &&
                     variantPrices.length > 0
                       ? Math.min(...variantPrices)
                       : mainPricing?.hasPromo
                         ? mainPricing.promoPrice
-                        : mainPricing?.price || 0;
+                        : mainPricing?.price || 0);
 
                   // PREÇO ORIGINAL (só existe se tiver promoção - para mostrar riscado)
-                  const originalPrice = mainPricing?.hasPromo
-                    ? mainPricing.price
-                    : null;
+                  const originalPrice = precoVitrine?.possuiPromocao
+                    ? precoVitrine.precoOriginalEmCentavos
+                    : mainPricing?.hasPromo
+                      ? mainPricing.price
+                      : null;
                   // ===================================================
                   // 3. CONVERTER BOOLEANOS (null -> undefined)
                   // ===================================================
@@ -403,6 +441,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
                       price={productPrice ?? 0}
                       fromPrice={product.productKind === "variable"}
                       originalPrice={originalPrice} // Se tiver promoção, mostra preço original riscado
+                      discount={precoVitrine?.percentualOff}
+                      economyInCents={precoVitrine?.economiaEmCentavos}
+                      badgePromocional={precoVitrine?.badgePromocional}
                       hasFreeShipping={hasFreeShipping}
                       hasFlashSale={hasFlashSale}
                       hasBestPrice={hasBestPrice}

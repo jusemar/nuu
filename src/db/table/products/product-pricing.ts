@@ -1,6 +1,13 @@
 // src/db/table/products/product-pricing.ts
-import { pgTable, text, timestamp, uuid, integer, boolean } from "drizzle-orm/pg-core";
-import { productTable } from './products';
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  integer,
+  boolean,
+} from "drizzle-orm/pg-core";
+import { productTable } from "./products";
 
 export const productPricingTable = pgTable("product_pricing", {
   id: uuid().primaryKey().defaultRandom(),
@@ -16,6 +23,10 @@ export const productPricingTable = pgTable("product_pricing", {
   promoType: text("promo_type"), // 'normal', 'flash'
   promoPrice: integer("promo_price_in_cents"),
   promoEndDate: timestamp("promo_end_date"),
+  legadoPromocaoMigradoEm: timestamp("legado_promocao_migrado_em"),
+  legadoPromocaoMigradoParaRegraId: uuid(
+    "legado_promocao_migrado_para_regra_id",
+  ),
   promoDuration: integer("promo_duration"),
   promoDurationUnit: text("promo_duration_unit"), // 'days', 'hours'
   isActive: boolean("is_active").default(true),

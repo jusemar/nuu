@@ -14,6 +14,7 @@ descrever("montarFreteFrenetSelecionado", () => {
         nome: "Sedex",
         prazo: "3 dias uteis",
         valorEmCentavos: 2490,
+        transportadora: "Correios",
       },
     });
 
@@ -24,6 +25,7 @@ descrever("montarFreteFrenetSelecionado", () => {
       valorEmCentavos: 2490,
       cep: "01310-930",
       servico: "SEDEX",
+      transportadora: "Correios",
     });
   });
 

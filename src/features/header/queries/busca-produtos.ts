@@ -1,7 +1,12 @@
 "use server";
 
 import { db } from "@/db/connection";
-import { sql } from "drizzle-orm";
+import { productTable } from "@/db/schema";
+import {
+  adaptarPrecosVitrine,
+  type PrecosVitrineNormalizados,
+} from "@/features/precificacao";
+import { inArray, sql } from "drizzle-orm";
 
 export type CategoriaPrincipalBusca = {
   id: string;
@@ -17,6 +22,10 @@ export type ProdutoAutocomplete = {
   categoriaNome: string | null;
   categoriaSlug: string | null;
   precoEmCentavos: number | null;
+  precoOriginalEmCentavos?: number | null;
+  percentualOff?: number | null;
+  economiaEmCentavos?: number | null;
+  badgePromocional?: "promocao" | "relampago" | null;
   imagemUrl: string | null;
 };
 
@@ -171,25 +180,57 @@ export async function buscarProdutosParaAutocomplete({
     ORDER BY prioridade ASC, termo ASC
     LIMIT 4;
   `);
+  const idsProdutos = produtos.rows.map((produto: any) => String(produto.id));
+  const produtosPrecificaveis =
+    idsProdutos.length > 0
+      ? await db.query.productTable.findMany({
+          where: inArray(productTable.id, idsProdutos),
+          with: {
+            pricing: true,
+            variants: true,
+          },
+        })
+      : [];
+  const precosVitrine: PrecosVitrineNormalizados = await adaptarPrecosVitrine(
+    produtosPrecificaveis,
+  ).catch((error) => {
+    console.error("Erro ao adaptar precos da busca", error);
+
+    return {
+      precosPorChave: {},
+      produtosPorId: {},
+    };
+  });
 
   return {
-    produtosEncontrados: produtos.rows.map((produto: any) => ({
-      id: String(produto.id),
-      nome: String(produto.name),
-      slug: String(produto.slug),
-      categoriaId: produto.category_id ? String(produto.category_id) : null,
-      categoriaNome: produto.category_name
-        ? String(produto.category_name)
-        : null,
-      categoriaSlug: produto.category_slug
-        ? String(produto.category_slug)
-        : null,
-      precoEmCentavos:
+    produtosEncontrados: produtos.rows.map((produto: any) => {
+      const produtoId = String(produto.id);
+      const precoVitrine =
+        precosVitrine.produtosPorId[produtoId]?.precoPrincipal;
+      const precoLegado =
         produto.promo_price_in_cents !== null || produto.price !== null
           ? Number(produto.promo_price_in_cents ?? produto.price)
+          : null;
+
+      return {
+        id: produtoId,
+        nome: String(produto.name),
+        slug: String(produto.slug),
+        categoriaId: produto.category_id ? String(produto.category_id) : null,
+        categoriaNome: produto.category_name
+          ? String(produto.category_name)
           : null,
-      imagemUrl: produto.image_url ? String(produto.image_url) : null,
-    })),
+        categoriaSlug: produto.category_slug
+          ? String(produto.category_slug)
+          : null,
+        precoEmCentavos: precoVitrine?.precoFinalEmCentavos ?? precoLegado,
+        precoOriginalEmCentavos: precoVitrine?.precoOriginalEmCentavos ?? null,
+        percentualOff: precoVitrine?.percentualOff ?? null,
+        economiaEmCentavos: precoVitrine?.economiaEmCentavos ?? null,
+        badgePromocional: precoVitrine?.badgePromocional ?? null,
+        imagemUrl: produto.image_url ? String(produto.image_url) : null,
+      };
+    }),
     sugestoesEncontradas: sugestoes.rows
       .map((sugestao: any) => String(sugestao.termo))
       .filter(Boolean),

@@ -23,6 +23,7 @@ export type ItemCarrinho = {
     valorEmCentavos: number;
     cep?: string;
     servico?: string;
+    transportadora?: string;
   };
   imagemUrl: string;
   precoEmCentavos: number;

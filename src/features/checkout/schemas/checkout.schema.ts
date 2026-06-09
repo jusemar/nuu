@@ -32,6 +32,7 @@ export const itemCheckoutSchema = z.object({
       valorEmCentavos: z.number().int().nonnegative(),
       cep: z.string().optional(),
       servico: z.string().trim().min(1).optional(),
+      transportadora: z.string().trim().min(1).optional(),
     })
     .optional(),
   imagemUrl: z.string().min(1),

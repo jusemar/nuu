@@ -18,5 +18,6 @@ export function montarFreteFrenetSelecionado({
     valorEmCentavos: opcao.valorEmCentavos,
     cep,
     servico: opcao.servico,
+    transportadora: opcao.transportadora ?? undefined,
   };
 }

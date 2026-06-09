@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useCarrinho } from "@/features/carrinho";
+import { BadgePromocional } from "@/features/promocoes/components/store/badge-promocional";
 import { formatCentsToBRL } from "@/helpers/money";
 import { useCountdown } from "@/hooks/use-countdown";
 
@@ -30,6 +31,9 @@ interface ProdutoOfertaRelampago {
     promoType?: "normal" | "flash" | string | null;
     promoEndDate?: Date | string | null;
     mainCardPrice: boolean | null;
+    percentualOff?: number | null;
+    badgePromocional?: "promocao" | "relampago" | null;
+    countdownPromocionalDataFim?: Date | string | null;
   }>;
 }
 
@@ -53,7 +57,9 @@ export const CartaoOfertaRelampago = ({
   const { adicionarItem } = useCarrinho();
   const produtoAtual = produtos[indiceProduto] ?? produtos[0];
   const dataFinalAtual =
-    produtoAtual?.pricing?.[0]?.promoEndDate ?? dataFinalFallback;
+    produtoAtual?.pricing?.[0]?.countdownPromocionalDataFim ??
+    produtoAtual?.pricing?.[0]?.promoEndDate ??
+    dataFinalFallback;
   const tempoRestante = useCountdown(
     dataFinalAtual
       ? new Date(dataFinalAtual).toISOString()
@@ -84,10 +90,7 @@ export const CartaoOfertaRelampago = ({
     precoPrincipal?.hasPromo && precoPrincipal.promoPrice
       ? precoPrincipal.promoPrice
       : precoOriginal;
-  const desconto =
-    precoOriginal > precoAtual
-      ? Math.round(((precoOriginal - precoAtual) / precoOriginal) * 100)
-      : 0;
+  const desconto = precoPrincipal?.percentualOff ?? 0;
   const estoque = unidadesRestantes[indiceProduto % unidadesRestantes.length];
   const percentualVendido = 100 - Math.min(24, estoque * 2);
   const horas = tempoRestante.days * 24 + tempoRestante.hours;
@@ -155,14 +158,18 @@ export const CartaoOfertaRelampago = ({
           aria-label={`Ver ${produto.name}`}
         >
           {desconto > 0 && (
-            <span className="bg-accent-brand absolute top-4 left-4 z-10 rounded-md px-3 py-1.5 text-lg leading-none font-extrabold text-white">
-              -{desconto}%
-            </span>
+            <BadgePromocional
+              tipo={precoPrincipal?.badgePromocional ?? "relampago"}
+              percentualOff={desconto}
+              compacto={false}
+              className="absolute top-4 left-4 z-10 text-lg leading-none font-extrabold"
+            />
           )}
-          <span className="bg-accent-brand absolute top-4 right-4 z-10 inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-extrabold tracking-[0.08em] text-white uppercase shadow-sm">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-            Relâmpago
-          </span>
+          <BadgePromocional
+            tipo={precoPrincipal?.badgePromocional ?? "relampago"}
+            compacto={false}
+            className="absolute top-4 right-4 z-10 shadow-sm"
+          />
           {imagemPrincipal?.imageUrl ? (
             <Image
               src={imagemPrincipal.imageUrl}

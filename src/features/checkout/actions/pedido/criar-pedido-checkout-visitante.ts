@@ -19,8 +19,9 @@ import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
 } from "@/features/precificacao";
+import { extrairCodigosFretePromocionalDeSnapshot } from "@/features/promocoes/lib/codigos-frete-promocional";
 
-import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
+import { calcularPreviaTotaisPedido } from "../../queries/previa-totais/calcular-previa-totais-pedido";
 import {
   enviarEmailPedidoRecebido,
   enviarEmailPixPendente,
@@ -309,17 +310,42 @@ async function criarPedidoCheckoutVisitanteInterno({
       throw new Error(revalidacaoFrete.mensagem);
     }
 
-    const freteEmCentavos = revalidacaoFrete.freteEmCentavos;
-    const totaisBase = calcularTotalCheckout({
-      itens: itensPedido.map((item) => ({
-        precoEmCentavos: item.precoUnitarioEmCentavos,
-        quantidade: item.quantidade,
-      })),
-      freteEmCentavos,
-      cupom: dados.cupom,
+    const previaTotaisPedido = await calcularPreviaTotaisPedido({
+      itens: dados.itens,
+      codigoCupom: dados.cupom,
+      clienteId: usuarioId,
+      freteEmCentavosOficial: revalidacaoFrete.freteEmCentavos,
+      aplicarFreteGratisPromocional: true,
+      cepEntrega: dados.cep,
+      cidadeEntrega: dados.cidade,
+      estadoEntrega: dados.estado,
+      fretesSelecionadosCodigos: extrairCodigosFretePromocionalDeSnapshot(
+        revalidacaoFrete.snapshotFrete,
+      ),
     });
+
+    if (!previaTotaisPedido) {
+      throw new Error(
+        "Não foi possível calcular os totais oficiais do pedido.",
+      );
+    }
+
+    const totaisPreviaForma =
+      previaTotaisPedido.totaisPorFormaPagamento[dados.formaPagamento];
+    const cupomAplicado = previaTotaisPedido.cupom?.valido
+      ? previaTotaisPedido.cupom
+      : null;
+    const descontoPromocionalEmCentavos =
+      totaisPreviaForma.descontoPromocionalEmCentavos;
+    const descontoCupomEmCentavos = totaisPreviaForma.descontoCupomEmCentavos;
+    const freteGratisPromocionalPedido =
+      previaTotaisPedido.freteGratisPromocional;
+    const descontoFretePromocionalEmCentavos =
+      freteGratisPromocionalPedido.descontoFretePromocionalEmCentavos;
+    const descontoTotalEmCentavos =
+      descontoCupomEmCentavos + descontoFretePromocionalEmCentavos;
     const parcelamentosCartao = calcularParcelamentosCartao({
-      valorEmCentavos: totaisBase.totalEmCentavos,
+      valorEmCentavos: totaisPreviaForma.totalEstimadoEmCentavos,
       configuracao: configuracaoPagamento,
     });
     const parcelamentoSelecionado =
@@ -330,9 +356,70 @@ async function criarPedidoCheckoutVisitanteInterno({
           ) || parcelamentosCartao[0]
         : null;
     const totais = {
-      ...totaisBase,
+      subtotalEmCentavos: totaisPreviaForma.subtotalEmCentavos,
+      freteEmCentavos: totaisPreviaForma.freteEmCentavos,
+      descontoEmCentavos: descontoTotalEmCentavos,
+      descontoPromocionalEmCentavos,
+      descontoCupomEmCentavos,
+      economiaTotalEmCentavos: totaisPreviaForma.economiaEmCentavos,
       totalEmCentavos:
-        parcelamentoSelecionado?.totalEmCentavos ?? totaisBase.totalEmCentavos,
+        parcelamentoSelecionado?.totalEmCentavos ??
+        totaisPreviaForma.totalEstimadoEmCentavos,
+      codigoCupomAplicado: cupomAplicado?.codigo ?? null,
+      snapshotDescontos: {
+        origem: "calcularPreviaTotaisPedido",
+        formaPagamento: dados.formaPagamento,
+        descontoPromocionalEmCentavos,
+        descontoCupomEmCentavos,
+        descontoFretePromocionalEmCentavos,
+        economiaTotalEmCentavos: totaisPreviaForma.economiaEmCentavos,
+        valorFreteOriginalEmCentavos:
+          freteGratisPromocionalPedido.valorFreteOriginalEmCentavos,
+        valorFreteFinalEmCentavos:
+          freteGratisPromocionalPedido.valorFreteFinalEmCentavos,
+        totalEstimadoSemJurosEmCentavos:
+          totaisPreviaForma.totalEstimadoEmCentavos,
+        totalFinalEmCentavos:
+          parcelamentoSelecionado?.totalEmCentavos ??
+          totaisPreviaForma.totalEstimadoEmCentavos,
+        cupom: cupomAplicado
+          ? {
+              codigo: cupomAplicado.codigo,
+              tipoDesconto: cupomAplicado.tipoDesconto,
+              valorDesconto: cupomAplicado.valorDesconto,
+              descontoEstimadoEmCentavos:
+                cupomAplicado.descontoEstimadoEmCentavos,
+            }
+          : null,
+        freteGratisPromocional: {
+          elegivel: freteGratisPromocionalPedido.elegivel,
+          aplicado: freteGratisPromocionalPedido.freteGratisPromocionalAplicado,
+          valorFreteOriginalEmCentavos:
+            freteGratisPromocionalPedido.valorFreteOriginalEmCentavos,
+          valorFreteFinalEmCentavos:
+            freteGratisPromocionalPedido.valorFreteFinalEmCentavos,
+          descontoFretePromocionalEmCentavos:
+            freteGratisPromocionalPedido.descontoFretePromocionalEmCentavos,
+          regraFreteGratisAplicada:
+            freteGratisPromocionalPedido.regraFreteGratisAplicada,
+          modalidadeAplicada: freteGratisPromocionalPedido.modalidadeAplicada,
+          modalidadesElegiveis:
+            freteGratisPromocionalPedido.modalidadesElegiveis,
+          regiaoAplicada: freteGratisPromocionalPedido.regiaoAplicada,
+          regioesElegiveis: freteGratisPromocionalPedido.regioesElegiveis,
+          transportadoraAplicada:
+            freteGratisPromocionalPedido.transportadoraAplicada,
+          servicoAplicado: freteGratisPromocionalPedido.servicoAplicado,
+          fretesSelecionadosElegiveis:
+            freteGratisPromocionalPedido.fretesSelecionadosElegiveis,
+          tipoPrioridadeFreteGratis:
+            freteGratisPromocionalPedido.tipoPrioridadeFreteGratis,
+          regrasIgnoradasPorPrecedencia:
+            freteGratisPromocionalPedido.regrasIgnoradasPorPrecedencia,
+          observacao:
+            "Frete promocional aplicado no total financeiro do pedido.",
+        },
+      },
     };
 
     if (totais.totalEmCentavos <= 0) {
@@ -431,7 +518,12 @@ async function criarPedidoCheckoutVisitanteInterno({
           subtotalEmCentavos: totais.subtotalEmCentavos,
           freteEmCentavos: totais.freteEmCentavos,
           descontoEmCentavos: totais.descontoEmCentavos,
+          descontoPromocionalEmCentavos: totais.descontoPromocionalEmCentavos,
+          descontoCupomEmCentavos: totais.descontoCupomEmCentavos,
+          economiaTotalEmCentavos: totais.economiaTotalEmCentavos,
           totalEmCentavos: totais.totalEmCentavos,
+          codigoCupomAplicado: totais.codigoCupomAplicado,
+          snapshotDescontos: totais.snapshotDescontos,
           gatewayPagamento,
           pagamentoStatus: "pending",
           observacao: normalizarTextoOpcionalCheckout(dados.observacao),

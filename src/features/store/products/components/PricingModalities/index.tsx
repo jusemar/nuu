@@ -11,6 +11,7 @@ import { useRef, useState } from "react";
 
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 
+import { formatarPromocaoPrecoPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade, PrecoModalidade } from "../../types/product.types";
 
 interface PricingModalitiesProps {
@@ -121,6 +122,7 @@ export function PricingModalities({
   const IconeAtivo = configAtiva.Icone;
   const precoAtivoCalculado =
     precosCalculadosPorModalidade[modalidadeAtiva.type];
+  const promocaoAtiva = formatarPromocaoPrecoPdp(precoAtivoCalculado);
 
   return (
     <div>
@@ -166,6 +168,18 @@ export function PricingModalities({
           </div>
 
           <div className="shrink-0 text-right">
+            {promocaoAtiva ? (
+              <>
+                <div className="mb-0.5 flex justify-end">
+                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-700">
+                    {promocaoAtiva.percentualOff}% OFF
+                  </span>
+                </div>
+                <div className="text-text-hint text-[10px] line-through">
+                  {promocaoAtiva.precoOriginalFormatado}
+                </div>
+              </>
+            ) : null}
             <div className="text-text-primary text-[13px] font-bold">
               {precoAtivoCalculado?.pix.valor}
             </div>
@@ -197,6 +211,7 @@ export function PricingModalities({
                 const config = obterConfigModalidade(mod.type);
                 const Icone = config.Icone;
                 const precoCalculado = precosCalculadosPorModalidade[mod.type];
+                const promocao = formatarPromocaoPrecoPdp(precoCalculado);
 
                 return (
                   <div
@@ -233,6 +248,18 @@ export function PricingModalities({
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
+                      {promocao ? (
+                        <>
+                          <div className="mb-0.5 flex justify-end">
+                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-700">
+                              {promocao.percentualOff}% OFF
+                            </span>
+                          </div>
+                          <div className="text-text-hint text-[10px] line-through">
+                            {promocao.precoOriginalFormatado}
+                          </div>
+                        </>
+                      ) : null}
                       <div className="text-text-primary text-sm font-extrabold">
                         {precoCalculado?.pix.valor}{" "}
                         <span className="text-text-muted text-[10px] font-medium">

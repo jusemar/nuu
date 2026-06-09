@@ -8,6 +8,7 @@ import {
   checkoutStripeWebhookEventosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoStripeAprovado } from "../../emails/email-service";
@@ -204,6 +205,12 @@ async function confirmarPagamentoStripe({
           stripeEventId: eventId,
           stripeEventType: eventType,
         },
+      });
+
+      await registrarUsoCupomPromocao({
+        pedidoId,
+        pagamentoId,
+        clienteBanco: tx,
       });
     }
 

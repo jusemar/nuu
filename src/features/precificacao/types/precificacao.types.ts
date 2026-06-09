@@ -14,6 +14,20 @@ export type EntradaPrecificacaoProduto = {
   modalidade: string;
   precoBaseEmCentavos: number;
   moeda?: "BRL";
+  promocaoCalculada?: PromocaoPrecificacaoProduto;
+};
+
+export type PromocaoPrecificacaoProduto = {
+  ativa: boolean;
+  precoOriginalEmCentavos: number;
+  precoFinalEmCentavos: number;
+  descontoAplicadoEmCentavos: number;
+  regraAplicadaId: string | null;
+  tipoDesconto: "percentual" | "valor_fixo" | null;
+  valorDesconto: number;
+  tipoCampanha?: "normal" | "relampago" | null;
+  badgePromocional?: string | null;
+  countdownPromocionalDataFim?: Date | null;
 };
 
 export type ParcelamentoCartaoCalculado = {
@@ -29,6 +43,9 @@ export type PrecoProdutoCalculado = {
   produtoId: string;
   modalidade: string;
   moeda: "BRL";
+  precoOriginalEmCentavos: number;
+  precoFinalEmCentavos: number;
+  promocao: PromocaoPrecificacaoProduto;
   pix: {
     ativo: boolean;
     valorEmCentavos: number;

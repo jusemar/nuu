@@ -2,16 +2,20 @@ import { PackageCheck, Truck, Trash2 } from "lucide-react";
 import Image from "next/image";
 
 import { formatarPrecoCarrinho } from "@/features/carrinho";
+import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
+import type { ResultadoFreteGratisProgressivo } from "@/features/promocoes/services";
 
 import type { ResumoCheckoutCalculado } from "../../../../types/checkout.types";
 
 type RevisaoProdutosEntregaProps = {
   resumoCheckout: ResumoCheckoutCalculado | null;
+  freteGratisProgressivo?: ResultadoFreteGratisProgressivo | null;
   onRemoverItem: (itemId: string) => void;
 };
 
 export function RevisaoProdutosEntrega({
   resumoCheckout,
+  freteGratisProgressivo,
   onRemoverItem,
 }: RevisaoProdutosEntregaProps) {
   return (
@@ -32,6 +36,11 @@ export function RevisaoProdutosEntrega({
           Revisão
         </span>
       </div>
+
+      <IndicadorFreteGratisProgressivo
+        resultado={freteGratisProgressivo}
+        formatarPreco={formatarPrecoCarrinho}
+      />
 
       <div className="space-y-3">
         {resumoCheckout?.itens.map((item) => {
@@ -69,7 +78,7 @@ export function RevisaoProdutosEntrega({
                       </h3>
                       {temAtributosVariante ? (
                         <p className="text-muted-foreground mt-1 line-clamp-2 text-[11px]">
-                          {Object.entries(item.atributosVariante)
+                          {Object.entries(item.atributosVariante ?? {})
                             .map(([nome, valor]) => `${nome}: ${valor}`)
                             .join(" • ")}
                         </p>

@@ -11,6 +11,7 @@ import { formatCEP, isValidCEP } from "../../utils/formatters";
 import { consultarFreteAction } from "../../actions/consultarFreteAction";
 import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
 import { montarFreteFrenetSelecionado } from "../../lib/frete/montar-frete-frenet-selecionado";
+import type { PromocaoVisualPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade } from "../../types/product.types";
 
 // ==========================================
@@ -23,6 +24,7 @@ interface BuyBoxProps {
   precoNormal: string;
   precoParc: string;
   descontoPix: number;
+  promocaoVisual?: PromocaoVisualPdp | null;
   estoque: number;
   freteGratisMin?: number;
   prazoEntrega: string;
@@ -98,6 +100,7 @@ export function BuyBox({
   precoNormal,
   precoParc,
   descontoPix,
+  promocaoVisual = null,
   estoque,
   freteGratisMin = 299,
   prazoEntrega,
@@ -324,9 +327,31 @@ export function BuyBox({
             {selectedVariantLabel}
           </div>
         ) : null}
-        <div className="text-text-hint mb-1.5 text-xs">
-          De <span className="line-through">{precoNormal}</span> no cartão
-        </div>
+        {promocaoVisual?.ativa ? (
+          <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-extrabold tracking-wide text-white uppercase">
+                Promoção
+              </span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
+                {promocaoVisual.percentualOff}% OFF
+              </span>
+            </div>
+            <div className="text-text-hint text-xs">
+              De{" "}
+              <span className="font-semibold line-through">
+                {promocaoVisual.precoOriginalFormatado}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[11px] font-semibold text-emerald-700">
+              Economia de {promocaoVisual.economiaFormatada}
+            </div>
+          </div>
+        ) : (
+          <div className="text-text-hint mb-1.5 text-xs">
+            De <span className="line-through">{precoNormal}</span> no cartão
+          </div>
+        )}
 
         <div className="bg-pix-bg border-pix-border rounded-xl border p-3">
           <div className="text-success mb-1 text-[11px] font-bold tracking-wide uppercase">

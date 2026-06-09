@@ -1,14 +1,19 @@
-import { Input } from "@/components/ui/input";
 import { Lock, ShieldCheck, Check } from "lucide-react";
+import { useState } from "react";
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { formatarPrecoCarrinho } from "@/features/carrinho";
+import { formatarPrecoCarrinho, type ItemCarrinho } from "@/features/carrinho";
+import type { ResultadoCalcularPreviaTotaisPedido } from "@/features/checkout/queries/previa-totais/calcular-previa-totais-pedido";
+import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
+import type { ResultadoValidarCupomPromocao } from "@/features/promocoes/services";
 
 import type { CheckoutVisitanteSchema } from "../../../schemas/checkout.schema";
 import type { ResumoCheckoutCalculado } from "../../../types/checkout.types";
+import { CupomCheckoutResumo } from "./cupom-checkout-resumo";
 import { OpcoesPagamento } from "./opcoes-pagamento";
 
 type ResumoPedidoProps = {
   resumoCheckout: ResumoCheckoutCalculado | null;
+  itens: ItemCarrinho[];
   formaPagamento: "pix" | "cartao";
   parcelasCartao?: number;
   carregandoPagamento: boolean;
@@ -16,24 +21,30 @@ type ResumoPedidoProps = {
   register: UseFormRegister<CheckoutVisitanteSchema>;
   setValue: UseFormSetValue<CheckoutVisitanteSchema>;
   mensagemCupom: string | null;
+  previaTotais: ResultadoCalcularPreviaTotaisPedido | null;
   onCupomChange: (value: string) => void;
   onAplicarCupom: () => Promise<void>;
+  onPreviaTotaisChange: (
+    resultado: ResultadoCalcularPreviaTotaisPedido | null,
+  ) => void;
   isFormValid: boolean;
 };
 
 export function ResumoPedido({
   resumoCheckout,
+  itens,
   formaPagamento,
   parcelasCartao = 1,
   carregandoPagamento,
-  cupom,
   register,
   setValue,
-  mensagemCupom,
+  previaTotais,
   onCupomChange,
-  onAplicarCupom,
+  onPreviaTotaisChange,
   isFormValid,
 }: ResumoPedidoProps) {
+  const [resultadoCupom, setResultadoCupom] =
+    useState<ResultadoValidarCupomPromocao | null>(null);
   const totais = resumoCheckout?.totaisPorFormaPagamento[formaPagamento];
   const parcelamentoCartao =
     resumoCheckout?.pagamentos.cartao.parcelamentos.find(
@@ -47,6 +58,29 @@ export function ResumoPedido({
     formaPagamento === "pix"
       ? resumoCheckout?.pagamentos.pix.ativo
       : resumoCheckout?.pagamentos.cartao.ativo;
+  const totaisPreviaForma =
+    previaTotais?.totaisPorFormaPagamento[formaPagamento];
+  const descontoCupomEmCentavos =
+    totaisPreviaForma?.descontoCupomEmCentavos ?? 0;
+  const descontoFretePromocionalEmCentavos =
+    totaisPreviaForma?.descontoFretePromocionalEmCentavos ?? 0;
+  const freteGratisPromocionalAplicado =
+    totaisPreviaForma?.freteGratisPromocionalAplicado === true;
+  const valorFreteOriginalEmCentavos =
+    totaisPreviaForma?.valorFreteOriginalEmCentavos ??
+    totais?.freteEmCentavos ??
+    0;
+  const valorFreteFinalEmCentavos =
+    totaisPreviaForma?.valorFreteFinalEmCentavos ??
+    totais?.freteEmCentavos ??
+    0;
+  const totalEstimadoComCupomEmCentavos =
+    totaisPreviaForma?.totalEstimadoEmCentavos ?? totalAtual;
+  const economiaTotalEstimadaEmCentavos =
+    totaisPreviaForma?.economiaEmCentavos ??
+    (formaPagamento === "pix"
+      ? (resumoCheckout?.pagamentos.pix.economiaEmCentavos ?? 0)
+      : 0);
 
   return (
     <aside className="lg:col-span-5">
@@ -71,25 +105,20 @@ export function ResumoPedido({
               transportadora.
             </div>
 
-            <div className="flex gap-2 pt-2">
-              <Input
-                type="text"
-                placeholder="Cupom de desconto"
-                className="border-border bg-background focus:border-primary focus:ring-primary/15 h-10 flex-1 rounded-lg border px-3 text-sm uppercase outline-none focus:ring-2"
-                value={cupom}
-                onChange={(e) => onCupomChange(e.target.value)}
-              />
-              <button
-                type="button"
-                className="bg-secondary text-secondary-foreground hover:bg-muted h-10 rounded-lg px-4 text-xs font-bold tracking-wider transition-colors"
-                onClick={onAplicarCupom}
-              >
-                APLICAR
-              </button>
-            </div>
-            {mensagemCupom ? (
-              <p className="text-muted-foreground text-xs">{mensagemCupom}</p>
-            ) : null}
+            <CupomCheckoutResumo
+              itens={itens}
+              subtotalEmCentavos={totais?.subtotalEmCentavos ?? 0}
+              onResultadoCupom={(resultado) => {
+                setResultadoCupom(resultado);
+                onCupomChange(resultado?.valido ? resultado.codigo : "");
+              }}
+              onPreviaTotais={onPreviaTotaisChange}
+            />
+
+            <IndicadorFreteGratisProgressivo
+              resultado={previaTotais?.freteGratisProgressivo}
+              formatarPreco={formatarPrecoCarrinho}
+            />
 
             <div className="border-border space-y-2.5 border-t pt-5 text-sm">
               <div className="flex items-center justify-between">
@@ -100,17 +129,42 @@ export function ResumoPedido({
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Frete</span>
-                <span className="font-medium">
-                  {(totais?.freteEmCentavos ?? 0) === 0
-                    ? "Grátis"
-                    : formatarPrecoCarrinho(totais?.freteEmCentavos ?? 0)}
+                <span className="text-right font-medium">
+                  {freteGratisPromocionalAplicado ? (
+                    <span className="text-emerald-600">
+                      Grátis{" "}
+                      <span className="text-muted-foreground line-through">
+                        {formatarPrecoCarrinho(valorFreteOriginalEmCentavos)}
+                      </span>
+                    </span>
+                  ) : valorFreteFinalEmCentavos === 0 ? (
+                    "Grátis"
+                  ) : (
+                    formatarPrecoCarrinho(valorFreteFinalEmCentavos)
+                  )}
                 </span>
               </div>
+              {freteGratisPromocionalAplicado ? (
+                <div className="flex items-center justify-between text-emerald-600">
+                  <span>Frete grátis promocional</span>
+                  <span className="font-medium">
+                    -{formatarPrecoCarrinho(descontoFretePromocionalEmCentavos)}
+                  </span>
+                </div>
+              ) : null}
               {(totais?.descontoEmCentavos ?? 0) > 0 ? (
                 <div className="flex items-center justify-between text-emerald-600">
                   <span>Desconto</span>
                   <span className="font-medium">
                     -{formatarPrecoCarrinho(totais?.descontoEmCentavos ?? 0)}
+                  </span>
+                </div>
+              ) : null}
+              {resultadoCupom?.valido ? (
+                <div className="flex items-center justify-between text-emerald-600">
+                  <span>Cupom {resultadoCupom.codigo}</span>
+                  <span className="font-medium">
+                    -{formatarPrecoCarrinho(descontoCupomEmCentavos)}
                   </span>
                 </div>
               ) : null}
@@ -133,6 +187,29 @@ export function ResumoPedido({
                       resumoCheckout?.pagamentos.pix.economiaEmCentavos ?? 0,
                     )}
                   </span>
+                </div>
+              ) : null}
+              {economiaTotalEstimadaEmCentavos > 0 ? (
+                <div className="flex items-center justify-between text-emerald-600">
+                  <span>Economia total estimada</span>
+                  <span className="font-medium">
+                    {formatarPrecoCarrinho(economiaTotalEstimadaEmCentavos)}
+                  </span>
+                </div>
+              ) : null}
+              {resultadoCupom?.valido || freteGratisPromocionalAplicado ? (
+                <div className="flex items-end justify-between border-t border-dashed pt-3">
+                  <span className="text-sm font-semibold">
+                    Total estimado promocional
+                  </span>
+                  <div className="text-right">
+                    <p className="text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-400">
+                      {formatarPrecoCarrinho(totalEstimadoComCupomEmCentavos)}
+                    </p>
+                    <p className="text-muted-foreground text-[11px]">
+                      O servidor revalida o cupom ao criar o pedido.
+                    </p>
+                  </div>
                 </div>
               ) : null}
               <div className="flex items-end justify-between pt-3">

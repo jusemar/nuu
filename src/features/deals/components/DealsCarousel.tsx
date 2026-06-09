@@ -24,7 +24,7 @@ interface DealProduct {
   isFeatured?: boolean;
   isExclusive?: boolean;
   isTrending?: boolean;
-  badgePromocao?: "normal" | "relampago";
+  badgePromocao?: "promocao" | "relampago" | null;
 }
 
 interface DealsCarouselProps {

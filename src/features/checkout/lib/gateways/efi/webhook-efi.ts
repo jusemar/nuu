@@ -7,6 +7,7 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoPixAprovado } from "../../emails/email-service";
@@ -213,6 +214,12 @@ async function confirmarPagamentoPixEfi({
           valor: pix.valor,
           horario: pix.horario,
         },
+      });
+
+      await registrarUsoCupomPromocao({
+        pedidoId: pedidoAtual.id,
+        pagamentoId: pagamentoAtual.id,
+        clienteBanco: tx,
       });
     }
 

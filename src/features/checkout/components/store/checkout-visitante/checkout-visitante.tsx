@@ -14,6 +14,10 @@ import { useCarrinho } from "@/features/carrinho";
 import { consultarEnderecoCep } from "../../../actions/consultar-endereco-cep";
 import { criarPedidoCheckoutVisitante } from "../../../actions/pedido/criar-pedido-checkout-visitante";
 import { validarCupomCheckout } from "../../../actions/validar-cupom-checkout";
+import {
+  calcularPreviaTotaisPedido,
+  type ResultadoCalcularPreviaTotaisPedido,
+} from "../../../queries/previa-totais/calcular-previa-totais-pedido";
 import { calcularResumoCheckout } from "../../../queries/resumo-checkout/calcular-resumo-checkout";
 import {
   checkoutVisitanteSchema,
@@ -78,6 +82,8 @@ export function CheckoutVisitante({
   const [carregandoResumo, setCarregandoResumo] = useState(false);
   const [resumoCheckout, setResumoCheckout] =
     useState<ResumoCheckoutCalculado | null>(null);
+  const [previaTotaisPedido, setPreviaTotaisPedido] =
+    useState<ResultadoCalcularPreviaTotaisPedido | null>(null);
   const [pixCriado, setPixCriado] = useState<PixCriado | null>(null);
 
   const form = useForm<CheckoutVisitanteSchema>({
@@ -108,6 +114,9 @@ export function CheckoutVisitante({
       itens: [],
     },
   });
+  const cepEntrega = form.watch("cep");
+  const cidadeEntrega = form.watch("cidade");
+  const estadoEntrega = form.watch("estado");
 
   const formaPagamento = form.watch("formaPagamento");
   const parcelasCartao = form.watch("parcelasCartao");
@@ -169,6 +178,37 @@ export function CheckoutVisitante({
       consultaCancelada = true;
     };
   }, [carrinho.itens, cupom, formaPagamento, form, parcelasCartao]);
+
+  useEffect(() => {
+    let consultaCancelada = false;
+
+    if (carrinho.itens.length === 0) {
+      setPreviaTotaisPedido(null);
+      return;
+    }
+
+    calcularPreviaTotaisPedido({
+      itens: carrinho.itens,
+      codigoCupom: cupom,
+      cepEntrega,
+      cidadeEntrega,
+      estadoEntrega,
+    })
+      .then((previa) => {
+        if (!consultaCancelada) {
+          setPreviaTotaisPedido(previa);
+        }
+      })
+      .catch(() => {
+        if (!consultaCancelada) {
+          setPreviaTotaisPedido(null);
+        }
+      });
+
+    return () => {
+      consultaCancelada = true;
+    };
+  }, [carrinho.itens, cupom, cepEntrega, cidadeEntrega, estadoEntrega]);
 
   async function conferirCupom() {
     if (!cupom?.trim()) {
@@ -404,6 +444,9 @@ export function CheckoutVisitante({
             />
 
             <RevisaoProdutosEntrega
+              freteGratisProgressivo={
+                previaTotaisPedido?.freteGratisProgressivo
+              }
               resumoCheckout={resumoCheckout}
               onRemoverItem={carrinho.removerItem}
             />
@@ -424,14 +467,22 @@ export function CheckoutVisitante({
           <ResumoPedido
             carregandoPagamento={carregandoPagamento}
             formaPagamento={formaPagamento}
+            itens={carrinho.itens}
             parcelasCartao={parcelasCartao}
             resumoCheckout={resumoCheckout}
             cupom={cupom}
             register={form.register}
             setValue={form.setValue}
             mensagemCupom={mensagemCupom}
-            onCupomChange={(value) => form.setValue("cupom", value)}
+            previaTotais={previaTotaisPedido}
+            onCupomChange={(value) =>
+              form.setValue("cupom", value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
             onAplicarCupom={conferirCupom}
+            onPreviaTotaisChange={setPreviaTotaisPedido}
             isFormValid={form.formState.isValid}
           />
         </form>

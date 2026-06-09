@@ -2,6 +2,7 @@ import {
   index,
   integer,
   boolean,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -31,7 +32,18 @@ export const checkoutPedidosTable = pgTable(
     subtotalEmCentavos: integer("subtotal_em_centavos").notNull(),
     freteEmCentavos: integer("frete_em_centavos").notNull(),
     descontoEmCentavos: integer("desconto_em_centavos").notNull().default(0),
+    descontoPromocionalEmCentavos: integer("desconto_promocional_em_centavos")
+      .notNull()
+      .default(0),
+    descontoCupomEmCentavos: integer("desconto_cupom_em_centavos")
+      .notNull()
+      .default(0),
+    economiaTotalEmCentavos: integer("economia_total_em_centavos")
+      .notNull()
+      .default(0),
     totalEmCentavos: integer("total_em_centavos").notNull(),
+    codigoCupomAplicado: text("codigo_cupom_aplicado"),
+    snapshotDescontos: jsonb("snapshot_descontos"),
     gatewayPagamento:
       checkoutPagamentoGatewayEnum("gateway_pagamento").notNull(),
     pagamentoStatus: checkoutPagamentoStatusEnum("pagamento_status")

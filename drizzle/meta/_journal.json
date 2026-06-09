@@ -183,6 +183,76 @@
       "when": 1780271868478,
       "tag": "0032_create_variantes_tipos_logisticos",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1780444800000,
+      "tag": "0033_create_promotion_engine_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1780531200000,
+      "tag": "0034_add_promotion_engine_scope_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1780617600000,
+      "tag": "0035_create_promotion_engine_coupons",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1780704000000,
+      "tag": "0036_add_snapshot_descontos_checkout_pedidos",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1780790400000,
+      "tag": "0037_add_idempotencia_uso_cupom_promocao",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1780876800000,
+      "tag": "0038_add_tipo_campanha_promocoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1780963200000,
+      "tag": "0039_add_modalidade_regras_promocao_produtos",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781049600000,
+      "tag": "0040_add_controle_migracao_promocao_legada",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1781136000000,
+      "tag": "0041_add_frete_gratis_progressivo_promocoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1781222400000,
+      "tag": "0042_add_transportadora_servico_frete_gratis_promocoes",
+      "breakpoints": true
     }
   ]
 }

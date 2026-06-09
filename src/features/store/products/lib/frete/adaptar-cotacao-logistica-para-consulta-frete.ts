@@ -44,6 +44,14 @@ function obterPrazoOpcaoEntrega(
   return null;
 }
 
+function obterTransportadoraOpcaoEntrega(
+  opcao: ResultadoCotacaoFrete["opcoes"][number],
+) {
+  const transportadora = opcao.metadados?.transportadora;
+
+  return typeof transportadora === "string" ? transportadora : null;
+}
+
 function obterOpcoesEntrega(resultado: ResultadoCotacaoFrete) {
   return resultado.opcoes
     .filter((opcao) => opcao.tipo === "entrega")
@@ -54,6 +62,7 @@ function obterOpcoesEntrega(resultado: ResultadoCotacaoFrete) {
       nome: opcao.nome,
       prazo: obterPrazoOpcaoEntrega(opcao),
       valorEmCentavos: opcao.valorEmCentavos,
+      transportadora: obterTransportadoraOpcaoEntrega(opcao),
     }));
 }
 

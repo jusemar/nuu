@@ -6,6 +6,11 @@ import {
   productPricingTable,
   productTable,
 } from "@/db/schema";
+import {
+  adaptarPrecosVitrine,
+  criarPrecoPrincipalCompatibilidadeVitrine,
+  type PrecosVitrineNormalizados,
+} from "@/features/precificacao";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
 export type TipoPromocaoOferta = "normal" | "flash";
@@ -34,6 +39,11 @@ export interface ProdutoPromocionalHome {
     promoType: TipoPromocaoOferta;
     promoEndDate: Date | null;
     mainCardPrice: boolean | null;
+    percentualOff?: number | null;
+    economiaEmCentavos?: number | null;
+    badgePromocional?: "promocao" | "relampago" | null;
+    tipoCampanhaPromocional?: "promocao_normal" | "oferta_relampago" | null;
+    countdownPromocionalDataFim?: Date | null;
   }>;
 }
 
@@ -117,17 +127,76 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
         },
       ],
     }));
+  const precosVitrine: PrecosVitrineNormalizados = await adaptarPrecosVitrine(
+    produtosPromocionais,
+  ).catch((error) => {
+    console.error("Erro ao adaptar precos das ofertas da home", error);
+
+    return {
+      precosPorChave: {},
+      produtosPorId: {},
+    };
+  });
+  const produtosComPrecosVitrine = produtosPromocionais.map((produto) => {
+    const precoVitrine =
+      precosVitrine.produtosPorId[produto.id]?.precoPrincipal ?? null;
+    const precoCompatibilidade =
+      criarPrecoPrincipalCompatibilidadeVitrine(precoVitrine);
+
+    if (!precoCompatibilidade) {
+      return {
+        ...produto,
+        pricing: produto.pricing.map((preco) => ({
+          ...preco,
+          badgePromocional: null,
+          tipoCampanhaPromocional: null,
+          countdownPromocionalDataFim: null,
+        })),
+      };
+    }
+
+    return {
+      ...produto,
+      pricing: produto.pricing.map((preco, indice) =>
+        indice === 0
+          ? {
+              ...preco,
+              price: precoCompatibilidade.price,
+              promoPrice:
+                precoCompatibilidade.promoPrice ?? precoCompatibilidade.price,
+              hasPromo: precoCompatibilidade.hasPromo,
+              percentualOff: precoCompatibilidade.percentualOff,
+              economiaEmCentavos: precoCompatibilidade.economiaEmCentavos,
+              badgePromocional: precoCompatibilidade.badgePromocional,
+              tipoCampanhaPromocional:
+                precoCompatibilidade.tipoCampanhaPromocional,
+              countdownPromocionalDataFim:
+                precoCompatibilidade.countdownPromocionalDataFim,
+            }
+          : {
+              ...preco,
+              badgePromocional: null,
+              tipoCampanhaPromocional: null,
+              countdownPromocionalDataFim: null,
+            },
+      ),
+    };
+  });
 
   return {
-    produtosOfertaRelampago: produtosPromocionais.filter((produto) => {
+    produtosOfertaRelampago: produtosComPrecosVitrine.filter((produto) => {
       const preco = produto.pricing[0];
+      const dataFimCountdown =
+        preco?.countdownPromocionalDataFim ?? preco?.promoEndDate;
+
       return (
-        preco?.promoType === "flash" &&
-        Boolean(preco.promoEndDate) &&
-        preco.promoEndDate!.getTime() > agora.getTime()
+        (preco?.badgePromocional === "relampago" ||
+          preco?.promoType === "flash") &&
+        Boolean(dataFimCountdown) &&
+        new Date(dataFimCountdown!).getTime() > agora.getTime()
       );
     }),
-    produtosPromocaoNormal: produtosPromocionais.filter(
+    produtosPromocaoNormal: produtosComPrecosVitrine.filter(
       (produto) => produto.pricing[0]?.promoType === "normal",
     ),
   };

@@ -23,8 +23,8 @@ export const DealsGrid = ({
       : null;
     const hasPromo = Boolean(precoPromocional?.hasPromo && pricePromo);
     const discount =
-      hasPromo && priceNormal > 0
-        ? Math.round(((priceNormal - pricePromo!) / priceNormal) * 100)
+      precoPromocional?.percentualOff && precoPromocional.percentualOff > 0
+        ? precoPromocional.percentualOff
         : undefined;
 
     return {
@@ -40,7 +40,7 @@ export const DealsGrid = ({
       isFeatured: false,
       isExclusive: false,
       isTrending: produto.storeProductFlags?.includes("trending") || false,
-      badgePromocao: "normal" as const,
+      badgePromocao: precoPromocional?.badgePromocional ?? "promocao",
     };
   });
 

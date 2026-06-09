@@ -32,6 +32,7 @@ import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 import { stripProductRichText } from "../utils/rich-text";
+import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
 
 import type {
   AtributoProdutoLoja,
@@ -155,6 +156,16 @@ export function ProductDetail({
     : null;
   const parcelamentosVariante =
     precoVarianteSelecionada?.cartao.parcelamentos || [];
+  const precoModalidadeAtivaCalculado =
+    precosCalculadosPorModalidade[modalidadeAtiva.type];
+  const promocaoVisualModalidadeAtiva = formatarPromocaoPrecoPdp(
+    precoModalidadeAtivaCalculado,
+  );
+  const promocaoVisualVarianteSelecionada = formatarPromocaoPrecoPdp(
+    precoVarianteSelecionada,
+  );
+  const promocaoVisualCompra =
+    promocaoVisualVarianteSelecionada ?? promocaoVisualModalidadeAtiva;
   const descontoPixVariante = precoVarianteSelecionada
     ? Math.round(
         (1 -
@@ -175,7 +186,7 @@ export function ProductDetail({
   const tipoBadgeGaleria: "relampago" | "promocao" | null =
     relampagoAtivoModalidadeAtiva
       ? "relampago"
-      : promocaoNormalAtivaModalidadeAtiva
+      : promocaoNormalAtivaModalidadeAtiva || promocaoVisualCompra?.ativa
         ? "promocao"
         : null;
 
@@ -223,7 +234,8 @@ export function ProductDetail({
   const galleryImagesBase =
     productImages.length > 0 ? productImages : ["/produto-sem-foto.webp"];
   const galleryImages =
-    imagemVarianteResolvida && !galleryImagesBase.includes(imagemVarianteResolvida)
+    imagemVarianteResolvida &&
+    !galleryImagesBase.includes(imagemVarianteResolvida)
       ? [imagemVarianteResolvida, ...galleryImagesBase]
       : galleryImagesBase;
 
@@ -451,6 +463,7 @@ export function ProductDetail({
                   : precoParceladoFormatado
               }
               descontoPix={descontoPixVariante}
+              promocaoVisual={promocaoVisualCompra}
               prazoEntrega={prazoEntrega}
               // Dados reais de entrega
               estoque={
@@ -616,7 +629,8 @@ function resolverImagemVariante({
   const valorCorSelecionado = obterValorCorVariante(varianteSelecionada);
   if (!valorCorSelecionado) return null;
 
-  const corNormalizadaSelecionada = normalizarTextoComparacao(valorCorSelecionado);
+  const corNormalizadaSelecionada =
+    normalizarTextoComparacao(valorCorSelecionado);
   const varianteMesmaCorComImagem = variantes.find((variante) => {
     const valorCorAtual = obterValorCorVariante(variante);
     if (!valorCorAtual) return false;

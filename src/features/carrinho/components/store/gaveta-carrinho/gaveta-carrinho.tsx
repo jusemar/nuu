@@ -62,6 +62,7 @@ export function GavetaCarrinho() {
             />
 
             <ResumoCarrinho
+              itens={carrinho.itens}
               subtotalEmCentavos={carrinho.totais.subtotalEmCentavos}
               onContinuarComprando={gaveta.fechar}
             />

@@ -8,8 +8,25 @@ import { fornecedoresTable } from "@/db/schema";
 
 import { fornecedorSchema } from "../schemas/fornecedores.schema";
 
+function normalizarEntradaFornecedor(dadosEntrada: unknown) {
+  if (dadosEntrada instanceof FormData) {
+    const id = String(dadosEntrada.get("id") ?? "");
+
+    return {
+      id: id || undefined,
+      nome: dadosEntrada.get("nome"),
+      tipoIntegracao: dadosEntrada.get("tipoIntegracao"),
+      status: dadosEntrada.get("status"),
+    };
+  }
+
+  return dadosEntrada;
+}
+
 export async function salvarFornecedor(dadosEntrada: unknown) {
-  const dados = fornecedorSchema.parse(dadosEntrada);
+  const dados = fornecedorSchema.parse(
+    normalizarEntradaFornecedor(dadosEntrada),
+  );
   const agora = new Date();
 
   if (dados.id) {
@@ -32,6 +49,6 @@ export async function salvarFornecedor(dadosEntrada: unknown) {
     });
   }
 
+  revalidatePath("/admin/fornecedores");
   revalidatePath("/admin/fornecedores/importacoes");
-  return { sucesso: true };
 }

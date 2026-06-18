@@ -11,18 +11,42 @@
 2. Após aprovação:
 
    * passo a passo
-   * caminho completo do arquivo (`src/features/products/actions/create.ts`)
-   * código comentado (explicando o “porquê”)
+   * caminho completo de cada arquivo alterado ou criado, respeitando a arquitetura real do domínio e o padrão de organização existente no projeto
+   * código sempre comentado, explicativo de forma que qualquer iniciante ler entenda
 
-3. Aplicar práticas de engenharia sênior:
+3. Ser e Aplicar as melhores práticas de engenheiro de software sênior e especialista em react nextjs:
 
    * código limpo
    * separação de responsabilidades
    * escalabilidade
 
-4. Interfaces sempre responsivas
+4. Interfaces sempre responsivas para qualquer tamanho de telas
 
-5. Autonomia da IA / Codex
+5. Priorizar sempre componentes, padrões e soluções já validadas e amplamente utilizadas pela comunidade antes de criar componentes customizados do zero.
+
+Preferir reutilização de:
+
+- componentes já existentes no projeto;
+- componentes do shadcn/ui;
+- blocos oficiais e exemplos recomendados;
+- bibliotecas já adotadas pelo projeto;
+- plugins e integrações consolidadas;
+- padrões oficiais do Tailwind CSS;
+- soluções maduras, testadas e mantidas pela comunidade.
+
+Evitar reinventar componentes que já possuam implementação estável e amplamente validada.
+
+Criar componentes customizados apenas quando não existir alternativa adequada ou quando houver necessidade específica do negócio.
+
+Priorizar consistência visual, manutenção simples, velocidade de desenvolvimento, acessibilidade e experiência já validada por usuários reais.
+
+6. Para novas funcionalidades administrativas, iniciar sempre pela experiência do usuário.
+
+Primeiro criar wireframe ou frontend com dados mockados, usando o Design System atual e componentes já validados do projeto. Após aprovação visual e funcional, evoluir para integração com banco, actions, services e dados reais.
+
+Evitar começar por migrations, services ou regras de backend antes de validar o fluxo da tela, especialmente em módulos complexos como fornecedores, importações, logística, promoções, produtos e marketplace.
+
+7. Autonomia da IA / Codex
 
 - Não parar para pedir permissão em tarefas técnicas comuns.
 - Pode executar comandos de validação, testes, build, lint, typecheck e abrir/recarregar navegador headless.
@@ -286,7 +310,9 @@ Exceção:
 
 ## Regras obrigatórias
 
-1. Usar `prettier-plugin-tailwindcss`
+1.0 Ser um especialista em ux/ui designer e aplicar as melhores práticas.
+
+1.1 Usar `prettier-plugin-tailwindcss`
 
 2. Ordem das classes:
    layout → spacing → typography → colors → states
@@ -364,9 +390,21 @@ Usar CSS para:
 
 * relations obrigatórias
 * queries fora de components
-* migrations automáticas (drizzle-kit)
-* nunca editar migrations manualmente
 
+## Migrations (OBRIGATÓRIO)
+
+* Alterações de schema devem ser feitas nos arquivos Drizzle (`src/db/tables/**`)
+* Nunca alterar tabelas diretamente no banco
+* Nunca editar migrations manualmente após geradas
+* Toda alteração estrutural deve gerar uma migration versionada
+
+Fluxo padrão:
+
+1. Alterar schema Drizzle
+2. Gerar migration:
+
+```bash
+npx drizzle-kit generate
 ---
 
 # 🧩 Formulários

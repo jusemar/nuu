@@ -110,6 +110,29 @@ function formatarMoedaFornecedor(valor: string | null) {
   }).format(Number(valor));
 }
 
+function RotuloOrigem({
+  campo,
+  origem,
+  alinhar = "left",
+}: {
+  campo: string;
+  origem: "arquivo" | "loja" | "importação";
+  alinhar?: "left" | "right";
+}) {
+  return (
+    <span
+      className={`inline-flex flex-col leading-tight ${
+        alinhar === "right" ? "items-end text-right" : "items-start text-left"
+      }`}
+    >
+      <span>{campo}</span>
+      <span className="text-[10px] font-medium tracking-normal text-slate-400 normal-case">
+        {origem}
+      </span>
+    </span>
+  );
+}
+
 export function PaginaImportacoesFornecedoresAdmin({
   fornecedores,
   importacoes,
@@ -605,14 +628,34 @@ export function PaginaImportacoesFornecedoresAdmin({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Preço fornecedor</TableHead>
+                  <TableHead>
+                    <RotuloOrigem campo="Código" origem="arquivo" />
+                  </TableHead>
+                  <TableHead>
+                    <RotuloOrigem campo="Nome" origem="arquivo" />
+                  </TableHead>
+                  <TableHead>
+                    <RotuloOrigem campo="Categoria" origem="arquivo" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <RotuloOrigem
+                      campo="Preço"
+                      origem="arquivo"
+                      alinhar="right"
+                    />
+                  </TableHead>
                   <TableHead className="text-right">Preço calculado</TableHead>
                   <TableHead>Origem ajuste</TableHead>
-                  <TableHead className="text-right">Estoque</TableHead>
-                  <TableHead>Produto vinculado</TableHead>
+                  <TableHead className="text-right">
+                    <RotuloOrigem
+                      campo="Estoque"
+                      origem="arquivo"
+                      alinhar="right"
+                    />
+                  </TableHead>
+                  <TableHead>
+                    <RotuloOrigem campo="Produto" origem="loja" />
+                  </TableHead>
                   <TableHead>Critério</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Erro</TableHead>
@@ -820,21 +863,43 @@ export function PaginaImportacoesFornecedoresAdmin({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Produto fornecedor</TableHead>
-                    <TableHead>Produto vinculado</TableHead>
-                    <TableHead>SKU</TableHead>
+                    <TableHead>
+                      <RotuloOrigem campo="Código" origem="arquivo" />
+                    </TableHead>
+                    <TableHead>
+                      <RotuloOrigem campo="Nome" origem="arquivo" />
+                    </TableHead>
+                    <TableHead>
+                      <RotuloOrigem campo="Produto" origem="loja" />
+                    </TableHead>
+                    <TableHead>
+                      <RotuloOrigem campo="SKU" origem="loja" />
+                    </TableHead>
                     <TableHead className="text-right">
-                      Preço fornecedor
+                      <RotuloOrigem
+                        campo="Preço"
+                        origem="arquivo"
+                        alinhar="right"
+                      />
                     </TableHead>
                     <TableHead className="text-right">
                       Preço calculado
                     </TableHead>
                     <TableHead className="text-right">
-                      Preço atual loja
+                      <RotuloOrigem
+                        campo="Preço"
+                        origem="loja"
+                        alinhar="right"
+                      />
                     </TableHead>
                     <TableHead className="text-right">Diferença</TableHead>
-                    <TableHead className="text-right">Estoque</TableHead>
+                    <TableHead className="text-right">
+                      <RotuloOrigem
+                        campo="Estoque"
+                        origem="arquivo"
+                        alinhar="right"
+                      />
+                    </TableHead>
                     <TableHead>Situação</TableHead>
                   </TableRow>
                 </TableHeader>

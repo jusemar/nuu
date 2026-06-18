@@ -1,12 +1,16 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { fornecedoresTable, importacoesFornecedorTable } from "@/db/schema";
+import {
+  fornecedorMapeamentosColunasTable,
+  fornecedoresTable,
+  importacoesFornecedorTable,
+} from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
 import type { ResultadoImportacaoFornecedor } from "../types/fornecedores.types";
 import { analisarProdutosImportadosFornecedor } from "./analise-produtos-importados.service";
-import { lerPlanilhaFornecedor } from "./parser-planilha-fornecedor.service";
+import { detectarColunasPlanilhaFornecedor } from "./detectar-colunas-planilha.service";
 import { salvarLinhasStagingFornecedor } from "./staging-fornecedor.service";
 import { validarArquivoImportacaoFornecedor } from "./validacao-arquivo-importacao.service";
 import { prepararLinhaStagingFornecedor } from "./validacao-linha-importacao.service";
@@ -28,7 +32,21 @@ export async function importarPlanilhaFornecedorParaStaging(
   }
 
   const buffer = Buffer.from(await arquivo.arrayBuffer());
-  const resultadoParser = lerPlanilhaFornecedor(buffer);
+  const mapeamentosSalvos = await db
+    .select({
+      nomeColunaOrigem: fornecedorMapeamentosColunasTable.nomeColunaOrigem,
+      campoDestino: fornecedorMapeamentosColunasTable.campoDestino,
+    })
+    .from(fornecedorMapeamentosColunasTable)
+    .where(
+      and(
+        eq(fornecedorMapeamentosColunasTable.fornecedorId, fornecedorId),
+        eq(fornecedorMapeamentosColunasTable.ativo, true),
+      ),
+    );
+  const resultadoParser = detectarColunasPlanilhaFornecedor(buffer, {
+    mapeamentoSalvo: mapeamentosSalvos,
+  });
   const linhasStaging = resultadoParser.linhas.map(
     prepararLinhaStagingFornecedor,
   );
@@ -49,6 +67,8 @@ export async function importarPlanilhaFornecedorParaStaging(
         totalLinhas: linhasStaging.length,
         totalProcessadas: totalValido,
         totalErros,
+        colunasPlanilha: resultadoParser.colunas,
+        mapeamentoColunas: resultadoParser.mapeamentoColunas,
         criadoEm: agora,
         atualizadoEm: agora,
       })

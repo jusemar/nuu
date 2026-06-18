@@ -80,7 +80,7 @@ export async function criarMarca(entrada: {
 
   if (existeSlug) throw new Error("Já existe marca com este nome");
 
-  await db.insert(marcaTable).values({
+  const [marcaCriada] = await db.insert(marcaTable).values({
     nome,
     slug,
     descricao: entrada.descricao?.trim() || null,
@@ -88,9 +88,16 @@ export async function criarMarca(entrada: {
     ativo: true,
     createdAt: new Date(),
     updatedAt: new Date(),
+  }).returning({
+    id: marcaTable.id,
+    nome: marcaTable.nome,
+    slug: marcaTable.slug,
   });
 
-  return { success: true };
+  return {
+    success: true,
+    marca: marcaCriada ?? null,
+  };
 }
 
 export async function editarMarca(

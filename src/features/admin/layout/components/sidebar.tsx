@@ -39,6 +39,7 @@ import {
   Megaphone,
   ShieldCheck,
   FileSpreadsheet,
+  Plug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "../hooks/useSidebar";
@@ -67,6 +68,7 @@ const iconMap: Record<string, React.ElementType> = {
   Megaphone,
   ShieldCheck,
   FileSpreadsheet,
+  Plug,
 };
 
 /**
@@ -172,10 +174,40 @@ export const menuAdmin = [
     icon: "Building2",
     items: [
       {
+        id: "fornecedores-cadastro",
+        label: "Fornecedores",
+        href: "/admin/fornecedores",
+        icon: "Building2",
+      },
+      {
         id: "fornecedores-importacoes",
         label: "Importações",
         href: "/admin/fornecedores/importacoes",
         icon: "FileSpreadsheet",
+      },
+    ],
+  },
+
+  // Grupo: Integrações
+  {
+    id: "integracoes",
+    type: "group" as const,
+    label: "Integrações",
+    icon: "Plug",
+    items: [
+      {
+        id: "integracoes-fornecedores-api",
+        type: "subgroup" as const,
+        label: "Fornecedores API",
+        icon: "Building2",
+        items: [
+          {
+            id: "integracoes-fornecedores-api-laquila",
+            label: "Laquila",
+            href: "/admin/fornecedores/integracoes/laquila",
+            icon: "Plug",
+          },
+        ],
       },
     ],
   },

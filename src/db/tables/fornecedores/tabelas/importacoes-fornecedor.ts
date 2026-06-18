@@ -1,6 +1,7 @@
 import {
   integer,
   index,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -28,6 +29,28 @@ export const importacoesFornecedorTable = pgTable(
     totalLinhas: integer("total_linhas").notNull().default(0),
     totalProcessadas: integer("total_processadas").notNull().default(0),
     totalErros: integer("total_erros").notNull().default(0),
+    colunasPlanilha: jsonb("colunas_planilha")
+      .$type<
+        Array<{
+          indice: number;
+          nomeOriginal: string;
+          nomeNormalizado: string;
+        }>
+      >()
+      .default([])
+      .notNull(),
+    mapeamentoColunas: jsonb("mapeamento_colunas")
+      .$type<
+        Array<{
+          nomeColunaOrigem: string;
+          nomeColunaNormalizada: string;
+          campoDestino: string | null;
+          origem: string | null;
+          situacao: string;
+        }>
+      >()
+      .default([])
+      .notNull(),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
   },

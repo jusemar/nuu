@@ -24,6 +24,7 @@ export const fornecedorProdutosStagingTable = pgTable(
     codigoFornecedor: text("codigo_fornecedor"),
     nomeProduto: text("nome_produto").notNull(),
     categoriaFornecedor: text("categoria_fornecedor"),
+    marcaFornecedor: text("marca_fornecedor"),
     precoFornecedor: numeric("preco_fornecedor", {
       precision: 12,
       scale: 2,
@@ -49,6 +50,10 @@ export const fornecedorProdutosStagingTable = pgTable(
       .$type<Array<{ codigo: string; mensagem: string; campo?: string }>>()
       .default([])
       .notNull(),
+    dadosBrutos: jsonb("dados_brutos")
+      .$type<Record<string, string | number | boolean | Date | null>>()
+      .default({})
+      .notNull(),
     status: fornecedorProdutoStagingStatusEnum("status")
       .notNull()
       .default("aguardando_analise"),
@@ -71,6 +76,9 @@ export const fornecedorProdutosStagingTable = pgTable(
     ),
     index("fornecedor_produtos_staging_origem_ajuste_idx").on(
       table.origemAjuste,
+    ),
+    index("fornecedor_produtos_staging_marca_fornecedor_idx").on(
+      table.marcaFornecedor,
     ),
   ],
 );

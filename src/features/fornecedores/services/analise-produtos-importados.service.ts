@@ -13,7 +13,6 @@ import type {
   ResumoConferenciaFornecedor,
 } from "../types/fornecedores.types";
 import { localizarProdutosPorVinculoFornecedor } from "./localizar-por-vinculo.service";
-import { localizarProdutosPorCodigoFornecedorSku } from "./localizacao-produtos.service";
 
 type LinhaParaAnalise = {
   id: string;
@@ -27,6 +26,14 @@ type LinhaLocalizadaParaAtualizacao = {
   criterioLocalizacao: Exclude<
     CriterioLocalizacaoProdutoFornecedor,
     "nao_localizado"
+  >;
+};
+
+type LinhaNaoLocalizadaParaAtualizacao = {
+  id: string;
+  criterioLocalizacao: Extract<
+    CriterioLocalizacaoProdutoFornecedor,
+    "sem_codigo_fornecedor" | "novo_produto_fornecedor" | "nao_localizado"
   >;
 };
 
@@ -72,18 +79,26 @@ async function atualizarLinhasLocalizadas(
   `);
 }
 
-async function atualizarLinhasNaoLocalizadas(idsNaoLocalizados: string[]) {
-  if (idsNaoLocalizados.length === 0) return;
+async function atualizarLinhasNaoLocalizadas(
+  linhas: LinhaNaoLocalizadaParaAtualizacao[],
+) {
+  if (linhas.length === 0) return;
 
   await dbTransacional.execute(sql`
     UPDATE fornecedor_produtos_staging
     SET
       status = 'nao_localizado',
       produto_localizado_id = NULL,
-      criterio_localizacao = 'nao_localizado',
+      criterio_localizacao = CASE id ${sql.join(
+        linhas.map(
+          (linha) =>
+            sql`WHEN ${linha.id}::uuid THEN ${linha.criterioLocalizacao}`,
+        ),
+        sql.raw(" "),
+      )} END,
       atualizado_em = now()
     WHERE id IN (${sql.join(
-      idsNaoLocalizados.map((id) => sql`${id}::uuid`),
+      linhas.map((linha) => sql`${linha.id}::uuid`),
       sql.raw(", "),
     )})
   `);
@@ -141,46 +156,25 @@ export async function analisarProdutosImportadosFornecedor(
     return linhasLocalizadas;
   }, []);
 
-  const idsLocalizadosPorVinculo = new Set(
+  const idsLocalizados = new Set(
     linhasLocalizadasPorVinculo.map((linha) => linha.id),
   );
-  const linhasSemVinculo = linhasValidasParaAnalise.filter(
-    (linha) => !idsLocalizadosPorVinculo.has(linha.id),
-  );
-  const resultadoPorSku = await localizarProdutosPorCodigoFornecedorSku(
-    linhasSemVinculo.map((linha) => linha.codigoFornecedor),
-  );
-
-  const linhasLocalizadasPorSku = linhasSemVinculo.reduce<
-    LinhaLocalizadaParaAtualizacao[]
-  >((linhasLocalizadas, linha) => {
-    const codigoFornecedor = linha.codigoFornecedor?.trim();
-    const produto = codigoFornecedor
-      ? resultadoPorSku.encontradosPorCodigo.get(codigoFornecedor)
-      : null;
-
-    if (produto) {
-      linhasLocalizadas.push({
-        id: linha.id,
-        produtoId: produto.produtoId,
-        criterioLocalizacao: "codigo_fornecedor_sku",
-      });
-    }
-
-    return linhasLocalizadas;
-  }, []);
-
-  const linhasLocalizadas = [
-    ...linhasLocalizadasPorVinculo,
-    ...linhasLocalizadasPorSku,
-  ];
-  const idsLocalizados = new Set(linhasLocalizadas.map((linha) => linha.id));
-  const idsNaoLocalizados = linhasValidasParaAnalise
+  const linhasNaoLocalizadas = linhasValidasParaAnalise
     .filter((linha) => !idsLocalizados.has(linha.id))
-    .map((linha) => linha.id);
+    .map<LinhaNaoLocalizadaParaAtualizacao>((linha) => {
+      const criterioLocalizacao: LinhaNaoLocalizadaParaAtualizacao["criterioLocalizacao"] =
+        linha.codigoFornecedor?.trim()
+          ? "novo_produto_fornecedor"
+          : "sem_codigo_fornecedor";
 
-  await atualizarLinhasLocalizadas(linhasLocalizadas);
-  await atualizarLinhasNaoLocalizadas(idsNaoLocalizados);
+      return {
+        id: linha.id,
+        criterioLocalizacao,
+      };
+    });
+
+  await atualizarLinhasLocalizadas(linhasLocalizadasPorVinculo);
+  await atualizarLinhasNaoLocalizadas(linhasNaoLocalizadas);
 
   await db
     .update(importacoesFornecedorTable)

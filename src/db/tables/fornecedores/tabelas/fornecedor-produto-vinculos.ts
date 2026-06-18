@@ -14,7 +14,7 @@ export const fornecedorProdutoVinculosTable = pgTable(
     fornecedorId: uuid("fornecedor_id")
       .notNull()
       .references(() => fornecedoresTable.id, { onDelete: "restrict" }),
-    codigoFornecedor: text("codigo_fornecedor").notNull(),
+    codigoFornecedor: text("codigo_fornecedor"),
     produtoId: uuid("produto_id")
       .notNull()
       .references(() => productTable.id, { onDelete: "restrict" }),

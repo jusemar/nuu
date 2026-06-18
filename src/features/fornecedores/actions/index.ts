@@ -1,6 +1,11 @@
 export { analisarImportacaoFornecedor } from "./analisar-importacao-fornecedor";
+export { alterarStatusVinculoProdutoFornecedor } from "./alterar-status-vinculo-produto-fornecedor";
+export { aplicarMapeamentoColunasFornecedorAction } from "./aplicar-mapeamento-colunas-fornecedor";
 export { criarImportacaoFornecedor } from "./criar-importacao-fornecedor";
 export { importarPlanilhaFornecedor } from "./importar-planilha-fornecedor";
+export { atualizarRevisaoImportacaoFornecedorAction } from "./atualizar-revisao-importacao";
 export { salvarAjustePrecoImportacao } from "./salvar-ajuste-preco-importacao";
 export { salvarFornecedor } from "./salvar-fornecedor";
+export { salvarVinculoProdutoFornecedorManual } from "./salvar-vinculo-produto-fornecedor-manual";
+export { tratarProdutosFornecedorComoNovos } from "./tratar-produtos-fornecedor-como-novos";
 export { vincularProdutoFornecedor } from "./vincular-produto-fornecedor";

@@ -49,14 +49,22 @@ export async function localizarProdutosPorVinculoFornecedor(
     );
 
   const encontradosPorCodigo = new Map(
-    vinculos.map((vinculo) => [
-      vinculo.codigoFornecedor,
-      {
-        codigoFornecedor: vinculo.codigoFornecedor,
-        produtoId: vinculo.produtoId,
-        sku: vinculo.sku,
-      },
-    ]),
+    vinculos
+      .filter(
+        (
+          vinculo,
+        ): vinculo is (typeof vinculos)[number] & {
+          codigoFornecedor: string;
+        } => Boolean(vinculo.codigoFornecedor),
+      )
+      .map((vinculo) => [
+        vinculo.codigoFornecedor,
+        {
+          codigoFornecedor: vinculo.codigoFornecedor,
+          produtoId: vinculo.produtoId,
+          sku: vinculo.sku,
+        },
+      ]),
   );
 
   return {

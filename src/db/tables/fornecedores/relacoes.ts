@@ -1,6 +1,10 @@
 import { relations } from "drizzle-orm";
 
 import { productTable } from "../../table/products/products";
+import { fornecedorIntegracaoLogsTable } from "./tabelas/fornecedor-integracao-logs";
+import { fornecedorIntegracoesApiTable } from "./tabelas/fornecedor-integracoes-api";
+import { fornecedorMapeamentosColunasTable } from "./tabelas/fornecedor-mapeamentos-colunas";
+import { fornecedorProdutosApiStagingTable } from "./tabelas/fornecedor-produtos-api-staging";
 import { fornecedorProdutoVinculosTable } from "./tabelas/fornecedor-produto-vinculos";
 import { fornecedorProdutosStagingTable } from "./tabelas/fornecedor-produtos-staging";
 import { fornecedoresTable } from "./tabelas/fornecedores";
@@ -12,6 +16,50 @@ export const fornecedoresRelations = relations(
   ({ many }) => ({
     importacoes: many(importacoesFornecedorTable),
     vinculosProdutos: many(fornecedorProdutoVinculosTable),
+    mapeamentosColunas: many(fornecedorMapeamentosColunasTable),
+    integracoesApi: many(fornecedorIntegracoesApiTable),
+  }),
+);
+
+export const fornecedorIntegracoesApiRelations = relations(
+  fornecedorIntegracoesApiTable,
+  ({ many, one }) => ({
+    fornecedor: one(fornecedoresTable, {
+      fields: [fornecedorIntegracoesApiTable.fornecedorId],
+      references: [fornecedoresTable.id],
+    }),
+    logs: many(fornecedorIntegracaoLogsTable),
+    produtosApiStaging: many(fornecedorProdutosApiStagingTable),
+  }),
+);
+
+export const fornecedorIntegracaoLogsRelations = relations(
+  fornecedorIntegracaoLogsTable,
+  ({ one }) => ({
+    integracaoApi: one(fornecedorIntegracoesApiTable, {
+      fields: [fornecedorIntegracaoLogsTable.integracaoApiId],
+      references: [fornecedorIntegracoesApiTable.id],
+    }),
+  }),
+);
+
+export const fornecedorProdutosApiStagingRelations = relations(
+  fornecedorProdutosApiStagingTable,
+  ({ one }) => ({
+    integracaoApi: one(fornecedorIntegracoesApiTable, {
+      fields: [fornecedorProdutosApiStagingTable.integracaoApiId],
+      references: [fornecedorIntegracoesApiTable.id],
+    }),
+  }),
+);
+
+export const fornecedorMapeamentosColunasRelations = relations(
+  fornecedorMapeamentosColunasTable,
+  ({ one }) => ({
+    fornecedor: one(fornecedoresTable, {
+      fields: [fornecedorMapeamentosColunasTable.fornecedorId],
+      references: [fornecedoresTable.id],
+    }),
   }),
 );
 

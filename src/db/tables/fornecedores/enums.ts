@@ -62,3 +62,40 @@ export const fornecedorPrecoOrigemAjusteEnum = pgEnum(
   "fornecedor_preco_origem_ajuste",
   ["global", "categoria", "produto", "nenhum"],
 );
+
+export const fornecedorMapeamentoColunaDestinoEnum = pgEnum(
+  "fornecedor_mapeamento_coluna_destino",
+  [
+    "codigo_fornecedor",
+    "nome_produto",
+    "categoria_fornecedor",
+    "marca_fornecedor",
+    "preco_fornecedor",
+    "estoque_fornecedor",
+  ],
+);
+
+export const fornecedorIntegracaoApiProvedorEnum = pgEnum(
+  "fornecedor_integracao_api_provedor",
+  ["laquila"],
+);
+
+export const fornecedorIntegracaoApiAmbienteEnum = pgEnum(
+  "fornecedor_integracao_api_ambiente",
+  ["homologacao", "producao"],
+);
+
+export const fornecedorIntegracaoApiTesteStatusEnum = pgEnum(
+  "fornecedor_integracao_api_teste_status",
+  ["nao_testado", "sucesso", "erro"],
+);
+
+export const fornecedorIntegracaoLogStatusEnum = pgEnum(
+  "fornecedor_integracao_log_status",
+  ["sucesso", "erro"],
+);
+
+export const fornecedorProdutoApiStagingStatusEnum = pgEnum(
+  "fornecedor_produto_api_staging_status",
+  ["novo", "vinculado", "atencao", "ignorado"],
+);

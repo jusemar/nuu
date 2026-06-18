@@ -99,7 +99,7 @@ export async function vincularProdutoFornecedor(
     .set({
       status: "localizado",
       produtoLocalizadoId: produto.id,
-      criterioLocalizacao: "vinculo_fornecedor",
+      criterioLocalizacao: "vinculo_manual_fornecedor",
       atualizadoEm: new Date(),
     })
     .where(eq(fornecedorProdutosStagingTable.id, linhaStaging.id));
@@ -107,6 +107,7 @@ export async function vincularProdutoFornecedor(
   return {
     vinculoId: vinculoCriado.id,
     stagingId: linhaStaging.id,
+    importacaoId: linhaStaging.importacaoId,
     fornecedorId: fornecedor.id,
     codigoFornecedor,
     produtoId: produto.id,

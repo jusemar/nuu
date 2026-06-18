@@ -42,6 +42,21 @@ export const situacoesPreviewSincronizacaoFornecedor = [
   "pendente_vinculacao",
   "bloqueado",
 ] as const;
+export const camposProblemaRevisaoFornecedor = [
+  "codigoFornecedor",
+  "categoriaFornecedor",
+  "nomeProduto",
+  "marcaFornecedor",
+  "precoFornecedor",
+] as const;
+export const camposMapeamentoColunasFornecedor = [
+  "codigo_fornecedor",
+  "nome_produto",
+  "categoria_fornecedor",
+  "marca_fornecedor",
+  "preco_fornecedor",
+  "estoque_fornecedor",
+] as const;
 
 export const fornecedorSchema = z.object({
   id: z.uuid().optional(),
@@ -67,6 +82,7 @@ export const fornecedorProdutoStagingSchema = z.object({
   codigoFornecedor: z.string().trim().max(120).nullable().optional(),
   nomeProduto: z.string().trim().max(255),
   categoriaFornecedor: z.string().trim().max(180).nullable().optional(),
+  marcaFornecedor: z.string().trim().max(180).nullable().optional(),
   produtoLocalizadoId: z.uuid().nullable().optional(),
   criterioLocalizacao: z.string().trim().max(80).nullable().optional(),
   precoOriginal: z
@@ -112,18 +128,111 @@ export const analiseImportacaoFornecedorSchema = z.object({
   importacaoId: z.uuid(),
 });
 
+export const problemaRevisaoImportacaoFornecedorSchema = z.object({
+  codigo: z.enum([
+    "sem_codigo",
+    "sem_categoria",
+    "sem_nome",
+    "sem_marca",
+    "preco_invalido",
+  ]),
+  mensagem: z.string().min(1).max(255),
+  campo: z.enum(camposProblemaRevisaoFornecedor),
+});
+
+export const itemRevisaoImportacaoFornecedorSchema = z.object({
+  stagingId: z.uuid(),
+  codigoFornecedor: z.string().nullable(),
+  sku: z.string().nullable(),
+  nomeProduto: z.string().nullable(),
+  categoriaFornecedor: z.string().nullable(),
+  marcaFornecedor: z.string().nullable(),
+  precoFornecedor: z.string().nullable(),
+  problemas: z.array(problemaRevisaoImportacaoFornecedorSchema),
+  status: z.literal("com_problema"),
+});
+
+export const resumoRevisaoImportacaoFornecedorSchema = z.object({
+  totalImportado: z.number().int().nonnegative(),
+  totalSemCodigo: z.number().int().nonnegative(),
+  totalSemCategoria: z.number().int().nonnegative(),
+  totalSemNome: z.number().int().nonnegative(),
+  totalSemMarca: z.number().int().nonnegative(),
+  totalPrecoInvalido: z.number().int().nonnegative(),
+  totalProdutosOK: z.number().int().nonnegative(),
+  totalComProblema: z.number().int().nonnegative(),
+});
+
+export const analiseRevisaoImportacaoFornecedorSchema = z.object({
+  importacaoId: z.uuid(),
+});
+
+export const correcaoRevisaoImportacaoFornecedorSchema = z
+  .object({
+    importacaoId: z.uuid(),
+    stagingIds: z.array(z.uuid()).min(1),
+    escopo: z.enum(["categoria", "marca", "nome"]),
+    categoriaId: z.uuid().optional(),
+    marcaId: z.uuid().optional(),
+    nomeProduto: z.string().trim().min(1).max(255).optional(),
+  })
+  .superRefine((dados, contexto) => {
+    if (dados.escopo === "categoria" && !dados.categoriaId) {
+      contexto.addIssue({
+        code: "custom",
+        path: ["categoriaId"],
+        message: "Categoria é obrigatória.",
+      });
+    }
+
+    if (dados.escopo === "marca" && !dados.marcaId) {
+      contexto.addIssue({
+        code: "custom",
+        path: ["marcaId"],
+        message: "Marca é obrigatória.",
+      });
+    }
+
+    if (dados.escopo === "nome" && !dados.nomeProduto) {
+      contexto.addIssue({
+        code: "custom",
+        path: ["nomeProduto"],
+        message: "Nome do produto é obrigatório.",
+      });
+    }
+  });
+
 export const vinculoProdutoFornecedorSchema = z.object({
   id: z.uuid().optional(),
   fornecedorId: z.uuid(),
-  codigoFornecedor: z.string().trim().min(1).max(120),
+  codigoFornecedor: z.string().trim().max(120).nullable().optional(),
   produtoId: z.uuid(),
   tipoVinculo: z.enum(tiposVinculoProdutoFornecedor).default("manual"),
   status: z.enum(statusVinculoProdutoFornecedor).default("ativo"),
 });
 
+export const salvarVinculoProdutoFornecedorManualSchema = z.object({
+  id: z.uuid().optional(),
+  fornecedorId: z.uuid(),
+  produtoId: z.uuid(),
+  codigoFornecedor: z.string().trim().max(120).nullable().optional(),
+  status: z.enum(statusVinculoProdutoFornecedor).default("ativo"),
+});
+
+export const alterarStatusVinculoProdutoFornecedorSchema = z.object({
+  id: z.uuid(),
+  fornecedorId: z.uuid(),
+  status: z.enum(statusVinculoProdutoFornecedor),
+});
+
 export const vincularProdutoFornecedorSchema = z.object({
   stagingId: z.uuid(),
   produtoId: z.uuid(),
+});
+
+export const tratarProdutosFornecedorComoNovosSchema = z.object({
+  importacaoId: z.uuid(),
+  stagingIds: z.array(z.uuid()).min(1),
 });
 
 export const buscaProdutoVinculoFornecedorSchema = z.object({
@@ -187,6 +296,39 @@ export const itemPreviewSincronizacaoFornecedorSchema = z.object({
   erro: z.string().nullable(),
 });
 
+export const mapeamentoColunaFornecedorSchema = z.object({
+  nomeColunaOrigem: z.string().trim().min(1).max(255),
+  campoDestino: z.enum(camposMapeamentoColunasFornecedor),
+});
+
+export const mapeamentoColunasFornecedorSchema = z.object({
+  fornecedorId: z.uuid(),
+  mapeamentos: z
+    .array(mapeamentoColunaFornecedorSchema)
+    .max(camposMapeamentoColunasFornecedor.length)
+    .superRefine((mapeamentos, contexto) => {
+      const campos = new Set<string>();
+
+      mapeamentos.forEach((mapeamento, indice) => {
+        if (campos.has(mapeamento.campoDestino)) {
+          contexto.addIssue({
+            code: "custom",
+            path: [indice, "campoDestino"],
+            message: "Campo de destino duplicado.",
+          });
+        }
+
+        campos.add(mapeamento.campoDestino);
+      });
+    }),
+});
+
+export const aplicarMapeamentoImportacaoFornecedorSchema =
+  mapeamentoColunasFornecedorSchema.omit({ fornecedorId: true }).extend({
+    importacaoId: z.uuid(),
+    salvarParaFornecedor: z.boolean().optional().default(false),
+  });
+
 export type FornecedorValidado = z.infer<typeof fornecedorSchema>;
 export type ImportacaoFornecedorValidada = z.infer<
   typeof importacaoFornecedorSchema
@@ -199,6 +341,21 @@ export type ArquivoImportacaoFornecedorValidado = z.infer<
 >;
 export type AnaliseImportacaoFornecedorValidada = z.infer<
   typeof analiseImportacaoFornecedorSchema
+>;
+export type ProblemaRevisaoImportacaoFornecedorValidado = z.infer<
+  typeof problemaRevisaoImportacaoFornecedorSchema
+>;
+export type ItemRevisaoImportacaoFornecedorValidado = z.infer<
+  typeof itemRevisaoImportacaoFornecedorSchema
+>;
+export type ResumoRevisaoImportacaoFornecedorValidado = z.infer<
+  typeof resumoRevisaoImportacaoFornecedorSchema
+>;
+export type AnaliseRevisaoImportacaoFornecedorValidada = z.infer<
+  typeof analiseRevisaoImportacaoFornecedorSchema
+>;
+export type CorrecaoRevisaoImportacaoFornecedorValidada = z.infer<
+  typeof correcaoRevisaoImportacaoFornecedorSchema
 >;
 export type VinculoProdutoFornecedorValidado = z.infer<
   typeof vinculoProdutoFornecedorSchema
@@ -220,4 +377,13 @@ export type PreviewSincronizacaoFornecedorValidado = z.infer<
 >;
 export type ItemPreviewSincronizacaoFornecedorValidado = z.infer<
   typeof itemPreviewSincronizacaoFornecedorSchema
+>;
+export type MapeamentoColunaFornecedorValidado = z.infer<
+  typeof mapeamentoColunaFornecedorSchema
+>;
+export type MapeamentoColunasFornecedorValidado = z.infer<
+  typeof mapeamentoColunasFornecedorSchema
+>;
+export type AplicarMapeamentoImportacaoFornecedorValidado = z.infer<
+  typeof aplicarMapeamentoImportacaoFornecedorSchema
 >;

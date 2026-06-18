@@ -30,10 +30,12 @@ export async function salvarLinhasStagingFornecedor(
         codigoFornecedor: linha.codigoFornecedor,
         nomeProduto: linha.nomeProduto,
         categoriaFornecedor: linha.categoriaFornecedor,
+        marcaFornecedor: linha.marcaFornecedor,
         precoFornecedor: linha.precoFornecedor,
         precoOriginal: linha.precoFornecedor,
         estoqueFornecedor: linha.estoqueFornecedor,
         errosValidacao: linha.errosValidacao,
+        dadosBrutos: linha.dadosBrutos,
         status: linha.status,
       })),
     );

@@ -1,58 +1,39 @@
-import { PaginaImportacoesFornecedoresAdmin } from "@/features/fornecedores/components/admin/pagina-importacoes-fornecedores-admin";
+import { PaginaListaImportacoesFornecedoresAdmin } from "@/features/fornecedores/components/admin/pagina-lista-importacoes-fornecedores-admin";
 import {
-  buscarProdutosParaVinculoFornecedor,
   listarFornecedoresAdmin,
-  listarImportacoesFornecedoresAdmin,
-  listarStagingImportacaoFornecedor,
+  listarImportacoesRecentesFornecedoresAdmin,
 } from "@/features/fornecedores/queries";
-import { gerarPreviewSincronizacaoFornecedor } from "@/features/fornecedores/services/gerar-preview-sincronizacao.service";
 
-type FornecedoresImportacoesPageProps = {
+type ImportacoesFornecedoresPageProps = {
   searchParams: Promise<{
-    importacaoId?: string;
-    aba?: string;
-    vincularStagingId?: string;
-    buscaProduto?: string;
+    pagina?: string;
+    limite?: string;
   }>;
 };
 
-const abasPermitidas = ["todos", "localizado", "nao_localizado", "erro"];
+function numeroParametro(valor: string | undefined, padrao: number) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : padrao;
+}
 
 export default async function Page({
   searchParams,
-}: FornecedoresImportacoesPageProps) {
+}: ImportacoesFornecedoresPageProps) {
   const parametros = await searchParams;
   const fornecedores = await listarFornecedoresAdmin();
-  const importacoes = await listarImportacoesFornecedoresAdmin();
-  const importacaoSelecionadaId = parametros.importacaoId ?? importacoes[0]?.id;
-  const abaSelecionada = abasPermitidas.includes(parametros.aba ?? "")
-    ? (parametros.aba as "todos" | "localizado" | "nao_localizado" | "erro")
-    : "todos";
-  const staging = importacaoSelecionadaId
-    ? await listarStagingImportacaoFornecedor(importacaoSelecionadaId)
-    : [];
-  const produtosParaVinculo = parametros.vincularStagingId
-    ? await buscarProdutosParaVinculoFornecedor({
-        busca: parametros.buscaProduto,
-      })
-    : [];
-  const previewSincronizacao = importacaoSelecionadaId
-    ? await gerarPreviewSincronizacaoFornecedor({
-        importacaoId: importacaoSelecionadaId,
-      })
-    : null;
+  const pagina = numeroParametro(parametros.pagina, 1);
+  const limite = numeroParametro(parametros.limite, 4);
+  const recentes = await listarImportacoesRecentesFornecedoresAdmin({
+    pagina,
+    limite,
+  });
 
   return (
-    <PaginaImportacoesFornecedoresAdmin
+    <PaginaListaImportacoesFornecedoresAdmin
       fornecedores={fornecedores}
-      importacoes={importacoes}
-      staging={staging}
-      importacaoSelecionadaId={importacaoSelecionadaId}
-      abaSelecionada={abaSelecionada}
-      vincularStagingId={parametros.vincularStagingId}
-      buscaProduto={parametros.buscaProduto ?? ""}
-      produtosParaVinculo={produtosParaVinculo}
-      previewSincronizacao={previewSincronizacao}
+      importacoesRecentes={recentes.itens}
+      paginacaoImportacoesRecentes={recentes.paginacao}
+      totaisStatusImportacoesRecentes={recentes.totaisStatus}
     />
   );
 }

@@ -1,4 +1,10 @@
 export {
+  fornecedorIntegracaoApiAmbienteEnum,
+  fornecedorIntegracaoApiProvedorEnum,
+  fornecedorIntegracaoApiTesteStatusEnum,
+  fornecedorIntegracaoLogStatusEnum,
+  fornecedorMapeamentoColunaDestinoEnum,
+  fornecedorProdutoApiStagingStatusEnum,
   fornecedorProdutoStagingStatusEnum,
   fornecedorProdutoVinculoStatusEnum,
   fornecedorProdutoVinculoTipoEnum,
@@ -11,6 +17,26 @@ export {
   importacaoFornecedorStatusEnum,
   importacaoFornecedorTipoArquivoEnum,
 } from "./enums";
+export {
+  fornecedorIntegracaoLogsTable,
+  type FornecedorIntegracaoLog,
+  type NovaFornecedorIntegracaoLog,
+} from "./tabelas/fornecedor-integracao-logs";
+export {
+  fornecedorIntegracoesApiTable,
+  type FornecedorIntegracaoApi,
+  type NovaFornecedorIntegracaoApi,
+} from "./tabelas/fornecedor-integracoes-api";
+export {
+  fornecedorMapeamentosColunasTable,
+  type FornecedorMapeamentoColuna,
+  type NovoFornecedorMapeamentoColuna,
+} from "./tabelas/fornecedor-mapeamentos-colunas";
+export {
+  fornecedorProdutosApiStagingTable,
+  type FornecedorProdutoApiStaging,
+  type NovoFornecedorProdutoApiStaging,
+} from "./tabelas/fornecedor-produtos-api-staging";
 export {
   fornecedorProdutoVinculosTable,
   type FornecedorProdutoVinculo,
@@ -37,6 +63,10 @@ export {
   type NovaImportacaoFornecedorAjuste,
 } from "./tabelas/importacao-fornecedor-ajustes";
 export {
+  fornecedorIntegracaoLogsRelations,
+  fornecedorIntegracoesApiRelations,
+  fornecedorMapeamentosColunasRelations,
+  fornecedorProdutosApiStagingRelations,
   fornecedorProdutoVinculosRelations,
   fornecedorProdutosStagingRelations,
   fornecedoresRelations,

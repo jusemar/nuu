@@ -22,10 +22,8 @@ import {
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Box,
-  ChevronsUpDown,
   CheckCircle2,
   DollarSign,
   Info,
@@ -46,6 +44,7 @@ import {
 } from "../image-upload/ProductImageGallery";
 import { StoreProductFlags } from "@/components/admin/store-product-flags";
 import { CategoryTreeSelector } from "@/features/admin/products/components/CategoryTreeSelector";
+import { MarcaPopoverSelector } from "@/features/admin/products/components/MarcaPopoverSelector";
 import type { ProductKind } from "@/features/products";
 import { listarMarcasAtivas } from "@/features/admin/marcas/services/marcaService";
 
@@ -78,8 +77,6 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
   const { generateSku } = useSkuGenerator();
   const [tagInput, setTagInput] = useState("");
   const [marcas, setMarcas] = useState<Array<{ id: string; nome: string }>>([]);
-  const [buscaMarca, setBuscaMarca] = useState("");
-  const [popoverMarcaAberto, setPopoverMarcaAberto] = useState(false);
 
   // Geração automática do SKU
   useEffect(() => {
@@ -111,11 +108,6 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
       ativo = false;
     };
   }, []);
-
-  const marcaSelecionada = marcas.find((marca) => marca.id === data.brandId);
-  const marcasFiltradas = marcas.filter((marca) =>
-    marca.nome.toLowerCase().includes(buscaMarca.toLowerCase()),
-  );
 
   const addTag = (e: React.KeyboardEvent | React.MouseEvent) => {
     e.preventDefault();
@@ -288,47 +280,11 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
 
               <div className="space-y-2">
                 <Label>Marca</Label>
-                <Popover
-                  open={popoverMarcaAberto}
-                  onOpenChange={setPopoverMarcaAberto}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className="w-full justify-between text-sm"
-                    >
-                      <span className="truncate">
-                        {marcaSelecionada?.nome || "Selecione uma marca"}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[320px] p-2" align="start">
-                    <Input
-                      value={buscaMarca}
-                      onChange={(e) => setBuscaMarca(e.target.value)}
-                      placeholder="Buscar marca..."
-                      className="mb-2 h-9"
-                    />
-                    <div className="max-h-56 overflow-y-auto">
-                      {marcasFiltradas.map((marca) => (
-                        <button
-                          key={marca.id}
-                          type="button"
-                          onClick={() => {
-                            onChange({ brandId: marca.id, brand: marca.nome });
-                            setPopoverMarcaAberto(false);
-                            setBuscaMarca("");
-                          }}
-                          className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
-                        >
-                          {marca.nome}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <MarcaPopoverSelector
+                  value={data.brandId}
+                  brands={marcas}
+                  onChange={(brandId, brand) => onChange({ brandId, brand })}
+                />
               </div>
 
               <div className="space-y-2">

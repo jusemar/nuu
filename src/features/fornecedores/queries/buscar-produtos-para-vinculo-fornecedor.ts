@@ -23,6 +23,7 @@ export async function buscarProdutosParaVinculoFornecedor(
       nome: productTable.name,
       sku: productTable.sku,
       slug: productTable.slug,
+      marca: productTable.brand,
     })
     .from(productTable)
     .where(
@@ -31,6 +32,7 @@ export async function buscarProdutosParaVinculoFornecedor(
         or(
           ilike(productTable.name, `%${filtros.busca}%`),
           ilike(productTable.sku, `%${filtros.busca}%`),
+          ilike(productTable.brand, `%${filtros.busca}%`),
           ilike(productTable.slug, `%${filtros.busca}%`),
         ),
       ),

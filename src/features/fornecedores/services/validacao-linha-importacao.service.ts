@@ -8,9 +8,22 @@ function normalizarPreco(valor: string | null) {
   if (!valor) return null;
 
   const semMoeda = valor.replace(/\s/g, "").replace(/^R\$/i, "");
-  const normalizado = semMoeda.includes(",")
-    ? semMoeda.replace(/\./g, "").replace(",", ".")
-    : semMoeda;
+  const ultimoPonto = semMoeda.lastIndexOf(".");
+  const ultimaVirgula = semMoeda.lastIndexOf(",");
+  const temPonto = ultimoPonto >= 0;
+  const temVirgula = ultimaVirgula >= 0;
+  const separadorDecimal =
+    temPonto && temVirgula
+      ? ultimoPonto > ultimaVirgula
+        ? "."
+        : ","
+      : temVirgula
+        ? ","
+        : ".";
+  const normalizado =
+    separadorDecimal === ","
+      ? semMoeda.replace(/\./g, "").replace(",", ".")
+      : semMoeda.replace(/,/g, "");
 
   if (!/^\d+(\.\d{1,2})?$/.test(normalizado)) return null;
 
@@ -19,9 +32,15 @@ function normalizarPreco(valor: string | null) {
 
 function normalizarEstoque(valor: string | null) {
   if (!valor) return null;
-  if (!/^\d+$/.test(valor.trim())) return null;
+  const texto = valor.trim();
+  const normalizado =
+    /^\d{1,3}(,\d{3})+\.$/.test(texto) || /^\d{1,3}(,\d{3})+$/.test(texto)
+      ? texto.replace(/,/g, "").replace(/\.$/, "")
+      : texto.replace(",", ".");
 
-  return Number.parseInt(valor, 10);
+  if (!/^\d+(\.0*)?$/.test(normalizado)) return null;
+
+  return Number.parseInt(normalizado, 10);
 }
 
 export function prepararLinhaStagingFornecedor(
@@ -76,9 +95,11 @@ export function prepararLinhaStagingFornecedor(
     codigoFornecedor: linha.codigoFornecedor,
     nomeProduto: linha.nomeProduto,
     categoriaFornecedor: linha.categoriaFornecedor,
+    marcaFornecedor: linha.marcaFornecedor,
     precoFornecedor,
     estoqueFornecedor,
     status: erros.length > 0 ? "erro" : "aguardando_analise",
     errosValidacao: erros,
+    dadosBrutos: linha.dadosBrutos,
   };
 }

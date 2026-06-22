@@ -15,6 +15,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import type { ProductFormData } from "@/app/admin/products/new/data/product-form-data";
+import {
+  type DadosFornecedorParaRascunhoProduto,
+  ModalRascunhoProdutoFornecedor,
+} from "./modal-rascunho-produto-fornecedor";
 
 export type StatusVinculoFornecedorVisual =
   | "vinculado"
@@ -37,8 +42,15 @@ export type ItemVinculoFornecedor = {
   produtoRecebido: {
     nome: string;
     codigo?: string | null;
+    ean?: string | null;
+    ncm?: string | null;
     preco?: string | null;
     estoque?: number | null;
+    imagens?: string[];
+    pesoBruto?: string | null;
+    alturaCaixa?: string | null;
+    larguraCaixa?: string | null;
+    comprimentoCaixa?: string | null;
     complemento?: string | null;
   };
   status: StatusVinculoFornecedorVisual;
@@ -136,17 +148,44 @@ function classeStatus(status: StatusVinculoFornecedorVisual) {
   return classes[status];
 }
 
+function montarDadosRascunho(
+  item: ItemVinculoFornecedor,
+): DadosFornecedorParaRascunhoProduto {
+  return {
+    id: item.id,
+    nome: item.produtoRecebido.nome,
+    codigo: item.produtoRecebido.codigo,
+    ean: item.produtoRecebido.ean,
+    ncm: item.produtoRecebido.ncm,
+    preco: item.produtoRecebido.preco,
+    estoque: item.produtoRecebido.estoque,
+    imagens: item.produtoRecebido.imagens,
+    pesoBruto: item.produtoRecebido.pesoBruto,
+    alturaCaixa: item.produtoRecebido.alturaCaixa,
+    larguraCaixa: item.produtoRecebido.larguraCaixa,
+    comprimentoCaixa: item.produtoRecebido.comprimentoCaixa,
+    complemento: item.produtoRecebido.complemento,
+  };
+}
+
 function ProdutoLojaResumo({
   estado,
+  rascunhoCriado,
 }: {
   estado: EstadoItemVinculoFornecedor;
+  rascunhoCriado?: boolean;
 }) {
   if (estado.status === "novo") {
     return (
       <div className="px-1 py-1">
         <p className="text-sm font-medium text-slate-900">
-          Será criado como novo
+          {rascunhoCriado ? "Rascunho criado" : "Será criado como novo"}
         </p>
+        {rascunhoCriado ? (
+          <p className="mt-0.5 text-xs text-slate-500">
+            Produto oculto até a publicação.
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -374,8 +413,13 @@ export function TabelaVinculosFornecedor({
     useState<Record<string, EstadoItemVinculoFornecedor>>(estadosIniciais);
   const [itemEmVinculo, setItemEmVinculo] =
     useState<ItemVinculoFornecedor | null>(null);
+  const [itemEmRascunho, setItemEmRascunho] =
+    useState<ItemVinculoFornecedor | null>(null);
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState("");
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
+  const [rascunhos, setRascunhos] = useState<Record<string, ProductFormData>>(
+    {},
+  );
 
   useEffect(() => {
     setEstados(estadosIniciais);
@@ -387,6 +431,10 @@ export function TabelaVinculosFornecedor({
     setProdutoSelecionadoId(estados[item.id]?.produtoLoja?.id ?? "");
   }
 
+  function abrirModalRascunho(item: ItemVinculoFornecedor) {
+    setItemEmRascunho(item);
+  }
+
   function marcarComoNovo(item: ItemVinculoFornecedor) {
     setEstados((atuais) => ({
       ...atuais,
@@ -394,11 +442,27 @@ export function TabelaVinculosFornecedor({
     }));
   }
 
+  function salvarRascunhoVisual(
+    item: ItemVinculoFornecedor,
+    dados: ProductFormData,
+  ) {
+    setRascunhos((atuais) => ({
+      ...atuais,
+      [item.id]: { ...dados, isActive: false },
+    }));
+    marcarComoNovo(item);
+  }
+
   function desfazer(item: ItemVinculoFornecedor) {
     setEstados((atuais) => ({
       ...atuais,
       [item.id]: { status: "aguardando", produtoLoja: null },
     }));
+    setRascunhos((atuais) => {
+      const proximo = { ...atuais };
+      delete proximo[item.id];
+      return proximo;
+    });
   }
 
   function confirmarVinculoVisual() {
@@ -546,6 +610,7 @@ export function TabelaVinculosFornecedor({
           ) : (
             itens.map((item) => {
               const estado = estados[item.id] ?? estadosIniciais[item.id];
+              const rascunhoCriado = Boolean(rascunhos[item.id]);
               const podeVincular =
                 item.podeVincular !== false && estado.status !== "erro";
               const podeNovo =
@@ -588,7 +653,10 @@ export function TabelaVinculosFornecedor({
                     </Badge>
                   </div>
 
-                  <ProdutoLojaResumo estado={estado} />
+                  <ProdutoLojaResumo
+                    estado={estado}
+                    rascunhoCriado={rascunhoCriado}
+                  />
 
                   <div className="flex justify-end gap-2">
                     {estado.status === "ignorado" ? (
@@ -620,14 +688,26 @@ export function TabelaVinculosFornecedor({
                         </Button>
                       </>
                     ) : estado.status === "novo" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => desfazer(item)}
-                      >
-                        Desfazer
-                      </Button>
+                      <>
+                        {rascunhoCriado ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => abrirModalRascunho(item)}
+                          >
+                            Editar rascunho
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => desfazer(item)}
+                        >
+                          Desfazer
+                        </Button>
+                      </>
                     ) : (
                       <>
                         <Button
@@ -643,7 +723,7 @@ export function TabelaVinculosFornecedor({
                           type="button"
                           size="sm"
                           disabled={!podeNovo}
-                          onClick={() => marcarComoNovo(item)}
+                          onClick={() => abrirModalRascunho(item)}
                         >
                           Novo
                         </Button>
@@ -660,6 +740,7 @@ export function TabelaVinculosFornecedor({
       <div className="grid gap-3 md:hidden">
         {itens.map((item) => {
           const estado = estados[item.id] ?? estadosIniciais[item.id];
+          const rascunhoCriado = Boolean(rascunhos[item.id]);
           const podeVincular =
             item.podeVincular !== false && estado.status !== "erro";
           const podeNovo =
@@ -701,7 +782,10 @@ export function TabelaVinculosFornecedor({
               </div>
 
               <div className="mt-3">
-                <ProdutoLojaResumo estado={estado} />
+                <ProdutoLojaResumo
+                  estado={estado}
+                  rascunhoCriado={rascunhoCriado}
+                />
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -737,16 +821,28 @@ export function TabelaVinculosFornecedor({
                     </Button>
                   </>
                 ) : estado.status === "novo" ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="col-span-2"
-                    onClick={() => desfazer(item)}
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Desfazer
-                  </Button>
+                  <>
+                    {rascunhoCriado ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => abrirModalRascunho(item)}
+                      >
+                        Editar rascunho
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className={rascunhoCriado ? "" : "col-span-2"}
+                      onClick={() => desfazer(item)}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Desfazer
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button
@@ -762,7 +858,7 @@ export function TabelaVinculosFornecedor({
                       type="button"
                       size="sm"
                       disabled={!podeNovo}
-                      onClick={() => marcarComoNovo(item)}
+                      onClick={() => abrirModalRascunho(item)}
                     >
                       Novo
                     </Button>
@@ -803,6 +899,17 @@ export function TabelaVinculosFornecedor({
         acaoVincular={acaoVincular}
         nomeCampoItem={nomeCampoItem}
         nomeCampoProduto={nomeCampoProduto}
+      />
+      <ModalRascunhoProdutoFornecedor
+        aberto={Boolean(itemEmRascunho)}
+        item={itemEmRascunho ? montarDadosRascunho(itemEmRascunho) : null}
+        dadosSalvos={itemEmRascunho ? rascunhos[itemEmRascunho.id] : null}
+        aoAlterarAbertura={(aberto) => {
+          if (!aberto) setItemEmRascunho(null);
+        }}
+        aoSalvarRascunho={(dados) => {
+          if (itemEmRascunho) salvarRascunhoVisual(itemEmRascunho, dados);
+        }}
       />
     </section>
   );

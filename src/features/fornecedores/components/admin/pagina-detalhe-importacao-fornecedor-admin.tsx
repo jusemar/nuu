@@ -29,8 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
-import { AbaRevisaoImportacaoFornecedor } from "./aba-revisao-importacao-fornecedor";
 import { TabelaMapeamentoCamposFornecedor } from "./tabela-mapeamento-campos-fornecedor";
 
 import type {
@@ -135,7 +135,7 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
 const etapas = [
   { valor: "mapeamento", label: "Mapeamento" },
   { valor: "vinculacao", label: "Vinculação" },
-  { valor: "revisao", label: "Revisão" },
+  { valor: "revisao", label: "Conciliação" },
   { valor: "preview", label: "Preview" },
 ] as const;
 
@@ -152,7 +152,7 @@ const etapasFluxo = [
   "Selecionar arquivo",
   "Mapear colunas",
   "Vinculação",
-  "Revisão",
+  "Conciliação",
   "Preview",
   "Sincronização futura",
 ];
@@ -589,11 +589,6 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   produtosParaVinculo,
   previewSincronizacao,
   revisaoImportacao,
-  revisaoItens,
-  revisaoTotal,
-  revisaoPagina,
-  revisaoTotalPaginas,
-  marcasAtivas,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
   const categorias = Array.from(
     new Set(
@@ -672,19 +667,10 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
       {filtros.etapa === "mapeamento" ? (
         <AbaMapeamento importacao={importacao} linhas={todasLinhas} />
       ) : filtros.etapa === "revisao" ? (
-        <AbaRevisaoImportacaoFornecedor
+        <AbaConciliacaoImportacaoFornecedor
           importacaoId={importacao.id}
+          fornecedor={importacao.nomeFornecedor}
           linhas={todasLinhas}
-          categorias={categorias}
-          marcas={marcas}
-          total={revisaoTotal}
-          pagina={revisaoPagina}
-          totalPaginas={revisaoTotalPaginas}
-          limite={filtros.limiteRevisao}
-          busca={filtros.buscaRevisao ?? ""}
-          categoriaRevisao={filtros.categoriaRevisao ?? ""}
-          marcaRevisao={filtros.marcaRevisao ?? ""}
-          marcasAtivas={marcasAtivas}
         />
       ) : (
         <BarraFiltros

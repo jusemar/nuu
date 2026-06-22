@@ -70,6 +70,34 @@ function obterStatusVisual(
   return "aguardando";
 }
 
+function lerCampoBruto(
+  linha: LinhaVinculacaoFornecedor,
+  chaves: string[],
+): string | null {
+  const entradas = Object.entries(linha.dadosBrutos ?? {});
+  const normalizar = (valor: string) =>
+    valor
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+
+  for (const chave of chaves) {
+    const procurada = normalizar(chave);
+    const encontrada = entradas.find(
+      ([nome, valor]) =>
+        normalizar(nome) === procurada &&
+        valor !== null &&
+        valor !== undefined &&
+        String(valor).trim(),
+    );
+
+    if (encontrada) return String(encontrada[1]);
+  }
+
+  return null;
+}
+
 function montarItensVinculacaoArquivo(
   linhas: LinhaVinculacaoFornecedor[],
 ): ItemVinculoFornecedor[] {
@@ -78,8 +106,17 @@ function montarItensVinculacaoArquivo(
     produtoRecebido: {
       nome: linha.nomeProduto,
       codigo: linha.codigoFornecedor,
+      ean: lerCampoBruto(linha, ["ean", "gtin", "codigo_ean", "cd_ean"]),
+      ncm: lerCampoBruto(linha, ["ncm", "codigo_ncm"]),
       preco: linha.precoFornecedor,
       estoque: linha.estoqueFornecedor,
+      pesoBruto: lerCampoBruto(linha, ["peso_bruto", "peso", "peso kg"]),
+      alturaCaixa: lerCampoBruto(linha, ["altura_caixa", "altura"]),
+      larguraCaixa: lerCampoBruto(linha, ["largura_caixa", "largura"]),
+      comprimentoCaixa: lerCampoBruto(linha, [
+        "comprimento_caixa",
+        "comprimento",
+      ]),
       complemento: [
         linha.categoriaFornecedor ?? "sem categoria",
         linha.marcaFornecedor ?? "sem marca",

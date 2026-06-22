@@ -43,8 +43,15 @@ const itensLaquilaMock = [
     produtoRecebido: {
       nome: "AMORTECEDOR DIANTEIRO",
       codigo: "24250",
+      ean: "7890000242501",
+      ncm: "87088000",
       preco: "189.9",
       estoque: 100,
+      imagens: ["https://placehold.co/640x480?text=Amortecedor"],
+      pesoBruto: "3.2",
+      alturaCaixa: "18",
+      larguraCaixa: "14",
+      comprimentoCaixa: "54",
       complemento: "Suspensão · Amortecedores",
     },
     status: "aguardando" as const,
@@ -55,8 +62,15 @@ const itensLaquilaMock = [
     produtoRecebido: {
       nome: "JUNCAO SUPORTE DO BICO",
       codigo: "110012",
+      ean: "7890001100125",
+      ncm: "84099190",
       preco: "7.55",
       estoque: 100,
+      imagens: ["https://placehold.co/640x480?text=Suporte+Bico"],
+      pesoBruto: "0.12",
+      alturaCaixa: "4",
+      larguraCaixa: "6",
+      comprimentoCaixa: "8",
       complemento: "Injeção · Suportes",
     },
     status: "vinculado" as const,
@@ -67,8 +81,15 @@ const itensLaquilaMock = [
     produtoRecebido: {
       nome: "FILTRO OLEO MOTOR",
       codigo: "77881",
+      ean: "7890000778819",
+      ncm: "84212300",
       preco: "31.2",
       estoque: 46,
+      imagens: ["https://placehold.co/640x480?text=Filtro+Oleo"],
+      pesoBruto: "0.38",
+      alturaCaixa: "11",
+      larguraCaixa: "9",
+      comprimentoCaixa: "9",
       complemento: "Filtros · Motor",
     },
     status: "aguardando" as const,
@@ -79,8 +100,15 @@ const itensLaquilaMock = [
     produtoRecebido: {
       nome: "PASTILHA FREIO DIANTEIRA",
       codigo: "4450",
+      ean: "7890000044501",
+      ncm: "87083090",
       preco: "96.4",
       estoque: 12,
+      imagens: ["https://placehold.co/640x480?text=Pastilha+Freio"],
+      pesoBruto: "1.1",
+      alturaCaixa: "7",
+      larguraCaixa: "12",
+      comprimentoCaixa: "18",
       complemento: "Freios · Pastilhas",
     },
     status: "aguardando" as const,
@@ -126,6 +154,7 @@ export function PaginaVinculosLaquilaAdmin() {
         itens={itensLaquilaMock}
         produtosDaLoja={produtosDaLojaMock}
         textoAcaoPrincipal="Continuar para conciliação"
+        hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/conciliacao"
       />
     </main>
   );

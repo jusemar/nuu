@@ -46,13 +46,43 @@ type CorpoConsultarProdutosLaquila = {
   };
 };
 
+type CorpoConsultarSaldoPrecoLaquila = {
+  filtro: {
+    token: string;
+    cnpj_empresa: string;
+    pagina: string;
+    itensporpagina: string;
+    cd_item: string;
+  };
+};
+
 export type ItemProdutoLaquilaApi = Record<string, unknown>;
+export type ItemSaldoPrecoLaquilaApi = Record<string, unknown>;
 
 export type ResultadoConsultarProdutosLaquila =
   | {
       sucesso: true;
       codigoHttp: number;
       itens: ItemProdutoLaquilaApi[];
+      pagina: number;
+      itensPorPagina: number;
+      dados: RespostaLaquilaJson;
+    }
+  | {
+      sucesso: false;
+      codigoHttp: number | null;
+      erro: string;
+      pagina: number;
+      itensPorPagina: number;
+      dados?: RespostaLaquilaJson;
+      diagnostico?: DiagnosticoChamadaLaquila;
+    };
+
+export type ResultadoConsultarSaldoPrecoLaquila =
+  | {
+      sucesso: true;
+      codigoHttp: number;
+      itens: ItemSaldoPrecoLaquilaApi[];
       pagina: number;
       itensPorPagina: number;
       dados: RespostaLaquilaJson;
@@ -245,7 +275,10 @@ async function executarComRetryLaquila<T>(operacao: () => Promise<T>) {
 export async function chamarLaquila(
   cliente: ClienteLaquila,
   metodo: string,
-  corpo: CorpoTesteTransportadorasLaquila | CorpoConsultarProdutosLaquila,
+  corpo:
+    | CorpoTesteTransportadorasLaquila
+    | CorpoConsultarProdutosLaquila
+    | CorpoConsultarSaldoPrecoLaquila,
 ): Promise<ResultadoChamadaLaquila> {
   const urlBase = obterUrlBaseLaquila(cliente.configuracao);
 
@@ -378,9 +411,9 @@ export async function testarConexaoTransportadorasLaquila({
   );
 }
 
-function extrairItensProdutoLaquila(
+function extrairItensLaquila(
   dados: RespostaLaquilaJson,
-): ItemProdutoLaquilaApi[] {
+): Record<string, unknown>[] {
   const resultados = dados.resultados;
 
   if (!resultados || typeof resultados !== "object") {
@@ -404,8 +437,20 @@ function extrairItensProdutoLaquila(
       return [];
     }
 
-    return [item as ItemProdutoLaquilaApi];
+    return [item as Record<string, unknown>];
   });
+}
+
+function extrairItensProdutoLaquila(
+  dados: RespostaLaquilaJson,
+): ItemProdutoLaquilaApi[] {
+  return extrairItensLaquila(dados);
+}
+
+function extrairItensSaldoPrecoLaquila(
+  dados: RespostaLaquilaJson,
+): ItemSaldoPrecoLaquilaApi[] {
+  return extrairItensLaquila(dados);
 }
 
 export async function consultarProdutosLaquila({
@@ -450,6 +495,51 @@ export async function consultarProdutosLaquila({
     sucesso: true,
     codigoHttp: resultado.codigoHttp,
     itens: extrairItensProdutoLaquila(resultado.dados),
+    pagina,
+    itensPorPagina,
+    dados: resultado.dados,
+  };
+}
+
+export async function consultarSaldoPrecoLaquila({
+  cliente,
+  tokenCliente,
+  pagina,
+  itensPorPagina,
+  codigoItem = "",
+}: {
+  cliente: ClienteLaquila;
+  tokenCliente: string;
+  pagina: number;
+  itensPorPagina: number;
+  codigoItem?: string;
+}): Promise<ResultadoConsultarSaldoPrecoLaquila> {
+  const resultado = await chamarLaquila(
+    cliente,
+    METODOS_LAQUILA.consultarSaldo,
+    {
+      filtro: {
+        token: tokenCliente,
+        cnpj_empresa: cliente.configuracao.cnpjEmpresa,
+        pagina: String(pagina),
+        itensporpagina: String(itensPorPagina),
+        cd_item: codigoItem,
+      },
+    },
+  );
+
+  if (!resultado.sucesso) {
+    return {
+      ...resultado,
+      pagina,
+      itensPorPagina,
+    };
+  }
+
+  return {
+    sucesso: true,
+    codigoHttp: resultado.codigoHttp,
+    itens: extrairItensSaldoPrecoLaquila(resultado.dados),
     pagina,
     itensPorPagina,
     dados: resultado.dados,

@@ -31,6 +31,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
 import { AbaRevisaoImportacaoFornecedor } from "./aba-revisao-importacao-fornecedor";
+import { TabelaMapeamentoCamposFornecedor } from "./tabela-mapeamento-campos-fornecedor";
 
 import type {
   CampoMapeamentoColunaFornecedor,
@@ -139,12 +140,12 @@ const etapas = [
 ] as const;
 
 const camposMapeamento = [
-  ["codigo_fornecedor", "Código arquivo"],
-  ["nome_produto", "Nome arquivo"],
-  ["categoria_fornecedor", "Categoria arquivo"],
-  ["marca_fornecedor", "Marca arquivo"],
-  ["preco_fornecedor", "Preço arquivo"],
-  ["estoque_fornecedor", "Estoque arquivo"],
+  ["codigo_fornecedor", "Código fornecedor"],
+  ["nome_produto", "Nome do produto"],
+  ["categoria_fornecedor", "Categoria da loja"],
+  ["marca_fornecedor", "Marca da loja"],
+  ["preco_fornecedor", "Preço fornecedor"],
+  ["estoque_fornecedor", "Estoque fornecedor"],
 ] satisfies Array<[CampoMapeamentoColunaFornecedor, string]>;
 
 const etapasFluxo = [
@@ -400,10 +401,21 @@ function StepperImportacao({ etapaAtual }: { etapaAtual: string }) {
   );
 }
 
+function calcularConfiancaMapeamento(situacao?: string | null) {
+  if (situacao === "detectado_automaticamente") return 94;
+  if (situacao === "vindo_do_mapeamento_salvo") return 88;
+  if (situacao === "confirmado") return 100;
+  if (situacao === "conflito") return 42;
+
+  return 18;
+}
+
 function AbaMapeamento({
   importacao,
+  linhas,
 }: {
   importacao: ImportacaoFornecedorAdmin;
+  linhas: LinhaStagingFornecedorAdmin[];
 }) {
   const mapeamentosPorColuna = new Map(
     importacao.mapeamentoColunas.map((mapeamento) => [
@@ -419,115 +431,44 @@ function AbaMapeamento({
     totalColunasDetectadas - totalMapeadasAutomaticamente,
     0,
   );
+  const linhasMapeamento = importacao.colunasPlanilha.map((coluna) => {
+    const mapeamento = mapeamentosPorColuna.get(coluna.nomeOriginal);
+    const amostra = linhas.find((linha) => {
+      const valor = linha.dadosBrutos[coluna.nomeOriginal];
+
+      return valor !== null && valor !== undefined && String(valor).trim();
+    })?.dadosBrutos[coluna.nomeOriginal];
+
+    return {
+      id: `${coluna.indice}-${coluna.nomeOriginal}`,
+      nomeOrigem: coluna.nomeOriginal || `Coluna ${coluna.indice + 1}`,
+      descricaoOrigem: `Índice ${coluna.indice + 1}`,
+      amostra:
+        amostra === null || amostra === undefined ? null : String(amostra),
+      campoDestino: mapeamento?.campoDestino ?? null,
+      situacao: mapeamento?.situacao ?? "pendente",
+      confianca: calcularConfiancaMapeamento(mapeamento?.situacao),
+    };
+  });
 
   return (
-    <form
+    <TabelaMapeamentoCamposFornecedor
+      tipoOrigem="arquivo"
+      titulo="Mapeamento de colunas"
+      subtitulo="Revise como cada coluna da planilha será interpretada antes de avançar para vínculos e revisão."
+      labelPrimeiraColuna="Coluna na planilha"
+      labelAmostra="Amostra"
+      linhas={linhasMapeamento}
+      opcoesDestino={camposMapeamento.map(([valor, label]) => ({
+        valor,
+        label,
+      }))}
       action={aplicarMapeamentoColunasFornecedorAction}
-      className="rounded-lg border border-slate-200 bg-white"
-    >
-      <input type="hidden" name="importacaoId" value={importacao.id} />
-      <div className="border-b border-slate-200 px-4 py-3">
-        <h2 className="text-base font-semibold">Mapeamento de colunas</h2>
-      </div>
-      <div className="overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50">
-            <TableRow className="border-b border-slate-200 hover:bg-transparent">
-              <TableHead className="h-10 w-[240px] text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
-                <RotuloOrigem campo="Coluna" origem="arquivo" />
-              </TableHead>
-              <TableHead className="h-10 w-[220px] text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
-                Mapear para
-              </TableHead>
-              <TableHead className="h-10 text-[11px] font-semibold tracking-wide text-slate-600 uppercase">
-                Situação
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {importacao.colunasPlanilha.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={3} className="h-16 text-center text-sm">
-                  Nenhuma coluna registrada para esta importação.
-                </TableCell>
-              </TableRow>
-            ) : (
-              importacao.colunasPlanilha.map((coluna) => {
-                const mapeamento = mapeamentosPorColuna.get(
-                  coluna.nomeOriginal,
-                );
-
-                return (
-                  <TableRow
-                    key={`${coluna.indice}-${coluna.nomeOriginal}`}
-                    className="border-slate-100 hover:bg-slate-50/70"
-                  >
-                    <TableCell className="py-2.5 align-middle font-medium">
-                      <input
-                        type="hidden"
-                        name="nomeColunaOrigem"
-                        value={coluna.nomeOriginal}
-                      />
-                      <Badge
-                        variant="secondary"
-                        className="max-w-full truncate rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-800 shadow-none"
-                      >
-                        {coluna.nomeOriginal || `Coluna ${coluna.indice + 1}`}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="py-2.5 align-middle">
-                      <select
-                        name="campoDestino"
-                        defaultValue={mapeamento?.campoDestino ?? ""}
-                        className="h-8 w-full max-w-[220px] rounded-md border border-slate-300 bg-white px-2.5 text-sm shadow-sm"
-                      >
-                        <option value="">Não mapear</option>
-                        {camposMapeamento.map(([valor, label]) => (
-                          <option key={valor} value={valor}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </TableCell>
-                    <TableCell className="py-2.5 align-middle">
-                      <Badge
-                        variant="outline"
-                        className="rounded-md border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700"
-                      >
-                        {mapeamento?.situacao ?? "pendente"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-[1fr_auto] md:items-end">
-        <div className="space-y-1.5">
-          <label className="flex items-start gap-2 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              name="salvarParaFornecedor"
-              value="true"
-              className="mt-0.5 h-4 w-4 rounded border-slate-300"
-            />
-            <span>Salvar este mapeamento como padrão deste fornecedor</span>
-          </label>
-          <p className="text-xs text-slate-500">
-            {totalColunasDetectadas} colunas detectadas •{" "}
-            {totalMapeadasAutomaticamente} mapeadas automaticamente •{" "}
-            {totalPendentes} pendente{totalPendentes === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row md:justify-end">
-          <Button type="submit" size="sm" className="min-w-[180px]">
-            Revisar Alterações
-          </Button>
-        </div>
-      </div>
-    </form>
+      camposOcultos={[{ nome: "importacaoId", valor: importacao.id }]}
+      textoAcaoPrincipal="Continuar para vínculos"
+      textoRodape={`${totalColunasDetectadas} colunas detectadas • ${totalMapeadasAutomaticamente} mapeadas automaticamente • ${totalPendentes} pendente${totalPendentes === 1 ? "" : "s"}`}
+      estadoVazio="Nenhuma coluna registrada para esta importação."
+    />
   );
 }
 
@@ -729,7 +670,7 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
       </Tabs>
 
       {filtros.etapa === "mapeamento" ? (
-        <AbaMapeamento importacao={importacao} />
+        <AbaMapeamento importacao={importacao} linhas={todasLinhas} />
       ) : filtros.etapa === "revisao" ? (
         <AbaRevisaoImportacaoFornecedor
           importacaoId={importacao.id}

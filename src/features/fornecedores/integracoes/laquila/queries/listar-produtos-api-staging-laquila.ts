@@ -25,11 +25,40 @@ export type ProdutoApiStagingLaquilaCatalogo = {
   categoria: string;
   ean: string;
   ncm: string;
-  preco: number;
-  estoque: number;
+  preco: number | null;
+  estoque: number | null;
   status: StatusProdutoLaquilaMock;
   imagemUrl: string;
+  recebidoEm: Date;
+  dadosBrutosJson: Record<string, unknown>;
 };
+
+function obterDadosBrutosComoObjeto(valor: unknown) {
+  if (valor && typeof valor === "object" && !Array.isArray(valor)) {
+    return valor as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function extrairPrimeiraFoto(valor: unknown) {
+  if (Array.isArray(valor)) {
+    return (
+      valor
+        .map((item) => String(item).trim())
+        .find((item) => item.length > 0) ?? null
+    );
+  }
+
+  if (typeof valor !== "string") return null;
+
+  return (
+    valor
+      .split(/[\n,;|]+/)
+      .map((item) => item.trim())
+      .find((item) => item.length > 0) ?? null
+  );
+}
 
 export async function listarProdutosApiStagingLaquilaPrevia(
   integracaoId: string | null | undefined,
@@ -73,24 +102,33 @@ export async function listarProdutosApiStagingLaquilaCatalogo(
       estoque: fornecedorProdutosApiStagingTable.estoqueFornecedor,
       status: fornecedorProdutosApiStagingTable.status,
       imagemUrl: fornecedorProdutosApiStagingTable.imagemUrl,
+      recebidoEm: fornecedorProdutosApiStagingTable.ultimaConsultaEm,
+      dadosBrutosJson: fornecedorProdutosApiStagingTable.dadosBrutosJson,
     })
     .from(fornecedorProdutosApiStagingTable)
     .where(eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId))
     .orderBy(desc(fornecedorProdutosApiStagingTable.ultimaConsultaEm))
     .limit(100);
 
-  return produtos.map((produto) => ({
-    id: produto.id,
-    codigo: produto.codigo,
-    nome: produto.nome,
-    marca: produto.marca ?? "Sem marca",
-    grupo: produto.grupo ?? "Sem grupo",
-    categoria: produto.subgrupo ?? produto.grupo ?? "API",
-    ean: produto.ean ?? "-",
-    ncm: produto.ncm ?? "-",
-    preco: produto.preco ? Number(produto.preco) : 0,
-    estoque: produto.estoque ?? 0,
-    status: produto.status,
-    imagemUrl: produto.imagemUrl ?? "/produto-sem-foto.webp",
-  }));
+  return produtos.map((produto) => {
+    const dadosBrutosJson = obterDadosBrutosComoObjeto(produto.dadosBrutosJson);
+    const imagemRecebida = extrairPrimeiraFoto(dadosBrutosJson.lista_fotos);
+
+    return {
+      id: produto.id,
+      codigo: produto.codigo,
+      nome: produto.nome,
+      marca: produto.marca ?? "Sem marca",
+      grupo: produto.grupo ?? "Sem grupo",
+      categoria: produto.subgrupo ?? produto.grupo ?? "API",
+      ean: produto.ean ?? "-",
+      ncm: produto.ncm ?? "-",
+      preco: produto.preco === null ? null : Number(produto.preco),
+      estoque: produto.estoque,
+      status: produto.status,
+      imagemUrl: imagemRecebida ?? produto.imagemUrl ?? "/produto-sem-foto.webp",
+      recebidoEm: produto.recebidoEm,
+      dadosBrutosJson,
+    };
+  });
 }

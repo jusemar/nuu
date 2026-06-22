@@ -15,10 +15,15 @@ import { METODOS_LAQUILA } from "../constants";
 import {
   TIMEOUT_TESTE_CONEXAO_LAQUILA_MS,
   consultarProdutosLaquila as consultarProdutosLaquilaApi,
+  consultarSaldoPrecoLaquila as consultarSaldoPrecoLaquilaApi,
   criarClienteLaquila,
 } from "../lib/cliente-laquila";
 import { descriptografarTokenLaquila } from "../lib/mascarar-segredos-laquila";
 import { normalizarProdutosLaquila } from "../lib/normalizar-produto-laquila";
+import {
+  type SaldoPrecoLaquilaNormalizado,
+  normalizarSaldosPrecosLaquila,
+} from "../lib/normalizar-saldo-preco-laquila";
 import { registrarLogIntegracaoFornecedorApi } from "../lib/registrar-log-integracao-fornecedor-api";
 import { consultarProdutosLaquilaSchema } from "../schemas";
 
@@ -36,6 +41,9 @@ type ResultadoConsultarProdutosLaquila = {
   erro?: string;
   totalConsultado?: number;
   totalSalvo?: number;
+  totalSaldoPrecoConsultado?: number;
+  totalAtualizadoComPreco?: number;
+  totalAtualizadoComEstoque?: number;
   produtos?: ProdutoPreviaLaquila[];
 };
 
@@ -147,6 +155,89 @@ async function salvarProdutosStagingApi({
   return produtos.length;
 }
 
+async function atualizarSaldoPrecoProdutosExistentes({
+  integracaoId,
+  saldosPrecos,
+}: {
+  integracaoId: string;
+  saldosPrecos: SaldoPrecoLaquilaNormalizado[];
+}) {
+  if (saldosPrecos.length === 0) {
+    return {
+      totalAtualizadoComPreco: 0,
+      totalAtualizadoComEstoque: 0,
+    };
+  }
+
+  const codigosFornecedor = saldosPrecos.map(
+    (saldoPreco) => saldoPreco.codigoFornecedor,
+  );
+  const produtosExistentes = await db
+    .select({
+      codigoFornecedor: fornecedorProdutosApiStagingTable.codigoFornecedor,
+    })
+    .from(fornecedorProdutosApiStagingTable)
+    .where(
+      and(
+        eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId),
+        sql`${fornecedorProdutosApiStagingTable.codigoFornecedor} = ANY(${codigosFornecedor})`,
+      ),
+    );
+  const codigosExistentes = new Set(
+    produtosExistentes.map((produto) => produto.codigoFornecedor),
+  );
+  let totalAtualizadoComPreco = 0;
+  let totalAtualizadoComEstoque = 0;
+  const agora = new Date();
+
+  for (const saldoPreco of saldosPrecos) {
+    if (!codigosExistentes.has(saldoPreco.codigoFornecedor)) continue;
+
+    const atualizacao: {
+      precoFornecedor?: string;
+      estoqueFornecedor?: number;
+      atualizadoEm: Date;
+    } = {
+      atualizadoEm: agora,
+    };
+
+    if (saldoPreco.precoFornecedor !== null) {
+      atualizacao.precoFornecedor = saldoPreco.precoFornecedor;
+      totalAtualizadoComPreco += 1;
+    }
+
+    if (saldoPreco.estoqueFornecedor !== null) {
+      atualizacao.estoqueFornecedor = saldoPreco.estoqueFornecedor;
+      totalAtualizadoComEstoque += 1;
+    }
+
+    if (
+      saldoPreco.precoFornecedor === null &&
+      saldoPreco.estoqueFornecedor === null
+    ) {
+      continue;
+    }
+
+    await db
+      .update(fornecedorProdutosApiStagingTable)
+      .set(atualizacao)
+      .where(
+        and(
+          eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId),
+          eq(
+            fornecedorProdutosApiStagingTable.codigoFornecedor,
+            saldoPreco.codigoFornecedor,
+          ),
+        ),
+      );
+  }
+
+  return {
+    totalAtualizadoComPreco,
+    totalAtualizadoComEstoque,
+  };
+}
+
 export async function consultarProdutosLaquila(
   entrada: unknown,
 ): Promise<ResultadoConsultarProdutosLaquila> {
@@ -236,6 +327,67 @@ export async function consultarProdutosLaquila(
       integracaoId,
       produtos: produtosNormalizados,
     });
+    const resultadoSaldoPreco = await consultarSaldoPrecoLaquilaApi({
+      cliente,
+      tokenCliente,
+      pagina,
+      itensPorPagina,
+    });
+    let totalSaldoPrecoConsultado = 0;
+    let totalAtualizadoComPreco = 0;
+    let totalAtualizadoComEstoque = 0;
+
+    if (resultadoSaldoPreco.sucesso) {
+      const saldosPrecosNormalizados = normalizarSaldosPrecosLaquila(
+        resultadoSaldoPreco.itens,
+      );
+      const totaisAtualizacao = await atualizarSaldoPrecoProdutosExistentes({
+        integracaoId,
+        saldosPrecos: saldosPrecosNormalizados,
+      });
+
+      totalSaldoPrecoConsultado = resultadoSaldoPreco.itens.length;
+      totalAtualizadoComPreco = totaisAtualizacao.totalAtualizadoComPreco;
+      totalAtualizadoComEstoque = totaisAtualizacao.totalAtualizadoComEstoque;
+
+      await registrarLogIntegracaoFornecedorApi({
+        integracaoApiId: integracaoId,
+        metodo: METODOS_LAQUILA.consultarSaldo,
+        operacao: "consultar_saldo_preco_laquila",
+        status: "sucesso",
+        codigoHttp: resultadoSaldoPreco.codigoHttp,
+        mensagem: "Saldo e preço Laquila consultados e aplicados aos recebidos da API.",
+        requestResumo: {
+          pagina,
+          itensPorPagina,
+          codigoItemVazio: true,
+        },
+        responseResumo: {
+          totalConsultado: totalSaldoPrecoConsultado,
+          totalAtualizadoComPreco,
+          totalAtualizadoComEstoque,
+        },
+      });
+    } else {
+      await registrarLogIntegracaoFornecedorApi({
+        integracaoApiId: integracaoId,
+        metodo: METODOS_LAQUILA.consultarSaldo,
+        operacao: "consultar_saldo_preco_laquila",
+        status: "erro",
+        codigoHttp: resultadoSaldoPreco.codigoHttp,
+        mensagem: resultadoSaldoPreco.erro,
+        requestResumo: {
+          pagina,
+          itensPorPagina,
+          codigoItemVazio: true,
+        },
+        responseResumo: {
+          erro: resultadoSaldoPreco.erro,
+          codigoHttp: resultadoSaldoPreco.codigoHttp,
+          diagnostico: resultadoSaldoPreco.diagnostico,
+        },
+      });
+    }
 
     await registrarLogIntegracaoFornecedorApi({
       integracaoApiId: integracaoId,
@@ -253,6 +405,9 @@ export async function consultarProdutosLaquila(
         totalConsultado: resultado.itens.length,
         totalNormalizado: produtosNormalizados.length,
         totalSalvo,
+        totalSaldoPrecoConsultado,
+        totalAtualizadoComPreco,
+        totalAtualizadoComEstoque,
       },
     });
 
@@ -264,6 +419,9 @@ export async function consultarProdutosLaquila(
       mensagem: "Produtos Laquila consultados com sucesso.",
       totalConsultado: resultado.itens.length,
       totalSalvo,
+      totalSaldoPrecoConsultado,
+      totalAtualizadoComPreco,
+      totalAtualizadoComEstoque,
       produtos: montarPrevia(produtosNormalizados),
     };
   } catch (erro) {

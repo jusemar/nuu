@@ -13,8 +13,10 @@ export type ProdutoLaquilaMock = {
   categoria: string;
   ean: string;
   ncm: string;
-  preco: number;
-  estoque: number;
+  preco: number | null;
+  estoque: number | null;
   status: StatusProdutoLaquilaMock;
   imagemUrl: string;
+  recebidoEm?: Date;
+  dadosBrutosJson?: Record<string, unknown>;
 };

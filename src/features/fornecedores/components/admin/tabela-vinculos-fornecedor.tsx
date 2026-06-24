@@ -78,6 +78,12 @@ type EstadoItemVinculoFornecedor = {
   produtoLoja: ProdutoLojaParaVinculoFornecedor | null;
 };
 
+type RascunhoProdutoFornecedorVisual = {
+  produto: ProductFormData;
+  codigoFornecedor: string | null;
+  ean: string | null;
+};
+
 function normalizarEstadoInicial(
   item: ItemVinculoFornecedor,
 ): EstadoItemVinculoFornecedor {
@@ -417,9 +423,9 @@ export function TabelaVinculosFornecedor({
     useState<ItemVinculoFornecedor | null>(null);
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState("");
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
-  const [rascunhos, setRascunhos] = useState<Record<string, ProductFormData>>(
-    {},
-  );
+  const [rascunhos, setRascunhos] = useState<
+    Record<string, RascunhoProdutoFornecedorVisual>
+  >({});
 
   useEffect(() => {
     setEstados(estadosIniciais);
@@ -448,7 +454,11 @@ export function TabelaVinculosFornecedor({
   ) {
     setRascunhos((atuais) => ({
       ...atuais,
-      [item.id]: { ...dados, isActive: false },
+      [item.id]: {
+        produto: { ...dados, isActive: false },
+        codigoFornecedor: item.produtoRecebido.codigo ?? null,
+        ean: item.produtoRecebido.ean ?? null,
+      },
     }));
     marcarComoNovo(item);
   }
@@ -903,7 +913,11 @@ export function TabelaVinculosFornecedor({
       <ModalRascunhoProdutoFornecedor
         aberto={Boolean(itemEmRascunho)}
         item={itemEmRascunho ? montarDadosRascunho(itemEmRascunho) : null}
-        dadosSalvos={itemEmRascunho ? rascunhos[itemEmRascunho.id] : null}
+        dadosSalvos={
+          itemEmRascunho
+            ? (rascunhos[itemEmRascunho.id]?.produto ?? null)
+            : null
+        }
         aoAlterarAbertura={(aberto) => {
           if (!aberto) setItemEmRascunho(null);
         }}

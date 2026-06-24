@@ -31,7 +31,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
-import { TabelaMapeamentoCamposFornecedor } from "./tabela-mapeamento-campos-fornecedor";
+import {
+  type OpcaoValorPadraoLoja,
+  TabelaMapeamentoCamposFornecedor,
+} from "./tabela-mapeamento-campos-fornecedor";
 
 import type {
   CampoMapeamentoColunaFornecedor,
@@ -130,6 +133,7 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   categoriaRevisao: string;
   marcaRevisao: string;
   marcasAtivas: Array<{ id: string; nome: string }>;
+  categoriasLoja: OpcaoValorPadraoLoja[];
 };
 
 const etapas = [
@@ -413,9 +417,13 @@ function calcularConfiancaMapeamento(situacao?: string | null) {
 function AbaMapeamento({
   importacao,
   linhas,
+  categoriasLoja,
+  marcasAtivas,
 }: {
   importacao: ImportacaoFornecedorAdmin;
   linhas: LinhaStagingFornecedorAdmin[];
+  categoriasLoja: OpcaoValorPadraoLoja[];
+  marcasAtivas: Array<{ id: string; nome: string }>;
 }) {
   const mapeamentosPorColuna = new Map(
     importacao.mapeamentoColunas.map((mapeamento) => [
@@ -463,6 +471,8 @@ function AbaMapeamento({
         valor,
         label,
       }))}
+      categoriasLoja={categoriasLoja}
+      marcasLoja={marcasAtivas}
       action={aplicarMapeamentoColunasFornecedorAction}
       camposOcultos={[{ nome: "importacaoId", valor: importacao.id }]}
       textoAcaoPrincipal="Continuar para vínculos"
@@ -589,6 +599,8 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   produtosParaVinculo,
   previewSincronizacao,
   revisaoImportacao,
+  marcasAtivas,
+  categoriasLoja,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
   const categorias = Array.from(
     new Set(
@@ -665,7 +677,12 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
       </Tabs>
 
       {filtros.etapa === "mapeamento" ? (
-        <AbaMapeamento importacao={importacao} linhas={todasLinhas} />
+        <AbaMapeamento
+          importacao={importacao}
+          linhas={todasLinhas}
+          categoriasLoja={categoriasLoja}
+          marcasAtivas={marcasAtivas}
+        />
       ) : filtros.etapa === "revisao" ? (
         <AbaConciliacaoImportacaoFornecedor
           importacaoId={importacao.id}

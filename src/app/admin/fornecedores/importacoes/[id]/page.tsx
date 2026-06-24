@@ -4,10 +4,10 @@ import { PaginaDetalheImportacaoFornecedorAdmin } from "@/features/fornecedores/
 import {
   buscarProdutosParaVinculoFornecedor,
   listarImportacoesFornecedoresAdmin,
+  listarOpcoesMapeamentoFornecedor,
   listarStagingImportacaoFornecedor,
   listarStagingImportacaoFornecedorAdmin,
 } from "@/features/fornecedores/queries";
-import { listarMarcasAtivas } from "@/features/admin/marcas/services/marcaService";
 import { analisarRevisaoImportacaoFornecedor } from "@/features/fornecedores/services/analise-revisao-importacao.service";
 import { gerarPreviewSincronizacaoFornecedor } from "@/features/fornecedores/services/gerar-preview-sincronizacao.service";
 
@@ -35,12 +35,7 @@ type ImportacaoFornecedorDetalhePageProps = {
   }>;
 };
 
-const etapasPermitidas = [
-  "mapeamento",
-  "vinculacao",
-  "revisao",
-  "preview",
-];
+const etapasPermitidas = ["mapeamento", "vinculacao", "revisao", "preview"];
 const vinculosPermitidos = ["vinculado", "nao_vinculado"];
 const statusPermitidos = [
   "aguardando_analise",
@@ -74,16 +69,19 @@ function normalizarTexto(valor: string | null | undefined) {
     .toLowerCase();
 }
 
-async function listarMarcasAtivasComFallback() {
+async function listarOpcoesMapeamentoFornecedorComFallback() {
   try {
-    return await listarMarcasAtivas();
+    return await listarOpcoesMapeamentoFornecedor();
   } catch (erro) {
     console.error(
-      "Não foi possível carregar marcas ativas para revisão da importação.",
+      "Não foi possível carregar opções reais para o mapeamento da importação.",
       erro,
     );
 
-    return [];
+    return {
+      categoriasLoja: [],
+      marcasLoja: [],
+    };
   }
 }
 
@@ -137,7 +135,7 @@ export default async function Page({
     produtosParaVinculo,
     preview,
     revisao,
-    marcasAtivas,
+    opcoesMapeamento,
   ] = await Promise.all([
     listarStagingImportacaoFornecedorAdmin({
       importacaoId: id,
@@ -161,7 +159,7 @@ export default async function Page({
       : [],
     gerarPreviewSincronizacaoFornecedor({ importacaoId: id }),
     analisarRevisaoImportacaoFornecedor(id),
-    listarMarcasAtivasComFallback(),
+    listarOpcoesMapeamentoFornecedorComFallback(),
   ]);
 
   const termoCategoriaRevisao = normalizarTexto(filtros.categoriaRevisao);
@@ -223,7 +221,8 @@ export default async function Page({
       marcas={marcasRevisao}
       categoriaRevisao={filtros.categoriaRevisao}
       marcaRevisao={filtros.marcaRevisao}
-      marcasAtivas={marcasAtivas}
+      marcasAtivas={opcoesMapeamento.marcasLoja}
+      categoriasLoja={opcoesMapeamento.categoriasLoja}
     />
   );
 }

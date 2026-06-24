@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TabelaMapeamentoCamposFornecedor } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
+import {
+  type OpcaoValorPadraoLoja,
+  TabelaMapeamentoCamposFornecedor,
+} from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
 
 const opcoesDestinoLaquila = [
   { valor: "codigo_fornecedor", label: "Código fornecedor" },
@@ -15,7 +18,7 @@ const opcoesDestinoLaquila = [
   { valor: "grupo_origem", label: "Grupo origem" },
   { valor: "subgrupo_origem", label: "Subgrupo origem" },
   { valor: "imagens", label: "Imagens" },
-  { valor: "preco_fornecedor", label: "Preço fornecedor" },
+  { valor: "preco_fornecedor", label: "Preço principal/modalidade" },
   { valor: "estoque_fornecedor", label: "Estoque fornecedor" },
   { valor: "peso", label: "Peso" },
   { valor: "altura", label: "Altura" },
@@ -143,7 +146,15 @@ const linhasMapeamentoLaquila = [
   },
 ];
 
-export function PaginaMapeamentoLaquilaAdmin() {
+type PaginaMapeamentoLaquilaAdminProps = {
+  categoriasLoja: OpcaoValorPadraoLoja[];
+  marcasLoja: OpcaoValorPadraoLoja[];
+};
+
+export function PaginaMapeamentoLaquilaAdmin({
+  categoriasLoja,
+  marcasLoja,
+}: PaginaMapeamentoLaquilaAdminProps) {
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -180,6 +191,8 @@ export function PaginaMapeamentoLaquilaAdmin() {
         labelAmostra="Exemplo recebido"
         linhas={linhasMapeamentoLaquila}
         opcoesDestino={opcoesDestinoLaquila}
+        categoriasLoja={categoriasLoja}
+        marcasLoja={marcasLoja}
         textoAcaoPrincipal="Continuar para vínculos"
         tipoBotaoAcaoPrincipal="button"
         hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/vinculos"

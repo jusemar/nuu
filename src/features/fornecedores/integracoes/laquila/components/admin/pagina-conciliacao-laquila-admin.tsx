@@ -11,7 +11,37 @@ const itensConciliacaoLaquilaMock = [
       complemento: "Suspensão · Amortecedores",
     },
     acaoPrevista: "atualizar" as const,
+    statusVinculacao: "vinculado" as const,
     status: "pronto" as const,
+    regrasObrigatorias: [
+      {
+        campo: "categoria_fornecedor",
+        label: "Categoria da loja",
+        estrategia: "valor_padrao" as const,
+        valorAplicado: "Suspensão",
+      },
+      {
+        campo: "marca_fornecedor",
+        label: "Marca da loja",
+        estrategia: "valor_padrao" as const,
+        valorAplicado: "Genérico",
+      },
+    ],
+    regrasImportantes: [
+      {
+        campo: "ncm",
+        label: "NCM",
+        estrategia: "valor_padrao" as const,
+        valorAplicado: "8708.80.00",
+      },
+    ],
+    configuracaoPreco: {
+      modalidade: "Dropshipping" as const,
+      valorAplicado: "189.9",
+      prazo: "3 a 5 dias úteis",
+      cardPrincipal: true,
+      origem: "Preço complementar 00006",
+    },
   },
   {
     id: "laquila-110012",
@@ -23,8 +53,40 @@ const itensConciliacaoLaquilaMock = [
       complemento: "sem categoria · sem marca",
     },
     acaoPrevista: "criar" as const,
+    statusVinculacao: "novo" as const,
     status: "pendencia" as const,
     pendenciasObrigatorias: ["Categoria obrigatória", "Marca obrigatória"],
+    regrasObrigatorias: [
+      {
+        campo: "categoria_fornecedor",
+        label: "Categoria da loja",
+        estrategia: "conciliacao" as const,
+        observacao: "Não enviada pela API. Será preenchida item a item.",
+        bloqueiaPublicacao: true,
+      },
+      {
+        campo: "marca_fornecedor",
+        label: "Marca da loja",
+        estrategia: "conciliacao" as const,
+        observacao: "Não enviada pela API. Será preenchida item a item.",
+        bloqueiaPublicacao: true,
+      },
+    ],
+    regrasImportantes: [
+      {
+        campo: "ean_gtin",
+        label: "EAN/GTIN",
+        estrategia: "conciliacao" as const,
+        observacao: "Pode ser resolvido depois sem bloquear agora.",
+      },
+    ],
+    configuracaoPreco: {
+      modalidade: "Dropshipping" as const,
+      valorAplicado: "7.55",
+      prazo: "3 a 5 dias úteis",
+      cardPrincipal: true,
+      origem: "Preço complementar 00006",
+    },
   },
   {
     id: "laquila-77881",
@@ -36,8 +98,38 @@ const itensConciliacaoLaquilaMock = [
       complemento: "Filtros · sem marca",
     },
     acaoPrevista: "criar" as const,
+    statusVinculacao: "novo" as const,
     status: "alerta" as const,
     alertas: ["Sem imagem recebida"],
+    regrasObrigatorias: [
+      {
+        campo: "categoria_fornecedor",
+        label: "Categoria da loja",
+        estrategia: "valor_padrao" as const,
+        valorAplicado: "Filtros",
+      },
+      {
+        campo: "marca_fornecedor",
+        label: "Marca da loja",
+        estrategia: "rascunho" as const,
+        observacao: "Produto ficará como rascunho até a marca ser preenchida.",
+      },
+    ],
+    regrasImportantes: [
+      {
+        campo: "imagens",
+        label: "Imagem principal",
+        estrategia: "ignorar" as const,
+        observacao: "Não bloqueia publicação, mas fica como alerta visual.",
+      },
+    ],
+    configuracaoPreco: {
+      modalidade: "Sob encomenda" as const,
+      valorAplicado: "31.2",
+      prazo: "7 a 10 dias úteis",
+      cardPrincipal: true,
+      origem: "Preço complementar 00006",
+    },
   },
   {
     id: "laquila-4450",
@@ -49,7 +141,11 @@ const itensConciliacaoLaquilaMock = [
       complemento: "Freios · Pastilhas",
     },
     acaoPrevista: "ignorar" as const,
+    statusVinculacao: "ignorado" as const,
     status: "ignorado" as const,
+    regrasObrigatorias: [],
+    regrasImportantes: [],
+    configuracaoPreco: null,
     motivoIgnorado: "Marcado como ignorado na vinculação",
   },
 ];

@@ -17,10 +17,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import type {
-  ProdutoLaquilaMock,
-  StatusProdutoLaquilaMock,
-} from "../../types/produto-laquila-mock.types";
+import type { ProdutoLaquilaMock } from "../../types/produto-laquila-mock.types";
 import type { ProdutoApiStagingLaquilaCatalogo } from "../../queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +28,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
 import {
   Dialog,
   DialogContent,
@@ -70,27 +68,48 @@ import {
 } from "@/components/ui/tooltip";
 
 const ITENS_POR_PAGINA = 10;
+const OPCOES_ITENS_POR_PAGINA = [10, 20, 50, 100] as const;
 const IMAGEM_PLACEHOLDER = "/produto-sem-foto.webp";
 
-const rotulosStatus: Record<StatusProdutoLaquilaMock, string> = {
-  novo: "Novo",
-  vinculado: "Vinculado",
-  atencao: "Atenção",
+type EstadoTriagemProdutoLaquila = "pendente" | "selecionado" | "ignorado";
+type ProdutoComDadosBrutos = {
+  dadosBrutosJson?: Record<string, unknown>;
+  nome?: string;
+  codigo?: string;
+  grupo?: string;
+  categoria?: string;
+  ncm?: string | null;
+  status?: string;
+};
+
+type ProdutoSelecionadoMapeamentoLaquila = {
+  cd_item: string;
+  descricao: string;
+  cd_ean: string;
+  NCM: string;
+  ds_ggrupo: string;
+  ds_grupo: string;
+  ds_sgrupo: string;
+  lista_fotos: unknown;
+  vl_preco: string | number | null;
+  qt_saldo: string | number | null;
+  peso_bruto: string;
+  altura_caixa: string;
+  largura_caixa: string;
+  comprimento_caixa: string;
+  dadosBrutosJson: Record<string, unknown>;
+};
+
+const rotulosTriagem: Record<EstadoTriagemProdutoLaquila, string> = {
+  pendente: "Pendente",
+  selecionado: "Selecionado",
   ignorado: "Ignorado",
 };
 
-const estilosStatus: Record<StatusProdutoLaquilaMock, string> = {
-  novo: "border-blue-200 bg-blue-50 text-blue-700",
-  vinculado: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  atencao: "border-amber-200 bg-amber-50 text-amber-700",
+const estilosTriagem: Record<EstadoTriagemProdutoLaquila, string> = {
+  pendente: "border-slate-200 bg-slate-50 text-slate-700",
+  selecionado: "border-emerald-200 bg-emerald-50 text-emerald-700",
   ignorado: "border-slate-200 bg-slate-100 text-slate-600",
-};
-
-const tiposOperacionais: Record<StatusProdutoLaquilaMock, string> = {
-  novo: "Novo produto",
-  vinculado: "Possível existente",
-  atencao: "Com alerta",
-  ignorado: "Atualização",
 };
 
 const camposPayloadLaquila = [
@@ -111,6 +130,83 @@ const camposPayloadLaquila = [
   "situacao",
 ] as const;
 
+function formatarRotuloCampo(valor: string) {
+  const texto = valor.trim().replace(/[_-]+/g, " ");
+
+  if (!texto) return "-";
+
+  return texto
+    .split(/\s+/)
+    .map((parte) =>
+      parte.length > 3 ? parte.charAt(0).toUpperCase() + parte.slice(1) : parte,
+    )
+    .join(" ");
+}
+
+function lerTextoBruto(
+  dadosBrutosJson: Record<string, unknown>,
+  chaves: readonly string[],
+) {
+  for (const chave of chaves) {
+    const valor = dadosBrutosJson[chave];
+
+    if (typeof valor === "string" && valor.trim().length > 0) {
+      return valor.trim();
+    }
+
+    if (typeof valor === "number" && Number.isFinite(valor)) {
+      return String(valor);
+    }
+  }
+
+  return "";
+}
+
+function obterTextoProduto(
+  produto: ProdutoComDadosBrutos,
+  chaves: readonly string[],
+  fallback = "",
+) {
+  return (
+    lerTextoBruto(produto.dadosBrutosJson ?? {}, chaves) || fallback.trim()
+  );
+}
+
+function correspondeFiltro(valor: string, filtro: string) {
+  if (filtro === "todos") return true;
+
+  return normalizarTexto(valor) === normalizarTexto(filtro);
+}
+
+function extrairOpcoesFiltro(
+  produtos: ProdutoComDadosBrutos[],
+  chaves: readonly string[],
+  fallback: (produto: ProdutoComDadosBrutos) => string = () => "",
+) {
+  return Array.from(
+    new Set(
+      produtos
+        .map((produto) => {
+          const valor = lerTextoBruto(produto.dadosBrutosJson ?? {}, chaves);
+          return valor || fallback(produto);
+        })
+        .map((valor) => valor.trim())
+        .filter((valor) => valor.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function formatarSituacaoApi(valor: string) {
+  return formatarRotuloCampo(valor);
+}
+
+function obterTriagemProduto(
+  triagens: Record<string, EstadoTriagemProdutoLaquila>,
+  produtoId: string,
+) {
+  return triagens[produtoId] ?? "pendente";
+}
+
 function formatarMoeda(valor: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -128,6 +224,24 @@ function formatarEstoqueRecebido(valor: number | null) {
   if (valor === null) return "Não recebido";
 
   return String(valor);
+}
+
+function obterCodigoFornecedorProduto(produto: ProdutoComDadosBrutos) {
+  return obterTextoProduto(produto, ["cd_item"], produto.codigo ?? "-");
+}
+
+function obterNcmProduto(produto: ProdutoComDadosBrutos) {
+  return obterTextoProduto(produto, ["NCM", "ncm"], produto.ncm ?? "-");
+}
+
+function obterClassificacaoProduto(produto: ProdutoComDadosBrutos) {
+  const partes = [
+    obterTextoProduto(produto, ["ds_ggrupo"]),
+    obterTextoProduto(produto, ["ds_grupo"]),
+    obterTextoProduto(produto, ["ds_sgrupo"]),
+  ].filter((parte) => parte.trim().length > 0);
+
+  return partes.length > 0 ? partes.join(" > ") : "Sem classificação";
 }
 
 function ImagemProdutoRecebido({
@@ -176,6 +290,38 @@ function obterValorPayload(
   campo: string,
 ) {
   return dadosBrutosJson[campo];
+}
+
+function obterValorTextoPayload(
+  produto: ProdutoLaquilaMock,
+  campo: string,
+  fallback = "",
+) {
+  const valor = obterValorPayload(produto.dadosBrutosJson ?? {}, campo);
+
+  if (typeof valor === "string" && valor.trim().length > 0) {
+    return valor.trim();
+  }
+
+  if (typeof valor === "number" && Number.isFinite(valor)) {
+    return String(valor);
+  }
+
+  return fallback;
+}
+
+function obterValorNumeroOuTextoPayload(
+  produto: ProdutoLaquilaMock,
+  campo: string,
+  fallback: string | number | null,
+) {
+  const valor = obterValorPayload(produto.dadosBrutosJson ?? {}, campo);
+
+  if (typeof valor === "string" || typeof valor === "number") {
+    return valor;
+  }
+
+  return fallback;
 }
 
 function extrairListaFotos(valor: unknown) {
@@ -247,41 +393,62 @@ function normalizarTexto(valor: string) {
 function filtrarProdutos({
   produtos,
   busca,
-  marca,
+  macroGrupo,
   grupo,
-  status,
-  somenteSelecionados,
-  selecionados,
+  subgrupo,
+  ncm,
+  triagem,
+  triagens,
 }: {
   produtos: ProdutoLaquilaMock[];
   busca: string;
-  marca: string;
+  macroGrupo: string;
   grupo: string;
-  status: string;
-  somenteSelecionados: boolean;
-  selecionados: string[];
+  subgrupo: string;
+  ncm: string;
+  triagem: string;
+  triagens: Record<string, EstadoTriagemProdutoLaquila>;
 }) {
   const buscaNormalizada = normalizarTexto(busca.trim());
 
   return produtos.filter((produto) => {
+    const descricao = obterTextoProduto(produto, ["descricao"], produto.nome);
+    const codigoFornecedor = obterTextoProduto(
+      produto,
+      ["cd_item"],
+      produto.codigo,
+    );
+    const macroGrupoProduto =
+      obterTextoProduto(produto, ["ds_ggrupo"]) || produto.grupo;
+    const grupoProduto =
+      obterTextoProduto(produto, ["ds_grupo"]) || produto.grupo;
+    const subgrupoProduto =
+      obterTextoProduto(produto, ["ds_sgrupo"]) || produto.categoria;
+    const ncmProduto = obterTextoProduto(produto, ["NCM", "ncm"], produto.ncm);
+    const estadoTriagem = obterTriagemProduto(triagens, produto.id);
+
     const correspondeBusca =
       !buscaNormalizada ||
-      normalizarTexto(
-        `${produto.codigo} ${produto.nome} ${produto.marca} ${produto.ean}`,
-      ).includes(buscaNormalizada);
+      normalizarTexto(`${descricao} ${codigoFornecedor}`).includes(
+        buscaNormalizada,
+      );
 
-    const correspondeMarca = marca === "todas" || produto.marca === marca;
-    const correspondeGrupo = grupo === "todos" || produto.grupo === grupo;
-    const correspondeStatus = status === "todos" || produto.status === status;
-    const correspondeSelecao =
-      !somenteSelecionados || selecionados.includes(produto.id);
+    const correspondeMacroGrupo = correspondeFiltro(
+      macroGrupoProduto,
+      macroGrupo,
+    );
+    const correspondeGrupo = correspondeFiltro(grupoProduto, grupo);
+    const correspondeSubgrupo = correspondeFiltro(subgrupoProduto, subgrupo);
+    const correspondeNcm = correspondeFiltro(ncmProduto, ncm);
+    const correspondeTriagem = triagem === "todos" || estadoTriagem === triagem;
 
     return (
       correspondeBusca &&
-      correspondeMarca &&
+      correspondeMacroGrupo &&
       correspondeGrupo &&
-      correspondeStatus &&
-      correspondeSelecao
+      correspondeSubgrupo &&
+      correspondeNcm &&
+      correspondeTriagem
     );
   });
 }
@@ -315,18 +482,36 @@ function ResumoCard({
 function ProdutoMobileCard({
   produto,
   selecionado,
+  triagem,
   alternarSelecao,
+  adicionarAoFluxo,
+  removerDoFluxo,
+  ignorarProduto,
+  desfazerTriagem,
   abrirDetalhes,
   abrirImagem,
 }: {
   produto: ProdutoLaquilaMock;
   selecionado: boolean;
+  triagem: EstadoTriagemProdutoLaquila;
   alternarSelecao: (id: string) => void;
+  adicionarAoFluxo: (id: string) => void;
+  removerDoFluxo: (id: string) => void;
+  ignorarProduto: (id: string) => void;
+  desfazerTriagem: (id: string) => void;
   abrirDetalhes: (produto: ProdutoLaquilaMock) => void;
   abrirImagem: (produto: ProdutoLaquilaMock) => void;
 }) {
+  const codigoFornecedor = obterCodigoFornecedorProduto(produto);
+  const ncmProduto = obterNcmProduto(produto);
+  const classificacao = obterClassificacaoProduto(produto);
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
+    <div
+      className={`rounded-lg border border-slate-200 bg-white p-3 shadow-xs ${
+        triagem === "ignorado" ? "bg-slate-50/80 opacity-75" : ""
+      }`}
+    >
       <div className="flex gap-3">
         <Checkbox
           checked={selecionado}
@@ -346,23 +531,28 @@ function ProdutoMobileCard({
               <p className="truncate text-sm font-semibold text-slate-950">
                 {produto.nome}
               </p>
-              <p className="mt-0.5 font-mono text-xs text-slate-500">
-                {produto.codigo}
+              <p className="mt-0.5 truncate text-xs text-slate-500">
+                Código{" "}
+                <span className="font-mono text-slate-600">
+                  {codigoFornecedor}
+                </span>{" "}
+                · NCM{" "}
+                <span className="font-mono text-slate-600">{ncmProduto}</span>
               </p>
             </div>
-            <Badge variant="outline" className={estilosStatus[produto.status]}>
-              {rotulosStatus[produto.status]}
-            </Badge>
+            <div className="flex shrink-0 items-start">
+              <Badge variant="outline" className={estilosTriagem[triagem]}>
+                {rotulosTriagem[triagem]}
+              </Badge>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <p className="text-slate-500">Marca</p>
-              <p className="font-medium text-slate-900">{produto.marca}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">Grupo</p>
-              <p className="font-medium text-slate-900">{produto.grupo}</p>
+            <div className="col-span-2">
+              <p className="text-slate-500">Classificação</p>
+              <p className="truncate font-medium text-slate-900">
+                {classificacao}
+              </p>
             </div>
             <div>
               <p className="text-slate-500">Preço</p>
@@ -378,16 +568,59 @@ function ProdutoMobileCard({
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-3 h-8 px-0"
-            onClick={() => abrirDetalhes(produto)}
-            aria-label="Detalhes"
-          >
-            <Eye className="mr-1 h-4 w-4" />
-            Detalhes
-          </Button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {triagem === "selecionado" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8"
+                onClick={() => removerDoFluxo(produto.id)}
+              >
+                Selecionado
+              </Button>
+            ) : triagem === "ignorado" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8"
+                onClick={() => desfazerTriagem(produto.id)}
+              >
+                Desfazer
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8"
+                onClick={() => adicionarAoFluxo(produto.id)}
+              >
+                Selecionar
+              </Button>
+            )}
+            {triagem !== "ignorado" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-slate-600"
+                onClick={() => ignorarProduto(produto.id)}
+              >
+                Ignorar
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-8 px-2"
+              onClick={() => abrirDetalhes(produto)}
+              aria-label="Detalhes"
+            >
+              <Eye className="mr-1 h-4 w-4" />
+              Detalhes
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -432,9 +665,17 @@ function DrawerDadosRecebidosFornecedor({
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500">Tipo</p>
+                  <p className="text-xs font-medium text-slate-500">
+                    Situação API
+                  </p>
                   <p className="mt-1 text-sm font-medium text-slate-950">
-                    {tiposOperacionais[produto.status]}
+                    {formatarSituacaoApi(
+                      obterTextoProduto(
+                        produto,
+                        ["situacao"],
+                        obterTextoProduto(produto, ["status"], "Sem status"),
+                      ),
+                    )}
                   </p>
                 </div>
                 <div>
@@ -448,7 +689,7 @@ function DrawerDadosRecebidosFornecedor({
                     Código fornecedor
                   </p>
                   <p className="mt-1 font-mono text-sm font-medium text-slate-950">
-                    {produto.codigo}
+                    {obterCodigoFornecedorProduto(produto)}
                   </p>
                 </div>
               </section>
@@ -538,7 +779,7 @@ function PreviewImagemProduto({
                 Imagem recebida da API
               </DialogTitle>
               <DialogDescription className="line-clamp-1">
-                {produto.codigo} · {produto.nome}
+                {obterCodigoFornecedorProduto(produto)} · {produto.nome}
               </DialogDescription>
             </DialogHeader>
             <div className="bg-slate-50 p-4">
@@ -566,24 +807,52 @@ export function PreviaProdutosLaquilaMock({
   produtos,
 }: PreviaProdutosLaquilaMockProps) {
   const [busca, setBusca] = useState("");
-  const [marca, setMarca] = useState("todas");
+  const [macroGrupo, setMacroGrupo] = useState("todos");
   const [grupo, setGrupo] = useState("todos");
-  const [status, setStatus] = useState("todos");
+  const [subgrupo, setSubgrupo] = useState("todos");
+  const [ncm, setNcm] = useState("todos");
+  const [triagem, setTriagem] = useState("todos");
   const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [triagens, setTriagens] = useState<
+    Record<string, EstadoTriagemProdutoLaquila>
+  >({});
   const [produtoEmDetalhe, setProdutoEmDetalhe] =
     useState<ProdutoLaquilaMock | null>(null);
   const [produtoImagem, setProdutoImagem] = useState<ProdutoLaquilaMock | null>(
     null,
   );
   const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina, setItensPorPagina] = useState(ITENS_POR_PAGINA);
 
-  const marcas = useMemo(
-    () => Array.from(new Set(produtos.map((produto) => produto.marca))),
+  const opcoesMacroGrupo = useMemo(
+    () =>
+      extrairOpcoesFiltro(produtos, ["ds_ggrupo"], (produto) =>
+        obterTextoProduto(produto, ["grupo"], "Sem macro grupo"),
+      ),
     [produtos],
   );
 
-  const grupos = useMemo(
-    () => Array.from(new Set(produtos.map((produto) => produto.grupo))),
+  const opcoesGrupo = useMemo(
+    () =>
+      extrairOpcoesFiltro(produtos, ["ds_grupo"], (produto) =>
+        obterTextoProduto(produto, ["grupo"], "Sem grupo"),
+      ),
+    [produtos],
+  );
+
+  const opcoesSubgrupo = useMemo(
+    () =>
+      extrairOpcoesFiltro(produtos, ["ds_sgrupo"], (produto) =>
+        obterTextoProduto(produto, ["categoria"], "Sem subgrupo"),
+      ),
+    [produtos],
+  );
+
+  const opcoesNcm = useMemo(
+    () =>
+      extrairOpcoesFiltro(produtos, ["NCM", "ncm"], (produto) =>
+        obterTextoProduto(produto, ["ncm"], "-"),
+      ),
     [produtos],
   );
 
@@ -592,42 +861,64 @@ export function PreviaProdutosLaquilaMock({
       filtrarProdutos({
         produtos,
         busca,
-        marca,
+        macroGrupo,
         grupo,
-        status,
-        somenteSelecionados: false,
-        selecionados,
+        subgrupo,
+        ncm,
+        triagem,
+        triagens,
       }),
-    [busca, marca, grupo, produtos, status, selecionados],
+    [busca, macroGrupo, grupo, ncm, produtos, subgrupo, triagem, triagens],
   );
 
   const totalPaginas = Math.max(
     1,
-    Math.ceil(produtosFiltrados.length / ITENS_POR_PAGINA),
+    Math.ceil(produtosFiltrados.length / itensPorPagina),
   );
   const paginaAtualSegura = Math.min(paginaAtual, totalPaginas);
-  const inicioPagina = (paginaAtualSegura - 1) * ITENS_POR_PAGINA;
+  const inicioPagina = (paginaAtualSegura - 1) * itensPorPagina;
   const produtosVisiveis = produtosFiltrados.slice(
     inicioPagina,
-    inicioPagina + ITENS_POR_PAGINA,
+    inicioPagina + itensPorPagina,
   );
   const intervaloInicial =
     produtosFiltrados.length === 0 ? 0 : inicioPagina + 1;
   const intervaloFinal = Math.min(
-    inicioPagina + ITENS_POR_PAGINA,
+    inicioPagina + itensPorPagina,
     produtosFiltrados.length,
   );
   const todosVisiveisSelecionados =
     produtosVisiveis.length > 0 &&
     produtosVisiveis.every((produto) => selecionados.includes(produto.id));
+  const estadoSelecaoCabecalho = todosVisiveisSelecionados
+    ? true
+    : produtosVisiveis.some((produto) => selecionados.includes(produto.id))
+      ? "indeterminate"
+      : false;
+  const totalSelecionadosFluxo = produtos.filter(
+    (produto) => obterTriagemProduto(triagens, produto.id) === "selecionado",
+  ).length;
+  const totalIgnoradosFluxo = produtos.filter(
+    (produto) => obterTriagemProduto(triagens, produto.id) === "ignorado",
+  ).length;
+  const totalPendentesFluxo = Math.max(
+    produtos.length - totalSelecionadosFluxo - totalIgnoradosFluxo,
+    0,
+  );
 
   const totais = {
     encontrados: produtos.length,
-    novos: produtos.filter((produto) => produto.status === "novo").length,
-    vinculados: produtos.filter((produto) => produto.status === "vinculado")
-      .length,
-    atencao: produtos.filter((produto) => produto.status === "atencao").length,
+    selecionados: totalSelecionadosFluxo,
+    ignorados: totalIgnoradosFluxo,
+    pendentes: totalPendentesFluxo,
   };
+  const filtrosAtivos =
+    busca.trim().length > 0 ||
+    macroGrupo !== "todos" ||
+    grupo !== "todos" ||
+    subgrupo !== "todos" ||
+    ncm !== "todos" ||
+    triagem !== "todos";
 
   function alternarSelecao(id: string) {
     setSelecionados((atuais) =>
@@ -653,6 +944,111 @@ export function PreviaProdutosLaquilaMock({
         new Set([...atuais, ...produtosVisiveis.map((produto) => produto.id)]),
       ),
     );
+  }
+
+  function adicionarAoFluxo(id: string) {
+    setTriagens((atuais) => ({ ...atuais, [id]: "selecionado" }));
+  }
+
+  function removerDoFluxo(id: string) {
+    setTriagens((atuais) => ({ ...atuais, [id]: "pendente" }));
+  }
+
+  function ignorarProduto(id: string) {
+    setTriagens((atuais) => ({ ...atuais, [id]: "ignorado" }));
+  }
+
+  function desfazerTriagem(id: string) {
+    setTriagens((atuais) => ({ ...atuais, [id]: "pendente" }));
+  }
+
+  function adicionarSelecionadosAoFluxo() {
+    setTriagens((atuais) => {
+      const proximasTriagens = { ...atuais };
+
+      selecionados.forEach((id) => {
+        proximasTriagens[id] = "selecionado";
+      });
+
+      return proximasTriagens;
+    });
+    setSelecionados([]);
+  }
+
+  function removerSelecionadosDoFluxo() {
+    setTriagens((atuais) => {
+      const proximasTriagens = { ...atuais };
+
+      selecionados.forEach((id) => {
+        proximasTriagens[id] = "pendente";
+      });
+
+      return proximasTriagens;
+    });
+    setSelecionados([]);
+  }
+
+  function montarProdutosSelecionadosMapeamento() {
+    return produtos
+      .filter(
+        (produto) =>
+          obterTriagemProduto(triagens, produto.id) === "selecionado",
+      )
+      .map((produto): ProdutoSelecionadoMapeamentoLaquila => {
+        const dadosBrutosJson = produto.dadosBrutosJson ?? {};
+
+        return {
+          cd_item: obterCodigoFornecedorProduto(produto),
+          descricao: obterTextoProduto(produto, ["descricao"], produto.nome),
+          cd_ean: obterValorTextoPayload(produto, "cd_ean", produto.ean),
+          NCM: obterNcmProduto(produto),
+          ds_ggrupo: obterValorTextoPayload(produto, "ds_ggrupo"),
+          ds_grupo: obterValorTextoPayload(produto, "ds_grupo", produto.grupo),
+          ds_sgrupo: obterValorTextoPayload(
+            produto,
+            "ds_sgrupo",
+            produto.categoria,
+          ),
+          lista_fotos: dadosBrutosJson.lista_fotos ?? produto.imagemUrl,
+          vl_preco: obterValorNumeroOuTextoPayload(
+            produto,
+            "vl_preco",
+            produto.preco,
+          ),
+          qt_saldo: obterValorNumeroOuTextoPayload(
+            produto,
+            "qt_saldo",
+            produto.estoque,
+          ),
+          peso_bruto: obterValorTextoPayload(produto, "peso_bruto"),
+          altura_caixa: obterValorTextoPayload(produto, "altura_caixa"),
+          largura_caixa: obterValorTextoPayload(produto, "largura_caixa"),
+          comprimento_caixa: obterValorTextoPayload(
+            produto,
+            "comprimento_caixa",
+          ),
+          dadosBrutosJson,
+        };
+      });
+  }
+
+  function salvarSelecaoParaMapeamento() {
+    if (typeof window === "undefined") return;
+
+    window.sessionStorage.setItem(
+      CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
+      JSON.stringify(montarProdutosSelecionadosMapeamento()),
+    );
+  }
+
+  function limparFiltros() {
+    setBusca("");
+    setMacroGrupo("todos");
+    setGrupo("todos");
+    setSubgrupo("todos");
+    setNcm("todos");
+    setTriagem("todos");
+    setPaginaAtual(1);
   }
 
   function irParaPagina(pagina: number) {
@@ -695,111 +1091,222 @@ export function PreviaProdutosLaquilaMock({
           tom="bg-slate-100 text-slate-700"
         />
         <ResumoCard
-          titulo="Novos"
-          valor={totais.novos}
+          titulo="Selecionados"
+          valor={totais.selecionados}
           icone={PackagePlus}
           tom="bg-blue-50 text-blue-700"
         />
         <ResumoCard
-          titulo="Vinculados"
-          valor={totais.vinculados}
+          titulo="Ignorados"
+          valor={totais.ignorados}
           icone={PackageCheck}
           tom="bg-emerald-50 text-emerald-700"
         />
         <ResumoCard
-          titulo="Atenção"
-          valor={totais.atencao}
+          titulo="Pendentes"
+          valor={totais.pendentes}
           icone={AlertTriangle}
           tom="bg-amber-50 text-amber-700"
         />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1.4fr)_repeat(3,minmax(150px,0.8fr))]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={busca}
-              onChange={(evento) => {
-                setBusca(evento.target.value);
-                setPaginaAtual(1);
-              }}
-              placeholder="Buscar produto"
-              className="pl-9"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={busca}
+                onChange={(evento) => {
+                  setBusca(evento.target.value);
+                  setPaginaAtual(1);
+                }}
+                placeholder="Buscar por descrição ou código"
+                className="pl-9"
+              />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={limparFiltros}
+              disabled={!filtrosAtivos}
+            >
+              Limpar filtros
+            </Button>
           </div>
 
-          <Select
-            value={marca}
-            onValueChange={(valor) => {
-              setMarca(valor);
-              setPaginaAtual(1);
-            }}
-          >
-            <SelectTrigger className="w-full bg-white">
-              <SelectValue placeholder="Marca" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas marcas</SelectItem>
-              {marcas.map((marcaProduto) => (
-                <SelectItem key={marcaProduto} value={marcaProduto}>
-                  {marcaProduto}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <Select
+              value={macroGrupo}
+              onValueChange={(valor) => {
+                setMacroGrupo(valor);
+                setPaginaAtual(1);
+              }}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Macro grupo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os macro grupos</SelectItem>
+                {opcoesMacroGrupo.map((opcao) => (
+                  <SelectItem key={opcao} value={opcao}>
+                    {opcao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={grupo}
-            onValueChange={(valor) => {
-              setGrupo(valor);
-              setPaginaAtual(1);
-            }}
-          >
-            <SelectTrigger className="w-full bg-white">
-              <SelectValue placeholder="Grupo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos grupos</SelectItem>
-              {grupos.map((grupoProduto) => (
-                <SelectItem key={grupoProduto} value={grupoProduto}>
-                  {grupoProduto}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={grupo}
+              onValueChange={(valor) => {
+                setGrupo(valor);
+                setPaginaAtual(1);
+              }}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Grupo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos grupos</SelectItem>
+                {opcoesGrupo.map((opcao) => (
+                  <SelectItem key={opcao} value={opcao}>
+                    {opcao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={status}
-            onValueChange={(valor) => {
-              setStatus(valor);
-              setPaginaAtual(1);
-            }}
-          >
-            <SelectTrigger className="w-full bg-white">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos status</SelectItem>
-              <SelectItem value="novo">Novo</SelectItem>
-              <SelectItem value="vinculado">Vinculado</SelectItem>
-              <SelectItem value="atencao">Atenção</SelectItem>
-              <SelectItem value="ignorado">Ignorado</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select
+              value={subgrupo}
+              onValueChange={(valor) => {
+                setSubgrupo(valor);
+                setPaginaAtual(1);
+              }}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Subgrupo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os subgrupos</SelectItem>
+                {opcoesSubgrupo.map((opcao) => (
+                  <SelectItem key={opcao} value={opcao}>
+                    {opcao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={ncm}
+              onValueChange={(valor) => {
+                setNcm(valor);
+                setPaginaAtual(1);
+              }}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="NCM" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os NCMs</SelectItem>
+                {opcoesNcm.map((opcao) => (
+                  <SelectItem key={opcao} value={opcao}>
+                    {opcao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={triagem}
+              onValueChange={(valor) => {
+                setTriagem(valor);
+                setPaginaAtual(1);
+              }}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Triagem" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="selecionado">Selecionado</SelectItem>
+                <SelectItem value="ignorado">Ignorado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </section>
 
+      {selecionados.length > 0 ? (
+        <section className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-950 p-3 text-white shadow-xs sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium">
+            {selecionados.length} produto
+            {selecionados.length === 1 ? "" : "s"} marcado
+            {selecionados.length === 1 ? "" : "s"} na página
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={adicionarSelecionadosAoFluxo}
+            >
+              Adicionar ao fluxo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={removerSelecionadosDoFluxo}
+            >
+              Remover do fluxo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-white hover:bg-white/10 hover:text-white"
+              onClick={() => setSelecionados([])}
+            >
+              Limpar seleção
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
       <section className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-4">
-        <p className="text-sm font-medium text-slate-700">
-          {selecionados.length} selecionados
-        </p>
-        <Button asChild size="sm" className="w-full sm:w-auto">
-          <Link href="/admin/fornecedores/integracoes/laquila/mapeamento">
+        <div>
+          <p className="text-sm font-medium text-slate-700">
+            {totalSelecionadosFluxo} produto
+            {totalSelecionadosFluxo === 1 ? "" : "s"} selecionado
+            {totalSelecionadosFluxo === 1 ? "" : "s"} para seguir
+          </p>
+          {totalSelecionadosFluxo === 0 ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Selecione pelo menos um produto para continuar.
+            </p>
+          ) : null}
+        </div>
+        {totalSelecionadosFluxo > 0 ? (
+          <Button asChild size="sm" className="w-full sm:w-auto">
+            <Link
+              href="/admin/fornecedores/integracoes/laquila/mapeamento"
+              onClick={salvarSelecaoParaMapeamento}
+            >
+              Continuar com {totalSelecionadosFluxo} produto
+              {totalSelecionadosFluxo === 1 ? "" : "s"} selecionado
+              {totalSelecionadosFluxo === 1 ? "" : "s"}
+              <MoveRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        ) : (
+          <Button type="button" size="sm" disabled className="w-full sm:w-auto">
             Continuar para mapeamento
             <MoveRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+          </Button>
+        )}
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white shadow-xs">
@@ -821,85 +1328,164 @@ export function PreviaProdutosLaquilaMock({
                   <TableRow className="bg-slate-50/70">
                     <TableHead className="w-10">
                       <Checkbox
-                        checked={todosVisiveisSelecionados}
+                        checked={estadoSelecaoCabecalho}
                         onCheckedChange={alternarTodosVisiveis}
                         aria-label="Selecionar produtos visíveis"
                       />
                     </TableHead>
-                    <TableHead className="w-14">Imagem</TableHead>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead>Marca</TableHead>
-                    <TableHead>Grupo</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Estoque</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ação</TableHead>
+                    <TableHead className="min-w-[320px]">
+                      Produto recebido
+                    </TableHead>
+                    <TableHead className="min-w-[220px]">
+                      Classificação
+                    </TableHead>
+                    <TableHead className="w-28">Preço</TableHead>
+                    <TableHead className="w-24">Estoque</TableHead>
+                    <TableHead className="w-32">Triagem</TableHead>
+                    <TableHead className="w-[220px] text-right">
+                      Ações
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {produtosVisiveis.map((produto) => (
-                    <TableRow key={produto.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selecionados.includes(produto.id)}
-                          onCheckedChange={() => alternarSelecao(produto.id)}
-                          aria-label={`Selecionar ${produto.nome}`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <ImagemProdutoRecebido
-                          imagemUrl={produto.imagemUrl}
-                          nome={produto.nome}
-                          tamanho="sm"
-                          onClick={() => setProdutoImagem(produto)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-600">
-                        {produto.codigo}
-                      </TableCell>
-                      <TableCell className="max-w-[280px]">
-                        <p className="truncate font-medium text-slate-950">
-                          {produto.nome}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          EAN {produto.ean} · NCM {produto.ncm}
-                        </p>
-                      </TableCell>
-                      <TableCell>{produto.marca}</TableCell>
-                      <TableCell>{produto.grupo}</TableCell>
-                      <TableCell className="font-medium">
-                        {formatarPrecoRecebido(produto.preco)}
-                      </TableCell>
-                      <TableCell>
-                        {formatarEstoqueRecebido(produto.estoque)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={estilosStatus[produto.status]}
-                        >
-                          {rotulosStatus[produto.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setProdutoEmDetalhe(produto)}
-                              aria-label="Detalhes"
-                              className="h-8 w-8"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Detalhes</TooltipContent>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {produtosVisiveis.map((produto) => {
+                    const estadoTriagem = obterTriagemProduto(
+                      triagens,
+                      produto.id,
+                    );
+                    const codigoFornecedor =
+                      obterCodigoFornecedorProduto(produto);
+                    const ncmProduto = obterNcmProduto(produto);
+                    const classificacao = obterClassificacaoProduto(produto);
+
+                    return (
+                      <TableRow
+                        key={produto.id}
+                        className={
+                          estadoTriagem === "ignorado"
+                            ? "bg-slate-50/60 opacity-75"
+                            : estadoTriagem === "selecionado"
+                              ? "bg-emerald-50/30"
+                              : ""
+                        }
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selecionados.includes(produto.id)}
+                            onCheckedChange={() => alternarSelecao(produto.id)}
+                            aria-label={`Selecionar ${produto.nome}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <ImagemProdutoRecebido
+                              imagemUrl={produto.imagemUrl}
+                              nome={produto.nome}
+                              tamanho="sm"
+                              onClick={() => setProdutoImagem(produto)}
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-slate-950">
+                                {produto.nome}
+                              </p>
+                              <p className="mt-0.5 truncate text-xs text-slate-500">
+                                Código{" "}
+                                <span className="font-mono text-slate-600">
+                                  {codigoFornecedor}
+                                </span>{" "}
+                                · NCM{" "}
+                                <span className="font-mono text-slate-600">
+                                  {ncmProduto}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="max-w-[260px] truncate text-sm text-slate-700">
+                            {classificacao}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium whitespace-nowrap text-slate-900">
+                            {formatarPrecoRecebido(produto.preco)}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium whitespace-nowrap text-slate-900">
+                            {formatarEstoqueRecebido(produto.estoque)}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={estilosTriagem[estadoTriagem]}
+                          >
+                            {rotulosTriagem[estadoTriagem]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-wrap justify-end gap-1">
+                            {estadoTriagem === "selecionado" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8"
+                                onClick={() => removerDoFluxo(produto.id)}
+                              >
+                                Selecionado
+                              </Button>
+                            ) : estadoTriagem === "ignorado" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8"
+                                onClick={() => desfazerTriagem(produto.id)}
+                              >
+                                Desfazer
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8"
+                                onClick={() => adicionarAoFluxo(produto.id)}
+                              >
+                                Selecionar
+                              </Button>
+                            )}
+                            {estadoTriagem !== "ignorado" ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2 text-slate-600"
+                                onClick={() => ignorarProduto(produto.id)}
+                              >
+                                Ignorar
+                              </Button>
+                            ) : null}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setProdutoEmDetalhe(produto)}
+                                  aria-label="Detalhes"
+                                  className="h-8 w-8"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Detalhes</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -910,7 +1496,12 @@ export function PreviaProdutosLaquilaMock({
                   key={produto.id}
                   produto={produto}
                   selecionado={selecionados.includes(produto.id)}
+                  triagem={obterTriagemProduto(triagens, produto.id)}
                   alternarSelecao={alternarSelecao}
+                  adicionarAoFluxo={adicionarAoFluxo}
+                  removerDoFluxo={removerDoFluxo}
+                  ignorarProduto={ignorarProduto}
+                  desfazerTriagem={desfazerTriagem}
                   abrirDetalhes={setProdutoEmDetalhe}
                   abrirImagem={setProdutoImagem}
                 />
@@ -922,7 +1513,25 @@ export function PreviaProdutosLaquilaMock({
                 Exibindo {intervaloInicial}-{intervaloFinal} de{" "}
                 {produtosFiltrados.length}
               </p>
-              <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
+                <Select
+                  value={String(itensPorPagina)}
+                  onValueChange={(valor) => {
+                    setItensPorPagina(Number(valor));
+                    setPaginaAtual(1);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-[110px] bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPCOES_ITENS_POR_PAGINA.map((opcao) => (
+                      <SelectItem key={opcao} value={String(opcao)}>
+                        {opcao} por página
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   type="button"
                   variant="outline"

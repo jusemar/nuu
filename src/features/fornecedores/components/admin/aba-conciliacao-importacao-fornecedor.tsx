@@ -41,6 +41,10 @@ function montarPendenciasObrigatorias(
     pendencias.add("Marca obrigatória");
   }
 
+  if (!temTexto(linha.precoFornecedor)) {
+    pendencias.add("Preço principal ausente");
+  }
+
   linha.errosValidacao.forEach((erro) => {
     const campo = erro.campo?.toLowerCase() ?? "";
     if (campo.includes("categoria")) pendencias.add("Categoria obrigatória");
@@ -78,12 +82,79 @@ function montarAlertas(linha: LinhaConciliacaoImportacaoFornecedor) {
   return Array.from(alertas);
 }
 
+function montarRegrasObrigatorias(linha: LinhaConciliacaoImportacaoFornecedor) {
+  const regras: ItemConciliacaoFornecedor["regrasObrigatorias"] = [];
+
+  if (!temTexto(linha.categoriaFornecedor)) {
+    regras.push({
+      campo: "categoria_fornecedor",
+      label: "Categoria da loja",
+      estrategia: "conciliacao",
+      observacao: "Não encontrada no arquivo. Será preenchida nesta etapa.",
+      bloqueiaPublicacao: true,
+    });
+  } else {
+    regras.push({
+      campo: "categoria_fornecedor",
+      label: "Categoria da loja",
+      estrategia: "valor_padrao",
+      valorAplicado: linha.categoriaFornecedor,
+    });
+  }
+
+  if (!temTexto(linha.marcaFornecedor)) {
+    regras.push({
+      campo: "marca_fornecedor",
+      label: "Marca da loja",
+      estrategia: "conciliacao",
+      observacao: "Não encontrada no arquivo. Será preenchida nesta etapa.",
+      bloqueiaPublicacao: true,
+    });
+  } else {
+    regras.push({
+      campo: "marca_fornecedor",
+      label: "Marca da loja",
+      estrategia: "valor_padrao",
+      valorAplicado: linha.marcaFornecedor,
+    });
+  }
+
+  if (!temTexto(linha.precoFornecedor)) {
+    regras.push({
+      campo: "preco_fornecedor",
+      label: "Preço principal",
+      estrategia: "sem_solucao",
+      observacao: "Preço não encontrado no arquivo.",
+      bloqueiaPublicacao: true,
+    });
+  }
+
+  return regras;
+}
+
+function montarRegrasImportantes(linha: LinhaConciliacaoImportacaoFornecedor) {
+  const regras: ItemConciliacaoFornecedor["regrasImportantes"] = [];
+
+  if (!linha.codigoFornecedor) {
+    regras.push({
+      campo: "codigo_fornecedor",
+      label: "Código fornecedor",
+      estrategia: "conciliacao",
+      observacao: "Código ausente no arquivo.",
+    });
+  }
+
+  return regras;
+}
+
 function montarItensConciliacaoArquivo(
   linhas: LinhaConciliacaoImportacaoFornecedor[],
 ): ItemConciliacaoFornecedor[] {
   return linhas.map((linha) => {
     const pendenciasObrigatorias = montarPendenciasObrigatorias(linha);
     const alertas = montarAlertas(linha);
+    const regrasObrigatorias = montarRegrasObrigatorias(linha);
+    const regrasImportantes = montarRegrasImportantes(linha);
     const ignorado = linha.status === "ignorado";
     const status = ignorado
       ? "ignorado"
@@ -110,9 +181,25 @@ function montarItensConciliacaoArquivo(
         : linha.produtoLocalizadoId
           ? "atualizar"
           : "criar",
+      statusVinculacao: ignorado
+        ? "ignorado"
+        : linha.produtoLocalizadoId
+          ? "vinculado"
+          : "novo",
       status,
       pendenciasObrigatorias,
       alertas,
+      regrasObrigatorias,
+      regrasImportantes,
+      configuracaoPreco: linha.precoFornecedor
+        ? {
+            modalidade: "Estoque próprio",
+            valorAplicado: linha.precoFornecedor,
+            prazo: "Conforme cadastro da loja",
+            cardPrincipal: true,
+            origem: "Preço recebido do arquivo",
+          }
+        : null,
       motivoIgnorado: ignorado ? "Marcado como ignorado na vinculação" : null,
     };
   });

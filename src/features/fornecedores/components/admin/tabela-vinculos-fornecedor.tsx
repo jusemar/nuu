@@ -130,6 +130,33 @@ function montarResumoRecebido(item: ItemVinculoFornecedor) {
   return partes.length > 0 ? partes.join(" · ") : "Sem dados auxiliares";
 }
 
+function ImagemProdutoRecebidoFornecedor({
+  imagens,
+  nome,
+}: {
+  imagens?: string[];
+  nome: string;
+}) {
+  const imagem = imagens?.find((item) => item.trim().length > 0);
+
+  return (
+    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-slate-100 bg-slate-50">
+      {imagem ? (
+        <img
+          src={imagem}
+          alt={nome}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-slate-400">
+          Sem foto
+        </div>
+      )}
+    </div>
+  );
+}
+
 function rotuloStatus(status: StatusVinculoFornecedorVisual) {
   const rotulos: Record<StatusVinculoFornecedorVisual, string> = {
     vinculado: "Vinculado",
@@ -640,18 +667,29 @@ export function TabelaVinculosFornecedor({
                       aria-label={`Selecionar ${item.produtoRecebido.nome}`}
                     />
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-950">
-                      {item.produtoRecebido.nome}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {montarResumoRecebido(item)}
-                    </p>
-                    {item.produtoRecebido.complemento ? (
-                      <p className="mt-1 truncate text-xs text-slate-400">
-                        {item.produtoRecebido.complemento}
+                  <div className="flex min-w-0 gap-3">
+                    <ImagemProdutoRecebidoFornecedor
+                      imagens={item.produtoRecebido.imagens}
+                      nome={item.produtoRecebido.nome}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-950">
+                        {item.produtoRecebido.nome}
                       </p>
-                    ) : null}
+                      <p className="mt-1 text-xs text-slate-500">
+                        {montarResumoRecebido(item)}
+                      </p>
+                      {item.produtoRecebido.ncm ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          NCM {item.produtoRecebido.ncm}
+                        </p>
+                      ) : null}
+                      {item.produtoRecebido.complemento ? (
+                        <p className="mt-1 truncate text-xs text-slate-400">
+                          {item.produtoRecebido.complemento}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div>
@@ -771,6 +809,10 @@ export function TabelaVinculosFornecedor({
                     aria-label={`Selecionar ${item.produtoRecebido.nome}`}
                     className="mt-1"
                   />
+                  <ImagemProdutoRecebidoFornecedor
+                    imagens={item.produtoRecebido.imagens}
+                    nome={item.produtoRecebido.nome}
+                  />
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
                       {labelProdutoRecebido}
@@ -781,6 +823,16 @@ export function TabelaVinculosFornecedor({
                     <p className="mt-1 text-xs text-slate-500">
                       {montarResumoRecebido(item)}
                     </p>
+                    {item.produtoRecebido.ncm ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        NCM {item.produtoRecebido.ncm}
+                      </p>
+                    ) : null}
+                    {item.produtoRecebido.complemento ? (
+                      <p className="mt-1 truncate text-xs text-slate-400">
+                        {item.produtoRecebido.complemento}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <Badge

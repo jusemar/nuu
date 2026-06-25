@@ -2,6 +2,9 @@ export const FORNECEDOR_LAQUILA_NOME = "Laquila";
 
 export const PROVEDOR_INTEGRACAO_LAQUILA = "laquila";
 
+export const CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA =
+  "laquila:produtos-selecionados-mapeamento";
+
 export const METODOS_LAQUILA = {
   inserirPedido: "00002",
   importarXml: "00003",

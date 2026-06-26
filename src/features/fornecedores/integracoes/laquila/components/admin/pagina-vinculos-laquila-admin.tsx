@@ -2,7 +2,7 @@
 
 import { AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,12 @@ import {
   type ItemVinculoFornecedor,
   TabelaVinculosFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-vinculos-fornecedor";
-import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
+import type { ValoresPadraoRascunhoProdutoFornecedor } from "@/features/fornecedores/components/admin/modal-rascunho-produto-fornecedor";
+import { salvarProdutosSelecionadosStagingLaquila } from "@/features/fornecedores/integracoes/laquila/actions";
+import {
+  CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
+  CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
+} from "@/features/fornecedores/integracoes/laquila/constants";
 
 const produtosDaLojaMock = [
   {
@@ -59,6 +64,19 @@ type ProdutoSelecionadoMapeamentoLaquila = {
   altura_caixa: string;
   largura_caixa: string;
   comprimento_caixa: string;
+};
+
+type RegraMapeamentoLaquilaTemporaria = {
+  campoDestino: string;
+  estrategia: string;
+  valorPadraoId?: string;
+  valorPadraoLabel?: string;
+  valorPadraoTexto?: string;
+};
+
+type RegrasMapeamentoLaquilaTemporarias = {
+  origem?: string;
+  regras?: RegraMapeamentoLaquilaTemporaria[];
 };
 
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
@@ -160,13 +178,103 @@ function converterItemVinculo(
   };
 }
 
+function normalizarRegraMapeamentoLaquila(
+  valor: unknown,
+): RegraMapeamentoLaquilaTemporaria | null {
+  if (!ehRegistro(valor)) return null;
+
+  const campoDestino = obterTextoRegistro(valor, "campoDestino");
+  const estrategia = obterTextoRegistro(valor, "estrategia");
+
+  if (!campoDestino || !estrategia) return null;
+
+  return {
+    campoDestino,
+    estrategia,
+    valorPadraoId: obterTextoRegistro(valor, "valorPadraoId") || undefined,
+    valorPadraoLabel:
+      obterTextoRegistro(valor, "valorPadraoLabel") || undefined,
+    valorPadraoTexto:
+      obterTextoRegistro(valor, "valorPadraoTexto") || undefined,
+  };
+}
+
+function normalizarRegrasMapeamentoLaquila(
+  valor: unknown,
+): RegrasMapeamentoLaquilaTemporarias {
+  if (!ehRegistro(valor)) return {};
+
+  const regras = Array.isArray(valor.regras)
+    ? valor.regras
+        .map(normalizarRegraMapeamentoLaquila)
+        .filter((regra): regra is RegraMapeamentoLaquilaTemporaria =>
+          Boolean(regra),
+        )
+    : [];
+
+  return {
+    origem: obterTextoRegistro(valor, "origem"),
+    regras,
+  };
+}
+
+function obterValoresPadraoNovoProduto(
+  regrasMapeamento: RegrasMapeamentoLaquilaTemporarias | null,
+): ValoresPadraoRascunhoProdutoFornecedor {
+  const regras = regrasMapeamento?.regras ?? [];
+  const regraCategoria = regras.find(
+    (regra) =>
+      regra.campoDestino === "categoria_fornecedor" &&
+      regra.estrategia === "valor_padrao_todos" &&
+      regra.valorPadraoId,
+  );
+  const regraMarca = regras.find(
+    (regra) =>
+      regra.campoDestino === "marca_fornecedor" &&
+      regra.estrategia === "valor_padrao_todos" &&
+      regra.valorPadraoId,
+  );
+
+  return {
+    categoriaId: regraCategoria?.valorPadraoId,
+    categoriaNome: regraCategoria?.valorPadraoLabel,
+    marcaId: regraMarca?.valorPadraoId,
+    marcaNome: regraMarca?.valorPadraoLabel,
+  };
+}
+
 export function PaginaVinculosLaquilaAdmin() {
   const [selecaoCarregada, setSelecaoCarregada] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<
     ItemVinculoFornecedor[]
   >([]);
+  const [statusStaging, setStatusStaging] = useState<{
+    tipo: "salvando" | "sucesso" | "erro";
+    mensagem: string;
+    totalSalvo?: number;
+  } | null>(null);
+  const [regrasMapeamento, setRegrasMapeamento] =
+    useState<RegrasMapeamentoLaquilaTemporarias | null>(null);
+  const valoresPadraoNovoProduto = useMemo(
+    () => obterValoresPadraoNovoProduto(regrasMapeamento),
+    [regrasMapeamento],
+  );
 
   useEffect(() => {
+    const regrasSalvas = window.sessionStorage.getItem(
+      CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
+    );
+
+    if (regrasSalvas) {
+      try {
+        setRegrasMapeamento(
+          normalizarRegrasMapeamentoLaquila(JSON.parse(regrasSalvas)),
+        );
+      } catch {
+        setRegrasMapeamento(null);
+      }
+    }
+
     const selecaoSalva = window.sessionStorage.getItem(
       CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
     );
@@ -180,14 +288,42 @@ export function PaginaVinculosLaquilaAdmin() {
       const dados: unknown = JSON.parse(selecaoSalva);
 
       if (Array.isArray(dados)) {
-        setItensSelecionados(
-          dados
-            .map(normalizarProdutoSelecionado)
-            .filter((produto): produto is ProdutoSelecionadoMapeamentoLaquila =>
-              Boolean(produto),
-            )
-            .map(converterItemVinculo),
-        );
+        const produtosSelecionados = dados
+          .map(normalizarProdutoSelecionado)
+          .filter((produto): produto is ProdutoSelecionadoMapeamentoLaquila =>
+            Boolean(produto),
+          );
+
+        setItensSelecionados(produtosSelecionados.map(converterItemVinculo));
+
+        if (produtosSelecionados.length > 0) {
+          setStatusStaging({
+            tipo: "salvando",
+            mensagem: "Salvando selecionados para vinculação...",
+          });
+
+          salvarProdutosSelecionadosStagingLaquila({ produtos: dados }).then(
+            (resultado) => {
+              if (resultado.sucesso) {
+                setStatusStaging({
+                  tipo: "sucesso",
+                  mensagem:
+                    resultado.mensagem ??
+                    "Produtos selecionados salvos para vinculação.",
+                  totalSalvo: resultado.totalSalvo,
+                });
+                return;
+              }
+
+              setStatusStaging({
+                tipo: "erro",
+                mensagem:
+                  resultado.erro ??
+                  "Não foi possível salvar os selecionados no staging.",
+              });
+            },
+          );
+        }
       }
     } catch {
       setItensSelecionados([]);
@@ -224,6 +360,21 @@ export function PaginaVinculosLaquilaAdmin() {
           API Laquila
         </Badge>
       </section>
+
+      {statusStaging ? (
+        <section
+          className={
+            statusStaging.tipo === "erro"
+              ? "rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 shadow-xs"
+              : "rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-xs"
+          }
+        >
+          {statusStaging.mensagem}
+          {typeof statusStaging.totalSalvo === "number"
+            ? ` ${statusStaging.totalSalvo} item${statusStaging.totalSalvo === 1 ? "" : "s"}.`
+            : ""}
+        </section>
+      ) : null}
 
       {selecaoCarregada && itensSelecionados.length === 0 ? (
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-xs">
@@ -262,6 +413,7 @@ export function PaginaVinculosLaquilaAdmin() {
           produtosDaLoja={produtosDaLojaMock}
           textoAcaoPrincipal="Continuar para conciliação"
           hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/conciliacao"
+          valoresPadraoNovoProduto={valoresPadraoNovoProduto}
         />
       ) : null}
     </main>

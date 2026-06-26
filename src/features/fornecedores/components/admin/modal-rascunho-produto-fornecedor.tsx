@@ -43,10 +43,18 @@ export type DadosFornecedorParaRascunhoProduto = {
   complemento?: string | null;
 };
 
+export type ValoresPadraoRascunhoProdutoFornecedor = {
+  categoriaId?: string;
+  categoriaNome?: string;
+  marcaId?: string;
+  marcaNome?: string;
+};
+
 type ModalRascunhoProdutoFornecedorProps = {
   aberto: boolean;
   item: DadosFornecedorParaRascunhoProduto | null;
   dadosSalvos?: ProductFormData | null;
+  valoresPadrao?: ValoresPadraoRascunhoProdutoFornecedor;
   aoAlterarAbertura: (aberto: boolean) => void;
   aoSalvarRascunho: (dados: ProductFormData) => void;
 };
@@ -86,6 +94,7 @@ function converterMedida(valor?: string | null) {
 function montarDadosIniciais(
   item: DadosFornecedorParaRascunhoProduto | null,
   dadosSalvos?: ProductFormData | null,
+  valoresPadrao?: ValoresPadraoRascunhoProdutoFornecedor,
 ): ProductFormData {
   if (dadosSalvos) return dadosSalvos;
 
@@ -103,6 +112,9 @@ function montarDadosIniciais(
     ...initialProductData,
     name: nome,
     slug: gerarSlug(nome),
+    categoryId: valoresPadrao?.categoriaId ?? initialProductData.categoryId,
+    brandId: valoresPadrao?.marcaId ?? initialProductData.brandId,
+    brand: valoresPadrao?.marcaNome ?? initialProductData.brand,
     sku: initialProductData.sku,
     productCode: item?.ean ?? initialProductData.productCode,
     ncmCode: item?.ncm ?? "",
@@ -177,12 +189,13 @@ export function ModalRascunhoProdutoFornecedor({
   aberto,
   item,
   dadosSalvos,
+  valoresPadrao,
   aoAlterarAbertura,
   aoSalvarRascunho,
 }: ModalRascunhoProdutoFornecedorProps) {
   const dadosIniciais = useMemo(
-    () => montarDadosIniciais(item, dadosSalvos),
-    [dadosSalvos, item],
+    () => montarDadosIniciais(item, dadosSalvos, valoresPadrao),
+    [dadosSalvos, item, valoresPadrao],
   );
   const [produto, setProduto] = useState<ProductFormData>(dadosIniciais);
   const chaveRascunho = `fornecedor-rascunho-${item?.id ?? "novo"}`;

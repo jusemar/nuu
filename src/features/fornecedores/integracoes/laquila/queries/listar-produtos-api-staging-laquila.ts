@@ -5,6 +5,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { fornecedorProdutosApiStagingTable } from "@/db/schema";
 import type { StatusProdutoLaquilaMock } from "../types/produto-laquila-mock.types";
+import { CLASSIFICACOES_RECEBIDOS_API_LAQUILA } from "../constants";
 
 export type ProdutoApiStagingLaquilaPrevia = {
   id: string;
@@ -60,6 +61,56 @@ function extrairPrimeiraFoto(valor: unknown) {
   );
 }
 
+function normalizarClassificacao(valor: string | null | undefined) {
+  return (valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+const classificacoesRecebidosPermitidas = new Set(
+  CLASSIFICACOES_RECEBIDOS_API_LAQUILA.flatMap((classificacao) =>
+    classificacao.subgrupos.map((subgrupo) =>
+      [
+        normalizarClassificacao(classificacao.macroGrupo),
+        normalizarClassificacao(classificacao.grupo),
+        normalizarClassificacao(subgrupo),
+      ].join("|||"),
+    ),
+  ),
+);
+
+function obterTextoCampoBruto(
+  dadosBrutosJson: Record<string, unknown>,
+  campo: string,
+) {
+  const valor = dadosBrutosJson[campo];
+
+  if (typeof valor === "string" && valor.trim()) {
+    return valor.trim();
+  }
+
+  if (typeof valor === "number" && Number.isFinite(valor)) {
+    return String(valor);
+  }
+
+  return "";
+}
+
+function produtoPertenceAoRecorteRecebidosLaquila(
+  dadosBrutosJson: Record<string, unknown>,
+) {
+  const chave = [
+    normalizarClassificacao(obterTextoCampoBruto(dadosBrutosJson, "ds_ggrupo")),
+    normalizarClassificacao(obterTextoCampoBruto(dadosBrutosJson, "ds_grupo")),
+    normalizarClassificacao(obterTextoCampoBruto(dadosBrutosJson, "ds_sgrupo")),
+  ].join("|||");
+
+  return classificacoesRecebidosPermitidas.has(chave);
+}
+
 export async function listarProdutosApiStagingLaquilaPrevia(
   integracaoId: string | null | undefined,
 ): Promise<ProdutoApiStagingLaquilaPrevia[]> {
@@ -107,28 +158,35 @@ export async function listarProdutosApiStagingLaquilaCatalogo(
     })
     .from(fornecedorProdutosApiStagingTable)
     .where(eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId))
-    .orderBy(desc(fornecedorProdutosApiStagingTable.ultimaConsultaEm))
-    .limit(100);
+    .orderBy(desc(fornecedorProdutosApiStagingTable.ultimaConsultaEm));
 
-  return produtos.map((produto) => {
+  return produtos.flatMap((produto) => {
     const dadosBrutosJson = obterDadosBrutosComoObjeto(produto.dadosBrutosJson);
+
+    if (!produtoPertenceAoRecorteRecebidosLaquila(dadosBrutosJson)) {
+      return [];
+    }
+
     const imagemRecebida = extrairPrimeiraFoto(dadosBrutosJson.lista_fotos);
 
-    return {
-      id: produto.id,
-      codigo: produto.codigo,
-      nome: produto.nome,
-      marca: produto.marca ?? "Sem marca",
-      grupo: produto.grupo ?? "Sem grupo",
-      categoria: produto.subgrupo ?? produto.grupo ?? "API",
-      ean: produto.ean ?? "-",
-      ncm: produto.ncm ?? "-",
-      preco: produto.preco === null ? null : Number(produto.preco),
-      estoque: produto.estoque,
-      status: produto.status,
-      imagemUrl: imagemRecebida ?? produto.imagemUrl ?? "/produto-sem-foto.webp",
-      recebidoEm: produto.recebidoEm,
-      dadosBrutosJson,
-    };
+    return [
+      {
+        id: produto.id,
+        codigo: produto.codigo,
+        nome: produto.nome,
+        marca: produto.marca ?? "Sem marca",
+        grupo: produto.grupo ?? "Sem grupo",
+        categoria: produto.subgrupo ?? produto.grupo ?? "API",
+        ean: produto.ean ?? "-",
+        ncm: produto.ncm ?? "-",
+        preco: produto.preco === null ? null : Number(produto.preco),
+        estoque: produto.estoque,
+        status: produto.status,
+        imagemUrl:
+          imagemRecebida ?? produto.imagemUrl ?? "/produto-sem-foto.webp",
+        recebidoEm: produto.recebidoEm,
+        dadosBrutosJson,
+      },
+    ];
   });
 }

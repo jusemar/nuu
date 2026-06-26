@@ -365,6 +365,7 @@ export function PaginaIntegracaoLaquilaAdmin({
                   <Link
                     key={acesso.titulo}
                     href="/admin/fornecedores/integracoes/laquila/produtos"
+                    prefetch={false}
                     className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
                   >
                     {conteudo}

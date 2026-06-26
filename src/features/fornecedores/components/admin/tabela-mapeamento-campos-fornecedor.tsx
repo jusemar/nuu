@@ -42,6 +42,27 @@ export type OpcaoValorPadraoLoja = {
   nome: string;
 };
 
+export type EstrategiaRegraMapeamentoFornecedor =
+  | "valor_padrao_todos"
+  | "conciliacao"
+  | "rascunho"
+  | "ignorar";
+
+export type RegraMapeamentoFornecedor = {
+  campoDestino: string;
+  campoLabel: string;
+  tipo: "obrigatorio" | "importante";
+  estrategia: EstrategiaRegraMapeamentoFornecedor;
+  valorPadraoId?: string;
+  valorPadraoLabel?: string;
+  valorPadraoTexto?: string;
+};
+
+export type DadosTemporariosMapeamentoFornecedor = {
+  destinosSelecionados: Record<string, string>;
+  regras: RegraMapeamentoFornecedor[];
+};
+
 export const CAMPOS_OBRIGATORIOS_MAPEAMENTO_FORNECEDOR = [
   { valor: "codigo_fornecedor", label: "Código fornecedor" },
   { valor: "nome_produto", label: "Nome do produto" },
@@ -88,6 +109,7 @@ export type TabelaMapeamentoCamposFornecedorProps = {
   textoAcaoPrincipal: string;
   tipoBotaoAcaoPrincipal?: "submit" | "button";
   hrefAcaoPrincipal?: string;
+  aoAcionarPrincipal?: (dados: DadosTemporariosMapeamentoFornecedor) => void;
   textoRodape?: string;
   estadoVazio?: string;
 };
@@ -346,15 +368,23 @@ function CampoValorPadraoVisual({
   campo,
   categoriasLoja,
   marcasLoja,
+  valor,
+  aoAlterar,
 }: {
   campo: { valor: string; label: string };
   categoriasLoja: OpcaoValorPadraoLoja[];
   marcasLoja: OpcaoValorPadraoLoja[];
+  valor: string;
+  aoAlterar: (valor: string) => void;
 }) {
   if (campo.valor === "categoria_fornecedor") {
     return (
-      <select className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400">
-        <option>Selecionar categoria</option>
+      <select
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
+        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
+      >
+        <option value="">Selecionar categoria</option>
         {categoriasLoja.map((categoria) => (
           <option key={categoria.id} value={categoria.id}>
             {categoria.nome}
@@ -366,8 +396,12 @@ function CampoValorPadraoVisual({
 
   if (campo.valor === "marca_fornecedor") {
     return (
-      <select className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400">
-        <option>Selecionar marca</option>
+      <select
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
+        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
+      >
+        <option value="">Selecionar marca</option>
         {marcasLoja.map((marca) => (
           <option key={marca.id} value={marca.id}>
             {marca.nome}
@@ -384,6 +418,8 @@ function CampoValorPadraoVisual({
   ) {
     return (
       <input
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
         type="number"
         min="0"
         step="0.01"
@@ -396,6 +432,8 @@ function CampoValorPadraoVisual({
   if (campo.valor === "peso") {
     return (
       <input
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
         type="number"
         min="0"
         step="0.001"
@@ -408,6 +446,8 @@ function CampoValorPadraoVisual({
   if (campo.valor === "estoque_fornecedor") {
     return (
       <input
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
         type="number"
         min="0"
         step="1"
@@ -421,6 +461,8 @@ function CampoValorPadraoVisual({
     return (
       <div>
         <input
+          value={valor}
+          onChange={(evento) => aoAlterar(evento.target.value)}
           type="number"
           min="0"
           step="0.01"
@@ -443,6 +485,8 @@ function CampoValorPadraoVisual({
 
   return (
     <input
+      value={valor}
+      onChange={(evento) => aoAlterar(evento.target.value)}
       className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
       placeholder={placeholders[campo.valor] ?? `Ex: ${campo.label}`}
     />
@@ -454,11 +498,15 @@ function ValorOuObservacaoVisual({
   estrategia,
   categoriasLoja,
   marcasLoja,
+  valorPadrao,
+  aoAlterarValorPadrao,
 }: {
   campo: { valor: string; label: string };
   estrategia: EstrategiaResolucaoVisual;
   categoriasLoja: OpcaoValorPadraoLoja[];
   marcasLoja: OpcaoValorPadraoLoja[];
+  valorPadrao: string;
+  aoAlterarValorPadrao: (valor: string) => void;
 }) {
   if (estrategia === "valor_padrao") {
     return (
@@ -466,6 +514,8 @@ function ValorOuObservacaoVisual({
         campo={campo}
         categoriasLoja={categoriasLoja}
         marcasLoja={marcasLoja}
+        valor={valorPadrao}
+        aoAlterar={aoAlterarValorPadrao}
       />
     );
   }
@@ -492,6 +542,10 @@ function SecaoCamposSemOrigem({
   tipo,
   categoriasLoja,
   marcasLoja,
+  estrategias,
+  valoresPadrao,
+  aoAlterarEstrategia,
+  aoAlterarValorPadrao,
 }: {
   titulo: string;
   descricao: string;
@@ -505,6 +559,13 @@ function SecaoCamposSemOrigem({
   tipo: "obrigatorio" | "importante";
   categoriasLoja: OpcaoValorPadraoLoja[];
   marcasLoja: OpcaoValorPadraoLoja[];
+  estrategias: Record<string, EstrategiaResolucaoVisual>;
+  valoresPadrao: Record<string, string>;
+  aoAlterarEstrategia: (
+    campo: string,
+    estrategia: EstrategiaResolucaoVisual,
+  ) => void;
+  aoAlterarValorPadrao: (campo: string, valor: string) => void;
 }) {
   const estrategiasIniciais = Object.fromEntries(
     campos.map((campo) => [
@@ -512,8 +573,6 @@ function SecaoCamposSemOrigem({
       obterEstrategiaInicial(campo.estrategiaPadrao, tipo),
     ]),
   ) as Record<string, EstrategiaResolucaoVisual>;
-  const [estrategias, setEstrategias] =
-    useState<Record<string, EstrategiaResolucaoVisual>>(estrategiasIniciais);
   const obrigatorio = tipo === "obrigatorio";
 
   if (campos.length === 0) return null;
@@ -588,12 +647,7 @@ function SecaoCamposSemOrigem({
                 valor={
                   estrategias[campo.valor] ?? estrategiasIniciais[campo.valor]
                 }
-                aoAlterar={(valor) =>
-                  setEstrategias((atuais) => ({
-                    ...atuais,
-                    [campo.valor]: valor,
-                  }))
-                }
+                aoAlterar={(valor) => aoAlterarEstrategia(campo.valor, valor)}
               />
               <Badge
                 variant="outline"
@@ -618,6 +672,10 @@ function SecaoCamposSemOrigem({
                 }
                 categoriasLoja={categoriasLoja}
                 marcasLoja={marcasLoja}
+                valorPadrao={valoresPadrao[campo.valor] ?? ""}
+                aoAlterarValorPadrao={(valor) =>
+                  aoAlterarValorPadrao(campo.valor, valor)
+                }
               />
             </div>
           </article>
@@ -728,6 +786,7 @@ export function TabelaMapeamentoCamposFornecedor({
   textoAcaoPrincipal,
   tipoBotaoAcaoPrincipal = "submit",
   hrefAcaoPrincipal,
+  aoAcionarPrincipal,
   textoRodape,
   estadoVazio = "Nenhum campo recebido para mapear.",
 }: TabelaMapeamentoCamposFornecedorProps) {
@@ -756,6 +815,11 @@ export function TabelaMapeamentoCamposFornecedor({
   );
   const [destinosSelecionados, setDestinosSelecionados] =
     useState<Record<string, string>>(destinosIniciais);
+  const [estrategiasCamposSemOrigem, setEstrategiasCamposSemOrigem] = useState<
+    Record<string, EstrategiaResolucaoVisual>
+  >({});
+  const [valoresPadraoCamposSemOrigem, setValoresPadraoCamposSemOrigem] =
+    useState<Record<string, string>>({});
 
   useEffect(() => {
     setDestinosSelecionados(destinosIniciais);
@@ -786,6 +850,87 @@ export function TabelaMapeamentoCamposFornecedor({
   const conflitos = linhas.filter(
     (linha) => linha.situacao === "conflito",
   ).length;
+  const todosCamposSemOrigem = [
+    ...camposObrigatoriosSemOrigem.map((campo) => ({
+      ...campo,
+      tipo: "obrigatorio" as const,
+    })),
+    ...camposImportantesSemOrigem.map((campo) => ({
+      ...campo,
+      tipo: "importante" as const,
+    })),
+  ];
+
+  function obterEstrategiaCampoSemOrigem(
+    campo: {
+      valor: string;
+      estrategiaPadrao?: string;
+    },
+    tipo: "obrigatorio" | "importante",
+  ) {
+    return (
+      estrategiasCamposSemOrigem[campo.valor] ??
+      obterEstrategiaInicial(campo.estrategiaPadrao, tipo)
+    );
+  }
+
+  function obterLabelValorPadrao(campoValor: string, valor: string) {
+    if (!valor) return undefined;
+
+    if (campoValor === "categoria_fornecedor") {
+      return categoriasLoja.find((categoria) => categoria.id === valor)?.nome;
+    }
+
+    if (campoValor === "marca_fornecedor") {
+      return marcasLoja.find((marca) => marca.id === valor)?.nome;
+    }
+
+    return valor;
+  }
+
+  function montarDadosTemporariosMapeamento(): DadosTemporariosMapeamentoFornecedor {
+    return {
+      destinosSelecionados,
+      regras: todosCamposSemOrigem.map((campo) => {
+        const estrategia = obterEstrategiaCampoSemOrigem(campo, campo.tipo);
+        const valorPadrao = valoresPadraoCamposSemOrigem[campo.valor] ?? "";
+        const valorPadraoLabel = obterLabelValorPadrao(
+          campo.valor,
+          valorPadrao,
+        );
+        const usaValorPadrao = estrategia === "valor_padrao";
+        const usaValorPadraoComId =
+          campo.valor === "categoria_fornecedor" ||
+          campo.valor === "marca_fornecedor";
+
+        return {
+          campoDestino: campo.valor,
+          campoLabel: campo.label,
+          tipo: campo.tipo,
+          estrategia: usaValorPadrao
+            ? ("valor_padrao_todos" as const)
+            : estrategia,
+          valorPadraoId:
+            usaValorPadrao && usaValorPadraoComId && valorPadrao
+              ? valorPadrao
+              : undefined,
+          valorPadraoLabel: usaValorPadrao ? valorPadraoLabel : undefined,
+          valorPadraoTexto:
+            usaValorPadrao && !usaValorPadraoComId && valorPadrao
+              ? valorPadrao
+              : undefined,
+        };
+      }),
+    };
+  }
+
+  function acionarPrincipal() {
+    aoAcionarPrincipal?.(montarDadosTemporariosMapeamento());
+
+    if (hrefAcaoPrincipal) {
+      window.location.href = hrefAcaoPrincipal;
+    }
+  }
 
   return (
     <form
@@ -1051,6 +1196,20 @@ export function TabelaMapeamentoCamposFornecedor({
         tipo="obrigatorio"
         categoriasLoja={categoriasLoja}
         marcasLoja={marcasLoja}
+        estrategias={estrategiasCamposSemOrigem}
+        valoresPadrao={valoresPadraoCamposSemOrigem}
+        aoAlterarEstrategia={(campo, estrategia) =>
+          setEstrategiasCamposSemOrigem((atuais) => ({
+            ...atuais,
+            [campo]: estrategia,
+          }))
+        }
+        aoAlterarValorPadrao={(campo, valor) =>
+          setValoresPadraoCamposSemOrigem((atuais) => ({
+            ...atuais,
+            [campo]: valor,
+          }))
+        }
       />
 
       <SecaoCamposSemOrigem
@@ -1061,6 +1220,20 @@ export function TabelaMapeamentoCamposFornecedor({
         tipo="importante"
         categoriasLoja={categoriasLoja}
         marcasLoja={marcasLoja}
+        estrategias={estrategiasCamposSemOrigem}
+        valoresPadrao={valoresPadraoCamposSemOrigem}
+        aoAlterarEstrategia={(campo, estrategia) =>
+          setEstrategiasCamposSemOrigem((atuais) => ({
+            ...atuais,
+            [campo]: estrategia,
+          }))
+        }
+        aoAlterarValorPadrao={(campo, valor) =>
+          setValoresPadraoCamposSemOrigem((atuais) => ({
+            ...atuais,
+            [campo]: valor,
+          }))
+        }
       />
 
       <div className="grid gap-4 border-t border-slate-200 bg-slate-50/70 p-4 md:grid-cols-[1fr_auto] md:items-center">
@@ -1092,7 +1265,16 @@ export function TabelaMapeamentoCamposFornecedor({
             </p>
           ) : null}
         </div>
-        {hrefAcaoPrincipal ? (
+        {aoAcionarPrincipal ? (
+          <Button
+            type="button"
+            className="h-10 min-w-[210px] gap-2"
+            onClick={acionarPrincipal}
+          >
+            {textoAcaoPrincipal}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        ) : hrefAcaoPrincipal ? (
           <Button asChild className="h-10 min-w-[210px] gap-2">
             <a href={hrefAcaoPrincipal}>
               {textoAcaoPrincipal}

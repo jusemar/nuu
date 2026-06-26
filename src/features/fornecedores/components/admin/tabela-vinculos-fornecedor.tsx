@@ -19,6 +19,7 @@ import type { ProductFormData } from "@/app/admin/products/new/data/product-form
 import {
   type DadosFornecedorParaRascunhoProduto,
   ModalRascunhoProdutoFornecedor,
+  type ValoresPadraoRascunhoProdutoFornecedor,
 } from "./modal-rascunho-produto-fornecedor";
 
 export type StatusVinculoFornecedorVisual =
@@ -71,6 +72,7 @@ export type TabelaVinculosFornecedorProps = {
   acaoVincular?: (formData: FormData) => void | Promise<void>;
   nomeCampoItem?: string;
   nomeCampoProduto?: string;
+  valoresPadraoNovoProduto?: ValoresPadraoRascunhoProdutoFornecedor;
 };
 
 type EstadoItemVinculoFornecedor = {
@@ -434,6 +436,7 @@ export function TabelaVinculosFornecedor({
   acaoVincular,
   nomeCampoItem = "stagingId",
   nomeCampoProduto = "produtoId",
+  valoresPadraoNovoProduto,
 }: TabelaVinculosFornecedorProps) {
   const estadosIniciais = useMemo(
     () =>
@@ -970,6 +973,7 @@ export function TabelaVinculosFornecedor({
             ? (rascunhos[itemEmRascunho.id]?.produto ?? null)
             : null
         }
+        valoresPadrao={valoresPadraoNovoProduto}
         aoAlterarAbertura={(aberto) => {
           if (!aberto) setItemEmRascunho(null);
         }}

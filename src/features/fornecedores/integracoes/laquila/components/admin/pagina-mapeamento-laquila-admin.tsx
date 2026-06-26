@@ -6,8 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
 import {
+  CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
+  CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
+} from "@/features/fornecedores/integracoes/laquila/constants";
+import {
+  type DadosTemporariosMapeamentoFornecedor,
   type OpcaoValorPadraoLoja,
   TabelaMapeamentoCamposFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
@@ -317,6 +321,19 @@ export function PaginaMapeamentoLaquilaAdmin({
 
   const possuiProdutosSelecionados = produtosSelecionados.length > 0;
 
+  function salvarRegrasMapeamentoLaquila(
+    dados: DadosTemporariosMapeamentoFornecedor,
+  ) {
+    window.sessionStorage.setItem(
+      CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
+      JSON.stringify({
+        origem: "laquila",
+        atualizadoEm: new Date().toISOString(),
+        ...dados,
+      }),
+    );
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -372,6 +389,7 @@ export function PaginaMapeamentoLaquilaAdmin({
         textoAcaoPrincipal="Continuar para vinculação"
         tipoBotaoAcaoPrincipal="button"
         hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/vinculos"
+        aoAcionarPrincipal={salvarRegrasMapeamentoLaquila}
         textoRodape="Prévia visual. O mapeamento real será salvo em etapa posterior."
         estadoVazio="Nenhum campo da API disponível para mapear."
       />

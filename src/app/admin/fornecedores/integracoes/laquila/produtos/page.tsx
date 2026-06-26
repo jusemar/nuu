@@ -1,14 +1,17 @@
 import { PreviaProdutosLaquilaMock } from "@/features/fornecedores/integracoes/laquila/components/admin/previa-produtos-laquila-mock";
-import {
-  buscarConfiguracaoLaquilaAdmin,
-  listarProdutosApiStagingLaquilaCatalogo,
-} from "@/features/fornecedores/integracoes/laquila/queries";
+import { listarProdutosRecebidosApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
 
 export default async function Page() {
-  const configuracao = await buscarConfiguracaoLaquilaAdmin();
-  const produtos = await listarProdutosApiStagingLaquilaCatalogo(
-    configuracao?.id,
-  );
+  const resultado = await listarProdutosRecebidosApiLaquila();
 
-  return <PreviaProdutosLaquilaMock produtos={produtos} />;
+  return (
+    <PreviaProdutosLaquilaMock
+      produtos={resultado.produtos}
+      erroRecebidos={resultado.erro}
+      totalRetornadoApi={resultado.totalRetornadoApi}
+      totalAposRecorte={resultado.totalAposRecorte}
+      cacheUsado={resultado.cacheUsado}
+      cacheExpiraEm={resultado.cacheExpiraEm}
+    />
+  );
 }

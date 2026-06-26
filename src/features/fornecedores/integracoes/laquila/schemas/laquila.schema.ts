@@ -50,6 +50,13 @@ export const consultarProdutosLaquilaSchema = z.object({
   itensPorPagina: z.coerce.number().int().min(1).max(100).default(100),
 });
 
+export const salvarProdutosSelecionadosStagingLaquilaSchema = z.object({
+  produtos: z
+    .array(z.unknown())
+    .min(1, "Selecione pelo menos um produto.")
+    .max(500, "Selecione no máximo 500 produtos por vez."),
+});
+
 export type ConfiguracaoLaquilaSchema = z.input<
   typeof configuracaoLaquilaSchema
 >;
@@ -60,6 +67,9 @@ export type TestarConexaoLaquilaSchema = z.infer<
 
 export type ConsultarProdutosLaquilaSchema = z.infer<
   typeof consultarProdutosLaquilaSchema
+>;
+export type SalvarProdutosSelecionadosStagingLaquilaSchema = z.infer<
+  typeof salvarProdutosSelecionadosStagingLaquilaSchema
 >;
 
 export function normalizarFormularioConfiguracaoLaquila(dados: FormData) {

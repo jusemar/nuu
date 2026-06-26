@@ -71,6 +71,19 @@ const ITENS_POR_PAGINA = 10;
 const OPCOES_ITENS_POR_PAGINA = [10, 20, 50, 100] as const;
 const IMAGEM_PLACEHOLDER = "/produto-sem-foto.webp";
 
+function formatarHorarioCurto(valor?: string) {
+  if (!valor) return null;
+
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) return null;
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(data);
+}
+
 type EstadoTriagemProdutoLaquila = "pendente" | "selecionado" | "ignorado";
 type ProdutoComDadosBrutos = {
   dadosBrutosJson?: Record<string, unknown>;
@@ -234,14 +247,48 @@ function obterNcmProduto(produto: ProdutoComDadosBrutos) {
   return obterTextoProduto(produto, ["NCM", "ncm"], produto.ncm ?? "-");
 }
 
-function obterClassificacaoProduto(produto: ProdutoComDadosBrutos) {
-  const partes = [
-    obterTextoProduto(produto, ["ds_ggrupo"]),
-    obterTextoProduto(produto, ["ds_grupo"]),
-    obterTextoProduto(produto, ["ds_sgrupo"]),
-  ].filter((parte) => parte.trim().length > 0);
+function obterPartesClassificacaoProduto(produto: ProdutoComDadosBrutos) {
+  const macroGrupo = obterTextoProduto(produto, ["ds_ggrupo"]);
+  const grupo = obterTextoProduto(produto, ["ds_grupo"]);
+  const subgrupo = obterTextoProduto(produto, ["ds_sgrupo"]);
+  const partes = [macroGrupo, grupo, subgrupo].filter(
+    (parte) => parte.trim().length > 0,
+  );
 
-  return partes.length > 0 ? partes.join(" > ") : "Sem classificação";
+  return {
+    macroGrupo,
+    grupo,
+    subgrupo,
+    textoCompleto: partes.length > 0 ? partes.join(" > ") : "Sem classificação",
+  };
+}
+
+function ClassificacaoProdutoRecebido({
+  produto,
+}: {
+  produto: ProdutoComDadosBrutos;
+}) {
+  const { macroGrupo, grupo, subgrupo, textoCompleto } =
+    obterPartesClassificacaoProduto(produto);
+
+  if (!macroGrupo && !grupo && !subgrupo) {
+    return <span className="text-sm text-slate-400">Sem classificação</span>;
+  }
+
+  return (
+    <div className="max-w-[320px] text-sm leading-snug" title={textoCompleto}>
+      <p className="font-medium text-slate-800">
+        {[macroGrupo, grupo]
+          .filter((parte) => parte.trim().length > 0)
+          .join(" > ")}
+      </p>
+      {subgrupo ? (
+        <p className="mt-1 inline-flex max-w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+          {subgrupo}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function ImagemProdutoRecebido({
@@ -504,7 +551,6 @@ function ProdutoMobileCard({
 }) {
   const codigoFornecedor = obterCodigoFornecedorProduto(produto);
   const ncmProduto = obterNcmProduto(produto);
-  const classificacao = obterClassificacaoProduto(produto);
 
   return (
     <div
@@ -550,9 +596,7 @@ function ProdutoMobileCard({
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <div className="col-span-2">
               <p className="text-slate-500">Classificação</p>
-              <p className="truncate font-medium text-slate-900">
-                {classificacao}
-              </p>
+              <ClassificacaoProdutoRecebido produto={produto} />
             </div>
             <div>
               <p className="text-slate-500">Preço</p>
@@ -801,10 +845,20 @@ function PreviewImagemProduto({
 
 type PreviaProdutosLaquilaMockProps = {
   produtos: ProdutoApiStagingLaquilaCatalogo[];
+  erroRecebidos?: string;
+  totalRetornadoApi?: number;
+  totalAposRecorte?: number;
+  cacheUsado?: boolean;
+  cacheExpiraEm?: string;
 };
 
 export function PreviaProdutosLaquilaMock({
   produtos,
+  erroRecebidos,
+  totalRetornadoApi,
+  totalAposRecorte,
+  cacheUsado,
+  cacheExpiraEm,
 }: PreviaProdutosLaquilaMockProps) {
   const [busca, setBusca] = useState("");
   const [macroGrupo, setMacroGrupo] = useState("todos");
@@ -919,6 +973,7 @@ export function PreviaProdutosLaquilaMock({
     subgrupo !== "todos" ||
     ncm !== "todos" ||
     triagem !== "todos";
+  const cacheExpiraEmFormatado = formatarHorarioCurto(cacheExpiraEm);
 
   function alternarSelecao(id: string) {
     setSelecionados((atuais) =>
@@ -1082,6 +1137,54 @@ export function PreviaProdutosLaquilaMock({
           API Laquila
         </Badge>
       </section>
+
+      {erroRecebidos ? (
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-xs">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{erroRecebidos}</p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full bg-white sm:w-auto"
+              onClick={() => window.location.reload()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <section className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-500 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            API Laquila: {totalRetornadoApi ?? produtos.length} recebido
+            {(totalRetornadoApi ?? produtos.length) === 1 ? "" : "s"} ·{" "}
+            {totalAposRecorte ?? produtos.length} dentro do recorte
+          </span>
+          <span className="flex flex-wrap items-center gap-2">
+            {cacheUsado ? (
+              <Badge
+                variant="outline"
+                className="border-blue-200 bg-blue-50 text-blue-700"
+              >
+                Cache temporário
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700"
+              >
+                Consulta atualizada
+              </Badge>
+            )}
+            {cacheExpiraEmFormatado ? (
+              <span>expira às {cacheExpiraEmFormatado}</span>
+            ) : null}
+          </span>
+        </section>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ResumoCard
@@ -1316,8 +1419,20 @@ export function PreviaProdutosLaquilaMock({
               <Boxes className="h-6 w-6" />
             </div>
             <div>
-              <p className="font-semibold text-slate-950">Nenhum produto</p>
-              <p className="mt-1 text-sm text-slate-500">Ajuste os filtros.</p>
+              <p className="font-semibold text-slate-950">
+                {erroRecebidos
+                  ? "Falha ao carregar produtos"
+                  : filtrosAtivos
+                    ? "Nenhum produto encontrado com os filtros aplicados"
+                    : "Nenhum produto encontrado para o recorte atual"}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {erroRecebidos
+                  ? "Use Tentar novamente para consultar a API Laquila."
+                  : filtrosAtivos
+                    ? "Ajuste os filtros."
+                    : "A API respondeu, mas nenhum item bateu com o recorte configurado."}
+              </p>
             </div>
           </div>
         ) : (
@@ -1356,8 +1471,6 @@ export function PreviaProdutosLaquilaMock({
                     const codigoFornecedor =
                       obterCodigoFornecedorProduto(produto);
                     const ncmProduto = obterNcmProduto(produto);
-                    const classificacao = obterClassificacaoProduto(produto);
-
                     return (
                       <TableRow
                         key={produto.id}
@@ -1402,9 +1515,7 @@ export function PreviaProdutosLaquilaMock({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="max-w-[260px] truncate text-sm text-slate-700">
-                            {classificacao}
-                          </p>
+                          <ClassificacaoProdutoRecebido produto={produto} />
                         </TableCell>
                         <TableCell>
                           <p className="font-medium whitespace-nowrap text-slate-900">

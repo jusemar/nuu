@@ -12,13 +12,17 @@ import {
   MoveRight,
   PackageCheck,
   PackagePlus,
+  RefreshCw,
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { ProdutoLaquilaMock } from "../../types/produto-laquila-mock.types";
-import type { ProdutoApiStagingLaquilaCatalogo } from "../../queries";
+import type {
+  ProdutoApiStagingLaquilaCatalogo,
+  ProgressoRecebidosApiLaquila,
+} from "../../queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,6 +86,27 @@ function formatarHorarioCurto(valor?: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(data);
+}
+
+function formatarTempoConsulta(valor?: string) {
+  if (!valor) return "Dados carregados há poucos minutos";
+
+  const data = new Date(valor);
+
+  if (Number.isNaN(data.getTime())) {
+    return "Dados carregados há poucos minutos";
+  }
+
+  const minutos = Math.max(
+    0,
+    Math.floor((Date.now() - data.getTime()) / 60000),
+  );
+
+  if (minutos < 1) return "Dados carregados agora";
+  if (minutos === 1) return "Dados carregados há 1 min";
+  if (minutos < 60) return `Dados carregados há ${minutos} min`;
+
+  return `Dados carregados às ${formatarHorarioCurto(valor) ?? "--:--"}`;
 }
 
 type EstadoTriagemProdutoLaquila = "pendente" | "selecionado" | "ignorado";
@@ -325,11 +350,13 @@ function ImagemProdutoRecebido({
   );
 }
 
-function formatarDataRecebimento(data: Date) {
+function formatarDataRecebimento(data: Date | string) {
+  const dataRecebimento = data instanceof Date ? data : new Date(data);
+
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(data);
+  }).format(dataRecebimento);
 }
 
 function obterValorPayload(
@@ -846,20 +873,185 @@ function PreviewImagemProduto({
 type PreviaProdutosLaquilaMockProps = {
   produtos: ProdutoApiStagingLaquilaCatalogo[];
   erroRecebidos?: string;
+  tipoErroRecebidos?: "configuracao" | "api";
   totalRetornadoApi?: number;
   totalAposRecorte?: number;
   cacheUsado?: boolean;
   cacheExpiraEm?: string;
+  consultadoEm?: string;
+  origemDados?: "api" | "cache" | "stale";
+  avisoRecebidos?: string;
+  atualizacaoForcada?: boolean;
 };
 
+type DadosRecebidosLaquila = {
+  produtos: ProdutoApiStagingLaquilaCatalogo[];
+  erroRecebidos?: string;
+  erro?: string;
+  tipoErroRecebidos?: "configuracao" | "api";
+  tipoErro?: "configuracao" | "api";
+  totalRetornadoApi?: number;
+  totalAposRecorte?: number;
+  cacheUsado?: boolean;
+  cacheExpiraEm?: string;
+  consultadoEm?: string;
+  origemDados?: "api" | "cache" | "stale";
+  avisoRecebidos?: string;
+};
+
+type EstadoAtualizacaoManual = {
+  carregando: boolean;
+  mensagem?: string;
+  tipo?: "info" | "sucesso" | "erro";
+};
+
+function obterTituloEtapaProgresso(
+  etapa: ProgressoRecebidosApiLaquila["etapaAtual"],
+) {
+  const titulos: Record<ProgressoRecebidosApiLaquila["etapaAtual"], string> = {
+    preparando: "Preparando consulta",
+    catalogo: "Catálogo de produtos",
+    preco_estoque: "Preço e estoque",
+    recorte: "Processando recorte",
+    concluido: "Concluído",
+    erro: "Atenção",
+  };
+
+  return titulos[etapa];
+}
+
+function obterPercentualProgresso(
+  progresso: ProgressoRecebidosApiLaquila | null,
+) {
+  if (!progresso || progresso.percentual === null) return null;
+
+  return Math.min(100, Math.max(0, Math.round(progresso.percentual)));
+}
+
+function obterOrigemProgressoInicial(
+  origem: DadosRecebidosLaquila["origemDados"],
+): ProgressoRecebidosApiLaquila["origemDados"] {
+  if (origem === "cache") return "cache_fresco";
+
+  return origem;
+}
+
+function BarraProgressoLaquila({
+  progresso,
+  mensagem,
+}: {
+  progresso: ProgressoRecebidosApiLaquila | null;
+  mensagem: string;
+}) {
+  const percentual = obterPercentualProgresso(progresso);
+  const etapa = progresso
+    ? obterTituloEtapaProgresso(progresso.etapaAtual)
+    : "Preparando consulta";
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-medium text-slate-950">{mensagem}</p>
+          <p className="text-xs text-slate-500">Etapa atual: {etapa}</p>
+        </div>
+        <span className="text-sm font-semibold text-slate-900">
+          {percentual === null ? "Processando" : `${percentual}%`}
+        </span>
+      </div>
+
+      <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+        <div
+          className={`h-full rounded-full bg-blue-600 transition-all duration-500 ${
+            percentual === null ? "w-1/3 animate-pulse" : ""
+          }`}
+          style={percentual === null ? undefined : { width: `${percentual}%` }}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+        {progresso?.paginaAtual !== undefined ? (
+          <span>
+            Página {progresso.paginaAtual}
+            {progresso.totalPaginasEstimado
+              ? ` de até ${progresso.totalPaginasEstimado}`
+              : ""}
+          </span>
+        ) : null}
+        <span>Produtos encontrados: {progresso?.totalBrutoCarregado ?? 0}</span>
+        <span>No recorte: {progresso?.totalAposRecorte ?? 0}</span>
+        <span>
+          Com preço/estoque: {progresso?.totalEnriquecidoComPrecoEstoque ?? 0}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function normalizarDadosRecebidosLaquila(
+  dados: DadosRecebidosLaquila,
+): DadosRecebidosLaquila {
+  return {
+    ...dados,
+    produtos: dados.produtos.map((produto) => ({
+      ...produto,
+      recebidoEm: produto.recebidoEm
+        ? new Date(produto.recebidoEm)
+        : new Date(),
+    })),
+    erroRecebidos: dados.erroRecebidos ?? dados.erro,
+    tipoErroRecebidos: dados.tipoErroRecebidos ?? dados.tipoErro,
+  };
+}
+
+function obterClassesAvisoAtualizacaoManual(
+  tipo: EstadoAtualizacaoManual["tipo"],
+) {
+  if (tipo === "sucesso") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+
+  if (tipo === "erro") {
+    return "border-amber-200 bg-amber-50 text-amber-900";
+  }
+
+  return "border-blue-200 bg-blue-50 text-blue-800";
+}
+
 export function PreviaProdutosLaquilaMock({
-  produtos,
+  produtos: produtosIniciais,
   erroRecebidos,
+  tipoErroRecebidos,
   totalRetornadoApi,
   totalAposRecorte,
   cacheUsado,
   cacheExpiraEm,
+  consultadoEm,
+  origemDados,
+  avisoRecebidos,
+  atualizacaoForcada,
 }: PreviaProdutosLaquilaMockProps) {
+  const [dadosRecebidos, setDadosRecebidos] = useState<DadosRecebidosLaquila>(
+    () =>
+      normalizarDadosRecebidosLaquila({
+        produtos: produtosIniciais,
+        erroRecebidos,
+        tipoErroRecebidos,
+        totalRetornadoApi,
+        totalAposRecorte,
+        cacheUsado,
+        cacheExpiraEm,
+        consultadoEm,
+        origemDados,
+        avisoRecebidos,
+      }),
+  );
+  const [atualizacaoManual, setAtualizacaoManual] =
+    useState<EstadoAtualizacaoManual>({
+      carregando: false,
+    });
+  const [progressoAtualizacao, setProgressoAtualizacao] =
+    useState<ProgressoRecebidosApiLaquila | null>(null);
   const [busca, setBusca] = useState("");
   const [macroGrupo, setMacroGrupo] = useState("todos");
   const [grupo, setGrupo] = useState("todos");
@@ -877,6 +1069,7 @@ export function PreviaProdutosLaquilaMock({
   );
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina, setItensPorPagina] = useState(ITENS_POR_PAGINA);
+  const produtos = dadosRecebidos.produtos;
 
   const opcoesMacroGrupo = useMemo(
     () =>
@@ -973,7 +1166,99 @@ export function PreviaProdutosLaquilaMock({
     subgrupo !== "todos" ||
     ncm !== "todos" ||
     triagem !== "todos";
-  const cacheExpiraEmFormatado = formatarHorarioCurto(cacheExpiraEm);
+  const cacheExpiraEmFormatado = formatarHorarioCurto(
+    dadosRecebidos.cacheExpiraEm,
+  );
+  const textoCache = formatarTempoConsulta(dadosRecebidos.consultadoEm);
+  const mensagemErroRecebidos =
+    dadosRecebidos.avisoRecebidos ??
+    (dadosRecebidos.tipoErroRecebidos === "configuracao"
+      ? "Não foi possível carregar a configuração da Laquila."
+      : dadosRecebidos.tipoErroRecebidos === "api"
+        ? "Falha ao consultar a API Laquila."
+        : dadosRecebidos.erroRecebidos);
+
+  useEffect(() => {
+    if (!atualizacaoForcada) return;
+
+    const url = new URL(window.location.href);
+
+    url.searchParams.delete("atualizar");
+    url.searchParams.delete("t");
+    window.history.replaceState(null, "", url.toString());
+  }, [atualizacaoForcada]);
+
+  useEffect(() => {
+    setDadosRecebidos(
+      normalizarDadosRecebidosLaquila({
+        produtos: produtosIniciais,
+        erroRecebidos,
+        tipoErroRecebidos,
+        totalRetornadoApi,
+        totalAposRecorte,
+        cacheUsado,
+        cacheExpiraEm,
+        consultadoEm,
+        origemDados,
+        avisoRecebidos,
+      }),
+    );
+  }, [
+    produtosIniciais,
+    erroRecebidos,
+    tipoErroRecebidos,
+    totalRetornadoApi,
+    totalAposRecorte,
+    cacheUsado,
+    cacheExpiraEm,
+    consultadoEm,
+    origemDados,
+    avisoRecebidos,
+  ]);
+
+  useEffect(() => {
+    if (!atualizacaoManual.carregando) return;
+
+    let ativo = true;
+
+    async function consultarProgresso() {
+      try {
+        const resposta = await fetch(
+          "/admin/fornecedores/integracoes/laquila/produtos/progresso",
+          { cache: "no-store" },
+        );
+
+        if (!resposta.ok) return;
+
+        const progresso =
+          (await resposta.json()) as ProgressoRecebidosApiLaquila;
+
+        if (ativo) {
+          setProgressoAtualizacao(progresso);
+        }
+      } catch {
+        // O progresso é auxiliar: falha aqui não deve interromper a atualização.
+      }
+    }
+
+    consultarProgresso();
+    const intervalo = window.setInterval(consultarProgresso, 1200);
+
+    return () => {
+      ativo = false;
+      window.clearInterval(intervalo);
+    };
+  }, [atualizacaoManual.carregando]);
+
+  useEffect(() => {
+    if (atualizacaoManual.carregando || !atualizacaoManual.mensagem) return;
+
+    const timeout = window.setTimeout(() => {
+      setProgressoAtualizacao(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [atualizacaoManual.carregando, atualizacaoManual.mensagem]);
 
   function alternarSelecao(id: string) {
     setSelecionados((atuais) =>
@@ -1106,6 +1391,85 @@ export function PreviaProdutosLaquilaMock({
     setPaginaAtual(1);
   }
 
+  async function atualizarAgora() {
+    if (atualizacaoManual.carregando) return;
+
+    const controlador = new AbortController();
+    const timeout = window.setTimeout(() => {
+      controlador.abort();
+    }, 95_000);
+
+    setAtualizacaoManual({
+      carregando: true,
+      tipo: "info",
+      mensagem: "Atualizando catálogo da Laquila em segundo plano...",
+    });
+    setProgressoAtualizacao({
+      emAndamento: true,
+      etapaAtual: "preparando",
+      mensagem: "Preparando consulta da Laquila.",
+      percentual: null,
+      totalBrutoCarregado: produtos.length,
+      totalAposRecorte: dadosRecebidos.totalAposRecorte ?? produtos.length,
+      totalEnriquecidoComPrecoEstoque: 0,
+      origemDados:
+        obterOrigemProgressoInicial(dadosRecebidos.origemDados) ??
+        "cache_fresco",
+      atualizadoEm: new Date().toISOString(),
+    });
+
+    try {
+      const resposta = await fetch(
+        "/admin/fornecedores/integracoes/laquila/produtos/atualizar",
+        {
+          method: "POST",
+          cache: "no-store",
+          signal: controlador.signal,
+        },
+      );
+
+      if (!resposta.ok) {
+        throw new Error("Não foi possível atualizar agora.");
+      }
+
+      const resultado = normalizarDadosRecebidosLaquila(
+        (await resposta.json()) as DadosRecebidosLaquila,
+      );
+      const devePreservarUltimoCatalogo =
+        resultado.avisoRecebidos || resultado.origemDados === "stale";
+
+      if (devePreservarUltimoCatalogo) {
+        setAtualizacaoManual({
+          carregando: false,
+          tipo: "erro",
+          mensagem:
+            resultado.avisoRecebidos ??
+            "Não foi possível atualizar agora. Mantivemos o último catálogo carregado.",
+        });
+        return;
+      }
+
+      setDadosRecebidos(resultado);
+      setAtualizacaoManual({
+        carregando: false,
+        tipo: "sucesso",
+        mensagem: "Catálogo atualizado agora.",
+      });
+    } catch (erro) {
+      const demorouDemais = erro instanceof Error && erro.name === "AbortError";
+
+      setAtualizacaoManual({
+        carregando: false,
+        tipo: "erro",
+        mensagem: demorouDemais
+          ? "A atualização demorou mais que o esperado. Mantivemos o último catálogo carregado."
+          : "Não foi possível atualizar agora. Mantivemos o último catálogo carregado.",
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
   function irParaPagina(pagina: number) {
     setPaginaAtual(Math.min(Math.max(pagina, 1), totalPaginas));
   }
@@ -1138,33 +1502,52 @@ export function PreviaProdutosLaquilaMock({
         </Badge>
       </section>
 
-      {erroRecebidos ? (
+      {dadosRecebidos.erroRecebidos || dadosRecebidos.avisoRecebidos ? (
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-xs">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>{erroRecebidos}</p>
+              <p>{mensagemErroRecebidos}</p>
             </div>
             <Button
               type="button"
               size="sm"
               variant="outline"
               className="w-full bg-white sm:w-auto"
-              onClick={() => window.location.reload()}
+              onClick={atualizarAgora}
+              disabled={atualizacaoManual.carregando}
             >
-              Tentar novamente
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${
+                  atualizacaoManual.carregando ? "animate-spin" : ""
+                }`}
+              />
+              {atualizacaoManual.carregando
+                ? "Atualizando..."
+                : "Tentar novamente"}
             </Button>
           </div>
         </section>
       ) : (
         <section className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-500 shadow-xs sm:flex-row sm:items-center sm:justify-between">
           <span>
-            API Laquila: {totalRetornadoApi ?? produtos.length} recebido
-            {(totalRetornadoApi ?? produtos.length) === 1 ? "" : "s"} ·{" "}
-            {totalAposRecorte ?? produtos.length} dentro do recorte
+            API Laquila: {dadosRecebidos.totalRetornadoApi ?? produtos.length}{" "}
+            recebido
+            {(dadosRecebidos.totalRetornadoApi ?? produtos.length) === 1
+              ? ""
+              : "s"}{" "}
+            · {dadosRecebidos.totalAposRecorte ?? produtos.length} dentro do
+            recorte
           </span>
           <span className="flex flex-wrap items-center gap-2">
-            {cacheUsado ? (
+            {dadosRecebidos.origemDados === "stale" ? (
+              <Badge
+                variant="outline"
+                className="border-amber-200 bg-amber-50 text-amber-700"
+              >
+                Último resultado
+              </Badge>
+            ) : dadosRecebidos.cacheUsado ? (
               <Badge
                 variant="outline"
                 className="border-blue-200 bg-blue-50 text-blue-700"
@@ -1179,12 +1562,54 @@ export function PreviaProdutosLaquilaMock({
                 Consulta atualizada
               </Badge>
             )}
+            <span>
+              {dadosRecebidos.cacheUsado
+                ? textoCache
+                : "Dados atualizados agora"}
+            </span>
             {cacheExpiraEmFormatado ? (
               <span>expira às {cacheExpiraEmFormatado}</span>
             ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={atualizarAgora}
+              disabled={atualizacaoManual.carregando}
+            >
+              <RefreshCw
+                className={`mr-1.5 h-3.5 w-3.5 ${
+                  atualizacaoManual.carregando ? "animate-spin" : ""
+                }`}
+              />
+              {atualizacaoManual.carregando
+                ? "Atualizando..."
+                : "Atualizar agora"}
+            </Button>
           </span>
         </section>
       )}
+
+      {atualizacaoManual.mensagem ? (
+        <section
+          className={`rounded-lg border p-3 text-sm shadow-xs ${obterClassesAvisoAtualizacaoManual(
+            atualizacaoManual.tipo,
+          )}`}
+        >
+          {atualizacaoManual.carregando ? (
+            <BarraProgressoLaquila
+              progresso={progressoAtualizacao}
+              mensagem={atualizacaoManual.mensagem}
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 shrink-0" />
+              <p>{atualizacaoManual.mensagem}</p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ResumoCard
@@ -1420,14 +1845,14 @@ export function PreviaProdutosLaquilaMock({
             </div>
             <div>
               <p className="font-semibold text-slate-950">
-                {erroRecebidos
+                {dadosRecebidos.erroRecebidos
                   ? "Falha ao carregar produtos"
                   : filtrosAtivos
                     ? "Nenhum produto encontrado com os filtros aplicados"
                     : "Nenhum produto encontrado para o recorte atual"}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                {erroRecebidos
+                {dadosRecebidos.erroRecebidos
                   ? "Use Tentar novamente para consultar a API Laquila."
                   : filtrosAtivos
                     ? "Ajuste os filtros."

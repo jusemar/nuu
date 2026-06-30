@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  CheckCircle2,
-  CircleAlert,
-  CircleDashed,
-} from "lucide-react";
+import { ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,8 +81,6 @@ export const CAMPOS_IMPORTANTES_MAPEAMENTO_FORNECEDOR = [
   { valor: "estoque_fornecedor", label: "Estoque" },
   { valor: "prazo_entrega", label: "Prazo de entrega" },
   { valor: "descricao", label: "Descrição" },
-  { valor: "grupo_origem", label: "Grupo de origem do fornecedor" },
-  { valor: "subgrupo_origem", label: "Subgrupo de origem do fornecedor" },
 ] satisfies Array<{ valor: string; label: string; impacto?: string }>;
 
 export type TabelaMapeamentoCamposFornecedorProps = {
@@ -132,33 +125,11 @@ function obterTextoConfianca(confianca: number) {
   return "Baixa";
 }
 
-function obterIconeSituacao(situacao?: string | null) {
-  if (situacao === "pendente") return CircleDashed;
-  if (situacao === "conflito") return CircleAlert;
-  return CheckCircle2;
-}
-
-function formatarSituacao(situacao?: string | null) {
-  if (!situacao) return "Pendente";
-
-  const rotulos: Record<string, string> = {
-    automatico: "Automático",
-    confirmado: "Confirmado",
-    detectado_automaticamente: "Detectado",
-    vindo_do_mapeamento_salvo: "Padrão salvo",
-    pendente: "Pendente",
-    conflito: "Conflito",
-    obrigatorio_sem_origem: "Obrigatório sem origem",
-  };
-
-  return rotulos[situacao] ?? situacao.replace(/_/g, " ");
-}
-
 function obterLabelDestino(
   valor: string | null | undefined,
   opcoesDestino: OpcaoMapeamentoFornecedor[],
 ) {
-  if (!valor) return "Não mapear";
+  if (!valor) return "Ignorar";
 
   return opcoesDestino.find((opcao) => opcao.valor === valor)?.label ?? valor;
 }
@@ -254,7 +225,7 @@ function SelectDestino({
       onChange={(evento) => aoAlterar(evento.target.value)}
       className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 shadow-xs transition-colors outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
     >
-      <option value="">Não mapear</option>
+      <option value="">Ignorar</option>
       {opcoesDestino.map((opcao) => (
         <option key={opcao.valor} value={opcao.valor}>
           {opcao.label}
@@ -377,37 +348,74 @@ function CampoValorPadraoVisual({
   valor: string;
   aoAlterar: (valor: string) => void;
 }) {
+  const botaoAtualizarOpcoes = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-8 justify-start gap-1.5 px-2 text-xs text-slate-500 hover:text-slate-900 sm:col-span-2"
+      onClick={() => window.location.reload()}
+    >
+      <RefreshCw className="h-3.5 w-3.5" />
+      Atualizar categorias e marcas
+    </Button>
+  );
+
   if (campo.valor === "categoria_fornecedor") {
     return (
-      <select
-        value={valor}
-        onChange={(evento) => aoAlterar(evento.target.value)}
-        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
-      >
-        <option value="">Selecionar categoria</option>
-        {categoriasLoja.map((categoria) => (
-          <option key={categoria.id} value={categoria.id}>
-            {categoria.nome}
-          </option>
-        ))}
-      </select>
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <select
+          value={valor}
+          onChange={(evento) => aoAlterar(evento.target.value)}
+          className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
+        >
+          <option value="">Selecionar categoria</option>
+          {categoriasLoja.map((categoria) => (
+            <option key={categoria.id} value={categoria.id}>
+              {categoria.nome}
+            </option>
+          ))}
+        </select>
+        <a
+          href="/admin/categories"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium whitespace-nowrap text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+        >
+          Gerenciar categorias
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+        {botaoAtualizarOpcoes}
+      </div>
     );
   }
 
   if (campo.valor === "marca_fornecedor") {
     return (
-      <select
-        value={valor}
-        onChange={(evento) => aoAlterar(evento.target.value)}
-        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
-      >
-        <option value="">Selecionar marca</option>
-        {marcasLoja.map((marca) => (
-          <option key={marca.id} value={marca.id}>
-            {marca.nome}
-          </option>
-        ))}
-      </select>
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <select
+          value={valor}
+          onChange={(evento) => aoAlterar(evento.target.value)}
+          className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
+        >
+          <option value="">Selecionar marca</option>
+          {marcasLoja.map((marca) => (
+            <option key={marca.id} value={marca.id}>
+              {marca.nome}
+            </option>
+          ))}
+        </select>
+        <a
+          href="/admin/marcas"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium whitespace-nowrap text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+        >
+          Gerenciar marcas
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+        {botaoAtualizarOpcoes}
+      </div>
     );
   }
 
@@ -702,8 +710,6 @@ function LinhaMobile({
   aoAlterarDestino: (valor: string) => void;
   obrigatorio: boolean;
 }) {
-  const IconeSituacao = obterIconeSituacao(linha.situacao);
-
   return (
     <div
       className={`rounded-xl border p-3 shadow-xs ${
@@ -720,19 +726,7 @@ function LinhaMobile({
           <p className="mt-1 truncate text-sm font-semibold text-slate-950">
             {linha.nomeOrigem}
           </p>
-          {linha.descricaoOrigem ? (
-            <p className="mt-0.5 text-xs text-slate-500">
-              {linha.descricaoOrigem}
-            </p>
-          ) : null}
         </div>
-        <Badge
-          variant="outline"
-          className="shrink-0 gap-1 rounded-md border-slate-200 bg-slate-50 text-slate-700"
-        >
-          <IconeSituacao className="h-3.5 w-3.5" />
-          {formatarSituacao(linha.situacao)}
-        </Badge>
       </div>
       <div className="mt-3 rounded-lg bg-slate-50 p-2">
         <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
@@ -1059,13 +1053,12 @@ export function TabelaMapeamentoCamposFornecedor({
                     Obrigatório
                   </th>
                   <th className="px-4 py-3 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
-                    Confiança / Status
+                    Confiança
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {linhas.map((linha) => {
-                  const IconeSituacao = obterIconeSituacao(linha.situacao);
                   const valorDestino = linha.obrigatorioSemOrigem
                     ? (linha.campoDestino ?? "")
                     : (destinosSelecionados[linha.id] ?? "");
@@ -1090,23 +1083,6 @@ export function TabelaMapeamentoCamposFornecedor({
                           >
                             {linha.nomeOrigem}
                           </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            {linha.descricaoOrigem ? (
-                              <span
-                                className="max-w-full truncate text-xs text-slate-500"
-                                title={linha.descricaoOrigem}
-                              >
-                                {linha.descricaoOrigem}
-                              </span>
-                            ) : null}
-                            <Badge
-                              variant="outline"
-                              className="gap-1 rounded-md border-slate-200 bg-white text-[11px] text-slate-600"
-                            >
-                              <IconeSituacao className="h-3.5 w-3.5" />
-                              {formatarSituacao(linha.situacao)}
-                            </Badge>
-                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 align-middle text-slate-700">

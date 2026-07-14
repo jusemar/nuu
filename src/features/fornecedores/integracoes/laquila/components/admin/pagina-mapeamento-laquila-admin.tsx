@@ -7,12 +7,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  CHAVE_MAPEAMENTO_PADRAO_LAQUILA,
   CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
   CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
 } from "@/features/fornecedores/integracoes/laquila/constants";
 import {
   type DadosTemporariosMapeamentoFornecedor,
+  type OpcoesAcionamentoMapeamentoFornecedor,
   type OpcaoValorPadraoLoja,
+  type RegistroCombinacaoCategoriaFornecedor,
   TabelaMapeamentoCamposFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
 
@@ -32,6 +35,12 @@ const opcoesDestinoLaquila = [
   { valor: "largura", label: "Largura" },
   { valor: "comprimento", label: "Comprimento" },
 ];
+
+const camposCombinacaoCategoriaLaquila = [
+  { valor: "ds_ggrupo", label: "ds_ggrupo" },
+  { valor: "ds_grupo", label: "ds_grupo" },
+  { valor: "ds_sgrupo", label: "ds_sgrupo" },
+] as const;
 
 const linhasMapeamentoLaquila = [
   {
@@ -80,7 +89,7 @@ const linhasMapeamentoLaquila = [
     id: "ds_sgrupo",
     nomeOrigem: "ds_sgrupo",
     amostra: "Amortecedores",
-    campoDestino: "categoria_fornecedor",
+    campoDestino: "",
     confianca: 84,
   },
   {
@@ -247,8 +256,26 @@ export function PaginaMapeamentoLaquilaAdmin({
   const [produtosSelecionados, setProdutosSelecionados] = useState<
     ProdutoSelecionadoMapeamentoLaquila[]
   >([]);
+  const [mapeamentoPadrao, setMapeamentoPadrao] =
+    useState<DadosTemporariosMapeamentoFornecedor | null>(null);
 
   useEffect(() => {
+    const mapeamentoPadraoSalvo = window.localStorage.getItem(
+      CHAVE_MAPEAMENTO_PADRAO_LAQUILA,
+    );
+
+    if (mapeamentoPadraoSalvo) {
+      try {
+        const dados: unknown = JSON.parse(mapeamentoPadraoSalvo);
+
+        if (ehRegistro(dados)) {
+          setMapeamentoPadrao(dados as DadosTemporariosMapeamentoFornecedor);
+        }
+      } catch {
+        setMapeamentoPadrao(null);
+      }
+    }
+
     const selecaoSalva = window.sessionStorage.getItem(
       CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
     );
@@ -288,20 +315,41 @@ export function PaginaMapeamentoLaquilaAdmin({
       ),
     }));
   }, [produtosSelecionados]);
+  const registrosCombinacaoCategoria = useMemo<
+    RegistroCombinacaoCategoriaFornecedor[]
+  >(
+    () =>
+      produtosSelecionados.map((produto) => ({
+        ds_ggrupo: produto.ds_ggrupo,
+        ds_grupo: produto.ds_grupo,
+        ds_sgrupo: produto.ds_sgrupo,
+      })),
+    [produtosSelecionados],
+  );
 
   const possuiProdutosSelecionados = produtosSelecionados.length > 0;
 
   function salvarRegrasMapeamentoLaquila(
     dados: DadosTemporariosMapeamentoFornecedor,
+    opcoes: OpcoesAcionamentoMapeamentoFornecedor,
   ) {
+    const dadosComMetadados = {
+      origem: "laquila",
+      atualizadoEm: new Date().toISOString(),
+      ...dados,
+    };
+
     window.sessionStorage.setItem(
       CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
-      JSON.stringify({
-        origem: "laquila",
-        atualizadoEm: new Date().toISOString(),
-        ...dados,
-      }),
+      JSON.stringify(dadosComMetadados),
     );
+
+    if (opcoes.salvarComoPadrao) {
+      window.localStorage.setItem(
+        CHAVE_MAPEAMENTO_PADRAO_LAQUILA,
+        JSON.stringify(dadosComMetadados),
+      );
+    }
   }
 
   return (
@@ -356,6 +404,14 @@ export function PaginaMapeamentoLaquilaAdmin({
         opcoesDestino={opcoesDestinoLaquila}
         categoriasLoja={categoriasLoja}
         marcasLoja={marcasLoja}
+        configuracaoInicial={mapeamentoPadrao}
+        mostrarConfiguracaoComercial
+        camposCombinacaoCategoria={[...camposCombinacaoCategoriaLaquila]}
+        camposCombinacaoCategoriaPadrao={{
+          campoApi1: "ds_ggrupo",
+          campoApi2: "ds_grupo",
+        }}
+        registrosCombinacaoCategoria={registrosCombinacaoCategoria}
         textoAcaoPrincipal="Continuar para vinculação"
         tipoBotaoAcaoPrincipal="button"
         hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/vinculos"

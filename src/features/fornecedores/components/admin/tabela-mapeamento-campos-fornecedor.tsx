@@ -5,6 +5,11 @@ import { ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type {
+  ConfiguracaoComercialMapeamentoFornecedor,
+  EstrategiaPrazoEntregaFornecedor,
+  ModalidadeComercialFornecedor,
+} from "@/features/fornecedores/types/mapeamento-fornecedor.types";
 
 export type OpcaoMapeamentoFornecedor = {
   valor: string;
@@ -37,6 +42,9 @@ export type OpcaoValorPadraoLoja = {
   nome: string;
 };
 
+export const VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA =
+  "__combinar_campos_categoria";
+
 export type EstrategiaRegraMapeamentoFornecedor =
   | "valor_padrao_todos"
   | "conciliacao"
@@ -53,9 +61,34 @@ export type RegraMapeamentoFornecedor = {
   valorPadraoTexto?: string;
 };
 
+export type RegistroCombinacaoCategoriaFornecedor = Record<
+  string,
+  string | number | null | undefined
+>;
+
+export type RegraCategoriaCombinacaoFornecedor = {
+  estrategia: "combinacao_campos_api";
+  camposApi: string[];
+  campoApi1: string;
+  campoApi2: string;
+  traducoes: Array<{
+    chave: string;
+    valores: string[];
+    categoriaId?: string;
+    categoriaLabel?: string;
+    quantidade: number;
+  }>;
+};
+
 export type DadosTemporariosMapeamentoFornecedor = {
   destinosSelecionados: Record<string, string>;
   regras: RegraMapeamentoFornecedor[];
+  categoriaCombinacao?: RegraCategoriaCombinacaoFornecedor;
+  configuracaoComercial?: ConfiguracaoComercialMapeamentoFornecedor;
+};
+
+export type OpcoesAcionamentoMapeamentoFornecedor = {
+  salvarComoPadrao: boolean;
 };
 
 export const CAMPOS_OBRIGATORIOS_MAPEAMENTO_FORNECEDOR = [
@@ -95,14 +128,25 @@ export type TabelaMapeamentoCamposFornecedorProps = {
   camposImportantes?: CampoObrigatorioMapeamentoFornecedor[];
   categoriasLoja?: OpcaoValorPadraoLoja[];
   marcasLoja?: OpcaoValorPadraoLoja[];
+  camposCombinacaoCategoria?: OpcaoMapeamentoFornecedor[];
+  registrosCombinacaoCategoria?: RegistroCombinacaoCategoriaFornecedor[];
+  camposCombinacaoCategoriaPadrao?: {
+    campoApi1: string;
+    campoApi2: string;
+  };
   action?: (formData: FormData) => void | Promise<void>;
   camposOcultos?: Array<{ nome: string; valor: string }>;
   textoCheckbox?: string;
   mostrarCheckbox?: boolean;
+  configuracaoInicial?: DadosTemporariosMapeamentoFornecedor | null;
+  mostrarConfiguracaoComercial?: boolean;
   textoAcaoPrincipal: string;
   tipoBotaoAcaoPrincipal?: "submit" | "button";
   hrefAcaoPrincipal?: string;
-  aoAcionarPrincipal?: (dados: DadosTemporariosMapeamentoFornecedor) => void;
+  aoAcionarPrincipal?: (
+    dados: DadosTemporariosMapeamentoFornecedor,
+    opcoes: OpcoesAcionamentoMapeamentoFornecedor,
+  ) => void;
   textoRodape?: string;
   estadoVazio?: string;
 };
@@ -213,11 +257,13 @@ function SelectDestino({
   opcoesDestino,
   valor,
   aoAlterar,
+  permitirCombinarCampos = false,
 }: {
   linha: LinhaMapeamentoFornecedor;
   opcoesDestino: OpcaoMapeamentoFornecedor[];
   valor: string;
   aoAlterar: (valor: string) => void;
+  permitirCombinarCampos?: boolean;
 }) {
   return (
     <select
@@ -226,50 +272,17 @@ function SelectDestino({
       className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 shadow-xs transition-colors outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
     >
       <option value="">Ignorar</option>
+      {permitirCombinarCampos ? (
+        <option value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}>
+          Combinar campos
+        </option>
+      ) : null}
       {opcoesDestino.map((opcao) => (
         <option key={opcao.valor} value={opcao.valor}>
           {opcao.label}
         </option>
       ))}
     </select>
-  );
-}
-
-function ConfiguracaoPrecoVisual() {
-  return (
-    <div className="mt-2 grid gap-2 rounded-lg border border-blue-100 bg-blue-50/60 p-2 text-xs text-slate-700 sm:grid-cols-3">
-      <label className="grid gap-1">
-        <span className="font-medium text-slate-600">Modalidade</span>
-        <select className="h-8 rounded-md border border-blue-100 bg-white px-2 text-xs outline-none focus:border-blue-300">
-          <option>Dropshipping</option>
-          <option>Estoque próprio</option>
-          <option>Pré-venda</option>
-          <option>Sob encomenda</option>
-        </select>
-      </label>
-      <label className="grid gap-1">
-        <span className="font-medium text-slate-600">Uso do preço</span>
-        <select className="h-8 rounded-md border border-blue-100 bg-white px-2 text-xs outline-none focus:border-blue-300">
-          <option>Preço de venda</option>
-          <option>Custo fornecedor</option>
-        </select>
-      </label>
-      <label className="flex items-center gap-2 rounded-md bg-white px-2 py-1.5">
-        <input
-          type="checkbox"
-          defaultChecked
-          className="h-3.5 w-3.5 rounded border-blue-200 accent-blue-700"
-        />
-        <span>Card principal</span>
-      </label>
-      <label className="grid gap-1 sm:col-span-3">
-        <span className="font-medium text-slate-600">Prazo da modalidade</span>
-        <input
-          className="h-8 rounded-md border border-blue-100 bg-white px-2 text-xs outline-none focus:border-blue-300"
-          placeholder="Ex: 3 a 5 dias úteis"
-        />
-      </label>
-    </div>
   );
 }
 
@@ -333,6 +346,103 @@ function obterEstrategiaInicial(
   }
 
   return tipo === "obrigatorio" ? "valor_padrao" : "conciliacao";
+}
+
+const OPCOES_MODALIDADE_COMERCIAL: Array<{
+  valor: ModalidadeComercialFornecedor;
+  label: string;
+}> = [
+  { valor: "stock", label: "Estoque próprio" },
+  { valor: "pre_sale", label: "Pré-venda" },
+  { valor: "dropshipping", label: "Dropshipping" },
+  { valor: "order_basis", label: "Sob encomenda" },
+];
+
+function SecaoModalidadeComercial({
+  modalidade,
+  estrategiaPrazo,
+  valorPrazo,
+  aoAlterarModalidade,
+  aoAlterarEstrategiaPrazo,
+  aoAlterarValorPrazo,
+}: {
+  modalidade: ModalidadeComercialFornecedor;
+  estrategiaPrazo: EstrategiaResolucaoVisual;
+  valorPrazo: string;
+  aoAlterarModalidade: (modalidade: ModalidadeComercialFornecedor) => void;
+  aoAlterarEstrategiaPrazo: (estrategia: EstrategiaResolucaoVisual) => void;
+  aoAlterarValorPrazo: (valor: string) => void;
+}) {
+  return (
+    <section className="border-t border-blue-100 bg-blue-50/25 px-4 py-4 sm:px-5">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-slate-950">
+          Modalidade comercial
+        </h3>
+        <p className="mt-1 max-w-3xl text-sm text-slate-600">
+          Defina como preço e prazo serão preparados nos rascunhos deste
+          fornecedor.
+        </p>
+      </div>
+
+      <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs lg:grid-cols-[1fr_1.2fr_1.4fr]">
+        <label className="grid gap-1.5">
+          <span className="text-xs font-semibold text-slate-600">
+            Modalidade padrão dos produtos
+          </span>
+          <select
+            value={modalidade}
+            onChange={(evento) =>
+              aoAlterarModalidade(
+                evento.target.value as ModalidadeComercialFornecedor,
+              )
+            }
+            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+          >
+            {OPCOES_MODALIDADE_COMERCIAL.map((opcao) => (
+              <option key={opcao.valor} value={opcao.valor}>
+                {opcao.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-slate-600">
+            Estratégia do prazo de entrega
+          </p>
+          <SelectEstrategiaVisual
+            tipo="importante"
+            valor={estrategiaPrazo}
+            aoAlterar={aoAlterarEstrategiaPrazo}
+          />
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-slate-600">
+            Prazo / Observação
+          </p>
+          {estrategiaPrazo === "valor_padrao" ? (
+            <input
+              value={valorPrazo}
+              onChange={(evento) => aoAlterarValorPrazo(evento.target.value)}
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              placeholder="Ex: 3 a 5 dias úteis"
+            />
+          ) : (
+            <ValorOuObservacaoVisual
+              campo={{ valor: "prazo_entrega", label: "Prazo de entrega" }}
+              estrategia={estrategiaPrazo}
+              categoriasLoja={[]}
+              marcasLoja={[]}
+              valorPadrao=""
+              aoAlterarValorPadrao={() => undefined}
+            />
+          )}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function CampoValorPadraoVisual({
@@ -467,18 +577,15 @@ function CampoValorPadraoVisual({
 
   if (campo.valor === "preco_fornecedor") {
     return (
-      <div>
-        <input
-          value={valor}
-          onChange={(evento) => aoAlterar(evento.target.value)}
-          type="number"
-          min="0"
-          step="0.01"
-          className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
-          placeholder="Ex: 99.90"
-        />
-        <ConfiguracaoPrecoVisual />
-      </div>
+      <input
+        value={valor}
+        onChange={(evento) => aoAlterar(evento.target.value)}
+        type="number"
+        min="0"
+        step="0.01"
+        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
+        placeholder="Ex: 99.90"
+      />
     );
   }
 
@@ -498,6 +605,189 @@ function CampoValorPadraoVisual({
       className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-slate-400"
       placeholder={placeholders[campo.valor] ?? `Ex: ${campo.label}`}
     />
+  );
+}
+
+function obterValorRegistroCombinacao(
+  registro: RegistroCombinacaoCategoriaFornecedor,
+  campo: string,
+) {
+  const valor = registro[campo];
+
+  if (typeof valor === "number" && Number.isFinite(valor)) return String(valor);
+  if (typeof valor === "string" && valor.trim()) return valor.trim();
+
+  return "Sem valor";
+}
+
+function montarChaveCategoriaCombinacao(valores: string[]) {
+  return valores.join(" / ");
+}
+
+function BlocoCategoriaCombinacaoCampos({
+  registros,
+  categoriasLoja,
+  camposSelecionados,
+  traducoes,
+  aoAlterarCategoria,
+}: {
+  registros: RegistroCombinacaoCategoriaFornecedor[];
+  categoriasLoja: OpcaoValorPadraoLoja[];
+  camposSelecionados: string[];
+  traducoes: Record<string, string>;
+  aoAlterarCategoria: (chave: string, categoriaId: string) => void;
+}) {
+  const combinacaoValida = camposSelecionados.length >= 2;
+  const combinacoes = useMemo(() => {
+    const combinacoesPorChave = new Map<
+      string,
+      {
+        chave: string;
+        valores: string[];
+        quantidade: number;
+      }
+    >();
+
+    for (const registro of registros) {
+      const valores = camposSelecionados.map((campo) =>
+        obterValorRegistroCombinacao(registro, campo),
+      );
+      const chave = montarChaveCategoriaCombinacao(valores);
+      const existente = combinacoesPorChave.get(chave);
+
+      if (existente) {
+        existente.quantidade += 1;
+      } else {
+        combinacoesPorChave.set(chave, {
+          chave,
+          valores,
+          quantidade: 1,
+        });
+      }
+    }
+
+    return Array.from(combinacoesPorChave.values()).sort((a, b) =>
+      a.chave.localeCompare(b.chave, "pt-BR"),
+    );
+  }, [camposSelecionados, registros]);
+
+  return (
+    <section className="border-t border-blue-100 bg-blue-50/25 px-4 py-4 sm:px-5">
+      <div className="mb-4 flex flex-col gap-1">
+        <h3 className="text-sm font-semibold text-slate-950">
+          Categoria da loja
+        </h3>
+        <p className="max-w-3xl text-sm text-slate-600">
+          Combine campos da API para formar uma chave de busca e escolha a
+          categoria real da loja.
+        </p>
+      </div>
+
+      <div className="mb-4 rounded-xl border border-blue-100 bg-white p-3 shadow-xs">
+        <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          Campos usados para formar a categoria
+        </p>
+        {camposSelecionados.length === 0 ? (
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            Selecione “Combinar campos” em pelo menos dois campos da tabela
+            principal para criar a chave de categoria.
+          </p>
+        ) : combinacaoValida ? (
+          <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
+            <p className="text-xs font-semibold tracking-wide text-emerald-700 uppercase">
+              Combinação criada
+            </p>
+            <p className="mt-1 text-sm font-semibold text-emerald-950">
+              {camposSelecionados.join(" + ")} → Categoria da loja
+            </p>
+          </div>
+        ) : (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Selecione pelo menos mais um campo para formar a combinação.
+          </p>
+        )}
+      </div>
+
+      {combinacaoValida ? (
+        <>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950">
+                Tradução de categorias
+              </h3>
+              <p className="max-w-3xl text-sm text-slate-600">
+                Cada combinação recebida da API deve apontar para uma categoria
+                real da loja.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="/admin/categories"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium whitespace-nowrap text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+              >
+                Gerenciar categorias
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-9 justify-start gap-1.5 px-2 text-xs text-slate-500 hover:text-slate-900"
+                onClick={() => window.location.reload()}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Atualizar categorias
+              </Button>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <div className="hidden grid-cols-[1.1fr_1.4fr] border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold tracking-wide text-slate-500 uppercase md:grid">
+              <span>Valor recebido da API</span>
+              <span>Categoria real da loja</span>
+            </div>
+            {combinacoes.length === 0 ? (
+              <div className="p-4 text-sm text-slate-500">
+                Nenhuma combinação encontrada nos produtos selecionados.
+              </div>
+            ) : (
+              combinacoes.map((combinacao) => (
+                <article
+                  key={combinacao.chave}
+                  className="grid gap-3 border-b border-slate-100 p-4 last:border-b-0 md:grid-cols-[1.1fr_1.4fr] md:items-center"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-950">
+                      {combinacao.chave}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {combinacao.quantidade} produto
+                      {combinacao.quantidade === 1 ? "" : "s"} com essa
+                      combinação
+                    </p>
+                  </div>
+                  <select
+                    value={traducoes[combinacao.chave] ?? ""}
+                    onChange={(evento) =>
+                      aoAlterarCategoria(combinacao.chave, evento.target.value)
+                    }
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  >
+                    <option value="">Selecionar categoria da loja</option>
+                    {categoriasLoja.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {categoria.nome}
+                      </option>
+                    ))}
+                  </select>
+                </article>
+              ))
+            )}
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 
@@ -701,6 +991,8 @@ function LinhaMobile({
   valorDestino,
   aoAlterarDestino,
   obrigatorio,
+  usadoNaCombinacaoCategoria,
+  permitirCombinarCampos,
 }: {
   linha: LinhaMapeamentoFornecedor;
   opcoesDestino: OpcaoMapeamentoFornecedor[];
@@ -709,6 +1001,8 @@ function LinhaMobile({
   valorDestino: string;
   aoAlterarDestino: (valor: string) => void;
   obrigatorio: boolean;
+  usadoNaCombinacaoCategoria?: boolean;
+  permitirCombinarCampos?: boolean;
 }) {
   return (
     <div
@@ -737,7 +1031,22 @@ function LinhaMobile({
         </p>
       </div>
       <div className="mt-3 grid gap-3">
-        {linha.obrigatorioSemOrigem ? (
+        {usadoNaCombinacaoCategoria ? (
+          <div className="grid gap-2">
+            <select
+              value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}
+              disabled
+              className="h-10 rounded-lg border border-blue-100 bg-blue-50 px-3 text-sm font-medium text-blue-900 shadow-xs"
+            >
+              <option value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}>
+                Combinar campos
+              </option>
+            </select>
+            <p className="text-xs font-medium text-blue-700">
+              Usado na combinação
+            </p>
+          </div>
+        ) : linha.obrigatorioSemOrigem ? (
           <div className="rounded-lg border border-amber-100 bg-white/70 px-3 py-2 text-sm font-medium text-slate-900">
             {obterLabelDestino(linha.campoDestino, opcoesDestino)}
           </div>
@@ -747,11 +1056,9 @@ function LinhaMobile({
               linha={linha}
               opcoesDestino={opcoesDestino}
               valor={valorDestino}
+              permitirCombinarCampos={permitirCombinarCampos}
               aoAlterar={aoAlterarDestino}
             />
-            {valorDestino === "preco_fornecedor" ? (
-              <ConfiguracaoPrecoVisual />
-            ) : null}
           </div>
         )}
         <BadgeObrigatorio obrigatorio={obrigatorio} />
@@ -773,10 +1080,15 @@ export function TabelaMapeamentoCamposFornecedor({
   camposImportantes = CAMPOS_IMPORTANTES_MAPEAMENTO_FORNECEDOR,
   categoriasLoja = [],
   marcasLoja = [],
+  camposCombinacaoCategoria = [],
+  registrosCombinacaoCategoria = [],
+  camposCombinacaoCategoriaPadrao,
   action,
   camposOcultos = [],
   textoCheckbox = "Salvar este mapeamento como padrão deste fornecedor",
   mostrarCheckbox = true,
+  configuracaoInicial = null,
+  mostrarConfiguracaoComercial = false,
   textoAcaoPrincipal,
   tipoBotaoAcaoPrincipal = "submit",
   hrefAcaoPrincipal,
@@ -814,33 +1126,150 @@ export function TabelaMapeamentoCamposFornecedor({
   >({});
   const [valoresPadraoCamposSemOrigem, setValoresPadraoCamposSemOrigem] =
     useState<Record<string, string>>({});
+  const [categoriasPorCombinacao, setCategoriasPorCombinacao] = useState<
+    Record<string, string>
+  >({});
+  const [modalidadeComercial, setModalidadeComercial] =
+    useState<ModalidadeComercialFornecedor>("dropshipping");
+  const [estrategiaPrazoEntrega, setEstrategiaPrazoEntrega] =
+    useState<EstrategiaResolucaoVisual>("conciliacao");
+  const [valorPrazoEntrega, setValorPrazoEntrega] = useState("");
+  const [salvarComoPadrao, setSalvarComoPadrao] = useState(false);
 
   useEffect(() => {
-    setDestinosSelecionados(destinosIniciais);
-  }, [destinosIniciais]);
+    const proximosDestinos = { ...destinosIniciais };
 
-  const linhasMapeadas = linhas.filter(
-    (linha) => !linha.obrigatorioSemOrigem && destinosSelecionados[linha.id],
-  ).length;
+    if (configuracaoInicial?.destinosSelecionados) {
+      Object.assign(proximosDestinos, configuracaoInicial.destinosSelecionados);
+    }
+
+    if (configuracaoInicial?.categoriaCombinacao) {
+      for (const campo of configuracaoInicial.categoriaCombinacao.camposApi) {
+        proximosDestinos[campo] = VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA;
+      }
+
+      setCategoriasPorCombinacao(
+        Object.fromEntries(
+          configuracaoInicial.categoriaCombinacao.traducoes
+            .filter((traducao) => Boolean(traducao.categoriaId))
+            .map((traducao) => [traducao.chave, traducao.categoriaId ?? ""]),
+        ),
+      );
+    } else if (
+      tipoOrigem === "api" &&
+      camposCombinacaoCategoria.length > 0 &&
+      camposCombinacaoCategoriaPadrao
+    ) {
+      proximosDestinos[camposCombinacaoCategoriaPadrao.campoApi1] =
+        VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA;
+      proximosDestinos[camposCombinacaoCategoriaPadrao.campoApi2] =
+        VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA;
+    }
+
+    setDestinosSelecionados(proximosDestinos);
+
+    if (configuracaoInicial?.regras) {
+      setEstrategiasCamposSemOrigem(
+        Object.fromEntries(
+          configuracaoInicial.regras.map((regra) => [
+            regra.campoDestino,
+            regra.estrategia === "valor_padrao_todos"
+              ? "valor_padrao"
+              : regra.estrategia,
+          ]),
+        ) as Record<string, EstrategiaResolucaoVisual>,
+      );
+      setValoresPadraoCamposSemOrigem(
+        Object.fromEntries(
+          configuracaoInicial.regras
+            .map((regra) => [
+              regra.campoDestino,
+              regra.valorPadraoId ?? regra.valorPadraoTexto ?? "",
+            ])
+            .filter(([, valor]) => String(valor).length > 0),
+        ),
+      );
+    }
+
+    if (configuracaoInicial?.configuracaoComercial) {
+      const configuracao = configuracaoInicial.configuracaoComercial;
+      setModalidadeComercial(configuracao.modalidade);
+      setEstrategiaPrazoEntrega(
+        configuracao.prazoEntrega.estrategia === "valor_padrao_todos"
+          ? "valor_padrao"
+          : configuracao.prazoEntrega.estrategia,
+      );
+      setValorPrazoEntrega(configuracao.prazoEntrega.valorPadraoTexto ?? "");
+    }
+  }, [
+    camposCombinacaoCategoria.length,
+    camposCombinacaoCategoriaPadrao,
+    configuracaoInicial,
+    destinosIniciais,
+    tipoOrigem,
+  ]);
+
+  const camposUsadosCombinacaoCategoria = useMemo(
+    () =>
+      new Set(
+        Object.entries(destinosSelecionados)
+          .filter(
+            ([, destino]) =>
+              destino === VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA,
+          )
+          .map(([campo]) => campo),
+      ),
+    [destinosSelecionados],
+  );
+  const camposSelecionadosCombinacaoCategoria = useMemo(
+    () => Array.from(camposUsadosCombinacaoCategoria),
+    [camposUsadosCombinacaoCategoria],
+  );
+  const categoriaCombinacaoValida =
+    camposSelecionadosCombinacaoCategoria.length >= 2;
+
+  const destinosEfetivos = useMemo(
+    () =>
+      categoriaCombinacaoValida
+        ? {
+            ...destinosSelecionados,
+            __categoria_combinada: "categoria_fornecedor",
+          }
+        : destinosSelecionados,
+    [categoriaCombinacaoValida, destinosSelecionados],
+  );
+  const linhasMapeadas =
+    linhas.filter(
+      (linha) =>
+        !linha.obrigatorioSemOrigem &&
+        destinosSelecionados[linha.id] &&
+        !camposUsadosCombinacaoCategoria.has(linha.id),
+    ).length + (categoriaCombinacaoValida ? 1 : 0);
   const camposObrigatoriosSemOrigem = camposObrigatoriosNormalizados.filter(
-    (campo) => !Object.values(destinosSelecionados).includes(campo.valor),
+    (campo) => !Object.values(destinosEfetivos).includes(campo.valor),
   );
   const camposImportantesSemOrigem = camposImportantesNormalizados.filter(
-    (campo) => !Object.values(destinosSelecionados).includes(campo.valor),
+    (campo) =>
+      (!mostrarConfiguracaoComercial || campo.valor !== "prazo_entrega") &&
+      !Object.values(destinosEfetivos).includes(campo.valor),
   );
   const obrigatoriosSemOrigem = camposObrigatoriosSemOrigem.length;
   const importantesSemOrigem = camposImportantesSemOrigem.length;
-  const obrigatoriosOk = linhas.filter((linha) => {
-    const destino = linha.obrigatorioSemOrigem
-      ? linha.campoDestino
-      : destinosSelecionados[linha.id];
+  const categoriaMapeada = Object.values(destinosEfetivos).includes(
+    "categoria_fornecedor",
+  );
+  const obrigatoriosOk =
+    linhas.filter((linha) => {
+      const destino = linha.obrigatorioSemOrigem
+        ? linha.campoDestino
+        : destinosSelecionados[linha.id];
 
-    return Boolean(
-      destino &&
-        camposObrigatoriosSet.has(destino) &&
-        !linha.obrigatorioSemOrigem,
-    );
-  }).length;
+      return Boolean(
+        destino &&
+          camposObrigatoriosSet.has(destino) &&
+          !linha.obrigatorioSemOrigem,
+      );
+    }).length + (categoriaCombinacaoValida ? 1 : 0);
   const conflitos = linhas.filter(
     (linha) => linha.situacao === "conflito",
   ).length;
@@ -883,8 +1312,22 @@ export function TabelaMapeamentoCamposFornecedor({
   }
 
   function montarDadosTemporariosMapeamento(): DadosTemporariosMapeamentoFornecedor {
+    const categoriaCombinacao =
+      categoriaMapeada && categoriaCombinacaoValida
+        ? montarRegraCategoriaCombinacao()
+        : undefined;
+
     return {
-      destinosSelecionados,
+      destinosSelecionados: categoriaCombinacaoValida
+        ? Object.fromEntries(
+            Object.entries(destinosSelecionados).filter(
+              ([campo, destino]) =>
+                destino !== "categoria_fornecedor" &&
+                destino !== VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA &&
+                !camposUsadosCombinacaoCategoria.has(campo),
+            ),
+          )
+        : destinosSelecionados,
       regras: todosCamposSemOrigem.map((campo) => {
         const estrategia = obterEstrategiaCampoSemOrigem(campo, campo.tipo);
         const valorPadrao = valoresPadraoCamposSemOrigem[campo.valor] ?? "";
@@ -915,15 +1358,111 @@ export function TabelaMapeamentoCamposFornecedor({
               : undefined,
         };
       }),
+      categoriaCombinacao,
+      configuracaoComercial: {
+        modalidade: modalidadeComercial,
+        prazoEntrega: {
+          estrategia:
+            estrategiaPrazoEntrega === "valor_padrao"
+              ? "valor_padrao_todos"
+              : (estrategiaPrazoEntrega as EstrategiaPrazoEntregaFornecedor),
+          valorPadraoTexto:
+            estrategiaPrazoEntrega === "valor_padrao" && valorPrazoEntrega
+              ? valorPrazoEntrega.trim()
+              : undefined,
+        },
+      },
+    };
+  }
+
+  function montarRegraCategoriaCombinacao():
+    | RegraCategoriaCombinacaoFornecedor
+    | undefined {
+    const combinacoesPorChave = new Map<
+      string,
+      {
+        chave: string;
+        valores: string[];
+        quantidade: number;
+      }
+    >();
+
+    for (const registro of registrosCombinacaoCategoria) {
+      const valores = camposSelecionadosCombinacaoCategoria.map((campo) =>
+        obterValorRegistroCombinacao(registro, campo),
+      );
+      const chave = montarChaveCategoriaCombinacao(valores);
+      const existente = combinacoesPorChave.get(chave);
+
+      if (existente) {
+        existente.quantidade += 1;
+      } else {
+        combinacoesPorChave.set(chave, {
+          chave,
+          valores,
+          quantidade: 1,
+        });
+      }
+    }
+
+    return {
+      estrategia: "combinacao_campos_api",
+      camposApi: camposSelecionadosCombinacaoCategoria,
+      campoApi1: camposSelecionadosCombinacaoCategoria[0] ?? "",
+      campoApi2: camposSelecionadosCombinacaoCategoria[1] ?? "",
+      traducoes: Array.from(combinacoesPorChave.values()).map((combinacao) => {
+        const categoriaId = categoriasPorCombinacao[combinacao.chave];
+        const categoriaLabel = categoriaId
+          ? categoriasLoja.find((categoria) => categoria.id === categoriaId)
+              ?.nome
+          : undefined;
+
+        return {
+          ...combinacao,
+          categoriaId: categoriaId || undefined,
+          categoriaLabel,
+        };
+      }),
     };
   }
 
   function acionarPrincipal() {
-    aoAcionarPrincipal?.(montarDadosTemporariosMapeamento());
+    aoAcionarPrincipal?.(montarDadosTemporariosMapeamento(), {
+      salvarComoPadrao,
+    });
 
     if (hrefAcaoPrincipal) {
       window.location.href = hrefAcaoPrincipal;
     }
+  }
+
+  function alterarDestinoLinha(campo: string, destino: string) {
+    setDestinosSelecionados((atuais) => {
+      const proximos = { ...atuais };
+
+      if (destino === VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA) {
+        Object.entries(proximos).forEach(([campoAtual, destinoAtual]) => {
+          if (destinoAtual === "categoria_fornecedor" && campoAtual !== campo) {
+            proximos[campoAtual] = "";
+          }
+        });
+      }
+
+      if (destino === "categoria_fornecedor") {
+        Object.entries(proximos).forEach(([campoAtual, destinoAtual]) => {
+          if (
+            destinoAtual === VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA &&
+            campoAtual !== campo
+          ) {
+            proximos[campoAtual] = "";
+          }
+        });
+      }
+
+      proximos[campo] = destino;
+
+      return proximos;
+    });
   }
 
   return (
@@ -949,7 +1488,12 @@ export function TabelaMapeamentoCamposFornecedor({
           <input
             type="hidden"
             name="campoDestino"
-            value={destinosSelecionados[linha.id] ?? ""}
+            value={
+              destinosSelecionados[linha.id] ===
+              VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA
+                ? ""
+                : (destinosSelecionados[linha.id] ?? "")
+            }
           />
         </div>
       ))}
@@ -1062,6 +1606,8 @@ export function TabelaMapeamentoCamposFornecedor({
                   const valorDestino = linha.obrigatorioSemOrigem
                     ? (linha.campoDestino ?? "")
                     : (destinosSelecionados[linha.id] ?? "");
+                  const usadoNaCombinacaoCategoria =
+                    camposUsadosCombinacaoCategoria.has(linha.id);
                   const obrigatorio = Boolean(
                     valorDestino && camposObrigatoriosSet.has(valorDestino),
                   );
@@ -1070,9 +1616,11 @@ export function TabelaMapeamentoCamposFornecedor({
                     <tr
                       key={linha.id}
                       className={
-                        linha.obrigatorioSemOrigem
-                          ? "border-y border-amber-200 bg-amber-50/40 hover:bg-amber-50/60"
-                          : "bg-white hover:bg-slate-50/70"
+                        usadoNaCombinacaoCategoria
+                          ? "bg-blue-50/35 opacity-75 hover:bg-blue-50/50"
+                          : linha.obrigatorioSemOrigem
+                            ? "border-y border-amber-200 bg-amber-50/40 hover:bg-amber-50/60"
+                            : "bg-white hover:bg-slate-50/70"
                       }
                     >
                       <td className="px-4 py-3 align-middle">
@@ -1094,7 +1642,24 @@ export function TabelaMapeamentoCamposFornecedor({
                         </p>
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        {linha.obrigatorioSemOrigem ? (
+                        {usadoNaCombinacaoCategoria ? (
+                          <div className="grid gap-2">
+                            <select
+                              value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}
+                              disabled
+                              className="h-10 w-full rounded-lg border border-blue-100 bg-blue-50 px-3 text-sm font-medium text-blue-900 shadow-xs"
+                            >
+                              <option
+                                value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}
+                              >
+                                Combinar campos
+                              </option>
+                            </select>
+                            <p className="text-xs font-medium text-blue-700">
+                              Usado na combinação
+                            </p>
+                          </div>
+                        ) : linha.obrigatorioSemOrigem ? (
                           <div className="rounded-lg border border-amber-100 bg-white/70 px-3 py-2 text-sm font-medium text-slate-900">
                             {obterLabelDestino(
                               linha.campoDestino,
@@ -1107,16 +1672,16 @@ export function TabelaMapeamentoCamposFornecedor({
                               linha={linha}
                               opcoesDestino={opcoesDestino}
                               valor={valorDestino}
+                              permitirCombinarCampos={
+                                tipoOrigem === "api" &&
+                                camposCombinacaoCategoria.some(
+                                  (campo) => campo.valor === linha.id,
+                                )
+                              }
                               aoAlterar={(valor) =>
-                                setDestinosSelecionados((atuais) => ({
-                                  ...atuais,
-                                  [linha.id]: valor,
-                                }))
+                                alterarDestinoLinha(linha.id, valor)
                               }
                             />
-                            {valorDestino === "preco_fornecedor" ? (
-                              <ConfiguracaoPrecoVisual />
-                            ) : null}
                           </div>
                         )}
                       </td>
@@ -1124,7 +1689,13 @@ export function TabelaMapeamentoCamposFornecedor({
                         <BadgeObrigatorio obrigatorio={obrigatorio} />
                       </td>
                       <td className="px-4 py-3 align-middle">
-                        <StatusLinhaMapeamento linha={linha} />
+                        {usadoNaCombinacaoCategoria ? (
+                          <p className="text-sm font-medium text-blue-700">
+                            Combinado
+                          </p>
+                        ) : (
+                          <StatusLinhaMapeamento linha={linha} />
+                        )}
                       </td>
                     </tr>
                   );
@@ -1142,10 +1713,16 @@ export function TabelaMapeamentoCamposFornecedor({
                 labelAmostra={labelAmostra}
                 valorDestino={destinosSelecionados[linha.id] ?? ""}
                 aoAlterarDestino={(valor) =>
-                  setDestinosSelecionados((atuais) => ({
-                    ...atuais,
-                    [linha.id]: valor,
-                  }))
+                  alterarDestinoLinha(linha.id, valor)
+                }
+                usadoNaCombinacaoCategoria={camposUsadosCombinacaoCategoria.has(
+                  linha.id,
+                )}
+                permitirCombinarCampos={
+                  tipoOrigem === "api" &&
+                  camposCombinacaoCategoria.some(
+                    (campo) => campo.valor === linha.id,
+                  )
                 }
                 opcoesDestino={opcoesDestino}
                 obrigatorio={Boolean(
@@ -1163,6 +1740,32 @@ export function TabelaMapeamentoCamposFornecedor({
           </div>
         </>
       )}
+
+      {tipoOrigem === "api" && camposCombinacaoCategoria.length > 0 ? (
+        <BlocoCategoriaCombinacaoCampos
+          registros={registrosCombinacaoCategoria}
+          categoriasLoja={categoriasLoja}
+          camposSelecionados={camposSelecionadosCombinacaoCategoria}
+          traducoes={categoriasPorCombinacao}
+          aoAlterarCategoria={(chave, categoriaId) =>
+            setCategoriasPorCombinacao((atuais) => ({
+              ...atuais,
+              [chave]: categoriaId,
+            }))
+          }
+        />
+      ) : null}
+
+      {mostrarConfiguracaoComercial ? (
+        <SecaoModalidadeComercial
+          modalidade={modalidadeComercial}
+          estrategiaPrazo={estrategiaPrazoEntrega}
+          valorPrazo={valorPrazoEntrega}
+          aoAlterarModalidade={setModalidadeComercial}
+          aoAlterarEstrategiaPrazo={setEstrategiaPrazoEntrega}
+          aoAlterarValorPrazo={setValorPrazoEntrega}
+        />
+      ) : null}
 
       <SecaoCamposSemOrigem
         titulo="Campos obrigatórios sem origem"
@@ -1220,6 +1823,10 @@ export function TabelaMapeamentoCamposFornecedor({
                 type="checkbox"
                 name="salvarParaFornecedor"
                 value="true"
+                checked={salvarComoPadrao}
+                onChange={(evento) =>
+                  setSalvarComoPadrao(evento.target.checked)
+                }
                 className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-slate-950"
               />
               <span>{textoCheckbox}</span>

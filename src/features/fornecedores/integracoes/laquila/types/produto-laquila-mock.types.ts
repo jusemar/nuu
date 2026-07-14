@@ -4,6 +4,11 @@ export type StatusProdutoLaquilaMock =
   | "atencao"
   | "ignorado";
 
+export type TriagemProdutoRecebidoLaquila =
+  | "novo"
+  | "ja_publicado"
+  | "atualizacao_disponivel";
+
 export type ProdutoLaquilaMock = {
   id: string;
   codigo: string;
@@ -19,4 +24,5 @@ export type ProdutoLaquilaMock = {
   imagemUrl: string;
   recebidoEm?: Date;
   dadosBrutosJson?: Record<string, unknown>;
+  triagemSistema?: TriagemProdutoRecebidoLaquila;
 };

@@ -66,6 +66,8 @@ export type ResultadoConsultarProdutosLaquila =
       itens: ItemProdutoLaquilaApi[];
       pagina: number;
       itensPorPagina: number;
+      totalPaginas?: number;
+      totalItens?: number;
       dados: RespostaLaquilaJson;
     }
   | {
@@ -397,18 +399,14 @@ export async function testarConexaoTransportadorasLaquila({
   cliente: ClienteLaquila;
   tokenCliente: string;
 }) {
-  return chamarLaquila(
-    cliente,
-    METODOS_LAQUILA.retornarTransportadoras,
-    {
-      filtro: {
-        token: tokenCliente,
-        cnpj_empresa: cliente.configuracao.cnpjEmpresa,
-        cd_transportador: "",
-        cnpj_transportador: "",
-      },
+  return chamarLaquila(cliente, METODOS_LAQUILA.retornarTransportadoras, {
+    filtro: {
+      token: tokenCliente,
+      cnpj_empresa: cliente.configuracao.cnpjEmpresa,
+      cd_transportador: "",
+      cnpj_transportador: "",
     },
-  );
+  });
 }
 
 function extrairItensLaquila(
@@ -445,6 +443,40 @@ function extrairItensProdutoLaquila(
   dados: RespostaLaquilaJson,
 ): ItemProdutoLaquilaApi[] {
   return extrairItensLaquila(dados);
+}
+
+function extrairNumeroPaginacao(
+  dados: RespostaLaquilaJson,
+  chaves: readonly string[],
+) {
+  const pendentes: Array<{ valor: unknown; profundidade: number }> = [
+    { valor: dados, profundidade: 0 },
+  ];
+
+  while (pendentes.length > 0) {
+    const atual = pendentes.shift();
+
+    if (!atual || atual.profundidade > 3 || !atual.valor) continue;
+    if (typeof atual.valor !== "object" || Array.isArray(atual.valor)) continue;
+
+    const registro = atual.valor as Record<string, unknown>;
+
+    for (const [chave, valor] of Object.entries(registro)) {
+      const chaveNormalizada = chave.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      if (chaves.includes(chaveNormalizada)) {
+        const numero = Number(valor);
+
+        if (Number.isFinite(numero) && numero > 0) return Math.ceil(numero);
+      }
+
+      if (atual.profundidade < 3 && valor && typeof valor === "object") {
+        pendentes.push({ valor, profundidade: atual.profundidade + 1 });
+      }
+    }
+  }
+
+  return undefined;
 }
 
 function extrairItensSaldoPrecoLaquila(
@@ -491,12 +523,30 @@ export async function consultarProdutosLaquila({
     };
   }
 
+  const totalItens = extrairNumeroPaginacao(resultado.dados, [
+    "totalitens",
+    "qtdregistros",
+    "quantidaderegistros",
+    "totalregistros",
+  ]);
+  const totalPaginasInformado = extrairNumeroPaginacao(resultado.dados, [
+    "totalpaginas",
+    "qtdpaginas",
+    "quantidadepaginas",
+    "pages",
+    "pagecount",
+  ]);
+
   return {
     sucesso: true,
     codigoHttp: resultado.codigoHttp,
     itens: extrairItensProdutoLaquila(resultado.dados),
     pagina,
     itensPorPagina,
+    totalPaginas:
+      totalPaginasInformado ??
+      (totalItens ? Math.ceil(totalItens / itensPorPagina) : undefined),
+    totalItens,
     dados: resultado.dados,
   };
 }

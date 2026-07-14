@@ -8,6 +8,7 @@
     "import:ceps": "tsx scripts/import-shipping-zip-addresses.ts",
     "seed:own-delivery-regions": "tsx scripts/seed-own-delivery-official-regions.ts",
     "seed:logistica-dados-iniciais": "tsx scripts/seed-dados-iniciais-logistica.ts",
+    "seed:admin-teste": "tsx src/features/autenticacao/scripts/criar-admin-teste.ts",
     "start": "next start",
     "lint": "next lint"
   },

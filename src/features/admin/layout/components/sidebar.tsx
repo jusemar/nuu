@@ -98,6 +98,12 @@ export const menuAdmin = [
         icon: "Package",
       },
       {
+        id: "products-bulk-edit",
+        label: "Alteração em massa",
+        href: "/admin/products/alteracao-em-massa",
+        icon: "PackageCheck",
+      },
+      {
         id: "categories",
         label: "Categorias",
         href: "/admin/categories",
@@ -300,6 +306,12 @@ export function AdminSidebar() {
    */
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin/products") {
+      return (
+        pathname.startsWith(href) &&
+        !pathname.startsWith("/admin/products/alteracao-em-massa")
+      );
+    }
     return pathname.startsWith(href);
   };
 

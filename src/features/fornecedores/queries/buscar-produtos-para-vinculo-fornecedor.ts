@@ -3,7 +3,7 @@ import "server-only";
 import { and, eq, ilike, or } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { productTable } from "@/db/schema";
+import { categoryTable, productTable } from "@/db/schema";
 
 import { buscaProdutoVinculoFornecedorSchema } from "../schemas/fornecedores.schema";
 import type { ProdutoParaVinculoFornecedor } from "../types/fornecedores.types";
@@ -24,14 +24,19 @@ export async function buscarProdutosParaVinculoFornecedor(
       sku: productTable.sku,
       slug: productTable.slug,
       marca: productTable.brand,
+      categoria: categoryTable.name,
+      precoCentavos: productTable.salePrice,
     })
     .from(productTable)
+    .leftJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
     .where(
       and(
         eq(productTable.isActive, true),
         or(
           ilike(productTable.name, `%${filtros.busca}%`),
           ilike(productTable.sku, `%${filtros.busca}%`),
+          ilike(productTable.productCode, `%${filtros.busca}%`),
+          ilike(productTable.internalCode, `%${filtros.busca}%`),
           ilike(productTable.brand, `%${filtros.busca}%`),
           ilike(productTable.slug, `%${filtros.busca}%`),
         ),
@@ -39,5 +44,11 @@ export async function buscarProdutosParaVinculoFornecedor(
     )
     .limit(filtros.limite);
 
-  return produtos;
+  return produtos.map(({ precoCentavos, ...produto }) => ({
+    ...produto,
+    preco:
+      typeof precoCentavos === "number"
+        ? (precoCentavos / 100).toFixed(2)
+        : null,
+  }));
 }

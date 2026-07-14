@@ -22,6 +22,7 @@ interface ProductTabsProps {
   descricao: string;
   especificacoes: Especificacao[];
   medidasEPeso: Especificacao[];
+  dadosFiscaisEComerciais: Especificacao[];
   avaliacoes: Avaliacao[];
   rating: number;
   totalAvaliacoes: number;
@@ -32,6 +33,7 @@ export function ProductTabs({
   descricao,
   especificacoes,
   medidasEPeso,
+  dadosFiscaisEComerciais,
   avaliacoes,
   rating,
   totalAvaliacoes,
@@ -107,6 +109,29 @@ export function ProductTabs({
               </div>
             )}
 
+            {dadosFiscaisEComerciais.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-text-primary text-sm font-semibold">
+                  Dados fiscais e comerciais
+                </h3>
+                <div className="border-surface-border overflow-hidden rounded-xl border bg-white">
+                  {dadosFiscaisEComerciais.map((dado, indice) => (
+                    <div
+                      key={dado.label}
+                      className={`flex items-center justify-between px-4 py-3 ${indice % 2 === 0 ? "bg-white" : "bg-[#F3F4F6]"} ${indice !== dadosFiscaisEComerciais.length - 1 ? "border-b border-[#F3F4F6]" : ""}`}
+                    >
+                      <span className="text-text-muted text-sm">
+                        {dado.label}
+                      </span>
+                      <span className="text-text-primary text-sm font-semibold">
+                        {dado.valor}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {especificacoes.length > 0 && (
               <div className="border-surface-border overflow-hidden rounded-xl border bg-white">
                 {especificacoes.map((esp, i) => (
@@ -123,11 +148,13 @@ export function ProductTabs({
               </div>
             )}
 
-            {medidasEPeso.length === 0 && especificacoes.length === 0 && (
-              <div className="border-surface-border text-text-muted rounded-xl border bg-white p-4 text-sm">
-                Nenhuma especificação disponível para este produto.
-              </div>
-            )}
+            {medidasEPeso.length === 0 &&
+              dadosFiscaisEComerciais.length === 0 &&
+              especificacoes.length === 0 && (
+                <div className="border-surface-border text-text-muted rounded-xl border bg-white p-4 text-sm">
+                  Nenhuma especificação disponível para este produto.
+                </div>
+              )}
           </div>
         )}
 

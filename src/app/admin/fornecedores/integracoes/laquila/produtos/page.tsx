@@ -1,5 +1,6 @@
 import { PreviaProdutosLaquilaMock } from "@/features/fornecedores/integracoes/laquila/components/admin/previa-produtos-laquila-mock";
 import { listarProdutosRecebidosApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
+import { enriquecerTriagemProdutosLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
 
 type ProdutosLaquilaPageProps = {
   searchParams?: Promise<{
@@ -17,10 +18,13 @@ export default async function Page({ searchParams }: ProdutosLaquilaPageProps) {
   const resultado = await listarProdutosRecebidosApiLaquila({
     ignorarCache: atualizacaoForcada,
   });
+  const produtosComTriagem = await enriquecerTriagemProdutosLaquila(
+    resultado.produtos,
+  );
 
   return (
     <PreviaProdutosLaquilaMock
-      produtos={resultado.produtos}
+      produtos={produtosComTriagem}
       erroRecebidos={resultado.erro}
       tipoErroRecebidos={resultado.tipoErro}
       totalRetornadoApi={resultado.totalRetornadoApi}

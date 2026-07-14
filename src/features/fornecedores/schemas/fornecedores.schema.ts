@@ -240,6 +240,16 @@ export const buscaProdutoVinculoFornecedorSchema = z.object({
   limite: z.number().int().positive().max(50).optional().default(20),
 });
 
+export const salvarVinculoProdutoRecebidoFornecedorSchema = z.object({
+  fornecedorId: z.uuid(),
+  codigoFornecedor: z.string().trim().min(1).max(160),
+  produtoId: z.uuid(),
+});
+
+export const desfazerVinculoProdutoRecebidoFornecedorSchema = z.object({
+  vinculoId: z.uuid(),
+});
+
 export const ajustePrecoImportacaoFornecedorSchema = z
   .object({
     id: z.uuid().optional(),

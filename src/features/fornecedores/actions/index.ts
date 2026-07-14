@@ -9,3 +9,7 @@ export { salvarFornecedor } from "./salvar-fornecedor";
 export { salvarVinculoProdutoFornecedorManual } from "./salvar-vinculo-produto-fornecedor-manual";
 export { tratarProdutosFornecedorComoNovos } from "./tratar-produtos-fornecedor-como-novos";
 export { vincularProdutoFornecedor } from "./vincular-produto-fornecedor";
+export {
+  desfazerVinculoProdutoRecebidoFornecedor,
+  salvarVinculoProdutoRecebidoFornecedor,
+} from "./salvar-vinculo-produto-recebido-fornecedor";

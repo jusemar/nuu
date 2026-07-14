@@ -18,6 +18,17 @@ export async function getCategories() {
     
     return categories
   } catch (error) {
-    throw new Error("Erro ao buscar categorias")
+    const causa = error instanceof Error ? error.cause : null
+    const codigo =
+      causa && typeof causa === "object" && "code" in causa
+        ? String(causa.code)
+        : undefined
+
+    console.error("[categorias:loja:indisponivel]", {
+      mensagem: error instanceof Error ? error.message : "Erro desconhecido",
+      codigo,
+    })
+
+    return []
   }
 }

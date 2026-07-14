@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ProdutoLaquilaMock } from "../../types/produto-laquila-mock.types";
+import type { TriagemProdutoRecebidoLaquila } from "../../types/produto-laquila-mock.types";
 import type {
   ProdutoApiStagingLaquilaCatalogo,
   ProgressoRecebidosApiLaquila,
@@ -74,6 +75,7 @@ import {
 const ITENS_POR_PAGINA = 10;
 const OPCOES_ITENS_POR_PAGINA = [10, 20, 50, 100] as const;
 const IMAGEM_PLACEHOLDER = "/produto-sem-foto.webp";
+const CHAVE_IGNORADOS_RECEBIDOS_LAQUILA = "laquila:recebidos-ignorados";
 
 function formatarHorarioCurto(valor?: string) {
   if (!valor) return null;
@@ -109,7 +111,8 @@ function formatarTempoConsulta(valor?: string) {
   return `Dados carregados às ${formatarHorarioCurto(valor) ?? "--:--"}`;
 }
 
-type EstadoTriagemProdutoLaquila = "pendente" | "selecionado" | "ignorado";
+type EstadoTriagemProdutoLaquila = TriagemProdutoRecebidoLaquila | "ignorado";
+type DecisaoFluxoProdutoLaquila = "selecionado" | "ignorado";
 type ProdutoComDadosBrutos = {
   dadosBrutosJson?: Record<string, unknown>;
   nome?: string;
@@ -139,14 +142,16 @@ type ProdutoSelecionadoMapeamentoLaquila = {
 };
 
 const rotulosTriagem: Record<EstadoTriagemProdutoLaquila, string> = {
-  pendente: "Pendente",
-  selecionado: "Selecionado",
+  novo: "Novo",
+  ja_publicado: "Já publicado",
+  atualizacao_disponivel: "Atualização disponível",
   ignorado: "Ignorado",
 };
 
 const estilosTriagem: Record<EstadoTriagemProdutoLaquila, string> = {
-  pendente: "border-slate-200 bg-slate-50 text-slate-700",
-  selecionado: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  novo: "border-blue-200 bg-blue-50 text-blue-700",
+  ja_publicado: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  atualizacao_disponivel: "border-amber-200 bg-amber-50 text-amber-700",
   ignorado: "border-slate-200 bg-slate-100 text-slate-600",
 };
 
@@ -239,10 +244,12 @@ function formatarSituacaoApi(valor: string) {
 }
 
 function obterTriagemProduto(
-  triagens: Record<string, EstadoTriagemProdutoLaquila>,
-  produtoId: string,
+  decisoesFluxo: Record<string, DecisaoFluxoProdutoLaquila>,
+  produto: ProdutoLaquilaMock,
 ) {
-  return triagens[produtoId] ?? "pendente";
+  return decisoesFluxo[produto.id] === "ignorado"
+    ? "ignorado"
+    : (produto.triagemSistema ?? "novo");
 }
 
 function formatarMoeda(valor: number) {
@@ -481,7 +488,7 @@ function filtrarProdutos({
   subgrupo: string;
   ncm: string;
   triagem: string;
-  triagens: Record<string, EstadoTriagemProdutoLaquila>;
+  triagens: Record<string, DecisaoFluxoProdutoLaquila>;
 }) {
   const buscaNormalizada = normalizarTexto(busca.trim());
 
@@ -499,7 +506,7 @@ function filtrarProdutos({
     const subgrupoProduto =
       obterTextoProduto(produto, ["ds_sgrupo"]) || produto.categoria;
     const ncmProduto = obterTextoProduto(produto, ["NCM", "ncm"], produto.ncm);
-    const estadoTriagem = obterTriagemProduto(triagens, produto.id);
+    const estadoTriagem = obterTriagemProduto(triagens, produto);
 
     const correspondeBusca =
       !buscaNormalizada ||
@@ -557,6 +564,7 @@ function ProdutoMobileCard({
   produto,
   selecionado,
   triagem,
+  noFluxo,
   alternarSelecao,
   adicionarAoFluxo,
   removerDoFluxo,
@@ -568,6 +576,7 @@ function ProdutoMobileCard({
   produto: ProdutoLaquilaMock;
   selecionado: boolean;
   triagem: EstadoTriagemProdutoLaquila;
+  noFluxo: boolean;
   alternarSelecao: (id: string) => void;
   adicionarAoFluxo: (id: string) => void;
   removerDoFluxo: (id: string) => void;
@@ -640,7 +649,7 @@ function ProdutoMobileCard({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {triagem === "selecionado" ? (
+            {noFluxo ? (
               <Button
                 type="button"
                 size="sm"
@@ -972,10 +981,14 @@ function BarraProgressoLaquila({
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
         {progresso?.paginaAtual !== undefined ? (
           <span>
-            Página {progresso.paginaAtual}
+            {progresso.paginaAtual === 1 ? "Página" : "Páginas"}{" "}
+            {progresso.paginaAtual}
             {progresso.totalPaginasEstimado
-              ? ` de até ${progresso.totalPaginasEstimado}`
+              ? progresso.totalPaginasExato
+                ? ` de ${progresso.totalPaginasEstimado}`
+                : ` de aproximadamente ${progresso.totalPaginasEstimado}`
               : ""}
+            {progresso.paginaAtual === 1 ? " carregada" : " carregadas"}
           </span>
         ) : null}
         <span>Produtos encontrados: {progresso?.totalBrutoCarregado ?? 0}</span>
@@ -1060,8 +1073,9 @@ export function PreviaProdutosLaquilaMock({
   const [triagem, setTriagem] = useState("todos");
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [triagens, setTriagens] = useState<
-    Record<string, EstadoTriagemProdutoLaquila>
+    Record<string, DecisaoFluxoProdutoLaquila>
   >({});
+  const [ignoradosCarregados, setIgnoradosCarregados] = useState(false);
   const [produtoEmDetalhe, setProdutoEmDetalhe] =
     useState<ProdutoLaquilaMock | null>(null);
   const [produtoImagem, setProdutoImagem] = useState<ProdutoLaquilaMock | null>(
@@ -1143,21 +1157,29 @@ export function PreviaProdutosLaquilaMock({
       ? "indeterminate"
       : false;
   const totalSelecionadosFluxo = produtos.filter(
-    (produto) => obterTriagemProduto(triagens, produto.id) === "selecionado",
+    (produto) => triagens[produto.id] === "selecionado",
   ).length;
   const totalIgnoradosFluxo = produtos.filter(
-    (produto) => obterTriagemProduto(triagens, produto.id) === "ignorado",
+    (produto) => obterTriagemProduto(triagens, produto) === "ignorado",
   ).length;
-  const totalPendentesFluxo = Math.max(
-    produtos.length - totalSelecionadosFluxo - totalIgnoradosFluxo,
-    0,
-  );
+  const totalNovos = produtos.filter(
+    (produto) => obterTriagemProduto(triagens, produto) === "novo",
+  ).length;
+  const totalPublicados = produtos.filter(
+    (produto) => obterTriagemProduto(triagens, produto) === "ja_publicado",
+  ).length;
+  const totalAtualizacoes = produtos.filter(
+    (produto) =>
+      obterTriagemProduto(triagens, produto) === "atualizacao_disponivel",
+  ).length;
 
   const totais = {
     encontrados: produtos.length,
     selecionados: totalSelecionadosFluxo,
     ignorados: totalIgnoradosFluxo,
-    pendentes: totalPendentesFluxo,
+    novos: totalNovos,
+    publicados: totalPublicados,
+    atualizacoes: totalAtualizacoes,
   };
   const filtrosAtivos =
     busca.trim().length > 0 ||
@@ -1187,6 +1209,47 @@ export function PreviaProdutosLaquilaMock({
     url.searchParams.delete("t");
     window.history.replaceState(null, "", url.toString());
   }, [atualizacaoForcada]);
+
+  useEffect(() => {
+    try {
+      const valor = window.localStorage.getItem(
+        CHAVE_IGNORADOS_RECEBIDOS_LAQUILA,
+      );
+      const codigos: unknown = valor ? JSON.parse(valor) : [];
+      if (!Array.isArray(codigos)) return;
+
+      const ignorados = new Set(
+        codigos.filter(
+          (codigo): codigo is string => typeof codigo === "string",
+        ),
+      );
+      setTriagens((atuais) => {
+        const proximas = { ...atuais };
+        produtos.forEach((produto) => {
+          if (ignorados.has(obterCodigoFornecedorProduto(produto))) {
+            proximas[produto.id] = "ignorado";
+          }
+        });
+        return proximas;
+      });
+    } catch {
+      // Preferência local inválida não deve impedir a leitura do catálogo.
+    } finally {
+      setIgnoradosCarregados(true);
+    }
+  }, [produtos]);
+
+  useEffect(() => {
+    if (!ignoradosCarregados) return;
+
+    const codigosIgnorados = produtos
+      .filter((produto) => triagens[produto.id] === "ignorado")
+      .map(obterCodigoFornecedorProduto);
+    window.localStorage.setItem(
+      CHAVE_IGNORADOS_RECEBIDOS_LAQUILA,
+      JSON.stringify(codigosIgnorados),
+    );
+  }, [ignoradosCarregados, produtos, triagens]);
 
   useEffect(() => {
     setDadosRecebidos(
@@ -1291,7 +1354,11 @@ export function PreviaProdutosLaquilaMock({
   }
 
   function removerDoFluxo(id: string) {
-    setTriagens((atuais) => ({ ...atuais, [id]: "pendente" }));
+    setTriagens((atuais) => {
+      const proximas = { ...atuais };
+      delete proximas[id];
+      return proximas;
+    });
   }
 
   function ignorarProduto(id: string) {
@@ -1299,7 +1366,11 @@ export function PreviaProdutosLaquilaMock({
   }
 
   function desfazerTriagem(id: string) {
-    setTriagens((atuais) => ({ ...atuais, [id]: "pendente" }));
+    setTriagens((atuais) => {
+      const proximas = { ...atuais };
+      delete proximas[id];
+      return proximas;
+    });
   }
 
   function adicionarSelecionadosAoFluxo() {
@@ -1320,7 +1391,7 @@ export function PreviaProdutosLaquilaMock({
       const proximasTriagens = { ...atuais };
 
       selecionados.forEach((id) => {
-        proximasTriagens[id] = "pendente";
+        delete proximasTriagens[id];
       });
 
       return proximasTriagens;
@@ -1330,10 +1401,7 @@ export function PreviaProdutosLaquilaMock({
 
   function montarProdutosSelecionadosMapeamento() {
     return produtos
-      .filter(
-        (produto) =>
-          obterTriagemProduto(triagens, produto.id) === "selecionado",
-      )
+      .filter((produto) => triagens[produto.id] === "selecionado")
       .map((produto): ProdutoSelecionadoMapeamentoLaquila => {
         const dadosBrutosJson = produto.dadosBrutosJson ?? {};
 
@@ -1619,20 +1687,20 @@ export function PreviaProdutosLaquilaMock({
           tom="bg-slate-100 text-slate-700"
         />
         <ResumoCard
-          titulo="Selecionados"
-          valor={totais.selecionados}
+          titulo="Novos"
+          valor={totais.novos}
           icone={PackagePlus}
           tom="bg-blue-50 text-blue-700"
         />
         <ResumoCard
-          titulo="Ignorados"
-          valor={totais.ignorados}
+          titulo="Já publicados"
+          valor={totais.publicados}
           icone={PackageCheck}
           tom="bg-emerald-50 text-emerald-700"
         />
         <ResumoCard
-          titulo="Pendentes"
-          valor={totais.pendentes}
+          titulo="Atualizações"
+          valor={totais.atualizacoes}
           icone={AlertTriangle}
           tom="bg-amber-50 text-amber-700"
         />
@@ -1757,9 +1825,12 @@ export function PreviaProdutosLaquilaMock({
                 <SelectValue placeholder="Triagem" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todas</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="selecionado">Selecionado</SelectItem>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="novo">Novo</SelectItem>
+                <SelectItem value="ja_publicado">Já publicado</SelectItem>
+                <SelectItem value="atualizacao_disponivel">
+                  Atualização disponível
+                </SelectItem>
                 <SelectItem value="ignorado">Ignorado</SelectItem>
               </SelectContent>
             </Select>
@@ -1891,7 +1962,7 @@ export function PreviaProdutosLaquilaMock({
                   {produtosVisiveis.map((produto) => {
                     const estadoTriagem = obterTriagemProduto(
                       triagens,
-                      produto.id,
+                      produto,
                     );
                     const codigoFornecedor =
                       obterCodigoFornecedorProduto(produto);
@@ -1902,7 +1973,7 @@ export function PreviaProdutosLaquilaMock({
                         className={
                           estadoTriagem === "ignorado"
                             ? "bg-slate-50/60 opacity-75"
-                            : estadoTriagem === "selecionado"
+                            : triagens[produto.id] === "selecionado"
                               ? "bg-emerald-50/30"
                               : ""
                         }
@@ -1962,7 +2033,7 @@ export function PreviaProdutosLaquilaMock({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex flex-wrap justify-end gap-1">
-                            {estadoTriagem === "selecionado" ? (
+                            {triagens[produto.id] === "selecionado" ? (
                               <Button
                                 type="button"
                                 size="sm"
@@ -2032,7 +2103,8 @@ export function PreviaProdutosLaquilaMock({
                   key={produto.id}
                   produto={produto}
                   selecionado={selecionados.includes(produto.id)}
-                  triagem={obterTriagemProduto(triagens, produto.id)}
+                  triagem={obterTriagemProduto(triagens, produto)}
+                  noFluxo={triagens[produto.id] === "selecionado"}
                   alternarSelecao={alternarSelecao}
                   adicionarAoFluxo={adicionarAoFluxo}
                   removerDoFluxo={removerDoFluxo}

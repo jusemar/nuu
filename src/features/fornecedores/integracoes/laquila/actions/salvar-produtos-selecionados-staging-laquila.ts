@@ -2,7 +2,6 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 
 import {
   fornecedorIntegracoesApiTable,
@@ -10,7 +9,7 @@ import {
   fornecedoresTable,
 } from "@/db/schema";
 import { db } from "@/db/connection";
-import { auth } from "@/lib/auth";
+import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import {
   FORNECEDOR_LAQUILA_NOME,
@@ -107,14 +106,6 @@ function extrairPrimeiraFoto(valor: unknown) {
   );
 }
 
-async function validarSessaoAdmin() {
-  const sessao = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  return Boolean(sessao?.user);
-}
-
 async function buscarIntegracaoLaquilaAtual() {
   const [integracao] = await db
     .select({
@@ -151,12 +142,12 @@ export async function salvarProdutosSelecionadosStagingLaquila(
     };
   }
 
-  const sessaoValida = await validarSessaoAdmin();
+  const sessaoValida = await possuiSessaoFornecedoresAdmin();
 
   if (!sessaoValida) {
     return {
       sucesso: false,
-      erro: "Sessão expirada. Entre novamente para salvar os selecionados.",
+      erro: "Sua sessão não está ativa. Entre novamente para salvar os selecionados.",
     };
   }
 
@@ -200,10 +191,7 @@ export async function salvarProdutosSelecionadosStagingLaquila(
       await tx
         .delete(fornecedorProdutosApiStagingTable)
         .where(
-          eq(
-            fornecedorProdutosApiStagingTable.integracaoApiId,
-            integracao.id,
-          ),
+          eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracao.id),
         );
 
       await tx.insert(fornecedorProdutosApiStagingTable).values(

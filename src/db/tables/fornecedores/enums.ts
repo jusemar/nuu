@@ -99,3 +99,15 @@ export const fornecedorProdutoApiStagingStatusEnum = pgEnum(
   "fornecedor_produto_api_staging_status",
   ["novo", "vinculado", "atencao", "ignorado"],
 );
+
+export const produtoRascunhoOrigemTipoEnum = pgEnum(
+  "produto_rascunho_origem_tipo",
+  ["manual", "fornecedor_api", "fornecedor_excel"],
+);
+
+export const produtoRascunhoStatusEnum = pgEnum("produto_rascunho_status", [
+  "rascunho",
+  "pendente_conciliacao",
+  "pronto_para_publicar",
+  "ignorado",
+]);

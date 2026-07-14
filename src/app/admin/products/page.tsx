@@ -271,6 +271,7 @@ export default function ProductsPage() {
           <DataTable 
             columns={columns} 
             data={filteredProducts}
+            colunasPesquisaveis={["name", "sku"]}
             onDeleteSelected={handleDeleteSelected}
             filtroExtra={
               <Popover

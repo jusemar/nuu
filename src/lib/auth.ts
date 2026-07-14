@@ -20,7 +20,7 @@ export const auth = betterAuth({
   baseURL: urlBaseAutenticacao,
   trustedOrigins: [urlBaseAutenticacao],
   emailAndPassword: {
-    enabled: false,
+    enabled: true,
   },
   socialProviders: {
     google: {

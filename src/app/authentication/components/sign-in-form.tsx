@@ -67,7 +67,9 @@ const SignInForm = () => {
               message: "E-mail ou senha inválidos.",
             });
           }
-          toast.error(ctx.error.message);
+          toast.error(
+            "Não foi possível entrar. Verifique os dados e tente novamente.",
+          );
         },
       },
     });

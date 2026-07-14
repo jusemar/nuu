@@ -7,6 +7,11 @@ export const CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA =
 
 export const CHAVE_REGRAS_MAPEAMENTO_LAQUILA = "laquila:regras-mapeamento";
 
+export const CHAVE_MAPEAMENTO_PADRAO_LAQUILA = "laquila:mapeamento-padrao";
+
+export const CHAVE_RASCUNHOS_CONCILIACAO_LAQUILA =
+  "laquila:rascunhos-conciliacao";
+
 export const CLASSIFICACOES_RECEBIDOS_API_LAQUILA = [
   {
     macroGrupo: "BORRACHA",

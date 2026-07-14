@@ -53,6 +53,7 @@ export type ProgressoRecebidosApiLaquila = {
   mensagem: string;
   paginaAtual?: number;
   totalPaginasEstimado?: number;
+  totalPaginasExato?: boolean;
   percentual: number | null;
   totalBrutoCarregado: number;
   totalAposRecorte: number;
@@ -453,13 +454,16 @@ function produtoPertenceAoRecorteRecebidosLaquila(item: ItemProdutoLaquilaApi) {
   return classificacoesRecebidosPermitidas.has(chave);
 }
 
-function calcularPercentualProgressoCatalogo(paginaAtual: number) {
+function calcularPercentualProgressoCatalogo(
+  paginasConcluidas: number,
+  totalPaginas: number,
+) {
   const progressoCatalogo = Math.min(
-    paginaAtual / LIMITE_PAGINAS_RECEBIDOS_LAQUILA,
+    paginasConcluidas / Math.max(totalPaginas, 1),
     1,
   );
 
-  return Math.min(70, Math.max(5, Math.round(5 + progressoCatalogo * 65)));
+  return Math.min(70, Math.max(0, Math.round(progressoCatalogo * 70)));
 }
 
 function converterProdutoRecebidoApiLaquila(
@@ -580,14 +584,18 @@ async function consultarProdutosRecebidosPaginadosLaquila({
   tokenCliente: string;
 }) {
   const produtosRecebidos: ItemProdutoLaquilaApi[] = [];
+  let paginasConcluidas = 0;
+  let totalPaginasProgresso = LIMITE_PAGINAS_RECEBIDOS_LAQUILA;
+  let totalPaginasExato = false;
 
   atualizarProgressoRecebidosLaquila({
     emAndamento: true,
     etapaAtual: "catalogo",
     mensagem: "Consultando catálogo de produtos.",
-    paginaAtual: 1,
+    paginaAtual: 0,
     totalPaginasEstimado: LIMITE_PAGINAS_RECEBIDOS_LAQUILA,
-    percentual: 5,
+    totalPaginasExato: false,
+    percentual: 0,
     totalBrutoCarregado: 0,
     totalAposRecorte: 0,
     totalEnriquecidoComPrecoEstoque: 0,
@@ -596,16 +604,21 @@ async function consultarProdutosRecebidosPaginadosLaquila({
 
   for (
     let paginaInicial = 1;
-    paginaInicial <= LIMITE_PAGINAS_RECEBIDOS_LAQUILA;
+    paginaInicial <=
+    Math.min(LIMITE_PAGINAS_RECEBIDOS_LAQUILA, totalPaginasProgresso);
     paginaInicial += TOTAL_PAGINAS_POR_LOTE_LAQUILA
   ) {
     const paginas = Array.from(
       { length: TOTAL_PAGINAS_POR_LOTE_LAQUILA },
       (_, indice) => paginaInicial + indice,
-    ).filter((pagina) => pagina <= LIMITE_PAGINAS_RECEBIDOS_LAQUILA);
+    ).filter(
+      (pagina) =>
+        pagina <=
+        Math.min(LIMITE_PAGINAS_RECEBIDOS_LAQUILA, totalPaginasProgresso),
+    );
     const resultados = await Promise.all(
-      paginas.map((pagina) =>
-        executarConsultaApiRecebidosComRetry({
+      paginas.map(async (pagina) => {
+        const resultado = await executarConsultaApiRecebidosComRetry({
           metodo: METODOS_LAQUILA.consultarItem,
           pagina,
           operacao: () =>
@@ -615,20 +628,51 @@ async function consultarProdutosRecebidosPaginadosLaquila({
               pagina,
               itensPorPagina: ITENS_POR_PAGINA_API_LAQUILA,
             }),
-        }),
-      ),
-    );
-    const ultimaPaginaDoLote = Math.max(...paginas);
+        });
 
-    for (const resultado of resultados) {
+        if (resultado.sucesso) {
+          produtosRecebidos.push(...resultado.itens);
+          paginasConcluidas += 1;
+
+          if (resultado.totalPaginas) {
+            totalPaginasProgresso = resultado.totalPaginas;
+            totalPaginasExato = true;
+          }
+
+          atualizarProgressoRecebidosLaquila({
+            emAndamento: true,
+            etapaAtual: "catalogo",
+            mensagem: `Página ${pagina} do catálogo carregada.`,
+            paginaAtual: paginasConcluidas,
+            totalPaginasEstimado: totalPaginasProgresso,
+            totalPaginasExato,
+            percentual: calcularPercentualProgressoCatalogo(
+              paginasConcluidas,
+              totalPaginasProgresso,
+            ),
+            totalBrutoCarregado: produtosRecebidos.length,
+            totalAposRecorte: 0,
+            totalEnriquecidoComPrecoEstoque: 0,
+            origemDados: "api",
+          });
+        }
+
+        return { pagina, resultado };
+      }),
+    );
+    for (const { resultado } of resultados) {
       if (!resultado.sucesso) {
         atualizarProgressoRecebidosLaquila({
           emAndamento: false,
           etapaAtual: "erro",
           mensagem: "Falha ao consultar catálogo de produtos.",
-          paginaAtual: ultimaPaginaDoLote,
-          totalPaginasEstimado: LIMITE_PAGINAS_RECEBIDOS_LAQUILA,
-          percentual: calcularPercentualProgressoCatalogo(ultimaPaginaDoLote),
+          paginaAtual: paginasConcluidas,
+          totalPaginasEstimado: totalPaginasProgresso,
+          totalPaginasExato,
+          percentual: calcularPercentualProgressoCatalogo(
+            paginasConcluidas,
+            totalPaginasProgresso,
+          ),
           totalBrutoCarregado: produtosRecebidos.length,
           totalAposRecorte: 0,
           totalEnriquecidoComPrecoEstoque: 0,
@@ -643,30 +687,31 @@ async function consultarProdutosRecebidosPaginadosLaquila({
           produtosRecebidos,
         };
       }
-
-      produtosRecebidos.push(...resultado.itens);
     }
 
-    atualizarProgressoRecebidosLaquila({
-      emAndamento: true,
-      etapaAtual: "catalogo",
-      mensagem: "Consultando catálogo de produtos.",
-      paginaAtual: ultimaPaginaDoLote,
-      totalPaginasEstimado: LIMITE_PAGINAS_RECEBIDOS_LAQUILA,
-      percentual: calcularPercentualProgressoCatalogo(ultimaPaginaDoLote),
-      totalBrutoCarregado: produtosRecebidos.length,
-      totalAposRecorte: 0,
-      totalEnriquecidoComPrecoEstoque: 0,
-      origemDados: "api",
-    });
-
-    if (
-      resultados.some(
-        (resultado) =>
+    const primeiraPaginaFinal = resultados
+      .filter(
+        ({ resultado }) =>
           resultado.sucesso &&
           resultado.itens.length < ITENS_POR_PAGINA_API_LAQUILA,
       )
-    ) {
+      .map(({ pagina }) => pagina)
+      .sort((a, b) => a - b)[0];
+
+    if (primeiraPaginaFinal !== undefined) {
+      totalPaginasProgresso = primeiraPaginaFinal;
+      totalPaginasExato = true;
+      atualizarProgressoRecebidosLaquila({
+        emAndamento: true,
+        etapaAtual: "catalogo",
+        mensagem: "Catálogo de produtos recebido.",
+        paginaAtual: Math.min(paginasConcluidas, totalPaginasProgresso),
+        totalPaginasEstimado: totalPaginasProgresso,
+        totalPaginasExato: true,
+        percentual: 70,
+        totalBrutoCarregado: produtosRecebidos.length,
+        origemDados: "api",
+      });
       break;
     }
   }
@@ -979,7 +1024,10 @@ export async function listarProdutosRecebidosApiLaquila(
       emAndamento: true,
       etapaAtual: "preparando",
       mensagem: "Preparando consulta da Laquila.",
-      percentual: null,
+      paginaAtual: 0,
+      totalPaginasEstimado: LIMITE_PAGINAS_RECEBIDOS_LAQUILA,
+      totalPaginasExato: false,
+      percentual: 0,
       totalBrutoCarregado: 0,
       totalAposRecorte: 0,
       totalEnriquecidoComPrecoEstoque: 0,

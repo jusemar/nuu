@@ -29,6 +29,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.vercel-storage.com",
       },
+      {
+        protocol: "https",
+        hostname: "www.laquila.com.br",
+        pathname: "/imagensweb/**",
+      },
     ],
   },
 };

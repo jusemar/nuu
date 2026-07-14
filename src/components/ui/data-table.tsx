@@ -63,6 +63,7 @@ interface DataTableProps<TData, TValue> {
   onDeleteSelected?: (selectedRows: TData[]) => void;
   actionsContent?: (row: TData) => React.ReactNode; // ← NOVO SLOT
   filtroExtra?: React.ReactNode;
+  colunasPesquisaveis?: string[];
 }
 
 export function DataTable<TData, TValue>({
@@ -71,8 +72,10 @@ export function DataTable<TData, TValue>({
   onDeleteSelected,
   actionsContent, // ← NOVA PROP
   filtroExtra,
+  colunasPesquisaveis,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [filtroGlobal, setFiltroGlobal] = React.useState("");
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
@@ -91,6 +94,9 @@ export function DataTable<TData, TValue>({
   const identificadorColunaFiltro = initialOrder.includes("name")
     ? "name"
     : initialOrder[0];
+  const identificadoresColunasPesquisaveis =
+    colunasPesquisaveis ??
+    (identificadorColunaFiltro ? [identificadorColunaFiltro] : []);
 
   // Listener global para limpar seleção (usado pelo fluxo de exclusão)
   React.useEffect(() => {
@@ -105,16 +111,27 @@ export function DataTable<TData, TValue>({
     data,
     columns,
     onSortingChange: setSorting,
+    onGlobalFilterChange: setFiltroGlobal,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: (row, _columnId, valorFiltro) => {
+      const busca = String(valorFiltro).toLocaleLowerCase("pt-BR");
+
+      return identificadoresColunasPesquisaveis.some((identificador) =>
+        String(row.getValue(identificador) ?? "")
+          .toLocaleLowerCase("pt-BR")
+          .includes(busca),
+      );
+    },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onColumnOrderChange: setColumnOrder,
     state: {
       sorting,
+      globalFilter: filtroGlobal,
       columnFilters,
       columnVisibility,
       rowSelection,
@@ -192,20 +209,8 @@ export function DataTable<TData, TValue>({
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Filtrar..."
-            value={
-              identificadorColunaFiltro
-                ? ((table
-                    .getColumn(identificadorColunaFiltro)
-                    ?.getFilterValue() as string) ?? "")
-                : ""
-            }
-            onChange={(event) => {
-              if (!identificadorColunaFiltro) return;
-              const colunaFiltro = table.getColumn(identificadorColunaFiltro);
-              if (colunaFiltro) {
-                colunaFiltro.setFilterValue(event.target.value);
-              }
-            }}
+            value={filtroGlobal}
+            onChange={(event) => setFiltroGlobal(event.target.value)}
             className="bg-background border-input pl-10"
           />
         </div>

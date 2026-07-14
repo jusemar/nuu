@@ -73,7 +73,7 @@ const SignUpForm = () => {
               message: "E-mail já cadastrado.",
             });
           }
-          toast.error(error.error.message);
+          toast.error("Não foi possível criar a conta. Tente novamente.");
         },
       },
     });

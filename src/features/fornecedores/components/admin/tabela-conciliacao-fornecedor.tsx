@@ -7,15 +7,26 @@ import {
   Eye,
   FileWarning,
   PackageCheck,
+  Pencil,
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -37,6 +48,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  calcularAjustePrecoRascunhoFornecedor,
+  type OperacaoAjustePrecoRascunhoFornecedor,
+} from "@/features/fornecedores/lib/conciliacao/calcular-ajuste-preco-rascunho-fornecedor";
+import type { ModalidadeComercialRascunho } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 
 export type TipoOrigemConciliacaoFornecedor = "arquivo" | "api";
 
@@ -77,7 +94,8 @@ export type ConfiguracaoPrecoConciliacaoFornecedor = {
     | "Dropshipping"
     | "Estoque próprio"
     | "Pré-venda"
-    | "Sob encomenda";
+    | "Sob encomenda"
+    | null;
   valorAplicado?: string | null;
   prazo?: string | null;
   cardPrincipal?: boolean;
@@ -90,8 +108,11 @@ export type ItemConciliacaoFornecedor = {
     nome: string;
     codigo?: string | null;
     preco?: string | null;
+    precoFornecedor?: string | null;
+    precoLoja?: string | null;
     estoque?: number | null;
     complemento?: string | null;
+    imagemUrl?: string | null;
   };
   acaoPrevista: AcaoPrevistaConciliacaoFornecedor;
   status: StatusConciliacaoFornecedor;
@@ -102,7 +123,43 @@ export type ItemConciliacaoFornecedor = {
   regrasImportantes?: RegraCampoConciliacaoFornecedor[];
   configuracaoPreco?: ConfiguracaoPrecoConciliacaoFornecedor | null;
   motivoIgnorado?: string | null;
+  camposRascunho?: {
+    categoriaId?: string | null;
+    categoriaNome?: string | null;
+    marcaId?: string | null;
+    marcaNome?: string | null;
+    secoesLoja?: string[];
+    ncm?: string | null;
+    ean?: string | null;
+    peso?: string | null;
+    altura?: string | null;
+    largura?: string | null;
+    comprimento?: string | null;
+    statusRascunho?: string;
+    modalidadeComercial?: ModalidadeComercialRascunho | null;
+    prazoEntrega?: string | null;
+  };
 };
+
+export type EntradaAtualizarCamposRascunhosFornecedor =
+  | { rascunhoIds: string[]; campo: "categoria"; categoriaId: string }
+  | { rascunhoIds: string[]; campo: "marca"; marcaId: string }
+  | { rascunhoIds: string[]; campo: "preco_loja"; precoLoja: number }
+  | {
+      rascunhoIds: string[];
+      campo: "secoes_loja";
+      secoesLoja: string[];
+    }
+  | {
+      rascunhoIds: string[];
+      campo: "modalidade_comercial";
+      modalidade: ModalidadeComercialRascunho;
+    }
+  | {
+      rascunhoIds: string[];
+      campo: "prazo_entrega";
+      prazoEntrega: string;
+    };
 
 type TabelaConciliacaoFornecedorProps = {
   tipoOrigem: TipoOrigemConciliacaoFornecedor;
@@ -113,7 +170,30 @@ type TabelaConciliacaoFornecedorProps = {
   textoVoltar?: string;
   hrefProximaEtapa?: string;
   textoAcaoPrincipal?: string;
+  textoAcaoIndisponivel?: string;
+  mensagemAcaoIndisponivel?: string;
   itens: ItemConciliacaoFornecedor[];
+  aoAjustarPrecosSelecionados?: (
+    entrada: EntradaAjustarPrecosConciliacaoFornecedor,
+  ) => Promise<ResultadoAcaoConciliacaoFornecedor>;
+  aoAtualizarCamposRascunhos?: (
+    entrada: EntradaAtualizarCamposRascunhosFornecedor,
+  ) => Promise<ResultadoAcaoConciliacaoFornecedor>;
+  categoriasLoja?: Array<{ id: string; nome: string }>;
+  marcasLoja?: Array<{ id: string; nome: string }>;
+};
+
+export type EntradaAjustarPrecosConciliacaoFornecedor = {
+  rascunhoIds: string[];
+  operacao: OperacaoAjustePrecoRascunhoFornecedor;
+  valor: number;
+};
+
+export type ResultadoAcaoConciliacaoFornecedor = {
+  sucesso: boolean;
+  mensagem?: string;
+  erro?: string;
+  precosAtualizados?: Array<{ rascunhoId: string; precoLoja: string }>;
 };
 
 type FiltroConciliacaoFornecedor =
@@ -122,7 +202,7 @@ type FiltroConciliacaoFornecedor =
   | "vinculados"
   | "pendencias"
   | "alertas"
-  | "ignorados";
+  | "prontos";
 
 function formatarMoeda(valor?: string | null) {
   if (!valor) return null;
@@ -134,6 +214,36 @@ function formatarMoeda(valor?: string | null) {
     style: "currency",
     currency: "BRL",
   }).format(numero);
+}
+
+const NOMES_SECOES_LOJA: Record<string, string> = {
+  general: "Catálogo",
+  new: "Novidades",
+  sale: "Ofertas",
+  featured: "Destaques",
+  bestseller: "+ Vendidos",
+};
+
+function formatarSecoesLoja(secoes?: string[]) {
+  if (!secoes?.length) return "Não definidas";
+
+  return secoes.map((secao) => NOMES_SECOES_LOJA[secao] ?? secao).join(", ");
+}
+
+function calcularPrecoAjustadoPreview({
+  item,
+  operacao,
+  valor,
+}: {
+  item: ItemConciliacaoFornecedor;
+  operacao: OperacaoAjustePrecoRascunhoFornecedor;
+  valor: number;
+}) {
+  return calcularAjustePrecoRascunhoFornecedor({
+    precoAtual: item.produto.precoLoja ?? item.produto.precoFornecedor,
+    operacao,
+    valor,
+  });
 }
 
 function rotuloAcaoPrevista(acao: AcaoPrevistaConciliacaoFornecedor) {
@@ -298,7 +408,7 @@ function deveExibirItem(
   if (filtro === "vinculados") return item.statusVinculacao === "vinculado";
   if (filtro === "pendencias") return item.status === "pendencia";
   if (filtro === "alertas") return item.status === "alerta";
-  return item.status === "ignorado";
+  return item.status === "pronto";
 }
 
 function deveExibirPorBusca(item: ItemConciliacaoFornecedor, busca: string) {
@@ -497,12 +607,21 @@ function BlocoPrecoAplicado({
   return (
     <div className="rounded-md border border-slate-200 bg-white p-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          variant="outline"
-          className="border-blue-200 bg-blue-50 text-blue-700"
-        >
-          {configuracao.modalidade}
-        </Badge>
+        {configuracao.modalidade ? (
+          <Badge
+            variant="outline"
+            className="border-blue-200 bg-blue-50 text-blue-700"
+          >
+            {configuracao.modalidade}
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="border-amber-200 bg-amber-50 text-amber-700"
+          >
+            Modalidade pendente
+          </Badge>
+        )}
         {configuracao.cardPrincipal ? (
           <Badge variant="outline">Card principal</Badge>
         ) : null}
@@ -666,6 +785,68 @@ function PainelDetalhesConciliacao({
                 </dl>
               </section>
 
+              <section className="rounded-lg border border-slate-200 bg-white p-4">
+                <h3 className="text-sm font-semibold text-slate-950">
+                  Campos finais do rascunho
+                </h3>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-slate-500">Marca</dt>
+                    <dd className="font-medium text-slate-900">
+                      {item.camposRascunho?.marcaNome ?? "Pendente"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Categoria</dt>
+                    <dd className="font-medium text-slate-900">
+                      {item.camposRascunho?.categoriaNome ?? "Pendente"}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-slate-500">Seções da Loja</dt>
+                    <dd className="font-medium text-slate-900">
+                      {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Preço fornecedor</dt>
+                    <dd className="font-medium text-slate-900">
+                      {formatarMoeda(item.produto.precoFornecedor) ??
+                        "Não recebido"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Preço da loja</dt>
+                    <dd className="font-medium text-slate-900">
+                      {formatarMoeda(
+                        item.produto.precoLoja ?? item.produto.preco,
+                      ) ?? "Pendente"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">NCM</dt>
+                    <dd className="font-medium text-slate-900">
+                      {item.camposRascunho?.ncm ?? "Não recebido"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">EAN/GTIN</dt>
+                    <dd className="font-medium text-slate-900">
+                      {item.camposRascunho?.ean ?? "Não recebido"}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-slate-500">Peso e dimensões</dt>
+                    <dd className="font-medium text-slate-900">
+                      {item.camposRascunho?.peso ?? "-"} kg ·{` `}
+                      {item.camposRascunho?.altura ?? "-"} ×{` `}
+                      {item.camposRascunho?.largura ?? "-"} ×{` `}
+                      {item.camposRascunho?.comprimento ?? "-"} cm
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+
               <section className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/45 p-4">
                 <h3 className="text-sm font-semibold text-slate-950">
                   Campos que bloqueiam publicação
@@ -721,6 +902,417 @@ function PainelDetalhesConciliacao({
   );
 }
 
+const SECOES_LOJA_RASCUNHO = [
+  { id: "general", nome: "Catálogo" },
+  { id: "new", nome: "Novidades" },
+  { id: "sale", nome: "Ofertas" },
+  { id: "featured", nome: "Destaques" },
+  { id: "bestseller", nome: "+ Vendidos" },
+] as const;
+
+function ModalEdicaoRascunhos({
+  aberto,
+  itens,
+  rascunhoIds,
+  itemIndividual,
+  categorias,
+  marcas,
+  processando,
+  aoAlterarAbertura,
+  aoAplicarCampos,
+  aoAplicarPreco,
+}: {
+  aberto: boolean;
+  itens: ItemConciliacaoFornecedor[];
+  rascunhoIds: string[];
+  itemIndividual: ItemConciliacaoFornecedor | null;
+  categorias: Array<{ id: string; nome: string }>;
+  marcas: Array<{ id: string; nome: string }>;
+  processando: boolean;
+  aoAlterarAbertura: (aberto: boolean) => void;
+  aoAplicarCampos: (entrada: EntradaAtualizarCamposRascunhosFornecedor) => void;
+  aoAplicarPreco: (entrada: EntradaAjustarPrecosConciliacaoFornecedor) => void;
+}) {
+  const [aba, setAba] = useState<"preco" | "comercial" | "classificacao">(
+    "preco",
+  );
+  const [operacaoPreco, setOperacaoPreco] =
+    useState<OperacaoAjustePrecoRascunhoFornecedor>("aumentar_percentual");
+  const [valorPreco, setValorPreco] = useState("10");
+  const [campoComercial, setCampoComercial] = useState<
+    "modalidade_comercial" | "prazo_entrega" | "secoes_loja"
+  >("modalidade_comercial");
+  const [campoClassificacao, setCampoClassificacao] = useState<
+    "categoria" | "marca"
+  >("categoria");
+  const [categoriaId, setCategoriaId] = useState("");
+  const [marcaId, setMarcaId] = useState("");
+  const [secoesLoja, setSecoesLoja] = useState<string[]>(["general"]);
+  const [modalidade, setModalidade] =
+    useState<ModalidadeComercialRascunho>("dropshipping");
+  const [prazoEntrega, setPrazoEntrega] = useState("");
+
+  useEffect(() => {
+    if (!aberto) return;
+
+    const pendencias = itemIndividual?.pendenciasObrigatorias ?? [];
+    const possuiPendencia = (termo: string) =>
+      pendencias.some((pendencia) =>
+        pendencia.toLocaleLowerCase("pt-BR").includes(termo),
+      );
+
+    if (!itemIndividual) {
+      setAba("preco");
+    } else if (possuiPendencia("categoria")) {
+      setAba("classificacao");
+      setCampoClassificacao("categoria");
+    } else if (possuiPendencia("marca")) {
+      setAba("classificacao");
+      setCampoClassificacao("marca");
+    } else if (possuiPendencia("preço")) {
+      setAba("preco");
+    } else if (possuiPendencia("seção")) {
+      setAba("comercial");
+      setCampoComercial("secoes_loja");
+    } else if (possuiPendencia("modalidade")) {
+      setAba("comercial");
+      setCampoComercial("modalidade_comercial");
+    } else if (possuiPendencia("prazo")) {
+      setAba("comercial");
+      setCampoComercial("prazo_entrega");
+    }
+
+    setCategoriaId(itemIndividual?.camposRascunho?.categoriaId ?? "");
+    setMarcaId(itemIndividual?.camposRascunho?.marcaId ?? "");
+    setSecoesLoja(
+      itemIndividual?.camposRascunho?.secoesLoja?.length
+        ? itemIndividual.camposRascunho.secoesLoja
+        : ["general"],
+    );
+    setModalidade(
+      itemIndividual?.camposRascunho?.modalidadeComercial ?? "dropshipping",
+    );
+    setPrazoEntrega(itemIndividual?.camposRascunho?.prazoEntrega ?? "");
+    setOperacaoPreco("aumentar_percentual");
+    setValorPreco("10");
+  }, [aberto, itemIndividual]);
+
+  const valorPrecoNumerico = Number(valorPreco.replace(",", "."));
+  const previewPrecos = itens.slice(0, 5).map((item) => ({
+    item,
+    novoPreco: calcularPrecoAjustadoPreview({
+      item,
+      operacao: operacaoPreco,
+      valor: valorPrecoNumerico,
+    }),
+  }));
+  const podeAplicarPreco =
+    Number.isFinite(valorPrecoNumerico) && valorPrecoNumerico >= 0;
+  const podeAplicarComercial =
+    (campoComercial === "modalidade_comercial" && Boolean(modalidade)) ||
+    (campoComercial === "prazo_entrega" && Boolean(prazoEntrega.trim())) ||
+    (campoComercial === "secoes_loja" && secoesLoja.length > 0);
+  const podeAplicarClassificacao =
+    (campoClassificacao === "categoria" && Boolean(categoriaId)) ||
+    (campoClassificacao === "marca" && Boolean(marcaId));
+  const podeAplicar =
+    rascunhoIds.length > 0 &&
+    (aba === "preco"
+      ? podeAplicarPreco
+      : aba === "comercial"
+        ? podeAplicarComercial
+        : podeAplicarClassificacao);
+
+  const aplicar = () => {
+    if (aba === "preco") {
+      aoAplicarPreco({
+        rascunhoIds,
+        operacao: operacaoPreco,
+        valor: valorPrecoNumerico,
+      });
+      return;
+    }
+
+    if (aba === "classificacao") {
+      aoAplicarCampos(
+        campoClassificacao === "categoria"
+          ? { rascunhoIds, campo: "categoria", categoriaId }
+          : { rascunhoIds, campo: "marca", marcaId },
+      );
+      return;
+    }
+
+    if (campoComercial === "modalidade_comercial") {
+      aoAplicarCampos({ rascunhoIds, campo: campoComercial, modalidade });
+    } else if (campoComercial === "prazo_entrega") {
+      aoAplicarCampos({
+        rascunhoIds,
+        campo: campoComercial,
+        prazoEntrega: prazoEntrega.trim(),
+      });
+    } else {
+      aoAplicarCampos({ rascunhoIds, campo: campoComercial, secoesLoja });
+    }
+  };
+
+  return (
+    <Dialog open={aberto} onOpenChange={aoAlterarAbertura}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>
+            {itemIndividual
+              ? "Editar rascunho"
+              : `Editar ${rascunhoIds.length} rascunhos em massa`}
+          </DialogTitle>
+          <DialogDescription>
+            A alteração afeta apenas os itens selecionados. Nada será publicado
+            agora.
+          </DialogDescription>
+        </DialogHeader>
+
+        {itemIndividual?.pendenciasObrigatorias?.length ? (
+          <div className="flex flex-wrap gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+            {itemIndividual.pendenciasObrigatorias.map((pendencia) => (
+              <Badge
+                key={pendencia}
+                variant="outline"
+                className="border-amber-300 bg-white text-amber-800"
+              >
+                {pendencia}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+
+        <Tabs
+          value={aba}
+          onValueChange={(valor) => setAba(valor as typeof aba)}
+        >
+          <TabsList className="grid h-auto w-full grid-cols-3">
+            <TabsTrigger value="preco">Preço</TabsTrigger>
+            <TabsTrigger value="comercial">Dados comerciais</TabsTrigger>
+            <TabsTrigger value="classificacao">Classificação</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="preco" className="space-y-4 pt-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {(
+                [
+                  ["aumentar_percentual", "Aumentar %"],
+                  ["diminuir_percentual", "Diminuir %"],
+                  ["somar_valor_fixo", "Somar valor fixo"],
+                  ["definir_valor_fixo", "Definir valor fixo"],
+                ] as const
+              ).map(([valor, label]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => setOperacaoPreco(valor)}
+                  className={`rounded-md border p-3 text-left text-sm font-medium transition ${
+                    operacaoPreco === valor
+                      ? "border-slate-900 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <label className="block space-y-1.5 text-sm">
+              <span className="font-medium text-slate-700">
+                {operacaoPreco.includes("percentual") ? "Percentual" : "Valor"}
+              </span>
+              <Input
+                value={valorPreco}
+                onChange={(evento) => setValorPreco(evento.target.value)}
+                inputMode="decimal"
+                placeholder={
+                  operacaoPreco.includes("percentual") ? "10" : "30,00"
+                }
+              />
+            </label>
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              <div className="grid grid-cols-[minmax(0,1fr)_110px_110px] bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
+                <span>Produto</span>
+                <span>Preço atual</span>
+                <span>Novo preço</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {previewPrecos.map(({ item, novoPreco }) => (
+                  <div
+                    key={item.id}
+                    className="grid grid-cols-[minmax(0,1fr)_110px_110px] gap-2 px-3 py-2 text-sm"
+                  >
+                    <span className="truncate font-medium text-slate-900">
+                      {nomeProdutoLegivel(item.produto.nome)}
+                    </span>
+                    <span>
+                      {formatarMoeda(
+                        item.produto.precoLoja ?? item.produto.precoFornecedor,
+                      ) ?? "Pendente"}
+                    </span>
+                    <span className="font-semibold text-slate-950">
+                      {formatarMoeda(novoPreco) ?? "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="comercial" className="space-y-4 pt-2">
+            <label className="block space-y-1.5 text-sm">
+              <span className="font-medium text-slate-700">Campo</span>
+              <select
+                value={campoComercial}
+                onChange={(evento) =>
+                  setCampoComercial(
+                    evento.target.value as typeof campoComercial,
+                  )
+                }
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
+              >
+                <option value="modalidade_comercial">
+                  Modalidade comercial
+                </option>
+                <option value="prazo_entrega">Prazo de entrega</option>
+                <option value="secoes_loja">Seções da Loja</option>
+              </select>
+            </label>
+            {campoComercial === "modalidade_comercial" ? (
+              <label className="block space-y-1.5 text-sm">
+                <span className="font-medium text-slate-700">Modalidade</span>
+                <select
+                  value={modalidade}
+                  onChange={(evento) =>
+                    setModalidade(
+                      evento.target.value as ModalidadeComercialRascunho,
+                    )
+                  }
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
+                >
+                  <option value="stock">Estoque próprio</option>
+                  <option value="pre_sale">Pré-venda</option>
+                  <option value="dropshipping">Dropshipping</option>
+                  <option value="order_basis">Sob encomenda</option>
+                </select>
+              </label>
+            ) : null}
+            {campoComercial === "prazo_entrega" ? (
+              <label className="block space-y-1.5 text-sm">
+                <span className="font-medium text-slate-700">
+                  Prazo de entrega
+                </span>
+                <Input
+                  value={prazoEntrega}
+                  onChange={(evento) => setPrazoEntrega(evento.target.value)}
+                  placeholder="Ex.: 3 a 5 dias úteis"
+                  maxLength={160}
+                />
+              </label>
+            ) : null}
+            {campoComercial === "secoes_loja" ? (
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-slate-700">
+                  Seções da Loja
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {SECOES_LOJA_RASCUNHO.map((secao) => (
+                    <label
+                      key={secao.id}
+                      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={secoesLoja.includes(secao.id)}
+                        onCheckedChange={(marcado) =>
+                          setSecoesLoja((atuais) =>
+                            marcado === true
+                              ? Array.from(new Set([...atuais, secao.id]))
+                              : atuais.filter((id) => id !== secao.id),
+                          )
+                        }
+                      />
+                      {secao.nome}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
+          </TabsContent>
+
+          <TabsContent value="classificacao" className="space-y-4 pt-2">
+            <label className="block space-y-1.5 text-sm">
+              <span className="font-medium text-slate-700">Campo</span>
+              <select
+                value={campoClassificacao}
+                onChange={(evento) =>
+                  setCampoClassificacao(
+                    evento.target.value as typeof campoClassificacao,
+                  )
+                }
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
+              >
+                <option value="categoria">Categoria</option>
+                <option value="marca">Marca</option>
+              </select>
+            </label>
+            {campoClassificacao === "categoria" ? (
+              <label className="block space-y-1.5 text-sm">
+                <span className="font-medium text-slate-700">Categoria</span>
+                <select
+                  value={categoriaId}
+                  onChange={(evento) => setCategoriaId(evento.target.value)}
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categorias.map((categoria) => (
+                    <option key={categoria.id} value={categoria.id}>
+                      {categoria.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label className="block space-y-1.5 text-sm">
+                <span className="font-medium text-slate-700">Marca</span>
+                <select
+                  value={marcaId}
+                  onChange={(evento) => setMarcaId(evento.target.value)}
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
+                >
+                  <option value="">Selecione uma marca</option>
+                  {marcas.map((marca) => (
+                    <option key={marca.id} value={marca.id}>
+                      {marca.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => aoAlterarAbertura(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            disabled={!podeAplicar || processando}
+            onClick={aplicar}
+          >
+            {processando ? "Aplicando..." : "Aplicar aos selecionados"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function TabelaConciliacaoFornecedor({
   tipoOrigem,
   fornecedor,
@@ -730,13 +1322,24 @@ export function TabelaConciliacaoFornecedor({
   textoVoltar = "Voltar para Vínculos",
   hrefProximaEtapa,
   textoAcaoPrincipal = "Continuar para publicação",
+  textoAcaoIndisponivel = "Publicação bloqueada",
+  mensagemAcaoIndisponivel,
   itens,
+  aoAjustarPrecosSelecionados,
+  aoAtualizarCamposRascunhos,
+  categoriasLoja = [],
+  marcasLoja = [],
 }: TabelaConciliacaoFornecedorProps) {
+  const router = useRouter();
   const [filtro, setFiltro] = useState<FiltroConciliacaoFornecedor>("todos");
   const [busca, setBusca] = useState("");
   const [itemDetalhes, setItemDetalhes] =
     useState<ItemConciliacaoFornecedor | null>(null);
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
+  const [modalCamposAberto, setModalCamposAberto] = useState(false);
+  const [itemEdicaoIndividual, setItemEdicaoIndividual] =
+    useState<ItemConciliacaoFornecedor | null>(null);
+  const [processandoCampos, setProcessandoCampos] = useState(false);
   const resumo = useMemo(() => calcularResumo(itens), [itens]);
   const itensFiltrados = useMemo(
     () =>
@@ -753,6 +1356,10 @@ export function TabelaConciliacaoFornecedor({
     [itensFiltrados],
   );
   const totalSelecionados = idsSelecionados.length;
+  const itensSelecionados = useMemo(
+    () => itens.filter((item) => idsSelecionados.includes(item.id)),
+    [idsSelecionados, itens],
+  );
   const totalSelecionadosVisiveis = idsFiltrados.filter((id) =>
     idsSelecionados.includes(id),
   ).length;
@@ -778,7 +1385,7 @@ export function TabelaConciliacaoFornecedor({
     },
     {
       valor: "vinculados",
-      label: "Vinculados",
+      label: "Vinculados com alteração",
       total: itens.filter((item) => item.statusVinculacao === "vinculado")
         .length,
     },
@@ -788,7 +1395,7 @@ export function TabelaConciliacaoFornecedor({
       total: resumo.pendencias,
     },
     { valor: "alertas", label: "Alertas", total: resumo.alertas },
-    { valor: "ignorados", label: "Ignorados", total: resumo.ignorados },
+    { valor: "prontos", label: "Prontos", total: resumo.prontos },
   ];
   const alternarSelecaoItem = (id: string, selecionado: boolean) => {
     setIdsSelecionados((atuais) =>
@@ -803,6 +1410,48 @@ export function TabelaConciliacaoFornecedor({
 
       return atuais.filter((id) => !idsFiltrados.includes(id));
     });
+  };
+  const aplicarAjustePreco = async (
+    entrada: EntradaAjustarPrecosConciliacaoFornecedor,
+  ) => {
+    if (!aoAjustarPrecosSelecionados) return;
+
+    setProcessandoCampos(true);
+
+    const resultado = await aoAjustarPrecosSelecionados(entrada);
+
+    setProcessandoCampos(false);
+
+    if (resultado.sucesso) {
+      toast.success(resultado.mensagem ?? "Preço loja atualizado.");
+      setIdsSelecionados([]);
+      setItemEdicaoIndividual(null);
+      setModalCamposAberto(false);
+      router.refresh();
+      return;
+    }
+
+    toast.error(resultado.erro ?? "Não foi possível ajustar os preços.");
+  };
+  const atualizarCamposRascunhos = async (
+    entrada: EntradaAtualizarCamposRascunhosFornecedor,
+  ) => {
+    if (!aoAtualizarCamposRascunhos) return;
+
+    setProcessandoCampos(true);
+    const resultado = await aoAtualizarCamposRascunhos(entrada);
+    setProcessandoCampos(false);
+
+    if (!resultado.sucesso) {
+      toast.error(resultado.erro ?? "Não foi possível alterar os rascunhos.");
+      return;
+    }
+
+    toast.success(resultado.mensagem ?? "Rascunhos atualizados.");
+    setIdsSelecionados([]);
+    setItemEdicaoIndividual(null);
+    setModalCamposAberto(false);
+    router.refresh();
   };
 
   return (
@@ -886,9 +1535,14 @@ export function TabelaConciliacaoFornecedor({
         <Card className="rounded-lg">
           <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-medium text-slate-500">Ignorados</p>
+              <p className="text-xs font-medium text-slate-500">
+                Novos produtos
+              </p>
               <p className="mt-1 text-2xl font-semibold text-slate-950">
-                {resumo.ignorados}
+                {
+                  itens.filter((item) => item.statusVinculacao === "novo")
+                    .length
+                }
               </p>
             </div>
             <PackageCheck className="h-5 w-5 text-slate-500" />
@@ -935,15 +1589,25 @@ export function TabelaConciliacaoFornecedor({
       </div>
 
       {totalSelecionados > 0 ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-950 p-3 text-white shadow-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium">
             {totalSelecionados} linha{totalSelecionados === 1 ? "" : "s"}{" "}
             selecionada{totalSelecionados === 1 ? "" : "s"}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button type="button" size="sm" variant="secondary">
-              Aplicar categoria em lote
-            </Button>
+            {aoAtualizarCamposRascunhos ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setItemEdicaoIndividual(null);
+                  setModalCamposAberto(true);
+                }}
+              >
+                Alterar campos
+              </Button>
+            ) : null}
             <Button type="button" size="sm" variant="secondary">
               Marcar como ignorado
             </Button>
@@ -989,10 +1653,12 @@ export function TabelaConciliacaoFornecedor({
                   aria-label="Selecionar linhas visíveis"
                 />
               </TableHead>
-              <TableHead className="w-[34%]">Produto recebido</TableHead>
-              <TableHead className="w-[14%]">Situação</TableHead>
-              <TableHead className="w-[40%]">Correções necessárias</TableHead>
-              <TableHead className="w-[12%] text-right">Ações</TableHead>
+              <TableHead className="w-[25%]">Produto</TableHead>
+              <TableHead className="w-[12%]">Destino</TableHead>
+              <TableHead className="w-[20%]">Dados da loja</TableHead>
+              <TableHead className="w-[13%]">Preço</TableHead>
+              <TableHead className="w-[22%]">Status</TableHead>
+              <TableHead className="w-[8%] text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1012,44 +1678,140 @@ export function TabelaConciliacaoFornecedor({
                   />
                 </TableCell>
                 <TableCell>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">
-                      {nomeProdutoLegivel(item.produto.nome)}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {resumoProduto(item)}
-                    </p>
-                    {item.produto.complemento ? (
-                      <p className="mt-0.5 truncate text-xs text-slate-400">
-                        {item.produto.complemento}
+                  <div className="flex min-w-0 gap-3">
+                    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                      {item.produto.imagemUrl ? (
+                        <img
+                          src={item.produto.imagemUrl}
+                          alt=""
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <PackageCheck className="m-3 h-4 w-4 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-950">
+                        {nomeProdutoLegivel(item.produto.nome)}
                       </p>
-                    ) : null}
+                      <p className="mt-1 text-xs text-slate-500">
+                        {item.produto.codigo
+                          ? `Código ${item.produto.codigo}`
+                          : "Sem código"}
+                        {typeof item.produto.estoque === "number"
+                          ? ` · Estoque ${item.produto.estoque}`
+                          : ""}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Origem: Laquila API
+                      </p>
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="space-y-1.5">
-                    <Badge variant="outline" className={classeSituacao(item)}>
-                      {rotuloSituacao(item)}
-                    </Badge>
-                    {item.status === "pendencia" ? (
-                      <p className="text-xs font-medium text-amber-700">
-                        Bloqueia publicação
-                      </p>
-                    ) : null}
-                    {item.status === "ignorado" ? (
-                      <p className="text-xs text-slate-500">
-                        {item.motivoIgnorado ?? "Marcado na vinculação"}
-                      </p>
-                    ) : null}
+                  <Badge variant="outline" className={classeSituacao(item)}>
+                    {item.statusVinculacao === "novo"
+                      ? "Novo produto"
+                      : "Produto vinculado"}
+                  </Badge>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item.statusVinculacao === "novo"
+                      ? "Será criado na publicação"
+                      : "Revisão de atualização"}
+                  </p>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1 text-xs">
+                    <p>
+                      <span className="text-slate-500">Marca:</span>{" "}
+                      <span className="font-medium text-slate-800">
+                        {item.camposRascunho?.marcaNome ?? "Pendente"}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-slate-500">Categoria:</span>{" "}
+                      <span className="font-medium text-slate-800">
+                        {item.camposRascunho?.categoriaNome ?? "Pendente"}
+                      </span>
+                    </p>
+                    <p className="line-clamp-2">
+                      <span className="text-slate-500">Seções:</span>{" "}
+                      <span className="font-medium text-slate-800">
+                        {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
+                      </span>
+                    </p>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <CelulaPendenciasCorrecoes item={item} />
+                  <p className="text-xs text-slate-500">
+                    Fornecedor
+                    <span className="block font-medium text-slate-700">
+                      {formatarMoeda(item.produto.precoFornecedor) ??
+                        "Não recebido"}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Loja
+                    <span className="block font-semibold text-slate-950">
+                      {formatarMoeda(
+                        item.produto.precoLoja ?? item.produto.preco,
+                      ) ?? "Pendente"}
+                    </span>
+                  </p>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={classeSituacao(item)}>
+                    {rotuloStatus(item.status)}
+                  </Badge>
+                  <div className="mt-2 flex max-w-[220px] flex-wrap gap-1">
+                    {item.status === "pendencia"
+                      ? item.pendenciasObrigatorias?.map((pendencia) => (
+                          <Badge
+                            key={pendencia}
+                            variant="outline"
+                            className="border-amber-200 bg-amber-50 text-[10px] font-medium text-amber-800"
+                          >
+                            {pendencia}
+                          </Badge>
+                        ))
+                      : null}
+                    {item.status === "alerta"
+                      ? item.alertas?.slice(0, 2).map((alerta) => (
+                          <Badge
+                            key={alerta}
+                            variant="outline"
+                            className="border-orange-200 bg-orange-50 text-[10px] font-medium text-orange-700"
+                          >
+                            {alerta}
+                          </Badge>
+                        ))
+                      : null}
+                  </div>
                 </TableCell>
                 <TableCell
                   className="text-right"
                   onClick={(evento) => evento.stopPropagation()}
                 >
+                  {aoAtualizarCamposRascunhos ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setItemEdicaoIndividual(item);
+                            setModalCamposAberto(true);
+                          }}
+                          aria-label="Editar rascunho"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Editar rascunho</TooltipContent>
+                    </Tooltip>
+                  ) : null}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -1070,7 +1832,7 @@ export function TabelaConciliacaoFornecedor({
             ))}
             {itensFiltrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <p className="text-sm font-medium text-slate-700">
                     Nenhum item encontrado
                   </p>
@@ -1116,13 +1878,79 @@ export function TabelaConciliacaoFornecedor({
               </Badge>
             </div>
             <div className="mt-3 grid gap-3 text-sm">
-              <div>
-                <p className="mb-1 text-xs text-slate-500">
-                  Correções necessárias
+              <div className="grid gap-2 rounded-md bg-slate-50 p-3 text-xs sm:grid-cols-2">
+                <p>
+                  <span className="text-slate-500">Destino:</span>{" "}
+                  <strong>
+                    {item.statusVinculacao === "novo"
+                      ? "Novo produto"
+                      : "Produto vinculado"}
+                  </strong>
                 </p>
-                <CelulaPendenciasCorrecoes item={item} />
+                <p>
+                  <span className="text-slate-500">Marca:</span>{" "}
+                  <strong>
+                    {item.camposRascunho?.marcaNome ?? "Pendente"}
+                  </strong>
+                </p>
+                <p>
+                  <span className="text-slate-500">Categoria:</span>{" "}
+                  <strong>
+                    {item.camposRascunho?.categoriaNome ?? "Pendente"}
+                  </strong>
+                </p>
+                <p>
+                  <span className="text-slate-500">Seções:</span>{" "}
+                  <strong>
+                    {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
+                  </strong>
+                </p>
+                <p>
+                  <span className="text-slate-500">Preço fornecedor:</span>{" "}
+                  <strong>
+                    {formatarMoeda(item.produto.precoFornecedor) ??
+                      "Não recebido"}
+                  </strong>
+                </p>
+                <p>
+                  <span className="text-slate-500">Preço loja:</span>{" "}
+                  <strong>
+                    {formatarMoeda(
+                      item.produto.precoLoja ?? item.produto.preco,
+                    ) ?? "Pendente"}
+                  </strong>
+                </p>
+                {item.status === "pendencia" ? (
+                  <div className="flex flex-wrap gap-1 sm:col-span-2">
+                    {item.pendenciasObrigatorias?.map((pendencia) => (
+                      <Badge
+                        key={pendencia}
+                        variant="outline"
+                        className="border-amber-200 bg-amber-50 text-amber-800"
+                      >
+                        {pendencia}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-1">
+                {aoAtualizarCamposRascunhos ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={(evento) => {
+                      evento.stopPropagation();
+                      setItemEdicaoIndividual(item);
+                      setModalCamposAberto(true);
+                    }}
+                    aria-label="Editar rascunho"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : null}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -1166,6 +1994,26 @@ export function TabelaConciliacaoFornecedor({
         }}
       />
 
+      <ModalEdicaoRascunhos
+        aberto={modalCamposAberto}
+        itens={
+          itemEdicaoIndividual ? [itemEdicaoIndividual] : itensSelecionados
+        }
+        rascunhoIds={
+          itemEdicaoIndividual ? [itemEdicaoIndividual.id] : idsSelecionados
+        }
+        itemIndividual={itemEdicaoIndividual}
+        categorias={categoriasLoja}
+        marcas={marcasLoja}
+        processando={processandoCampos}
+        aoAlterarAbertura={(aberto) => {
+          setModalCamposAberto(aberto);
+          if (!aberto) setItemEdicaoIndividual(null);
+        }}
+        aoAplicarCampos={atualizarCamposRascunhos}
+        aoAplicarPreco={aplicarAjustePreco}
+      />
+
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <p
           className={`text-sm font-medium ${
@@ -1181,9 +2029,18 @@ export function TabelaConciliacaoFornecedor({
             <Link href={hrefVoltar}>Voltar para vínculos</Link>
           </Button>
           {possuiPendencias || !hrefProximaEtapa ? (
-            <Button type="button" disabled>
-              Publicação bloqueada
-            </Button>
+            <div className="flex flex-col items-stretch gap-1 sm:items-end">
+              <Button type="button" disabled>
+                {!hrefProximaEtapa
+                  ? textoAcaoIndisponivel
+                  : "Publicação bloqueada"}
+              </Button>
+              {!hrefProximaEtapa && mensagemAcaoIndisponivel ? (
+                <p className="max-w-sm text-xs text-slate-500 sm:text-right">
+                  {mensagemAcaoIndisponivel}
+                </p>
+              ) : null}
+            </div>
           ) : (
             <Button asChild>
               <Link href={hrefProximaEtapa}>{textoAcaoPrincipal}</Link>

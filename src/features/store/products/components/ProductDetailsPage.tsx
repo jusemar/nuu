@@ -55,6 +55,7 @@ interface ProductDetailProps {
     cardShortText: string | null;
     brand: string | null;
     sku: string;
+    ncmCode: string | null;
     productKind?: string | null;
     allowsPickup: boolean | null;
     prazoRetiradaCustom: string | null;
@@ -257,6 +258,10 @@ export function ProductDetail({
     largura: product.width,
     comprimento: product.length,
   });
+  const ncm = product.ncmCode?.trim();
+  const dadosFiscaisEComerciais: Especificacao[] = ncm
+    ? [{ label: "NCM", valor: ncm }]
+    : [];
   const avaliacoesProduto: Avaliacao[] = [];
   const ratingProduto = calcularRating(avaliacoesProduto);
   const totalAvaliacoesProduto = avaliacoesProduto.length;
@@ -500,6 +505,7 @@ export function ProductDetail({
           descricao={productLongDescription}
           especificacoes={especificacoesProduto}
           medidasEPeso={medidasEPeso}
+          dadosFiscaisEComerciais={dadosFiscaisEComerciais}
           avaliacoes={avaliacoesProduto}
           rating={ratingProduto}
           totalAvaliacoes={totalAvaliacoesProduto}

@@ -10,6 +10,9 @@ import { fornecedorProdutosStagingTable } from "./tabelas/fornecedor-produtos-st
 import { fornecedoresTable } from "./tabelas/fornecedores";
 import { importacaoFornecedorAjustesTable } from "./tabelas/importacao-fornecedor-ajustes";
 import { importacoesFornecedorTable } from "./tabelas/importacoes-fornecedor";
+import { produtoRascunhosTable } from "./tabelas/produto-rascunhos";
+import { categoryTable } from "../../table/categories/categories";
+import { marcaTable } from "../../table/marcas/marcas";
 
 export const fornecedoresRelations = relations(
   fornecedoresTable,
@@ -18,6 +21,7 @@ export const fornecedoresRelations = relations(
     vinculosProdutos: many(fornecedorProdutoVinculosTable),
     mapeamentosColunas: many(fornecedorMapeamentosColunasTable),
     integracoesApi: many(fornecedorIntegracoesApiTable),
+    produtoRascunhos: many(produtoRascunhosTable),
   }),
 );
 
@@ -30,6 +34,29 @@ export const fornecedorIntegracoesApiRelations = relations(
     }),
     logs: many(fornecedorIntegracaoLogsTable),
     produtosApiStaging: many(fornecedorProdutosApiStagingTable),
+    produtoRascunhos: many(produtoRascunhosTable),
+  }),
+);
+
+export const produtoRascunhosRelations = relations(
+  produtoRascunhosTable,
+  ({ one }) => ({
+    fornecedor: one(fornecedoresTable, {
+      fields: [produtoRascunhosTable.fornecedorId],
+      references: [fornecedoresTable.id],
+    }),
+    integracaoApi: one(fornecedorIntegracoesApiTable, {
+      fields: [produtoRascunhosTable.integracaoApiId],
+      references: [fornecedorIntegracoesApiTable.id],
+    }),
+    categoria: one(categoryTable, {
+      fields: [produtoRascunhosTable.categoriaId],
+      references: [categoryTable.id],
+    }),
+    marca: one(marcaTable, {
+      fields: [produtoRascunhosTable.marcaId],
+      references: [marcaTable.id],
+    }),
   }),
 );
 

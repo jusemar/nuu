@@ -1,8 +1,54 @@
+"use client";
+
 import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
+type ProgressoCarregamentoLaquila = {
+  mensagem: string;
+  paginaAtual?: number;
+  totalPaginasEstimado?: number;
+  totalPaginasExato?: boolean;
+  percentual: number | null;
+  totalBrutoCarregado: number;
+};
+
 export default function LoadingProdutosLaquila() {
+  const [progresso, setProgresso] =
+    useState<ProgressoCarregamentoLaquila | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function atualizarProgresso() {
+      try {
+        const resposta = await fetch(
+          "/admin/fornecedores/integracoes/laquila/produtos/progresso",
+          { cache: "no-store" },
+        );
+
+        if (!resposta.ok || !ativo) return;
+        setProgresso((await resposta.json()) as ProgressoCarregamentoLaquila);
+      } catch {
+        // A consulta principal continua mesmo se o indicador ficar indisponível.
+      }
+    }
+
+    void atualizarProgresso();
+    const intervalo = window.setInterval(atualizarProgresso, 1200);
+
+    return () => {
+      ativo = false;
+      window.clearInterval(intervalo);
+    };
+  }, []);
+
+  const percentual =
+    progresso?.percentual === null || progresso?.percentual === undefined
+      ? 0
+      : Math.min(100, Math.max(0, Math.round(progresso.percentual)));
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
@@ -24,7 +70,7 @@ export default function LoadingProdutosLaquila() {
           <div className="min-w-0 flex-1 space-y-3">
             <div>
               <p className="font-medium text-slate-900">
-                Carregando catálogo da Laquila...
+                {progresso?.mensagem ?? "Preparando consulta da Laquila..."}
               </p>
               <p className="text-xs text-slate-500">
                 Estamos consultando catálogo, preço e estoque. Isso pode levar
@@ -34,15 +80,27 @@ export default function LoadingProdutosLaquila() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3 text-xs">
-                <span>Etapa atual: Preparando consulta</span>
-                <span>Processando</span>
+                <span>
+                  {progresso?.paginaAtual !== undefined
+                    ? `${progresso.paginaAtual} página(s) carregada(s)`
+                    : "Etapa atual: Preparando consulta"}
+                  {progresso?.totalPaginasEstimado
+                    ? progresso.totalPaginasExato
+                      ? ` de ${progresso.totalPaginasEstimado}`
+                      : ` de aproximadamente ${progresso.totalPaginasEstimado}`
+                    : ""}
+                </span>
+                <span>{percentual}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full w-1/3 animate-pulse rounded-full bg-blue-600" />
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-[width] duration-300"
+                  style={{ width: `${percentual}%` }}
+                />
               </div>
               <p className="text-xs text-slate-500">
-                Assim que o catálogo responder, a tela exibirá produtos, filtros
-                e seleção.
+                Produtos recebidos até agora:{" "}
+                {progresso?.totalBrutoCarregado ?? 0}
               </p>
             </div>
           </div>

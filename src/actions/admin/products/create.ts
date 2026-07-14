@@ -5,6 +5,7 @@ import {
   productTable,
   productGalleryImagesTable,
   productPricingTable,
+  productVariantTable,
   produtosTiposLogisticosTable,
   marcaTable,
 } from "@/db/schema";
@@ -87,6 +88,21 @@ interface CreateProductData {
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
+  status?: "draft" | "published";
+  isActive?: boolean;
+  varianteTecnicaProdutoSimples?: {
+    precoEmCentavos: number;
+    estoque: number;
+    imagemUrl?: string | null;
+  };
+}
+
+function converterPrecoEmCentavos(valor?: string) {
+  if (!valor?.trim()) return null;
+  const numero = Number(valor.replace(",", "."));
+  return Number.isFinite(numero) && numero >= 0
+    ? Math.round(numero * 100)
+    : null;
 }
 
 async function buscarMarcaPadrao() {
@@ -111,6 +127,8 @@ async function buscarMarcaPorId(id: string) {
 }
 
 export async function createProduct(data: CreateProductData) {
+  let produtoCriadoId: string | null = null;
+
   try {
     const marcaPadrao = await buscarMarcaPadrao();
     const marcaSelecionada = data.brandId
@@ -137,9 +155,8 @@ export async function createProduct(data: CreateProductData) {
         storeProductFlags: data.storeProductFlags || [],
         cardShortText: data.cardShortText,
         productKind: data.productKind ?? "simple",
-        costPrice: data.pricing?.costPrice
-          ? parseInt(data.pricing.costPrice) * 100
-          : null,
+        costPrice: converterPrecoEmCentavos(data.pricing?.costPrice),
+        salePrice: data.varianteTecnicaProdutoSimples?.precoEmCentavos ?? null,
         warrantyPeriod: data.warranty?.period
           ? parseInt(data.warranty.period)
           : null,
@@ -161,10 +178,11 @@ export async function createProduct(data: CreateProductData) {
           data.dimensoesFreteExterno?.comprimentoEmCm,
         ),
 
-        status: "draft",
-        isActive: true,
+        status: data.status ?? "draft",
+        isActive: data.isActive ?? true,
       })
       .returning();
+    produtoCriadoId = product.id;
     console.log("Produto criado:", product);
 
     // 2. Adicionar imagens na galeria
@@ -188,7 +206,7 @@ export async function createProduct(data: CreateProductData) {
         ([type, modality]: [string, any]) => ({
           productId: product.id,
           type: type,
-          price: modality.price ? parseInt(modality.price) * 100 : 0,
+          price: converterPrecoEmCentavos(modality.price) ?? 0,
           deliveryDays: modality.deliveryText || "",
           pricingModalDescription: modality.deliveryText || "",
 
@@ -226,11 +244,63 @@ export async function createProduct(data: CreateProductData) {
       variants: data.variants,
     });
 
+    let varianteTecnicaId: string | null = null;
+    if (
+      (data.productKind ?? "simple") === "simple" &&
+      data.varianteTecnicaProdutoSimples
+    ) {
+      const [varianteTecnica] = await db
+        .insert(productVariantTable)
+        .values({
+          productId: product.id,
+          sku: data.sku,
+          name: data.name,
+          attributes: {},
+          priceInCents: data.varianteTecnicaProdutoSimples.precoEmCentavos,
+          stockQuantity: data.varianteTecnicaProdutoSimples.estoque,
+          weightInGrams: converterPesoEmGramas(
+            data.dimensoesFreteExterno?.pesoEmKg,
+          ),
+          heightInCm: converterValorEmInteiro(
+            data.dimensoesFreteExterno?.alturaEmCm,
+          ),
+          widthInCm: converterValorEmInteiro(
+            data.dimensoesFreteExterno?.larguraEmCm,
+          ),
+          lengthInCm: converterValorEmInteiro(
+            data.dimensoesFreteExterno?.comprimentoEmCm,
+          ),
+          imageUrl: data.varianteTecnicaProdutoSimples.imagemUrl ?? null,
+          isActive: true,
+          isDefault: true,
+          updatedAt: new Date(),
+        })
+        .returning({ id: productVariantTable.id });
+
+      varianteTecnicaId = varianteTecnica.id;
+    }
+
     // 4. Revalidar cache
     revalidateAdminProductsPath();
-    return { success: true, productId: product.id };
+    return {
+      success: true,
+      productId: product.id,
+      slug: product.slug,
+      varianteTecnicaId,
+    };
   } catch (error) {
     console.error("Erro ao criar produto:", error);
+
+    if (produtoCriadoId) {
+      try {
+        await db
+          .delete(productTable)
+          .where(eq(productTable.id, produtoCriadoId));
+      } catch (erroLimpeza) {
+        console.error("Erro ao remover produto incompleto:", erroLimpeza);
+      }
+    }
+
     return {
       success: false,
       error: "Erro ao criar produto. Tente novamente.",

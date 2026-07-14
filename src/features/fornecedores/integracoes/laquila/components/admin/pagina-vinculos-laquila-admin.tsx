@@ -2,52 +2,40 @@
 
 import { AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  desfazerVinculoProdutoRecebidoFornecedor,
+  salvarVinculoProdutoRecebidoFornecedor,
+} from "@/features/fornecedores/actions";
+import {
   type ItemVinculoFornecedor,
+  type RascunhoVinculoFornecedor,
   TabelaVinculosFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-vinculos-fornecedor";
-import type { ValoresPadraoRascunhoProdutoFornecedor } from "@/features/fornecedores/components/admin/modal-rascunho-produto-fornecedor";
-import { salvarProdutosSelecionadosStagingLaquila } from "@/features/fornecedores/integracoes/laquila/actions";
+import type {
+  ConfiguracaoComercialMapeamentoFornecedor,
+  EstrategiaPrazoEntregaFornecedor,
+  ModalidadeComercialFornecedor,
+  ValoresPadraoRascunhoProdutoFornecedor,
+} from "@/features/fornecedores/types/mapeamento-fornecedor.types";
+import {
+  buscarProdutosVinculoLaquila,
+  removerRascunhoProdutoLaquila,
+  salvarProdutosSelecionadosStagingLaquila,
+  salvarRascunhoProdutoLaquila,
+} from "@/features/fornecedores/integracoes/laquila/actions";
 import {
   CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
+  CHAVE_RASCUNHOS_CONCILIACAO_LAQUILA,
   CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
 } from "@/features/fornecedores/integracoes/laquila/constants";
-
-const produtosDaLojaMock = [
-  {
-    id: "produto-loja-1",
-    nome: "Amortecedor dianteiro premium",
-    sku: "AMT-001",
-    categoria: "Suspensão",
-    preco: "219.9",
-  },
-  {
-    id: "produto-loja-2",
-    nome: "Kit suporte do bico injetor",
-    sku: "KIT-110012",
-    categoria: "Injeção",
-    preco: "84.9",
-    jaVinculado: true,
-  },
-  {
-    id: "produto-loja-3",
-    nome: "Pastilha de freio dianteira",
-    sku: "PST-4450",
-    categoria: "Freios",
-    preco: "139.9",
-  },
-  {
-    id: "produto-loja-4",
-    nome: "Filtro de óleo blindado",
-    sku: "FLT-7781",
-    categoria: "Filtros",
-    preco: "42.5",
-  },
-];
+import type {
+  RascunhoConciliacaoLaquila,
+  VinculoProdutoLaquila,
+} from "@/features/fornecedores/integracoes/laquila/queries";
 
 type ProdutoSelecionadoMapeamentoLaquila = {
   cd_item: string;
@@ -74,9 +62,22 @@ type RegraMapeamentoLaquilaTemporaria = {
   valorPadraoTexto?: string;
 };
 
+type RegraCategoriaCombinacaoLaquilaTemporaria = {
+  estrategia: string;
+  camposApi: string[];
+  traducoes: Array<{
+    chave: string;
+    valores: string[];
+    categoriaId?: string;
+    categoriaLabel?: string;
+  }>;
+};
+
 type RegrasMapeamentoLaquilaTemporarias = {
   origem?: string;
   regras?: RegraMapeamentoLaquilaTemporaria[];
+  categoriaCombinacao?: RegraCategoriaCombinacaoLaquilaTemporaria;
+  configuracaoComercial?: ConfiguracaoComercialMapeamentoFornecedor;
 };
 
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
@@ -151,6 +152,8 @@ function converterEstoque(valor: string | number | null) {
 
 function converterItemVinculo(
   produto: ProdutoSelecionadoMapeamentoLaquila,
+  rascunho?: RascunhoConciliacaoLaquila,
+  vinculo?: VinculoProdutoLaquila,
 ): ItemVinculoFornecedor {
   return {
     id: `laquila-${produto.cd_item}`,
@@ -172,9 +175,25 @@ function converterItemVinculo(
       complemento: [produto.ds_ggrupo, produto.ds_grupo, produto.ds_sgrupo]
         .filter((parte) => parte.trim().length > 0)
         .join(" > "),
+      camposOrigem: {
+        ds_ggrupo: produto.ds_ggrupo,
+        ds_grupo: produto.ds_grupo,
+        ds_sgrupo: produto.ds_sgrupo,
+      },
     },
-    status: "aguardando",
-    produtoLoja: null,
+    status: vinculo ? "vinculado" : rascunho ? "rascunho" : "aguardando",
+    produtoLoja: vinculo
+      ? { ...vinculo.produto, vinculoId: vinculo.vinculoId }
+      : null,
+    rascunhoSalvo: rascunho
+      ? {
+          id: rascunho.id,
+          nome: rascunho.nome,
+          categoriaNome: rascunho.categoriaNome,
+          marcaNome: rascunho.marcaNome,
+          precoLoja: rascunho.precoLoja,
+        }
+      : null,
   };
 }
 
@@ -211,17 +230,145 @@ function normalizarRegrasMapeamentoLaquila(
           Boolean(regra),
         )
     : [];
+  const categoriaCombinacao = normalizarCategoriaCombinacaoLaquila(
+    valor.categoriaCombinacao,
+  );
 
   return {
     origem: obterTextoRegistro(valor, "origem"),
     regras,
+    categoriaCombinacao,
+    configuracaoComercial: normalizarConfiguracaoComercial(
+      valor.configuracaoComercial,
+    ),
+  };
+}
+
+function normalizarConfiguracaoComercial(
+  valor: unknown,
+): ConfiguracaoComercialMapeamentoFornecedor | undefined {
+  if (!ehRegistro(valor) || !ehRegistro(valor.prazoEntrega)) return undefined;
+
+  const modalidade = obterTextoRegistro(valor, "modalidade");
+  const estrategia = obterTextoRegistro(valor.prazoEntrega, "estrategia");
+  const modalidadesValidas: ModalidadeComercialFornecedor[] = [
+    "stock",
+    "pre_sale",
+    "dropshipping",
+    "order_basis",
+  ];
+  const estrategiasValidas: EstrategiaPrazoEntregaFornecedor[] = [
+    "valor_padrao_todos",
+    "conciliacao",
+    "rascunho",
+    "ignorar",
+  ];
+
+  if (
+    !modalidadesValidas.includes(modalidade as ModalidadeComercialFornecedor) ||
+    !estrategiasValidas.includes(estrategia as EstrategiaPrazoEntregaFornecedor)
+  ) {
+    return undefined;
+  }
+
+  return {
+    modalidade: modalidade as ModalidadeComercialFornecedor,
+    prazoEntrega: {
+      estrategia: estrategia as EstrategiaPrazoEntregaFornecedor,
+      valorPadraoTexto:
+        obterTextoRegistro(valor.prazoEntrega, "valorPadraoTexto") || undefined,
+    },
+  };
+}
+
+function normalizarCategoriaCombinacaoLaquila(
+  valor: unknown,
+): RegraCategoriaCombinacaoLaquilaTemporaria | undefined {
+  if (!ehRegistro(valor)) return undefined;
+
+  const estrategia = obterTextoRegistro(valor, "estrategia");
+  const camposApi = Array.isArray(valor.camposApi)
+    ? valor.camposApi
+        .map((campo) => String(campo).trim())
+        .filter((campo) => campo.length > 0)
+    : [];
+  const traducoes = Array.isArray(valor.traducoes)
+    ? valor.traducoes
+        .filter(ehRegistro)
+        .map((traducao) => ({
+          chave: obterTextoRegistro(traducao, "chave"),
+          valores: Array.isArray(traducao.valores)
+            ? traducao.valores.map((item) => String(item))
+            : [],
+          categoriaId: obterTextoRegistro(traducao, "categoriaId") || undefined,
+          categoriaLabel:
+            obterTextoRegistro(traducao, "categoriaLabel") || undefined,
+        }))
+        .filter((traducao) => traducao.chave.length > 0)
+    : [];
+
+  if (!estrategia || camposApi.length === 0 || traducoes.length === 0) {
+    return undefined;
+  }
+
+  return {
+    estrategia,
+    camposApi,
+    traducoes,
+  };
+}
+
+function montarChaveCategoriaCombinacaoItem(
+  item: ItemVinculoFornecedor,
+  camposApi: string[],
+) {
+  return camposApi
+    .map((campo) => {
+      const valor = item.produtoRecebido.camposOrigem?.[campo]?.trim();
+      return valor && valor.length > 0 ? valor : "Sem valor";
+    })
+    .join(" / ");
+}
+
+function obterCategoriaPorCombinacao(
+  regrasMapeamento: RegrasMapeamentoLaquilaTemporarias | null,
+  item?: ItemVinculoFornecedor,
+) {
+  const regraCombinacao = regrasMapeamento?.categoriaCombinacao;
+
+  if (
+    !item ||
+    regraCombinacao?.estrategia !== "combinacao_campos_api" ||
+    regraCombinacao.camposApi.length === 0
+  ) {
+    return null;
+  }
+
+  const chave = montarChaveCategoriaCombinacaoItem(
+    item,
+    regraCombinacao.camposApi,
+  );
+  const traducao = regraCombinacao.traducoes.find(
+    (itemTraducao) => itemTraducao.chave === chave,
+  );
+
+  if (!traducao?.categoriaId) return null;
+
+  return {
+    categoriaId: traducao.categoriaId,
+    categoriaNome: traducao.categoriaLabel,
   };
 }
 
 function obterValoresPadraoNovoProduto(
   regrasMapeamento: RegrasMapeamentoLaquilaTemporarias | null,
+  item?: ItemVinculoFornecedor,
 ): ValoresPadraoRascunhoProdutoFornecedor {
   const regras = regrasMapeamento?.regras ?? [];
+  const categoriaCombinada = obterCategoriaPorCombinacao(
+    regrasMapeamento,
+    item,
+  );
   const regraCategoria = regras.find(
     (regra) =>
       regra.campoDestino === "categoria_fornecedor" &&
@@ -236,14 +383,40 @@ function obterValoresPadraoNovoProduto(
   );
 
   return {
-    categoriaId: regraCategoria?.valorPadraoId,
-    categoriaNome: regraCategoria?.valorPadraoLabel,
+    categoriaId:
+      categoriaCombinada?.categoriaId ?? regraCategoria?.valorPadraoId,
+    categoriaNome:
+      categoriaCombinada?.categoriaNome ?? regraCategoria?.valorPadraoLabel,
     marcaId: regraMarca?.valorPadraoId,
     marcaNome: regraMarca?.valorPadraoLabel,
+    configuracaoComercial: regrasMapeamento?.configuracaoComercial,
   };
 }
 
-export function PaginaVinculosLaquilaAdmin() {
+function montarRascunhoConciliacaoLaquila(rascunho: RascunhoVinculoFornecedor) {
+  return {
+    item: rascunho.item,
+    produto: rascunho.produto,
+    codigoFornecedor: rascunho.codigoFornecedor,
+    ean: rascunho.ean,
+    origem: "laquila",
+    atualizadoEm: new Date().toISOString(),
+  };
+}
+
+type PaginaVinculosLaquilaAdminProps = {
+  rascunhosIniciais: RascunhoConciliacaoLaquila[];
+  fornecedorId: string | null;
+  vinculosIniciais: VinculoProdutoLaquila[];
+  sessaoAtiva: boolean;
+};
+
+export function PaginaVinculosLaquilaAdmin({
+  rascunhosIniciais,
+  fornecedorId,
+  vinculosIniciais,
+  sessaoAtiva,
+}: PaginaVinculosLaquilaAdminProps) {
   const [selecaoCarregada, setSelecaoCarregada] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<
     ItemVinculoFornecedor[]
@@ -258,6 +431,64 @@ export function PaginaVinculosLaquilaAdmin() {
   const valoresPadraoNovoProduto = useMemo(
     () => obterValoresPadraoNovoProduto(regrasMapeamento),
     [regrasMapeamento],
+  );
+  const obterValoresPadraoNovoProdutoItem = useCallback(
+    (item: ItemVinculoFornecedor) =>
+      obterValoresPadraoNovoProduto(regrasMapeamento, item),
+    [regrasMapeamento],
+  );
+  const salvarRascunhosConciliacao = useCallback(
+    (rascunhos: RascunhoVinculoFornecedor[]) => {
+      window.sessionStorage.setItem(
+        CHAVE_RASCUNHOS_CONCILIACAO_LAQUILA,
+        JSON.stringify(rascunhos.map(montarRascunhoConciliacaoLaquila)),
+      );
+    },
+    [],
+  );
+  const rascunhosPorCodigo = useMemo(() => {
+    return new Map(
+      rascunhosIniciais.flatMap((rascunho) =>
+        rascunho.codigoFornecedor
+          ? [[rascunho.codigoFornecedor.trim(), rascunho] as const]
+          : [],
+      ),
+    );
+  }, [rascunhosIniciais]);
+  const vinculosPorCodigo = useMemo(
+    () =>
+      new Map(
+        vinculosIniciais.map((vinculo) => [
+          vinculo.codigoFornecedor.trim(),
+          vinculo,
+        ]),
+      ),
+    [vinculosIniciais],
+  );
+  const vincularProduto = useCallback(
+    async ({
+      item,
+      produto,
+    }: {
+      item: ItemVinculoFornecedor;
+      produto: { id: string };
+    }) => {
+      const codigoFornecedor = item.produtoRecebido.codigo?.trim();
+
+      if (!fornecedorId || !codigoFornecedor) {
+        return {
+          sucesso: false,
+          erro: "Fornecedor ou código do item não foi identificado.",
+        };
+      }
+
+      return salvarVinculoProdutoRecebidoFornecedor({
+        fornecedorId,
+        codigoFornecedor,
+        produtoId: produto.id,
+      });
+    },
+    [fornecedorId],
   );
 
   useEffect(() => {
@@ -294,7 +525,15 @@ export function PaginaVinculosLaquilaAdmin() {
             Boolean(produto),
           );
 
-        setItensSelecionados(produtosSelecionados.map(converterItemVinculo));
+        setItensSelecionados(
+          produtosSelecionados.map((produto) =>
+            converterItemVinculo(
+              produto,
+              rascunhosPorCodigo.get(produto.cd_item.trim()),
+              vinculosPorCodigo.get(produto.cd_item.trim()),
+            ),
+          ),
+        );
 
         if (produtosSelecionados.length > 0) {
           setStatusStaging({
@@ -330,7 +569,7 @@ export function PaginaVinculosLaquilaAdmin() {
     } finally {
       setSelecaoCarregada(true);
     }
-  }, []);
+  }, [rascunhosPorCodigo, vinculosPorCodigo]);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
@@ -360,6 +599,24 @@ export function PaginaVinculosLaquilaAdmin() {
           API Laquila
         </Badge>
       </section>
+
+      {!sessaoAtiva ? (
+        <section className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">
+              Sessão administrativa inativa
+            </p>
+            <p className="mt-1 text-sm text-amber-800">
+              Entre novamente para buscar produtos, vincular e salvar rascunhos.
+            </p>
+          </div>
+          <Button asChild size="sm" variant="outline" className="bg-white">
+            <Link href="/admin/login?redirect=/admin/fornecedores/integracoes/laquila/vinculos&erro=sessao_expirada">
+              Entrar novamente
+            </Link>
+          </Button>
+        </section>
+      ) : null}
 
       {statusStaging ? (
         <section
@@ -410,10 +667,18 @@ export function PaginaVinculosLaquilaAdmin() {
           subtitulo="Revise quais itens da API Laquila correspondem a produtos já existentes na loja."
           labelProdutoRecebido="Produto da API"
           itens={itensSelecionados}
-          produtosDaLoja={produtosDaLojaMock}
-          textoAcaoPrincipal="Continuar para conciliação"
+          produtosDaLoja={[]}
+          textoAcaoPrincipal={`Continuar para Conciliação (${itensSelecionados.filter((item) => item.status === "rascunho" || item.rascunhoSalvo).length} rascunhos)`}
           hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/conciliacao"
+          totalRascunhosPersistidosInicial={rascunhosIniciais.length}
+          aoBuscarProdutosLoja={buscarProdutosVinculoLaquila}
+          aoVincularProdutoPersistido={vincularProduto}
+          aoDesfazerVinculoPersistido={desfazerVinculoProdutoRecebidoFornecedor}
           valoresPadraoNovoProduto={valoresPadraoNovoProduto}
+          obterValoresPadraoNovoProduto={obterValoresPadraoNovoProdutoItem}
+          aoAlterarRascunhos={salvarRascunhosConciliacao}
+          aoSalvarRascunhoPersistido={salvarRascunhoProdutoLaquila}
+          aoRemoverRascunhoPersistido={removerRascunhoProdutoLaquila}
         />
       ) : null}
     </main>

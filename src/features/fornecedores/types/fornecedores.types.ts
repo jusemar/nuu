@@ -329,6 +329,8 @@ export type ProdutoParaVinculoFornecedor = {
   sku: string;
   slug: string;
   marca: string | null;
+  categoria: string | null;
+  preco: string | null;
 };
 
 export type ProdutoVinculadoFornecedorAdmin = {

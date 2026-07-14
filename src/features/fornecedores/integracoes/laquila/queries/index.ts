@@ -1,4 +1,5 @@
 export { buscarConfiguracaoLaquilaAdmin } from "./buscar-configuracao-laquila";
+export { enriquecerTriagemProdutosLaquila } from "./enriquecer-triagem-produtos-laquila";
 export {
   listarProdutosApiStagingLaquilaCatalogo,
   listarProdutosApiStagingLaquilaPrevia,
@@ -12,3 +13,15 @@ export {
   type ProgressoRecebidosApiLaquila,
   type ResultadoProdutosRecebidosApiLaquila,
 } from "./listar-produtos-recebidos-api-laquila";
+export {
+  listarRascunhosConciliacaoLaquila,
+  type RascunhoConciliacaoLaquila,
+} from "./listar-rascunhos-conciliacao-laquila";
+export {
+  listarRascunhosPublicacaoLaquila,
+  type RascunhoPublicacaoLaquila,
+} from "./listar-rascunhos-publicacao-laquila";
+export {
+  listarVinculosProdutosLaquila,
+  type VinculoProdutoLaquila,
+} from "./listar-vinculos-produtos-laquila";

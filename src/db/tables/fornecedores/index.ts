@@ -5,6 +5,8 @@ export {
   fornecedorIntegracaoLogStatusEnum,
   fornecedorMapeamentoColunaDestinoEnum,
   fornecedorProdutoApiStagingStatusEnum,
+  produtoRascunhoOrigemTipoEnum,
+  produtoRascunhoStatusEnum,
   fornecedorProdutoStagingStatusEnum,
   fornecedorProdutoVinculoStatusEnum,
   fornecedorProdutoVinculoTipoEnum,
@@ -38,6 +40,11 @@ export {
   type NovoFornecedorProdutoApiStaging,
 } from "./tabelas/fornecedor-produtos-api-staging";
 export {
+  produtoRascunhosTable,
+  type NovoProdutoRascunho,
+  type ProdutoRascunho,
+} from "./tabelas/produto-rascunhos";
+export {
   fornecedorProdutoVinculosTable,
   type FornecedorProdutoVinculo,
   type NovoFornecedorProdutoVinculo,
@@ -67,6 +74,7 @@ export {
   fornecedorIntegracoesApiRelations,
   fornecedorMapeamentosColunasRelations,
   fornecedorProdutosApiStagingRelations,
+  produtoRascunhosRelations,
   fornecedorProdutoVinculosRelations,
   fornecedorProdutosStagingRelations,
   fornecedoresRelations,

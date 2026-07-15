@@ -33,7 +33,8 @@ export type StatusFornecedorProdutoStaging =
   | "nao_localizado"
   | "erro"
   | "rejeitado"
-  | "aprovado";
+  | "aprovado"
+  | "ignorado";
 
 export type TipoVinculoProdutoFornecedor = "manual" | "automatico";
 
@@ -198,6 +199,7 @@ export type EntradaAplicarMapeamentoImportacaoFornecedor = {
   importacaoId: string;
   mapeamentos?: MapeamentoColunaFornecedor[];
   salvarParaFornecedor?: boolean;
+  configuracaoFluxoJson?: Record<string, unknown>;
 };
 
 export type ResultadoImportacaoFornecedor = {

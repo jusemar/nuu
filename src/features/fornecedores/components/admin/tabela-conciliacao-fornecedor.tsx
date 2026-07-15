@@ -1640,8 +1640,8 @@ export function TabelaConciliacaoFornecedor({
         </div>
       ) : null}
 
-      <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white lg:block">
-        <Table>
+      <div className="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white lg:block">
+        <Table className="min-w-[1100px]">
           <TableHeader>
             <TableRow className="bg-slate-50/80">
               <TableHead className="w-[48px]">
@@ -1703,7 +1703,7 @@ export function TabelaConciliacaoFornecedor({
                           : ""}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-400">
-                        Origem: Laquila API
+                        Origem: {tipoOrigem === "api" ? "API" : "Arquivo"}
                       </p>
                     </div>
                   </div>
@@ -1760,12 +1760,10 @@ export function TabelaConciliacaoFornecedor({
                   </p>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={classeSituacao(item)}>
-                    {rotuloStatus(item.status)}
-                  </Badge>
-                  <div className="mt-2 flex max-w-[220px] flex-wrap gap-1">
-                    {item.status === "pendencia"
-                      ? item.pendenciasObrigatorias?.map((pendencia) => (
+                  {item.status === "pendencia" ? (
+                    <>
+                      <div className="flex max-w-[240px] flex-wrap gap-1">
+                        {item.pendenciasObrigatorias?.map((pendencia) => (
                           <Badge
                             key={pendencia}
                             variant="outline"
@@ -1773,8 +1771,18 @@ export function TabelaConciliacaoFornecedor({
                           >
                             {pendencia}
                           </Badge>
-                        ))
-                      : null}
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs font-medium text-amber-700">
+                        Bloqueia publicação
+                      </p>
+                    </>
+                  ) : (
+                    <Badge variant="outline" className={classeSituacao(item)}>
+                      {rotuloStatus(item.status)}
+                    </Badge>
+                  )}
+                  <div className="mt-2 flex max-w-[220px] flex-wrap gap-1">
                     {item.status === "alerta"
                       ? item.alertas?.slice(0, 2).map((alerta) => (
                           <Badge

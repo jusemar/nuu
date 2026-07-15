@@ -19,6 +19,8 @@ import {
 } from "./utils/createChildSubcategory";
 import { useCreateCategory } from "../../hooks/useCreateCategory";
 import { useUpdateCategory } from "../../hooks/useUpdateCategory"; // ← Importar hook de edição
+import { useCategoryList } from "../../hooks/useCategoryList";
+import { obterIdsDescendentes } from "../../lib/calcular-niveis-categorias";
 
 // =====================================================================
 // PASSO 1: Definir as props que o componente pode receber
@@ -33,6 +35,8 @@ interface CategoryFormProps {
     metaTitle?: string | null;
     metaDescription?: string | null;
     orderIndex?: number;
+    parentId?: string | null;
+    level?: number;
     subcategories?: any[]; // Pode ser ajustado para um tipo mais específico se necessário
   };
   isEditing?: boolean;
@@ -51,6 +55,8 @@ export function CategoryForm({
   // Hooks para criar ou atualizar categoria
   const createCategoryMutation = useCreateCategory();
   const updateCategoryMutation = useUpdateCategory(); // ← Hook de edição
+  const { data: todasCategorias = [], isLoading: carregandoCategorias } =
+    useCategoryList();
 
   // =====================================================================
   // PASSO 3: Estado da categoria (agora usa initialData se existir)
@@ -63,14 +69,39 @@ export function CategoryForm({
     metaTitle: initialData?.metaTitle || "",
     metaDescription: initialData?.metaDescription || "",
     orderIndex: initialData?.orderIndex || 1,
+    parentId: initialData?.parentId ?? null,
   });
+
+  const idsDescendentes = initialData?.id
+    ? obterIdsDescendentes(todasCategorias, initialData.id)
+    : new Set<string>();
+  const categoriasPaiDisponiveis = todasCategorias.filter(
+    (categoria) =>
+      categoria.isActive &&
+      categoria.id !== initialData?.id &&
+      !idsDescendentes.has(categoria.id),
+  );
+
+  useEffect(() => {
+    if (
+      carregandoCategorias ||
+      !categoryData.parentId ||
+      todasCategorias.some(
+        (categoria) =>
+          categoria.id === categoryData.parentId && categoria.isActive,
+      )
+    ) {
+      return;
+    }
+
+    // Um pai removido não pode permanecer oculto no formulário.
+    setCategoryData((dadosAtuais) => ({ ...dadosAtuais, parentId: null }));
+  }, [carregandoCategorias, categoryData.parentId, todasCategorias]);
 
   // Dentro do CategoryForm, após os useState existentes, adicione:
 
   useEffect(() => {
-   
     if (initialData?.subcategories) {
-    
       const converted = convertHierarchicalToFlat(initialData.subcategories);
       setSubcategories(converted);
     } else {
@@ -95,8 +126,7 @@ export function CategoryForm({
         childrenCount: item.children?.length || 0,
       };
 
-      flat.push(flatItem);      
-    
+      flat.push(flatItem);
 
       if (item.children?.length) {
         const childrenFlat = convertHierarchicalToFlat(
@@ -119,8 +149,7 @@ export function CategoryForm({
   // PASSO 4: Função para salvar (agora decide entre criar ou editar)
   // =====================================================================
   const handleSubmit = async () => {
-
-        try {
+    try {
       setIsLoading(true);
 
       // Prepara os dados da categoria
@@ -132,6 +161,7 @@ export function CategoryForm({
         metaTitle: categoryData.metaTitle || undefined,
         metaDescription: categoryData.metaDescription || undefined,
         orderIndex: categoryData.orderIndex,
+        parentId: categoryData.parentId,
       };
 
       // Converte subcategorias para estrutura hierárquica
@@ -411,6 +441,7 @@ export function CategoryForm({
                 </div>
               );
             }}
+            categoriasPai={categoriasPaiDisponiveis}
           />
         </div>
 

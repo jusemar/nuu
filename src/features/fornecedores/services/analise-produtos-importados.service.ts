@@ -129,7 +129,10 @@ export async function analisarProdutosImportadosFornecedor(
     .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId));
 
   const linhasValidasParaAnalise = linhas.filter(
-    (linha) => linha.status !== "erro" && linha.status !== "rejeitado",
+    (linha) =>
+      linha.status !== "erro" &&
+      linha.status !== "rejeitado" &&
+      linha.status !== "ignorado",
   );
 
   const resultadoPorVinculo = await localizarProdutosPorVinculoFornecedor(

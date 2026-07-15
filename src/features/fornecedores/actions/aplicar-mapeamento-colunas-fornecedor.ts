@@ -6,6 +6,28 @@ import { redirect } from "next/navigation";
 import type { CampoMapeamentoColunaFornecedor } from "../types/fornecedores.types";
 import { aplicarMapeamentoColunasFornecedor } from "../services/aplicar-mapeamento-colunas-fornecedor.service";
 
+function lerConfiguracaoFluxo(formData: FormData): Record<string, unknown> {
+  const valor = String(formData.get("configuracaoFluxoJson") ?? "").trim();
+
+  if (!valor) return {};
+
+  try {
+    const configuracao: unknown = JSON.parse(valor);
+
+    if (
+      !configuracao ||
+      typeof configuracao !== "object" ||
+      Array.isArray(configuracao)
+    ) {
+      throw new Error("Formato inválido.");
+    }
+
+    return configuracao as Record<string, unknown>;
+  } catch {
+    throw new Error("A configuração do fluxo da importação é inválida.");
+  }
+}
+
 export async function aplicarMapeamentoColunasFornecedorAction(
   formData: FormData,
 ) {
@@ -29,6 +51,7 @@ export async function aplicarMapeamentoColunasFornecedorAction(
     importacaoId,
     mapeamentos,
     salvarParaFornecedor,
+    configuracaoFluxoJson: lerConfiguracaoFluxo(formData),
   });
 
   revalidatePath(`/admin/fornecedores/importacoes/${importacaoId}`);

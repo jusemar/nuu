@@ -25,6 +25,7 @@ const statusPermitidos = [
   "erro",
   "rejeitado",
   "aprovado",
+  "ignorado",
 ] as const;
 
 type StatusStagingFiltro = (typeof statusPermitidos)[number];

@@ -20,6 +20,10 @@ import type {
   HierarchicalSubcategory,
   UpdateCategoryInput,
 } from "../types";
+import {
+  calcularNiveisReais,
+  obterIdsDescendentes,
+} from "../lib/calcular-niveis-categorias";
 
 type SubcategoryNode = HierarchicalSubcategory & {
   id?: string;
@@ -100,18 +104,20 @@ async function getDescendantCategories(
     ORDER BY level DESC, order_index;
   `);
 
-  return result.rows.map((row: any): ExistingSubcategory => ({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    parentId: row.parent_id,
-    level: row.level,
-    orderIndex: row.order_index,
-    imageUrl: row.image_url,
-    metaTitle: row.meta_title,
-    metaDescription: row.meta_description,
-    isActive: row.is_active,
-  }));
+  return result.rows.map(
+    (row: any): ExistingSubcategory => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      parentId: row.parent_id,
+      level: row.level,
+      orderIndex: row.order_index,
+      imageUrl: row.image_url,
+      metaTitle: row.meta_title,
+      metaDescription: row.meta_description,
+      isActive: row.is_active,
+    }),
+  );
 }
 
 async function getProductCountsByCategoryIds(
@@ -138,8 +144,10 @@ async function syncSubcategories(params: {
   parentId: string;
   existingById: Map<string, ExistingSubcategory>;
   touchedIds: Set<string>;
+  parentLevel: number;
 }) {
-  const { tx, subcategories, parentId, existingById, touchedIds } = params;
+  const { tx, subcategories, parentId, existingById, touchedIds, parentLevel } =
+    params;
 
   for (let i = 0; i < subcategories.length; i++) {
     const subcategory = subcategories[i];
@@ -156,7 +164,7 @@ async function syncSubcategories(params: {
             subcategory.description !== undefined
               ? subcategory.description || null
               : existing.description,
-          level: subcategory.level || existing.level,
+          level: parentLevel + 1,
           parentId,
           orderIndex,
           imageUrl:
@@ -188,6 +196,7 @@ async function syncSubcategories(params: {
           parentId: subcategory.id,
           existingById,
           touchedIds,
+          parentLevel: parentLevel + 1,
         });
       }
 
@@ -200,7 +209,7 @@ async function syncSubcategories(params: {
         name: subcategory.name,
         slug: subcategory.slug,
         description: subcategory.description || null,
-        level: subcategory.level || 1,
+        level: parentLevel + 1,
         parentId,
         orderIndex,
         imageUrl: subcategory.imageUrl || null,
@@ -224,6 +233,7 @@ async function syncSubcategories(params: {
         parentId: newSubcategory.id,
         existingById,
         touchedIds,
+        parentLevel: parentLevel + 1,
       });
     }
   }
@@ -280,14 +290,16 @@ export async function getAllCategories(): Promise<Category[]> {
       .from(categoryTable)
       .orderBy(desc(categoryTable.updatedAt));
 
-    // Converte os dados para o formato esperado pelo tipo Category
+    const niveisReais = calcularNiveisReais(categories);
+
+    // O nível exibido deriva da hierarquia atual, nunca do valor armazenado.
     return categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
       slug: cat.slug,
       description: cat.description,
       parentId: cat.parentId,
-      level: cat.level ?? 0,
+      level: niveisReais.get(cat.id) ?? 0,
       orderIndex: cat.orderIndex ?? 1,
       imageUrl: cat.imageUrl,
       metaTitle: cat.metaTitle,
@@ -336,9 +348,9 @@ export async function getCategoryById(id: string): Promise<Category | null> {
       })
       .from(categoryTable)
       .where(eq(categoryTable.id, id))
-      .limit(1)
+      .limit(1);
 
-    if (!mainCategory.length) return null
+    if (!mainCategory.length) return null;
 
     // 2. Busca TODAS as subcategorias com CTE recursiva (SQL raw)
     const allSubs = await db.execute(sql`
@@ -363,68 +375,66 @@ export async function getCategoryById(id: string): Promise<Category | null> {
       )
       SELECT * FROM category_tree
       ORDER BY level, order_index;
-    `)
+    `);
 
-    const category = mainCategory[0]
+    const category = mainCategory[0];
 
-// Cria um mapa de todos os itens para fácil acesso
-const itemMap = new Map()
-allSubs.rows.forEach((row: any) => {
-  itemMap.set(row.id, {
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    description: row.description,
-    parentId: row.parent_id,
-    level: row.level,
-    orderIndex: row.order_index,
-    imageUrl: row.image_url,
-    metaTitle: row.meta_title,
-    metaDescription: row.meta_description,
-    isActive: row.is_active,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
-    children: [] // Inicia com array vazio para os filhos
-  })
-})
+    // Cria um mapa de todos os itens para fácil acesso
+    const itemMap = new Map();
+    allSubs.rows.forEach((row: any) => {
+      itemMap.set(row.id, {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        description: row.description,
+        parentId: row.parent_id,
+        level: row.level,
+        orderIndex: row.order_index,
+        imageUrl: row.image_url,
+        metaTitle: row.meta_title,
+        metaDescription: row.meta_description,
+        isActive: row.is_active,
+        createdAt: new Date(row.created_at),
+        updatedAt: new Date(row.updated_at),
+        children: [], // Inicia com array vazio para os filhos
+      });
+    });
 
-// Constrói a árvore: para cada item, coloca no children do pai
-const roots: any[] = []
-itemMap.forEach((item) => {
-  if (item.parentId) {
-    const parent = itemMap.get(item.parentId)
-    if (parent) {
-      parent.children.push(item)
-    } else {
-      // Se não encontrar o pai, considera como raiz (fallback)
-      roots.push(item)
-    }
-  } else {
-    roots.push(item)
-  }
-})
+    // Constrói a árvore: para cada item, coloca no children do pai
+    const roots: any[] = [];
+    itemMap.forEach((item) => {
+      if (item.parentId) {
+        const parent = itemMap.get(item.parentId);
+        if (parent) {
+          parent.children.push(item);
+        } else {
+          // Se não encontrar o pai, considera como raiz (fallback)
+          roots.push(item);
+        }
+      } else {
+        roots.push(item);
+      }
+    });
 
-return {
-  id: category.id,
-  name: category.name,
-  slug: category.slug,
-  description: category.description,
-  parentId: category.parentId,
-  level: category.level ?? 0,
-  orderIndex: category.orderIndex ?? 1,
-  imageUrl: category.imageUrl,
-  metaTitle: category.metaTitle,
-  metaDescription: category.metaDescription,
-  isActive: category.isActive,
-  createdAt: category.createdAt,
-  updatedAt: category.updatedAt,
-  subcategories: roots // ← AGORA É UMA ÁRVORE!
-}
-    
-
+    return {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      parentId: category.parentId,
+      level: category.level ?? 0,
+      orderIndex: category.orderIndex ?? 1,
+      imageUrl: category.imageUrl,
+      metaTitle: category.metaTitle,
+      metaDescription: category.metaDescription,
+      isActive: category.isActive,
+      createdAt: category.createdAt,
+      updatedAt: category.updatedAt,
+      subcategories: roots, // ← AGORA É UMA ÁRVORE!
+    };
   } catch (error) {
-    console.error('❌ [getCategoryById] Erro:', error)
-    throw new Error('Falha ao carregar categoria')
+    console.error("❌ [getCategoryById] Erro:", error);
+    throw new Error("Falha ao carregar categoria");
   }
 }
 
@@ -459,18 +469,62 @@ export async function createCategory(data: CreateCategoryInput) {
       orderIndex: newCategory.orderIndex ?? 1,
     };
   } catch (error) {
-  console.error('❌ [createCategory] Erro detalhado:', error)
-  throw new Error(`Falha ao criar categoria: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+    console.error("❌ [createCategory] Erro detalhado:", error);
+    throw new Error(
+      `Falha ao criar categoria: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+    );
+  }
 }
-}
-
 
 // =====================================================================
 // 4. ATUALIZAR CATEGORIA EXISTENTE
 // =====================================================================
 export async function updateCategory(id: string, data: UpdateCategoryInput) {
-  
   try {
+    const hierarquiaAtual = await db
+      .select({
+        id: categoryTable.id,
+        parentId: categoryTable.parentId,
+        isActive: categoryTable.isActive,
+      })
+      .from(categoryTable);
+    const categoriaAtual = hierarquiaAtual.find(
+      (categoria) => categoria.id === id,
+    );
+
+    if (!categoriaAtual) throw new Error("Categoria não encontrada.");
+
+    let nivelCategoria = calcularNiveisReais(hierarquiaAtual).get(id) ?? 0;
+
+    if (data.parentId !== undefined) {
+      if (data.parentId === id) {
+        throw new Error("Uma categoria não pode ser pai dela mesma.");
+      }
+
+      const descendentes = obterIdsDescendentes(hierarquiaAtual, id);
+      if (data.parentId && descendentes.has(data.parentId)) {
+        throw new Error(
+          "Uma categoria descendente não pode ser selecionada como pai.",
+        );
+      }
+
+      if (data.parentId) {
+        const categoriaPai = hierarquiaAtual.find(
+          (categoria) => categoria.id === data.parentId,
+        );
+        if (!categoriaPai?.isActive) {
+          throw new Error("Selecione uma categoria pai válida e ativa.");
+        }
+      }
+
+      const hierarquiaPretendida = hierarquiaAtual.map((categoria) =>
+        categoria.id === id
+          ? { ...categoria, parentId: data.parentId ?? null }
+          : categoria,
+      );
+      nivelCategoria = calcularNiveisReais(hierarquiaPretendida).get(id) ?? 0;
+    }
+
     let existingSubcategories: ExistingSubcategory[] = [];
     let existingById = new Map<string, ExistingSubcategory>();
     let removedSubcategories: ExistingSubcategory[] = [];
@@ -478,7 +532,10 @@ export async function updateCategory(id: string, data: UpdateCategoryInput) {
     if (data.subcategories) {
       existingSubcategories = await getDescendantCategories(id);
       existingById = new Map(
-        existingSubcategories.map((subcategory) => [subcategory.id, subcategory]),
+        existingSubcategories.map((subcategory) => [
+          subcategory.id,
+          subcategory,
+        ]),
       );
 
       const incomingExistingIds = collectExistingSubcategoryIds(
@@ -512,23 +569,29 @@ export async function updateCategory(id: string, data: UpdateCategoryInput) {
     // PASSO 1: Atualiza a categoria principal
     // =================================================================
     const updateData: any = {
-      updatedAt: new Date() // Sempre atualiza a data de modificação
-    }
+      updatedAt: new Date(), // Sempre atualiza a data de modificação
+    };
 
-    if (data.name !== undefined) updateData.name = data.name
-    if (data.slug !== undefined) updateData.slug = data.slug
-    if (data.description !== undefined) updateData.description = data.description
-    if (data.isActive !== undefined) updateData.isActive = data.isActive
-    if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle
-    if (data.metaDescription !== undefined) updateData.metaDescription = data.metaDescription
-    if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.slug !== undefined) updateData.slug = data.slug;
+    if (data.description !== undefined)
+      updateData.description = data.description;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle;
+    if (data.metaDescription !== undefined)
+      updateData.metaDescription = data.metaDescription;
+    if (data.orderIndex !== undefined) updateData.orderIndex = data.orderIndex;
+    if (data.parentId !== undefined) {
+      updateData.parentId = data.parentId;
+      updateData.level = nivelCategoria;
+    }
 
     await db
       .update(categoryTable)
       .set(updateData)
-      .where(eq(categoryTable.id, id))
+      .where(eq(categoryTable.id, id));
 
-    console.log(`🟢 [updateCategory] Categoria atualizada: ${id}`)
+    console.log(`🟢 [updateCategory] Categoria atualizada: ${id}`);
 
     // =================================================================
     // PASSO 2: Sincroniza subcategorias sem apagar tudo e recriar
@@ -543,30 +606,50 @@ export async function updateCategory(id: string, data: UpdateCategoryInput) {
           parentId: id,
           existingById,
           touchedIds,
+          parentLevel: nivelCategoria,
         });
       }
 
       for (const subcategory of removedSubcategories) {
-        await db.delete(categoryTable).where(eq(categoryTable.id, subcategory.id));
+        await db
+          .delete(categoryTable)
+          .where(eq(categoryTable.id, subcategory.id));
         console.log(
           `🟢 [updateCategory] Subcategoria removida sem produtos vinculados: ${subcategory.name} (${subcategory.id})`,
         );
       }
     }
 
-    console.log('🟢 [updateCategory] Categoria e subcategorias atualizadas com sucesso!')
-    return { success: true }
-    
+    if (data.parentId !== undefined) {
+      const hierarquiaAtualizada = await db
+        .select({ id: categoryTable.id, parentId: categoryTable.parentId })
+        .from(categoryTable);
+      const niveisAtualizados = calcularNiveisReais(hierarquiaAtualizada);
+      const idsParaRecalcular = obterIdsDescendentes(hierarquiaAtualizada, id);
+      idsParaRecalcular.add(id);
+
+      for (const categoriaId of idsParaRecalcular) {
+        await db
+          .update(categoryTable)
+          .set({
+            level: niveisAtualizados.get(categoriaId) ?? 0,
+            updatedAt: new Date(),
+          })
+          .where(eq(categoryTable.id, categoriaId));
+      }
+    }
+
+    console.log(
+      "🟢 [updateCategory] Categoria e subcategorias atualizadas com sucesso!",
+    );
+    return { success: true };
   } catch (error) {
-    console.error('❌ [updateCategory] Erro:', error)
+    console.error("❌ [updateCategory] Erro:", error);
     throw new Error(
-      error instanceof Error ? error.message : 'Falha ao atualizar categoria',
-    )
+      error instanceof Error ? error.message : "Falha ao atualizar categoria",
+    );
   }
 }
-
-
-
 
 // =====================================================================
 // 5. EXCLUIR CATEGORIA (SOFT OU HARD DELETE)
@@ -595,7 +678,9 @@ export async function deleteCategory(
       }
 
       await db.delete(categoryTable).where(eq(categoryTable.id, id));
-      console.log(`🟢 [deleteCategory] Categoria removida em hard delete: ${id}`);
+      console.log(
+        `🟢 [deleteCategory] Categoria removida em hard delete: ${id}`,
+      );
     } else {
       await db
         .update(categoryTable)
@@ -604,7 +689,9 @@ export async function deleteCategory(
           updatedAt: new Date(),
         })
         .where(eq(categoryTable.id, id));
-      console.log(`🟢 [deleteCategory] Categoria marcada como inativa (soft delete): ${id}`);
+      console.log(
+        `🟢 [deleteCategory] Categoria marcada como inativa (soft delete): ${id}`,
+      );
     }
     return { success: true };
   } catch (error) {

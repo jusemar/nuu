@@ -9,6 +9,7 @@ type DadosProdutoRascunhoFornecedor = Omit<
 > & {
   fornecedorId: string;
   codigoFornecedor: string;
+  origemProvedor: string;
 };
 
 /**
@@ -24,6 +25,8 @@ export async function salvarProdutoRascunhoFornecedor(
     .from(produtoRascunhosTable)
     .where(
       and(
+        eq(produtoRascunhosTable.origemTipo, dados.origemTipo),
+        eq(produtoRascunhosTable.origemProvedor, dados.origemProvedor),
         eq(produtoRascunhosTable.fornecedorId, dados.fornecedorId),
         eq(
           produtoRascunhosTable.codigoFornecedor,

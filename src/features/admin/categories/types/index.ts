@@ -1,6 +1,6 @@
 /**
  * Tipos para Categorias e Subcategorias
- * 
+ *
  * Este arquivo define os tipos usados em toda a feature de categories.
  * Inclui tipos para entidades do banco, requests e responses.
  * Usamos TypeScript para garantir segurança de tipos.
@@ -10,11 +10,11 @@
 export interface SubcategoryBase {
   id?: string;
   name: string;
-  slug: string;           // OBRIGATÓRIO: usado em URLs, SEO e navegação
-  level: number;          // 1 para sub, 2 para sub-sub, etc.
-  parentId?: string;      // ID do pai (opcional apenas para subs diretas da categoria raiz)
+  slug: string; // OBRIGATÓRIO: usado em URLs, SEO e navegação
+  level: number; // 1 para sub, 2 para sub-sub, etc.
+  parentId?: string; // ID do pai (opcional apenas para subs diretas da categoria raiz)
   orderIndex: number;
-  description?: string;   // Opcional, pode ser vazio
+  description?: string; // Opcional, pode ser vazio
 }
 
 // Tipo recursivo para subcategorias com hierarquia (children)
@@ -32,12 +32,12 @@ export interface Category {
   isActive: boolean;
   metaTitle?: string | null;
   metaDescription?: string | null;
-  orderIndex: number;  
+  orderIndex: number;
   createdAt: Date;
   updatedAt: Date;
-  parentId?: string | null;      
-  level?: number;               
-  imageUrl?: string | null;    
+  parentId?: string | null;
+  level?: number;
+  imageUrl?: string | null;
   subcategoriesCount?: number;
   productCount?: number;
   subcategories?: HierarchicalSubcategory[];
@@ -46,7 +46,7 @@ export interface Category {
 // Input para CRIAR categoria (inclui subs opcionais)
 export interface CreateCategoryInput {
   name: string;
-  slug: string;           // OBRIGATÓRIO: deve vir preenchido do formulário
+  slug: string; // OBRIGATÓRIO: deve vir preenchido do formulário
   description?: string;
   isActive: boolean;
   metaTitle?: string;
@@ -61,22 +61,23 @@ export interface CreateCategoryInput {
 // Input para ATUALIZAR categoria (slug pode ser alterado, mas ainda obrigatório se enviado)
 export interface UpdateCategoryInput {
   name?: string;
-  slug?: string;          // Se enviado, deve ser string válida (não vazio)
+  slug?: string; // Se enviado, deve ser string válida (não vazio)
   description?: string;
   isActive?: boolean;
   metaTitle?: string;
   metaDescription?: string;
   orderIndex?: number;
+  parentId?: string | null;
   subcategories?: HierarchicalSubcategory[];
 }
 
 // Input para criar subcategoria isolada (mantido para usos futuros)
 export interface CreateSubcategoryInput {
   name: string;
-  slug: string;           // OBRIGATÓRIO
+  slug: string; // OBRIGATÓRIO
   level: number;
   parentId?: string;
-  categoryId: string;     // Liga à categoria principal
+  categoryId: string; // Liga à categoria principal
   orderIndex: number;
   description?: string;
 }
@@ -86,9 +87,9 @@ export interface CategoryFilters {
   search?: string;
   isActive?: boolean;
   sortBy?: keyof Category;
-  sortOrder?: 'asc' | 'desc';
-  level?: number;       
-  parentId?: string | null; 
+  sortOrder?: "asc" | "desc";
+  level?: number;
+  parentId?: string | null;
 }
 
 export interface PaginatedResponse<T> {

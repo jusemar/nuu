@@ -31,19 +31,29 @@ import { eq } from "drizzle-orm";
  * const produto = await getProductBySlug("aether-run-pro-x");
  */
 export async function getProductBySlug(slug: string) {
-  // findFirst = busca UM registro que combine com o filtro
-  // "with" = carrega as relações (JOIN automático do Drizzle)
-  const product = await db.query.productTable.findFirst({
-    where: eq(productTable.slug, slug),
-    with: {
-      galleryImages: true,
-      pricing: true,
-      attributes: true,
-      variants: true,
-      modeloRetirada: true,
-    },
-  });
+  try {
+    // findFirst = busca UM registro que combine com o filtro
+    // "with" = carrega as relações (JOIN automático do Drizzle)
+    const product = await db.query.productTable.findFirst({
+      where: eq(productTable.slug, slug),
+      with: {
+        galleryImages: true,
+        pricing: true,
+        attributes: true,
+        variants: true,
+        modeloRetirada: true,
+      },
+    });
 
-  // Se não encontrou, retorna null (a page.tsx vai tratar como 404)
-  return product ?? null;
+    // Apenas a ausência real do registro segue para o notFound() da página.
+    return product ?? null;
+  } catch (error) {
+    const codigo = crypto.randomUUID();
+    const tipo =
+      error instanceof Error ? error.constructor.name : "ErroDesconhecido";
+
+    // Não registra slug, SQL, parâmetros nem a mensagem original do driver.
+    console.error("Falha ao consultar produto para a PDP", { codigo, tipo });
+    throw new Error(`Não foi possível carregar o produto. Código: ${codigo}`);
+  }
 }

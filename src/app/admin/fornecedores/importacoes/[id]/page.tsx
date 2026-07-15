@@ -5,11 +5,11 @@ import {
   buscarProdutosParaVinculoFornecedor,
   listarImportacoesFornecedoresAdmin,
   listarOpcoesMapeamentoFornecedor,
+  listarRascunhosImportacaoFornecedor,
   listarStagingImportacaoFornecedor,
   listarStagingImportacaoFornecedorAdmin,
 } from "@/features/fornecedores/queries";
 import { analisarRevisaoImportacaoFornecedor } from "@/features/fornecedores/services/analise-revisao-importacao.service";
-import { gerarPreviewSincronizacaoFornecedor } from "@/features/fornecedores/services/gerar-preview-sincronizacao.service";
 
 type ImportacaoFornecedorDetalhePageProps = {
   params: Promise<{ id: string }>;
@@ -24,7 +24,6 @@ type ImportacaoFornecedorDetalhePageProps = {
     marcaFornecedor?: string;
     status?: string;
     vinculo?: string;
-    situacaoPreview?: string;
     pagina?: string;
     paginaRevisao?: string;
     limite?: string;
@@ -35,7 +34,7 @@ type ImportacaoFornecedorDetalhePageProps = {
   }>;
 };
 
-const etapasPermitidas = ["mapeamento", "vinculacao", "revisao", "preview"];
+const etapasPermitidas = ["mapeamento", "vinculacao", "revisao"];
 const vinculosPermitidos = ["vinculado", "nao_vinculado"];
 const statusPermitidos = [
   "aguardando_analise",
@@ -44,6 +43,7 @@ const statusPermitidos = [
   "erro",
   "rejeitado",
   "aprovado",
+  "ignorado",
 ] as const;
 
 type StatusPermitido = (typeof statusPermitidos)[number];
@@ -119,7 +119,6 @@ export default async function Page({
     vinculo: vinculosPermitidos.includes(parametros.vinculo ?? "")
       ? parametros.vinculo
       : "",
-    situacaoPreview: parametros.situacaoPreview ?? "",
     pagina,
     limite,
     paginaRevisao,
@@ -133,9 +132,9 @@ export default async function Page({
     stagingPaginado,
     todasLinhas,
     produtosParaVinculo,
-    preview,
     revisao,
     opcoesMapeamento,
+    rascunhosImportacao,
   ] = await Promise.all([
     listarStagingImportacaoFornecedorAdmin({
       importacaoId: id,
@@ -157,9 +156,9 @@ export default async function Page({
           busca: filtros.buscaProduto,
         })
       : [],
-    gerarPreviewSincronizacaoFornecedor({ importacaoId: id }),
     analisarRevisaoImportacaoFornecedor(id),
     listarOpcoesMapeamentoFornecedorComFallback(),
+    listarRascunhosImportacaoFornecedor(id),
   ]);
 
   const termoCategoriaRevisao = normalizarTexto(filtros.categoriaRevisao);
@@ -211,7 +210,6 @@ export default async function Page({
       paginacao={stagingPaginado.paginacao}
       filtros={filtros}
       produtosParaVinculo={produtosParaVinculo}
-      previewSincronizacao={preview}
       revisaoImportacao={revisao}
       revisaoItens={revisaoFiltrada}
       revisaoTotal={totalRevisao}
@@ -223,6 +221,7 @@ export default async function Page({
       marcaRevisao={filtros.marcaRevisao}
       marcasAtivas={opcoesMapeamento.marcasLoja}
       categoriasLoja={opcoesMapeamento.categoriasLoja}
+      rascunhosImportacao={rascunhosImportacao}
     />
   );
 }

@@ -24,6 +24,7 @@ export async function tratarProdutosFornecedorComoNovos(entrada: unknown) {
         notInArray(fornecedorProdutosStagingTable.status, [
           "erro",
           "rejeitado",
+          "ignorado",
         ]),
       ),
     )

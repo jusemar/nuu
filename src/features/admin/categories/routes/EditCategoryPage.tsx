@@ -1,28 +1,28 @@
-'use client'
+"use client";
 
-import { useParams } from 'next/navigation'
-import { useCategoryDetail } from '../hooks/useCategoryDetail'
-import { CategoryForm } from '../form/CategoryForm'
-import { Loader2 } from 'lucide-react'
+import { useParams } from "next/navigation";
+import { useCategoryDetail } from "../hooks/useCategoryDetail";
+import { CategoryForm } from "../form/CategoryForm";
+import { Loader2 } from "lucide-react";
 
 export default function EditCategoryPage() {
-  const params = useParams()
-  const categoryId = params.id as string
+  const params = useParams();
+  const categoryId = params.id as string;
 
-  const { data: category, isLoading, error } = useCategoryDetail(categoryId)
+  const { data: category, isLoading, error } = useCategoryDetail(categoryId);
 
   // ================================================================
   // 1. ENQUANTO CARREGA
   // ================================================================
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           <p className="text-sm text-slate-500">Carregando categoria...</p>
         </div>
       </div>
-    )
+    );
   }
 
   // ================================================================
@@ -30,31 +30,33 @@ export default function EditCategoryPage() {
   // ================================================================
   if (error || !category) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-red-600">
           <p className="text-sm font-medium">Erro ao carregar categoria</p>
           <p className="text-xs text-red-500">
-            {error?.message || 'Categoria não encontrada'}
+            {error?.message || "Categoria não encontrada"}
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   // ================================================================
   // 3. PREPARA DADOS PARA O FORMULÁRIO
   // ================================================================
   const formInitialData = {
-     id: category.id,
+    id: category.id,
     name: category.name,
-    slug: category.slug || '',
-    description: category.description || '',
+    slug: category.slug || "",
+    description: category.description || "",
     isActive: category.isActive,
-    metaTitle: category.metaTitle || '',
-    metaDescription: category.metaDescription || '',
+    metaTitle: category.metaTitle || "",
+    metaDescription: category.metaDescription || "",
     orderIndex: category.orderIndex,
-    subcategories: category.subcategories || [] 
-  }
+    parentId: category.parentId ?? null,
+    level: category.level ?? 0,
+    subcategories: category.subcategories || [],
+  };
 
   // ================================================================
   // 4. RENDERIZA O FORMULÁRIO COM OS DADOS
@@ -66,10 +68,7 @@ export default function EditCategoryPage() {
         <p className="text-sm text-slate-500">Altere os dados da categoria</p>
       </div>
 
-      <CategoryForm 
-        initialData={formInitialData}
-        isEditing={true}
-      />
+      <CategoryForm initialData={formInitialData} isEditing={true} />
     </div>
-  )
+  );
 }

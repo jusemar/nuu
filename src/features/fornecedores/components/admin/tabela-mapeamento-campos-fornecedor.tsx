@@ -136,6 +136,7 @@ export type TabelaMapeamentoCamposFornecedorProps = {
   };
   action?: (formData: FormData) => void | Promise<void>;
   camposOcultos?: Array<{ nome: string; valor: string }>;
+  nomeCampoConfiguracaoFluxo?: string;
   textoCheckbox?: string;
   mostrarCheckbox?: boolean;
   configuracaoInicial?: DadosTemporariosMapeamentoFornecedor | null;
@@ -1085,6 +1086,7 @@ export function TabelaMapeamentoCamposFornecedor({
   camposCombinacaoCategoriaPadrao,
   action,
   camposOcultos = [],
+  nomeCampoConfiguracaoFluxo,
   textoCheckbox = "Salvar este mapeamento como padrão deste fornecedor",
   mostrarCheckbox = true,
   configuracaoInicial = null,
@@ -1478,6 +1480,13 @@ export function TabelaMapeamentoCamposFornecedor({
           value={campo.valor}
         />
       ))}
+      {nomeCampoConfiguracaoFluxo ? (
+        <input
+          type="hidden"
+          name={nomeCampoConfiguracaoFluxo}
+          value={JSON.stringify(montarDadosTemporariosMapeamento())}
+        />
+      ) : null}
       {linhasSubmetidas.map((linha) => (
         <div key={linha.id} className="hidden">
           <input

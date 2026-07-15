@@ -160,6 +160,7 @@ export async function aplicarMapeamentoColunasFornecedor(
     .select({
       id: fornecedorProdutosStagingTable.id,
       dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
+      status: fornecedorProdutosStagingTable.status,
     })
     .from(fornecedorProdutosStagingTable)
     .where(eq(fornecedorProdutosStagingTable.importacaoId, dados.importacaoId));
@@ -176,6 +177,7 @@ export async function aplicarMapeamentoColunasFornecedor(
   const agora = new Date();
   const linhasPreparadas = linhasAtuais.map((linha, indice) => ({
     id: linha.id,
+    statusAnterior: linha.status,
     dados: prepararLinhaStagingFornecedor(
       montarLinhaPlanilha(
         indice + 2,
@@ -203,7 +205,10 @@ export async function aplicarMapeamentoColunasFornecedor(
           produtoLocalizadoId: null,
           criterioLocalizacao: null,
           errosValidacao: linha.dados.errosValidacao,
-          status: linha.dados.status,
+          status:
+            linha.statusAnterior === "ignorado"
+              ? "ignorado"
+              : linha.dados.status,
           atualizadoEm: agora,
         })
         .where(eq(fornecedorProdutosStagingTable.id, linha.id));
@@ -213,6 +218,7 @@ export async function aplicarMapeamentoColunasFornecedor(
       .update(importacoesFornecedorTable)
       .set({
         mapeamentoColunas,
+        configuracaoFluxoJson: dados.configuracaoFluxoJson,
         totalProcessadas: linhasPreparadas.length - totalErros,
         totalErros,
         atualizadoEm: agora,

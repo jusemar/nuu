@@ -20,18 +20,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
 import {
+  type DadosTemporariosMapeamentoFornecedor,
   type OpcaoValorPadraoLoja,
   TabelaMapeamentoCamposFornecedor,
 } from "./tabela-mapeamento-campos-fornecedor";
@@ -39,10 +32,10 @@ import {
 import type {
   CampoMapeamentoColunaFornecedor,
   ColunaPlanilhaFornecedor,
-  PreviewSincronizacaoFornecedor,
   ProdutoParaVinculoFornecedor,
   ResultadoRevisaoImportacaoFornecedor,
 } from "../../types/fornecedores.types";
+import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
 
 type ImportacaoFornecedorAdmin = {
   id: string;
@@ -62,6 +55,7 @@ type ImportacaoFornecedorAdmin = {
     origem: string | null;
     situacao: string;
   }>;
+  configuracaoFluxoJson: Record<string, unknown>;
   status: string;
   criadoEm: Date;
   atualizadoEm: Date;
@@ -105,7 +99,6 @@ type FiltrosFornecedor = {
   marcaFornecedor?: string;
   status?: string;
   vinculo?: string;
-  situacaoPreview?: string;
   pagina: number;
   limite: number;
   paginaRevisao: number;
@@ -122,7 +115,6 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   paginacao: PaginacaoFornecedor;
   filtros: FiltrosFornecedor;
   produtosParaVinculo: ProdutoParaVinculoFornecedor[];
-  previewSincronizacao: PreviewSincronizacaoFornecedor;
   revisaoImportacao: ResultadoRevisaoImportacaoFornecedor;
   revisaoItens: ResultadoRevisaoImportacaoFornecedor["itens"];
   revisaoTotal: number;
@@ -134,13 +126,13 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   marcaRevisao: string;
   marcasAtivas: Array<{ id: string; nome: string }>;
   categoriasLoja: OpcaoValorPadraoLoja[];
+  rascunhosImportacao: RascunhoImportacaoFornecedor[];
 };
 
 const etapas = [
   { valor: "mapeamento", label: "Mapeamento" },
   { valor: "vinculacao", label: "Vinculação" },
   { valor: "revisao", label: "Conciliação" },
-  { valor: "preview", label: "Preview" },
 ] as const;
 
 const camposMapeamento = [
@@ -157,47 +149,14 @@ const etapasFluxo = [
   "Mapear colunas",
   "Vinculação",
   "Conciliação",
-  "Preview",
-  "Sincronização futura",
+  "Publicação",
 ];
-
-function formatarMoeda(valor: string | null) {
-  if (!valor) return "-";
-
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(Number(valor));
-}
 
 function formatarData(valor: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
   }).format(valor);
-}
-
-function RotuloOrigem({
-  campo,
-  origem,
-  alinhar = "left",
-}: {
-  campo: string;
-  origem: "arquivo" | "loja" | "importação";
-  alinhar?: "left" | "right";
-}) {
-  return (
-    <span
-      className={`inline-flex flex-col leading-tight ${
-        alinhar === "right" ? "items-end text-right" : "items-start text-left"
-      }`}
-    >
-      <span>{campo}</span>
-      <span className="text-[10px] font-medium tracking-normal text-slate-400 normal-case">
-        {origem}
-      </span>
-    </span>
-  );
 }
 
 function montarUrl(
@@ -219,32 +178,16 @@ function montarUrl(
 
 function ResumoCompacto({
   importacao,
-  previewSincronizacao,
   revisaoImportacao,
 }: {
   importacao: ImportacaoFornecedorAdmin;
-  previewSincronizacao: PreviewSincronizacaoFornecedor;
   revisaoImportacao: ResultadoRevisaoImportacaoFornecedor;
 }) {
-  const valorFornecedor = previewSincronizacao.itens.reduce(
-    (total, item) => total + Number(item.precoFornecedor ?? 0),
-    0,
-  );
-  const valorAjustado = previewSincronizacao.itens.reduce(
-    (total, item) => total + Number(item.precoCalculado ?? 0),
-    0,
-  );
   const cards = [
     ["Total importado", importacao.totalLinhas],
-    ["Localizados", previewSincronizacao.resumo.totalProntosParaSincronizar],
-    ["Não localizados", previewSincronizacao.resumo.totalPendentesVinculacao],
-    ["Erros", previewSincronizacao.resumo.totalComErro],
-    ["Valor fornecedor", formatarMoeda(valorFornecedor.toFixed(2))],
-    ["Valor ajustado", formatarMoeda(valorAjustado.toFixed(2))],
-    [
-      "Diferença total",
-      formatarMoeda((valorAjustado - valorFornecedor).toFixed(2)),
-    ],
+    ["Processados", importacao.totalProcessadas],
+    ["Erros", importacao.totalErros],
+    ["Produtos OK", revisaoImportacao.resumo.totalProdutosOK],
   ];
   const indicadoresRevisao = [
     [
@@ -265,7 +208,7 @@ function ResumoCompacto({
 
   return (
     <div className="space-y-2">
-      <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-4">
         {cards.map(([label, valor]) => (
           <Card key={label} className="rounded-md">
             <CardHeader className="space-y-0.5 p-2.5">
@@ -353,9 +296,8 @@ function StepperImportacao({ etapaAtual }: { etapaAtual: string }) {
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white px-4 py-3">
       <div className="flex min-w-max items-start">
         {etapasFluxo.map((etapa, indice) => {
-          const bloqueado = indice >= 7;
           const atual = indice === indiceAtual;
-          const concluido = indice < indiceAtual && !bloqueado;
+          const concluido = indice < indiceAtual;
 
           return (
             <div
@@ -475,6 +417,15 @@ function AbaMapeamento({
       marcasLoja={marcasAtivas}
       action={aplicarMapeamentoColunasFornecedorAction}
       camposOcultos={[{ nome: "importacaoId", valor: importacao.id }]}
+      nomeCampoConfiguracaoFluxo="configuracaoFluxoJson"
+      configuracaoInicial={
+        Array.isArray(importacao.configuracaoFluxoJson.regras) &&
+        importacao.configuracaoFluxoJson.destinosSelecionados &&
+        typeof importacao.configuracaoFluxoJson.destinosSelecionados ===
+          "object"
+          ? (importacao.configuracaoFluxoJson as DadosTemporariosMapeamentoFornecedor)
+          : null
+      }
       textoAcaoPrincipal="Continuar para vínculos"
       textoRodape={`${totalColunasDetectadas} colunas detectadas • ${totalMapeadasAutomaticamente} mapeadas automaticamente • ${totalPendentes} pendente${totalPendentes === 1 ? "" : "s"}`}
       estadoVazio="Nenhuma coluna registrada para esta importação."
@@ -496,25 +447,25 @@ function BarraFiltros({
   return (
     <form
       action={`/admin/fornecedores/importacoes/${importacaoId}`}
-      className="sticky top-0 z-10 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-2 xl:grid-cols-[1.2fr_130px_150px_140px_130px_140px_150px_100px_auto]"
+      className="sticky top-0 z-10 grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
     >
       <input type="hidden" name="etapa" value={filtros.etapa} />
       <input
         name="busca"
         defaultValue={filtros.busca}
         placeholder="Buscar produto"
-        className="h-9 rounded-md border border-slate-200 px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 px-3 text-sm sm:col-span-2"
       />
       <input
         name="codigoFornecedor"
         defaultValue={filtros.codigoFornecedor}
         placeholder="Código"
-        className="h-9 rounded-md border border-slate-200 px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 px-3 text-sm"
       />
       <select
         name="categoriaFornecedor"
         defaultValue={filtros.categoriaFornecedor}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
       >
         <option value="">Categoria</option>
         {categorias.map((categoria) => (
@@ -526,7 +477,7 @@ function BarraFiltros({
       <select
         name="status"
         defaultValue={filtros.status}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
       >
         <option value="">Status</option>
         <option value="localizado">Localizado</option>
@@ -536,7 +487,7 @@ function BarraFiltros({
       <select
         name="marcaFornecedor"
         defaultValue={filtros.marcaFornecedor}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
       >
         <option value="">Marca</option>
         {marcas.map((marca) => (
@@ -548,32 +499,22 @@ function BarraFiltros({
       <select
         name="vinculo"
         defaultValue={filtros.vinculo}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
       >
         <option value="">Vínculo</option>
         <option value="vinculado">Vinculado</option>
         <option value="nao_vinculado">Não vinculado</option>
       </select>
       <select
-        name="situacaoPreview"
-        defaultValue={filtros.situacaoPreview}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-      >
-        <option value="">Situação preview</option>
-        <option value="pronto_para_sincronizar">Pronto</option>
-        <option value="pendente_vinculacao">Pendente</option>
-        <option value="bloqueado">Bloqueado</option>
-      </select>
-      <select
         name="limite"
         defaultValue={filtros.limite}
-        className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
       >
         <option value="25">25</option>
         <option value="50">50</option>
         <option value="100">100</option>
       </select>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-1">
         <Button type="submit" size="sm">
           <Search className="mr-2 h-4 w-4" />
           Filtrar
@@ -597,10 +538,10 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   paginacao,
   filtros,
   produtosParaVinculo,
-  previewSincronizacao,
   revisaoImportacao,
   marcasAtivas,
   categoriasLoja,
+  rascunhosImportacao,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
   const categorias = Array.from(
     new Set(
@@ -616,16 +557,8 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
         .filter((marca): marca is string => Boolean(marca)),
     ),
   ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  const linhasPreview = previewSincronizacao.itens.slice(
-    (paginacao.pagina - 1) * paginacao.limite,
-    paginacao.pagina * paginacao.limite,
-  );
-  const linhasPreviewFiltradas = linhasPreview.filter(
-    (item) =>
-      !filtros.situacaoPreview || item.situacao === filtros.situacaoPreview,
-  );
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6">
+    <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-1 px-0">
@@ -652,7 +585,6 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
 
       <ResumoCompacto
         importacao={importacao}
-        previewSincronizacao={previewSincronizacao}
         revisaoImportacao={revisaoImportacao}
       />
 
@@ -687,7 +619,9 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
         <AbaConciliacaoImportacaoFornecedor
           importacaoId={importacao.id}
           fornecedor={importacao.nomeFornecedor}
-          linhas={todasLinhas}
+          rascunhos={rascunhosImportacao}
+          categoriasLoja={categoriasLoja}
+          marcasLoja={marcasAtivas}
         />
       ) : (
         <BarraFiltros
@@ -698,69 +632,15 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
         />
       )}
 
-      {filtros.etapa === "preview" ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <RotuloOrigem campo="Nome" origem="arquivo" />
-                </TableHead>
-                <TableHead>Situação</TableHead>
-                <TableHead>
-                  <RotuloOrigem campo="Produto" origem="loja" />
-                </TableHead>
-                <TableHead>
-                  <RotuloOrigem campo="Preço" origem="arquivo" />
-                </TableHead>
-                <TableHead>
-                  <RotuloOrigem campo="Preço" origem="loja" />
-                </TableHead>
-                <TableHead>Ajustado</TableHead>
-                <TableHead className="text-right">
-                  <RotuloOrigem
-                    campo="Estoque"
-                    origem="arquivo"
-                    alinhar="right"
-                  />
-                </TableHead>
-                <TableHead className="text-right">Diferença</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {linhasPreviewFiltradas.map((item) => (
-                <TableRow key={item.stagingId}>
-                  <TableCell className="max-w-[280px] truncate font-medium">
-                    {item.nomeProdutoFornecedor}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{item.situacao}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-[180px] truncate">
-                    {item.produtoVinculadoNome ?? "-"}
-                  </TableCell>
-                  <TableCell>{formatarMoeda(item.precoFornecedor)}</TableCell>
-                  <TableCell>{formatarMoeda(item.precoAtualLoja)}</TableCell>
-                  <TableCell>{formatarMoeda(item.precoCalculado)}</TableCell>
-                  <TableCell className="text-right">
-                    {item.estoqueFornecedor ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatarMoeda(item.diferencaPreco)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : filtros.etapa === "mapeamento" ||
-        filtros.etapa === "revisao" ? null : (
+      {filtros.etapa === "mapeamento" || filtros.etapa === "revisao" ? null : (
         <AbaVinculacaoImportacaoFornecedor
           importacaoId={importacao.id}
           linhas={linhas}
           paginacao={paginacao}
           filtros={filtros}
           produtosParaVinculo={produtosParaVinculo}
+          configuracaoFluxoJson={importacao.configuracaoFluxoJson}
+          rascunhos={rascunhosImportacao}
         />
       )}
     </main>

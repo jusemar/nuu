@@ -147,6 +147,14 @@ export type TabelaVinculosFornecedorProps = {
     mensagem?: string;
     erro?: string;
   }>;
+  aoAlterarTriagemPersistida?: (entrada: {
+    itemIds: string[];
+    acao: "ignorar" | "restaurar";
+  }) => Promise<{
+    sucesso: boolean;
+    mensagem?: string;
+    erro?: string;
+  }>;
 };
 
 type EstadoItemVinculoFornecedor = {
@@ -696,6 +704,7 @@ export function TabelaVinculosFornecedor({
   aoAlterarRascunhos,
   aoSalvarRascunhoPersistido,
   aoRemoverRascunhoPersistido,
+  aoAlterarTriagemPersistida,
 }: TabelaVinculosFornecedorProps) {
   const estadosIniciais = useMemo(
     () =>
@@ -1057,19 +1066,45 @@ export function TabelaVinculosFornecedor({
     }
   }
 
-  function ignorarSelecionados() {
+  async function persistirTriagem(
+    itemIds: string[],
+    acao: "ignorar" | "restaurar",
+  ) {
+    if (!aoAlterarTriagemPersistida) return true;
+
+    const resultado = await aoAlterarTriagemPersistida({ itemIds, acao });
+
+    if (!resultado.sucesso) {
+      toast.error(resultado.erro ?? "Não foi possível atualizar a triagem.");
+      return false;
+    }
+
+    toast.success(
+      resultado.mensagem ??
+        (acao === "ignorar" ? "Itens ignorados." : "Itens restaurados."),
+    );
+    return true;
+  }
+
+  async function ignorarItens(itemIds: string[]) {
+    if (!(await persistirTriagem(itemIds, "ignorar"))) return false;
+
     setEstados((atuais) => ({
       ...atuais,
       ...Object.fromEntries(
-        idsSelecionados.map((id) => [
-          id,
-          { status: "ignorado", produtoLoja: null },
-        ]),
+        itemIds.map((id) => [id, { status: "ignorado", produtoLoja: null }]),
       ),
     }));
+    return true;
   }
 
-  function restaurar(item: ItemVinculoFornecedor) {
+  async function ignorarSelecionados() {
+    if (await ignorarItens(idsSelecionados)) setIdsSelecionados([]);
+  }
+
+  async function restaurar(item: ItemVinculoFornecedor) {
+    if (!(await persistirTriagem([item.id], "restaurar"))) return;
+
     setEstados((atuais) => ({
       ...atuais,
       [item.id]: { status: "aguardando", produtoLoja: null },
@@ -1386,7 +1421,7 @@ export function TabelaVinculosFornecedor({
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => restaurar(item)}
+                        onClick={() => void restaurar(item)}
                       >
                         Restaurar
                       </Button>
@@ -1492,15 +1527,7 @@ export function TabelaVinculosFornecedor({
                           type="button"
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
-                            setEstados((atuais) => ({
-                              ...atuais,
-                              [item.id]: {
-                                status: "ignorado",
-                                produtoLoja: null,
-                              },
-                            }));
-                          }}
+                          onClick={() => void ignorarItens([item.id])}
                         >
                           Ignorar
                         </Button>
@@ -1602,7 +1629,7 @@ export function TabelaVinculosFornecedor({
                     size="sm"
                     variant="outline"
                     className="col-span-2"
-                    onClick={() => restaurar(item)}
+                    onClick={() => void restaurar(item)}
                   >
                     Restaurar
                   </Button>
@@ -1691,15 +1718,7 @@ export function TabelaVinculosFornecedor({
                       size="sm"
                       variant="ghost"
                       className="col-span-2"
-                      onClick={() => {
-                        setEstados((atuais) => ({
-                          ...atuais,
-                          [item.id]: {
-                            status: "ignorado",
-                            produtoLoja: null,
-                          },
-                        }));
-                      }}
+                      onClick={() => void ignorarItens([item.id])}
                     >
                       Ignorar
                     </Button>

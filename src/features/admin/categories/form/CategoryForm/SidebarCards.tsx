@@ -1,31 +1,40 @@
-"use client"
+"use client";
 
-import { Calendar, Eye, BarChart, AlertCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { SubcategoryItem } from "./SubcategoriesCard"
+import { Calendar, Eye, BarChart, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { SubcategoryItem } from "./SubcategoriesCard";
 
 interface SidebarCardsProps {
   categoryData: {
-    isActive: boolean
-    name: string
-    orderIndex: number
-  }
-  setCategoryData: React.Dispatch<React.SetStateAction<{
-    name: string
-    slug: string
-    description: string
-    isActive: boolean
-    metaTitle: string
-    metaDescription: string
-    orderIndex: number
-  }>>
-  subcategories: SubcategoryItem[]
-  totalSubcategories: number
-  maxLevel: number
+    isActive: boolean;
+    name: string;
+    orderIndex: number;
+  };
+  setCategoryData: React.Dispatch<
+    React.SetStateAction<{
+      name: string;
+      slug: string;
+      description: string;
+      isActive: boolean;
+      metaTitle: string;
+      metaDescription: string;
+      orderIndex: number;
+      parentId: string | null;
+    }>
+  >;
+  subcategories: SubcategoryItem[];
+  totalSubcategories: number;
+  maxLevel: number;
 }
 
 export function SidebarCards({
@@ -33,7 +42,7 @@ export function SidebarCards({
   setCategoryData,
   subcategories,
   totalSubcategories,
-  maxLevel
+  maxLevel,
 }: SidebarCardsProps) {
   return (
     <div className="space-y-6">
@@ -59,15 +68,13 @@ export function SidebarCards({
               <span className="text-sm font-medium">Hoje</span>
             </div>
           </div>
-          
+
           <Separator />
-          
+
           <div className="space-y-2">
-            <Button className="w-full">
-              Publicar Agora
-            </Button>
+            <Button className="w-full">Publicar Agora</Button>
             <Button variant="outline" className="w-full">
-              <Calendar className="h-4 w-4 mr-2" />
+              <Calendar className="mr-2 h-4 w-4" />
               Agendar
             </Button>
             <Button variant="ghost" size="sm" className="w-full text-gray-600">
@@ -84,24 +91,29 @@ export function SidebarCards({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="font-mono text-sm bg-gray-50 p-3 rounded border">
-              {categoryData.name || "Categoria"}<br/>
-              {subcategories.filter(s => s.level === 1).map((item, i) => (
-                <div key={item.id} className="ml-2">
-                  ├─ {item.name}<br/>
-                  {subcategories
-                    .filter(s => s.parent === item.id)
-                    .map(child => (
-                      <div key={child.id} className="ml-4">
-                        │  └─ {child.name}<br/>
-                      </div>
-                    ))}
-                </div>
-              ))}
+            <div className="rounded border bg-gray-50 p-3 font-mono text-sm">
+              {categoryData.name || "Categoria"}
+              <br />
+              {subcategories
+                .filter((s) => s.level === 1)
+                .map((item, i) => (
+                  <div key={item.id} className="ml-2">
+                    ├─ {item.name}
+                    <br />
+                    {subcategories
+                      .filter((s) => s.parent === item.id)
+                      .map((child) => (
+                        <div key={child.id} className="ml-4">
+                          │ └─ {child.name}
+                          <br />
+                        </div>
+                      ))}
+                  </div>
+                ))}
             </div>
-            
+
             <div className="text-xs text-gray-500">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="mb-1 flex items-center gap-2">
                 <Eye className="h-3 w-3" />
                 <span>Preview da navegação</span>
               </div>
@@ -113,7 +125,7 @@ export function SidebarCards({
       {/* Card Estatísticas */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <BarChart className="h-5 w-5" />
             Estatísticas
           </CardTitle>
@@ -134,22 +146,24 @@ export function SidebarCards({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm">Ordem de exibição</span>
-              <Input 
-                type="number" 
-                min="1" 
-                max="100" 
+              <Input
+                type="number"
+                min="1"
+                max="100"
                 value={categoryData.orderIndex}
-                onChange={(e) => setCategoryData(prev => ({ 
-                  ...prev, 
-                  orderIndex: parseInt(e.target.value) || 1 
-                }))}
-                className="w-16 h-8 text-center"
+                onChange={(e) =>
+                  setCategoryData((prev) => ({
+                    ...prev,
+                    orderIndex: parseInt(e.target.value) || 1,
+                  }))
+                }
+                className="h-8 w-16 text-center"
               />
             </div>
           </div>
-          
+
           {maxLevel >= 4 && (
-            <div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+            <div className="flex items-center gap-2 rounded border border-yellow-200 bg-yellow-50 p-2 text-sm text-yellow-800">
               <AlertCircle className="h-4 w-4" />
               <span>Máximo de 4 níveis atingido</span>
             </div>
@@ -157,5 +171,5 @@ export function SidebarCards({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -30,6 +30,7 @@ export const fornecedorProdutoStagingStatusEnum = pgEnum(
     "erro",
     "rejeitado",
     "aprovado",
+    "ignorado",
   ],
 );
 

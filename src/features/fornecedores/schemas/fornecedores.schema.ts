@@ -21,6 +21,7 @@ export const statusFornecedorProdutoStaging = [
   "erro",
   "rejeitado",
   "aprovado",
+  "ignorado",
 ] as const;
 export const tiposVinculoProdutoFornecedor = ["manual", "automatico"] as const;
 export const statusVinculoProdutoFornecedor = ["ativo", "inativo"] as const;
@@ -126,6 +127,12 @@ export const arquivoImportacaoFornecedorSchema = z.object({
 
 export const analiseImportacaoFornecedorSchema = z.object({
   importacaoId: z.uuid(),
+});
+
+export const alterarTriagemProdutosStagingFornecedorSchema = z.object({
+  importacaoId: z.uuid(),
+  stagingIds: z.array(z.uuid()).min(1).max(100),
+  acao: z.enum(["ignorar", "restaurar"]),
 });
 
 export const problemaRevisaoImportacaoFornecedorSchema = z.object({
@@ -337,6 +344,10 @@ export const aplicarMapeamentoImportacaoFornecedorSchema =
   mapeamentoColunasFornecedorSchema.omit({ fornecedorId: true }).extend({
     importacaoId: z.uuid(),
     salvarParaFornecedor: z.boolean().optional().default(false),
+    configuracaoFluxoJson: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .default({}),
   });
 
 export type FornecedorValidado = z.infer<typeof fornecedorSchema>;

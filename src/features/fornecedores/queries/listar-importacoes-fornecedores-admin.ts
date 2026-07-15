@@ -20,6 +20,7 @@ export async function listarImportacoesFornecedoresAdmin() {
       totalErros: importacoesFornecedorTable.totalErros,
       colunasPlanilha: importacoesFornecedorTable.colunasPlanilha,
       mapeamentoColunas: importacoesFornecedorTable.mapeamentoColunas,
+      configuracaoFluxoJson: importacoesFornecedorTable.configuracaoFluxoJson,
       criadoEm: importacoesFornecedorTable.criadoEm,
       atualizadoEm: importacoesFornecedorTable.atualizadoEm,
     })

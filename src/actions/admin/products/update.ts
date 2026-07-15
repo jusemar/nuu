@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/connection";
 import {
+  categoryTable,
   productTable,
   productPricingTable,
   productGalleryImagesTable,
   marcaTable,
 } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
@@ -25,6 +27,26 @@ function revalidateAdminProductsPath() {
   } catch (error) {
     console.warn("Nao foi possivel revalidar /admin/products:", error);
   }
+}
+
+const categoriaIdSchema = z.string().uuid();
+
+async function buscarCategoriaAtivaPorId(id: string) {
+  const idValidado = categoriaIdSchema.safeParse(id);
+  if (!idValidado.success) return null;
+
+  const [categoria] = await db
+    .select({ id: categoryTable.id })
+    .from(categoryTable)
+    .where(
+      and(
+        eq(categoryTable.id, idValidado.data),
+        eq(categoryTable.isActive, true),
+      ),
+    )
+    .limit(1);
+
+  return categoria ?? null;
 }
 
 function converterValorEmInteiro(valor?: string) {
@@ -132,6 +154,16 @@ export async function updateProduct(id: string, data: UpdateProductData) {
         success: false,
         message: "Produto não encontrado",
       };
+    }
+
+    if (data.categoryId !== undefined) {
+      const categoria = await buscarCategoriaAtivaPorId(data.categoryId);
+      if (!categoria) {
+        return {
+          success: false,
+          message: "Selecione uma categoria válida e ativa.",
+        };
+      }
     }
 
     // ✅ CONSTRUIR APENAS CAMPOS QUE FORAM ENVIADOS
@@ -324,6 +356,10 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     }
 
     revalidateAdminProductsPath();
+    revalidatePath(`/product/${existingProduct.slug}`);
+    if (data.slug && data.slug !== existingProduct.slug) {
+      revalidatePath(`/product/${data.slug}`);
+    }
 
     return {
       success: true,

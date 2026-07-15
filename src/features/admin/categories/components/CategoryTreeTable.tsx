@@ -279,7 +279,7 @@ const TreeRow = ({
 
                 {/* Badge de nível */}
                 <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">
-                  Nível {category.level}
+                  Nível {level}
                 </span>
 
                 {/* Badge de "Possui subcategorias" */}
@@ -345,7 +345,9 @@ const TreeRow = ({
           <div className="flex justify-center">
             <Switch
               checked={category.status === "active"}
-              onCheckedChange={(checked) => onStatusChange(category.id, checked)}              
+              onCheckedChange={(checked) =>
+                onStatusChange(category.id, checked)
+              }
               className={cn(
                 category.status === "active"
                   ? "data-[state=checked]:bg-green-600"
@@ -361,26 +363,26 @@ const TreeRow = ({
               <>
                 {/* Botão Editar */}
                 <Link href={`/admin/categories/${category.id}`}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-slate-500 hover:bg-blue-50 hover:text-blue-600"               
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
                   >
-                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                    <path d="m15 5 4 4" />
-                  </svg>
-                </Button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                  </Button>
                 </Link>
 
                 {/* Botão Excluir - Só aparece se não tiver subcategorias */}
@@ -496,7 +498,7 @@ export function CategoryTreeTable() {
   const queryClient = useQueryClient();
 
   // Função para alternar status ativo/inativo
-  const handleStatusChange = (categoryId: string, newStatus: boolean) => {   
+  const handleStatusChange = (categoryId: string, newStatus: boolean) => {
     updateCategory({
       id: categoryId,
       data: {
@@ -514,7 +516,7 @@ export function CategoryTreeTable() {
         id: item.id,
         name: item.name,
         parentId: item.parentId ?? null,
-        level: (item.level ?? 0) as 0 | 1 | 2 | 3,
+        level: 0,
         createdAt: item.createdAt ?? "",
         updatedAt: item.updatedAt ?? item.createdAt ?? "",
         deleted_at: null,
@@ -1021,7 +1023,9 @@ export function CategoryTreeTable() {
       <Dialog open={modalProdutosAberto} onOpenChange={setModalProdutosAberto}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Produtos vinculados: {categoriaProdutosNome}</DialogTitle>
+            <DialogTitle>
+              Produtos vinculados: {categoriaProdutosNome}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="max-h-80 overflow-y-auto rounded border border-slate-200">

@@ -51,6 +51,10 @@ export const importacoesFornecedorTable = pgTable(
       >()
       .default([])
       .notNull(),
+    configuracaoFluxoJson: jsonb("configuracao_fluxo_json")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
   },

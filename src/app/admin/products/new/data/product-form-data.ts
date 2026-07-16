@@ -32,6 +32,7 @@ export interface ProductFormData {
   brand: string;
   sku: string;
   isActive: boolean;
+  status?: "draft" | "published";
   storeProductFlags: string[];
   collection: string;
   tags: string[];
@@ -115,6 +116,7 @@ export const initialProductData: ProductFormData = {
   brand: "",
   sku: "",
   isActive: true,
+  status: "draft",
   storeProductFlags: [],
   collection: "",
   tags: [],

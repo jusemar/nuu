@@ -11,7 +11,7 @@ import "server-only";
 
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // ==========================================
 // BUSCAR PRODUTO POR SLUG (dados reais)
@@ -35,7 +35,7 @@ export async function getProductBySlug(slug: string) {
     // findFirst = busca UM registro que combine com o filtro
     // "with" = carrega as relações (JOIN automático do Drizzle)
     const product = await db.query.productTable.findFirst({
-      where: eq(productTable.slug, slug),
+      where: and(eq(productTable.slug, slug), eq(productTable.isActive, true)),
       with: {
         galleryImages: true,
         pricing: true,

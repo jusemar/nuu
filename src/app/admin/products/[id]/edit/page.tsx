@@ -25,6 +25,10 @@ import {
 } from "../../new/components/tabs/VariantsTab";
 import { SellerTab } from "../../new/components/tabs/SellerTab";
 import { SeoTab } from "../../new/components/tabs/SeoTab";
+import {
+  BotaoDuplicarProduto,
+  BotaoPublicarProduto,
+} from "@/features/products";
 
 export default function EditProductPage() {
   const params = useParams();
@@ -114,6 +118,7 @@ export default function EditProductPage() {
         brand: product.brand || "",
         sku: product.sku || "",
         isActive: product.isActive ?? true,
+        status: product.status === "published" ? "published" : "draft",
         collection: product.collection || "",
         tags: product.tags || [],
         productKind: product.productKind === "variable" ? "variable" : "simple",
@@ -386,7 +391,7 @@ export default function EditProductPage() {
   return (
     <div className="flex min-h-screen flex-1 flex-col">
       {/* HEADER FIXO COM AÇÕES */}
-      <div className="bg-background sticky top-0 z-50 border-b">
+      <div className="bg-background sticky top-0 z-30 border-b">
         <div className="flex items-center justify-between p-6">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
@@ -401,11 +406,29 @@ export default function EditProductPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <BotaoDuplicarProduto
+              produtoId={productId}
+              produtoNome={productData.name}
+            />
+            <BotaoPublicarProduto
+              produtoId={productId}
+              publicado={
+                productData.isActive && productData.status === "published"
+              }
+              aoPublicar={() =>
+                setProductData((dadosAtuais) => ({
+                  ...dadosAtuais,
+                  isActive: true,
+                  status: "published",
+                }))
+              }
+            />
             <Button variant="outline" size="sm">
               <Eye className="mr-2 h-4 w-4" />
               Preview
             </Button>
             <Button
+              variant="secondary"
               size="sm"
               onClick={handleUpdateProduct}
               disabled={updateProductMutation.isPending}

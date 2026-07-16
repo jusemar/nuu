@@ -163,7 +163,15 @@ export function PaginaLoginAdmin({
                   name="senha"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Senha</FormLabel>
+                      <div className="flex items-center justify-between gap-3">
+                        <FormLabel>Senha</FormLabel>
+                        <Link
+                          href="/admin/esqueci-senha"
+                          className="text-xs font-medium text-slate-600 hover:text-slate-950 hover:underline"
+                        >
+                          Esqueci minha senha
+                        </Link>
+                      </div>
                       <FormControl>
                         <div className="relative">
                           <Input

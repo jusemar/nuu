@@ -7,7 +7,7 @@ import {
   productGalleryImagesTable,
   productVariantTable,
 } from "@/db/schema";
-import { inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { desc } from "drizzle-orm";
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
@@ -67,9 +67,10 @@ export async function getProductsByFlag(flags: string[]) {
         `,
       )
       .where(
-        sql`
-        ${productTable.storeProductFlags} && ARRAY[${sql.join(filteredFlags, sql`, `)}]::text[]
-      `,
+        and(
+          eq(productTable.isActive, true),
+          sql`${productTable.storeProductFlags} && ARRAY[${sql.join(filteredFlags, sql`, `)}]::text[]`,
+        ),
       )
       .groupBy(
         productTable.id,

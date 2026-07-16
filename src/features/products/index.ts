@@ -39,3 +39,6 @@ export {
 } from "./lib/variant-editor";
 
 export type { VariantIssue } from "./lib/variant-editor";
+
+export { BotaoDuplicarProduto } from "./components/admin/botao-duplicar-produto";
+export { BotaoPublicarProduto } from "./components/admin/botao-publicar-produto";

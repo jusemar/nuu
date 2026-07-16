@@ -3,6 +3,7 @@ import {
   ajustarPrecosRascunhosImportacaoFornecedor,
   atualizarCamposRascunhosImportacaoFornecedor,
 } from "../../actions/atualizar-rascunhos-conciliacao-importacao-fornecedor";
+import { alterarDecisaoRascunhosImportacaoFornecedor } from "../../actions/alterar-decisao-rascunhos-importacao-fornecedor";
 import type { OpcaoValorPadraoLoja } from "./tabela-mapeamento-campos-fornecedor";
 import {
   type ItemConciliacaoFornecedor,
@@ -159,6 +160,10 @@ export function AbaConciliacaoImportacaoFornecedor({
         importacaoId,
       )}
       aoAtualizarCamposRascunhos={atualizarCamposRascunhosImportacaoFornecedor.bind(
+        null,
+        importacaoId,
+      )}
+      aoAlterarDecisaoRascunhos={alterarDecisaoRascunhosImportacaoFornecedor.bind(
         null,
         importacaoId,
       )}

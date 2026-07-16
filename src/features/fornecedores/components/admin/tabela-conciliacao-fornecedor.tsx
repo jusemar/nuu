@@ -3,11 +3,14 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  Ban,
   CheckCircle2,
   Eye,
   FileWarning,
+  MoreHorizontal,
   PackageCheck,
   Pencil,
+  RotateCcw,
   Search,
 } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +30,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -161,6 +170,11 @@ export type EntradaAtualizarCamposRascunhosFornecedor =
       prazoEntrega: string;
     };
 
+export type EntradaAlterarDecisaoRascunhosFornecedor = {
+  rascunhoIds: string[];
+  acao: "ignorar" | "desfazer";
+};
+
 type TabelaConciliacaoFornecedorProps = {
   tipoOrigem: TipoOrigemConciliacaoFornecedor;
   fornecedor: string;
@@ -178,6 +192,9 @@ type TabelaConciliacaoFornecedorProps = {
   ) => Promise<ResultadoAcaoConciliacaoFornecedor>;
   aoAtualizarCamposRascunhos?: (
     entrada: EntradaAtualizarCamposRascunhosFornecedor,
+  ) => Promise<ResultadoAcaoConciliacaoFornecedor>;
+  aoAlterarDecisaoRascunhos?: (
+    entrada: EntradaAlterarDecisaoRascunhosFornecedor,
   ) => Promise<ResultadoAcaoConciliacaoFornecedor>;
   categoriasLoja?: Array<{ id: string; nome: string }>;
   marcasLoja?: Array<{ id: string; nome: string }>;
@@ -1327,6 +1344,7 @@ export function TabelaConciliacaoFornecedor({
   itens,
   aoAjustarPrecosSelecionados,
   aoAtualizarCamposRascunhos,
+  aoAlterarDecisaoRascunhos,
   categoriasLoja = [],
   marcasLoja = [],
 }: TabelaConciliacaoFornecedorProps) {
@@ -1340,6 +1358,11 @@ export function TabelaConciliacaoFornecedor({
   const [itemEdicaoIndividual, setItemEdicaoIndividual] =
     useState<ItemConciliacaoFornecedor | null>(null);
   const [processandoCampos, setProcessandoCampos] = useState(false);
+  const [processandoDecisao, setProcessandoDecisao] = useState(false);
+  const [confirmacaoDecisao, setConfirmacaoDecisao] = useState<{
+    acao: "ignorar" | "desfazer";
+    ids: string[];
+  } | null>(null);
   const resumo = useMemo(() => calcularResumo(itens), [itens]);
   const itensFiltrados = useMemo(
     () =>
@@ -1451,6 +1474,26 @@ export function TabelaConciliacaoFornecedor({
     setIdsSelecionados([]);
     setItemEdicaoIndividual(null);
     setModalCamposAberto(false);
+    router.refresh();
+  };
+  const alterarDecisaoRascunhos = async () => {
+    if (!aoAlterarDecisaoRascunhos || !confirmacaoDecisao) return;
+
+    setProcessandoDecisao(true);
+    const resultado = await aoAlterarDecisaoRascunhos({
+      rascunhoIds: confirmacaoDecisao.ids,
+      acao: confirmacaoDecisao.acao,
+    });
+    setProcessandoDecisao(false);
+
+    if (!resultado.sucesso) {
+      toast.error(resultado.erro ?? "Não foi possível alterar os itens.");
+      return;
+    }
+
+    toast.success(resultado.mensagem ?? "Itens atualizados.");
+    setIdsSelecionados([]);
+    setConfirmacaoDecisao(null);
     router.refresh();
   };
 
@@ -1608,9 +1651,40 @@ export function TabelaConciliacaoFornecedor({
                 Alterar campos
               </Button>
             ) : null}
-            <Button type="button" size="sm" variant="secondary">
-              Marcar como ignorado
-            </Button>
+            {aoAlterarDecisaoRascunhos ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    setConfirmacaoDecisao({
+                      acao: "ignorar",
+                      ids: idsSelecionados,
+                    })
+                  }
+                >
+                  Marcar como ignorado
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    setConfirmacaoDecisao({
+                      acao: "desfazer",
+                      ids: idsSelecionados,
+                    })
+                  }
+                >
+                  Desfazer decisão
+                </Button>
+              </>
+            ) : (
+              <Button type="button" size="sm" variant="secondary">
+                Marcar como ignorado
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"
@@ -1835,6 +1909,45 @@ export function TabelaConciliacaoFornecedor({
                     </TooltipTrigger>
                     <TooltipContent>Detalhes</TooltipContent>
                   </Tooltip>
+                  {aoAlterarDecisaoRascunhos ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          aria-label="Ações do rascunho"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setConfirmacaoDecisao({
+                              acao: "ignorar",
+                              ids: [item.id],
+                            })
+                          }
+                        >
+                          <Ban />
+                          Ignorar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setConfirmacaoDecisao({
+                              acao: "desfazer",
+                              ids: [item.id],
+                            })
+                          }
+                        >
+                          <RotateCcw />
+                          Desfazer decisão
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
                 </TableCell>
               </TableRow>
             ))}
@@ -1977,6 +2090,46 @@ export function TabelaConciliacaoFornecedor({
                   </TooltipTrigger>
                   <TooltipContent>Detalhes</TooltipContent>
                 </Tooltip>
+                {aoAlterarDecisaoRascunhos ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={(evento) => evento.stopPropagation()}
+                        aria-label="Ações do rascunho"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          setConfirmacaoDecisao({
+                            acao: "ignorar",
+                            ids: [item.id],
+                          })
+                        }
+                      >
+                        <Ban />
+                        Ignorar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() =>
+                          setConfirmacaoDecisao({
+                            acao: "desfazer",
+                            ids: [item.id],
+                          })
+                        }
+                      >
+                        <RotateCcw />
+                        Desfazer decisão
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
               </div>
             </div>
           </article>
@@ -2021,6 +2174,50 @@ export function TabelaConciliacaoFornecedor({
         aoAplicarCampos={atualizarCamposRascunhos}
         aoAplicarPreco={aplicarAjustePreco}
       />
+
+      <Dialog
+        open={Boolean(confirmacaoDecisao)}
+        onOpenChange={(aberto) => {
+          if (!aberto && !processandoDecisao) setConfirmacaoDecisao(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmacaoDecisao?.acao === "ignorar"
+                ? "Ignorar produtos"
+                : "Desfazer decisão"}
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação removerá {confirmacaoDecisao?.ids.length ?? 0} rascunho
+              {(confirmacaoDecisao?.ids.length ?? 0) === 1 ? "" : "s"} da
+              Conciliação. Deseja continuar?
+            </DialogDescription>
+          </DialogHeader>
+          <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+            {confirmacaoDecisao?.acao === "ignorar"
+              ? "Os itens ficarão como Ignorados na Vinculação."
+              : "Os itens voltarão sem decisão para a Vinculação."}
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={processandoDecisao}
+              onClick={() => setConfirmacaoDecisao(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={processandoDecisao}
+              onClick={alterarDecisaoRascunhos}
+            >
+              {processandoDecisao ? "Processando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <p

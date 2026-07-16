@@ -3,13 +3,14 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { montarUrlLoginAdmin } from "@/features/autenticacao/lib/normalizar-redirecionamento-admin";
+import { rotaAdminEhPublica } from "@/features/autenticacao/lib/rotas-publicas-admin";
 
 export function middleware(request: NextRequest) {
   const caminho = request.nextUrl.pathname;
   const cabecalhos = new Headers(request.headers);
   cabecalhos.set("x-caminho-admin", caminho);
 
-  if (caminho !== "/admin/login" && !getSessionCookie(request)) {
+  if (!rotaAdminEhPublica(caminho) && !getSessionCookie(request)) {
     return NextResponse.redirect(
       new URL(montarUrlLoginAdmin(caminho, "sessao_expirada"), request.url),
     );

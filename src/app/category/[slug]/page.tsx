@@ -1,5 +1,5 @@
 // src/app/category/[slug]/page.tsx
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
@@ -53,7 +53,10 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   // - pricing: tabela de preços (contém o preço principal)
   // =================================================================
   const products = await db.query.productTable.findMany({
-    where: eq(productTable.categoryId, category.id),
+    where: and(
+      eq(productTable.categoryId, category.id),
+      eq(productTable.isActive, true),
+    ),
     with: {
       galleryImages: true,
       variants: true,

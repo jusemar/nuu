@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AdminHeader } from "@/components/admin/header";
 import { montarUrlLoginAdmin } from "@/features/autenticacao/lib/normalizar-redirecionamento-admin";
+import { rotaAdminEhPublica } from "@/features/autenticacao/lib/rotas-publicas-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 import { AdminSidebar } from "@/features/admin/layout/components/sidebar";
 
@@ -13,8 +14,8 @@ export default async function AdminLayout({
 }) {
   const caminho = (await headers()).get("x-caminho-admin") ?? "/admin";
 
-  // A rota de login pertence ao namespace /admin, mas não usa o chrome do painel.
-  if (caminho === "/admin/login") return children;
+  // Rotas públicas de autenticação não usam o chrome nem exigem sessão do painel.
+  if (rotaAdminEhPublica(caminho)) return children;
 
   const acesso = await buscarSessaoAdmin();
 

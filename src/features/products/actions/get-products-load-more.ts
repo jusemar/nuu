@@ -8,7 +8,7 @@ import {
   productVariantTable,
 } from "@/db/schema";
 
-import { inArray, sql } from "drizzle-orm"; // Permite escrever SQL puro quando necessário
+import { and, eq, inArray, sql } from "drizzle-orm"; // Permite escrever SQL puro quando necessário
 import { desc } from "drizzle-orm"; // Ordem decrescente (do mais novo para o mais antigo)
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
@@ -77,7 +77,12 @@ export async function getProductsLoadMore(page: number = 1) {
       // === FILTRO IMPORTANTE ===
       // Só mostra produtos que têm a flag 'general'
       // Isso faz o grid se comportar igual ao carousel que mostra produtos com flag 'general'
-      .where(sql`${productTable.storeProductFlags} && ARRAY['general']::text[]`)
+      .where(
+        and(
+          eq(productTable.isActive, true),
+          sql`${productTable.storeProductFlags} && ARRAY['general']::text[]`,
+        ),
+      )
 
       // Agrupa para evitar linhas duplicadas (caso tenha mais de uma imagem/preço)
       .groupBy(

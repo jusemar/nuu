@@ -43,6 +43,9 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
 }: PaginaAlteracaoEmMassaProps) {
   const estado = useListagemAlteracaoEmMassa(resultado.dados);
   const [painelAberto, setPainelAberto] = useState(false);
+  const produtosSelecionados = resultado.dados.produtos.filter((produto) =>
+    estado.selecionadosIds.has(produto.id),
+  );
 
   if (!resultado.sucesso) {
     return (
@@ -206,8 +209,9 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
       <PainelConfiguracaoVisual
         aberto={painelAberto}
         onOpenChange={setPainelAberto}
-        quantidadeSelecionada={estado.selecionadosIds.size}
+        produtosSelecionados={produtosSelecionados}
         dados={resultado.dados}
+        onAplicacaoConcluida={estado.limparSelecao}
       />
     </main>
   );

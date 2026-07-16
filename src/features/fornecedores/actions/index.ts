@@ -1,6 +1,7 @@
 export { analisarImportacaoFornecedor } from "./analisar-importacao-fornecedor";
 export { alterarTriagemProdutosStagingFornecedorAction } from "./alterar-triagem-produtos-staging-fornecedor";
 export { alterarStatusVinculoProdutoFornecedor } from "./alterar-status-vinculo-produto-fornecedor";
+export { alterarDecisaoRascunhosImportacaoFornecedor } from "./alterar-decisao-rascunhos-importacao-fornecedor";
 export {
   ajustarPrecosRascunhosImportacaoFornecedor,
   atualizarCamposRascunhosImportacaoFornecedor,

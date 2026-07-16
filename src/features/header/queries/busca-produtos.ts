@@ -96,6 +96,14 @@ export async function buscarProdutosParaAutocomplete({
       preco.price,
       preco.promo_price_in_cents,
       CASE
+        WHEN lower(p.sku) = ${termoNormalizado}
+          OR EXISTS (
+            SELECT 1
+            FROM product_variant variante_sku_exata
+            WHERE variante_sku_exata.product_id = p.id
+              AND variante_sku_exata.is_active = true
+              AND lower(variante_sku_exata.sku) = ${termoNormalizado}
+          ) THEN 0
         WHEN lower(p.name) LIKE ${termoPrefixo} THEN 1
         WHEN lower(p.name) LIKE ${termoLike} THEN 2
         WHEN lower(c.name) LIKE ${termoLike} THEN 3
@@ -105,7 +113,15 @@ export async function buscarProdutosParaAutocomplete({
           FROM unnest(coalesce(p.tags, ARRAY[]::text[])) AS tag
           WHERE lower(tag) LIKE ${termoLike}
         ) THEN 5
-        ELSE 6
+        WHEN lower(p.sku) LIKE ${termoLike}
+          OR EXISTS (
+            SELECT 1
+            FROM product_variant variante_sku_parcial
+            WHERE variante_sku_parcial.product_id = p.id
+              AND variante_sku_parcial.is_active = true
+              AND lower(variante_sku_parcial.sku) LIKE ${termoLike}
+          ) THEN 6
+        ELSE 7
       END AS relevancia
     FROM product p
     LEFT JOIN category c ON c.id = p.category_id
@@ -144,6 +160,14 @@ export async function buscarProdutosParaAutocomplete({
         OR (
           ${!limitarTermoCurto}
           AND lower(coalesce(p.card_short_text, '')) LIKE ${termoLike}
+        )
+        OR lower(p.sku) LIKE ${termoLike}
+        OR EXISTS (
+          SELECT 1
+          FROM product_variant variante_sku
+          WHERE variante_sku.product_id = p.id
+            AND variante_sku.is_active = true
+            AND lower(variante_sku.sku) LIKE ${termoLike}
         )
       )
     ORDER BY relevancia ASC, p.name ASC

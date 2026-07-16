@@ -14,7 +14,7 @@ import {
   extrairConfiguracaoComercialRascunhoFornecedor,
   extrairSecoesLojaRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
-import { gerarSkuProduto } from "@/features/products/lib/gerar-sku-produto";
+import { gerarSkuDisponivel as gerarSkuDisponivelCompartilhado } from "@/features/products/lib/gerar-sku-disponivel";
 
 type OrigemTipoRascunhoFornecedor =
   | "manual"
@@ -57,18 +57,19 @@ async function gerarSlugDisponivel(nome: string) {
 }
 
 async function gerarSkuDisponivel(nomeCategoria: string, nomeMarca: string) {
-  for (let tentativa = 0; tentativa < 20; tentativa += 1) {
-    const sku = gerarSkuProduto({ nomeCategoria, nomeMarca });
-    const [existente] = await db
-      .select({ id: productTable.id })
-      .from(productTable)
-      .leftJoin(productVariantTable, eq(productVariantTable.sku, sku))
-      .where(or(eq(productTable.sku, sku), eq(productVariantTable.sku, sku)))
-      .limit(1);
-    if (!existente) return sku;
-  }
-
-  throw new Error("Não foi possível gerar um SKU interno único.");
+  return gerarSkuDisponivelCompartilhado({
+    nomeCategoria,
+    nomeMarca,
+    skuExiste: async (sku) => {
+      const [existente] = await db
+        .select({ id: productTable.id })
+        .from(productTable)
+        .leftJoin(productVariantTable, eq(productVariantTable.sku, sku))
+        .where(or(eq(productTable.sku, sku), eq(productVariantTable.sku, sku)))
+        .limit(1);
+      return Boolean(existente);
+    },
+  });
 }
 
 function numeroNaoNegativo(valor: string | null) {

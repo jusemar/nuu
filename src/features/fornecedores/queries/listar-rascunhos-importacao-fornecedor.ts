@@ -3,7 +3,12 @@ import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { categoryTable, marcaTable, produtoRascunhosTable } from "@/db/schema";
+import {
+  categoryTable,
+  fornecedorProdutoVinculosTable,
+  marcaTable,
+  produtoRascunhosTable,
+} from "@/db/schema";
 import {
   extrairConfiguracaoComercialRascunhoFornecedor,
   extrairSecoesLojaRascunhoFornecedor,
@@ -12,6 +17,7 @@ import {
 
 export type RascunhoImportacaoFornecedor = {
   id: string;
+  fornecedorId: string | null;
   stagingId: string | null;
   codigoFornecedor: string | null;
   nome: string;
@@ -57,6 +63,7 @@ export async function listarRascunhosImportacaoFornecedor(
   const linhas = await db
     .select({
       id: produtoRascunhosTable.id,
+      fornecedorId: produtoRascunhosTable.fornecedorId,
       codigoFornecedor: produtoRascunhosTable.codigoFornecedor,
       nome: produtoRascunhosTable.nome,
       descricao: produtoRascunhosTable.descricao,
@@ -96,26 +103,66 @@ export async function listarRascunhosImportacaoFornecedor(
       ),
     );
 
-  return linhas.map(({ dadosOrigemJson, ...linha }) => {
-    const secoesLoja = extrairSecoesLojaRascunhoFornecedor(dadosOrigemJson);
-    const configuracaoComercial =
-      extrairConfiguracaoComercialRascunhoFornecedor(dadosOrigemJson);
-    const pendencias = listarPendenciasRascunhoFornecedor({
-      nome: linha.nome,
-      categoriaId: linha.categoriaId,
-      marcaId: linha.marcaId,
-      precoLoja: linha.precoLoja,
-      dadosOrigemJson,
-    });
+  const fornecedoresIds = Array.from(
+    new Set(
+      linhas
+        .map((linha) => linha.fornecedorId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+  const vinculosAtivos =
+    fornecedoresIds.length > 0
+      ? await db
+          .select({
+            fornecedorId: fornecedorProdutoVinculosTable.fornecedorId,
+            codigoFornecedor: fornecedorProdutoVinculosTable.codigoFornecedor,
+          })
+          .from(fornecedorProdutoVinculosTable)
+          .where(
+            and(
+              inArray(
+                fornecedorProdutoVinculosTable.fornecedorId,
+                fornecedoresIds,
+              ),
+              eq(fornecedorProdutoVinculosTable.status, "ativo"),
+            ),
+          )
+      : [];
+  const chavesPublicadas = new Set(
+    vinculosAtivos.map(
+      (vinculo) =>
+        `${vinculo.fornecedorId}:${vinculo.codigoFornecedor?.trim() ?? ""}`,
+    ),
+  );
 
-    return {
-      ...linha,
-      status: linha.status as RascunhoImportacaoFornecedor["status"],
-      stagingId: extrairStagingId(dadosOrigemJson),
-      imagens: linha.imagens ?? [],
-      secoesLoja,
-      configuracaoComercial,
-      pendencias,
-    };
-  });
+  return linhas
+    .filter(
+      (linha) =>
+        !linha.fornecedorId ||
+        !chavesPublicadas.has(
+          `${linha.fornecedorId}:${linha.codigoFornecedor?.trim() ?? ""}`,
+        ),
+    )
+    .map(({ dadosOrigemJson, ...linha }) => {
+      const secoesLoja = extrairSecoesLojaRascunhoFornecedor(dadosOrigemJson);
+      const configuracaoComercial =
+        extrairConfiguracaoComercialRascunhoFornecedor(dadosOrigemJson);
+      const pendencias = listarPendenciasRascunhoFornecedor({
+        nome: linha.nome,
+        categoriaId: linha.categoriaId,
+        marcaId: linha.marcaId,
+        precoLoja: linha.precoLoja,
+        dadosOrigemJson,
+      });
+
+      return {
+        ...linha,
+        status: linha.status as RascunhoImportacaoFornecedor["status"],
+        stagingId: extrairStagingId(dadosOrigemJson),
+        imagens: linha.imagens ?? [],
+        secoesLoja,
+        configuracaoComercial,
+        pendencias,
+      };
+    });
 }

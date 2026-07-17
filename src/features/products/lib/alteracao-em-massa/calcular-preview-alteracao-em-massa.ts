@@ -31,7 +31,6 @@ export type AlteracoesCalculadasProduto = {
     categoriaId?: string;
     marcaId?: string;
     marcaNome?: string;
-    secoesLoja?: string[];
     ncm?: string;
     pesoEmGramas?: number | null;
     alturaEmCm?: number | null;
@@ -98,19 +97,6 @@ function linha(
         : "alterado",
     motivo,
   };
-}
-
-function calcularSecoes(
-  atuais: string[],
-  operacao: Extract<OperacaoAlteracaoEmMassa, { campo: "secoes" }>,
-) {
-  if (operacao.operacao === "substituir") return [...operacao.secoesIds];
-  const novas = new Set(atuais);
-  operacao.secoesIds.forEach((id) => {
-    if (operacao.operacao === "remover") novas.delete(id);
-    else novas.add(id);
-  });
-  return [...novas];
 }
 
 export function obterVersaoProdutoAlteracaoEmMassa(
@@ -198,21 +184,6 @@ export function calcularPlanoAlteracaoEmMassa(
           if (resultado.resultado === "alterado" && marca) {
             alteracoes.produto.marcaId = operacao.marcaId;
             alteracoes.produto.marcaNome = marca.nome;
-          }
-          return resultado;
-        }
-        case "secoes": {
-          const novas = calcularSecoes(produto.secoesLoja, operacao).toSorted();
-          const atuais = [...produto.secoesLoja].toSorted();
-          resultado = linha(
-            produto,
-            indice,
-            "Seções da Loja",
-            atuais.join(", ") || "Nenhuma",
-            novas.join(", ") || "Nenhuma",
-          );
-          if (resultado.resultado === "alterado") {
-            alteracoes.produto.secoesLoja = novas;
           }
           return resultado;
         }

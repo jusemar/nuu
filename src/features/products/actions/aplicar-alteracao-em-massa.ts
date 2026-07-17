@@ -310,9 +310,6 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                   marcaId: mudancas.marcaId,
                   brand: mudancas.marcaNome,
                 }),
-                ...(mudancas.secoesLoja !== undefined && {
-                  storeProductFlags: mudancas.secoesLoja,
-                }),
                 ...(mudancas.ncm !== undefined && { ncmCode: mudancas.ncm }),
                 ...(mudancas.pesoEmGramas !== undefined && {
                   weight: mudancas.pesoEmGramas,

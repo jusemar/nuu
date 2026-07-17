@@ -3,7 +3,6 @@
 import {
   Boxes,
   CircleDollarSign,
-  Eye,
   Info,
   PackageCheck,
   Ruler,
@@ -39,7 +38,6 @@ import {
 import { cn } from "@/lib/utils";
 
 import { MODALIDADES_PRECO_PRODUTO } from "../../../constants/modalidades-preco";
-import { SECOES_LOJA } from "../../../constants/secoes-loja";
 import {
   operacaoAlteracaoEmMassaSchema,
   type OperacaoAlteracaoEmMassa,
@@ -54,7 +52,6 @@ type CampoEditor =
   | "status"
   | "categoria"
   | "marca"
-  | "secoes"
   | "preco"
   | "prazo"
   | "estoque"
@@ -64,13 +61,7 @@ type CampoEditor =
   | "largura"
   | "comprimento";
 
-type GrupoEditor =
-  | "dados"
-  | "precos"
-  | "estoque"
-  | "fiscal"
-  | "medidas"
-  | "exibicao";
+type GrupoEditor = "dados" | "precos" | "estoque" | "fiscal" | "medidas";
 
 function resumirMedidaAtual(
   produtos: ProdutoAlteracaoEmMassa[],
@@ -141,13 +132,6 @@ const GRUPOS: Array<{
     campos: ["peso", "altura", "largura", "comprimento"],
     icone: Ruler,
   },
-  {
-    id: "exibicao",
-    rotulo: "Exibição na loja",
-    descricao: "Seções da Loja",
-    campos: ["secoes"],
-    icone: Eye,
-  },
 ];
 
 function ordenarCategorias(
@@ -192,10 +176,6 @@ export function ConfiguradorOperacoesProdutos({
     altura_operacao: "definir",
     largura_operacao: "definir",
     comprimento_operacao: "definir",
-    secoes_operacao: "adicionar",
-  });
-  const [listas, setListas] = useState<Record<string, Set<string>>>({
-    secoes: new Set(),
   });
 
   const operacoes = useMemo(() => {
@@ -208,12 +188,6 @@ export function ConfiguradorOperacoesProdutos({
       candidatas.push({ campo: "categoria", categoriaId: valores.categoria });
     if (campos.has("marca"))
       candidatas.push({ campo: "marca", marcaId: valores.marca });
-    if (listas.secoes.size > 0)
-      candidatas.push({
-        campo: "secoes",
-        operacao: valores.secoes_operacao,
-        secoesIds: [...listas.secoes],
-      });
     if (campos.has("preco"))
       candidatas.push({
         campo: "preco",
@@ -250,7 +224,7 @@ export function ConfiguradorOperacoesProdutos({
       const resultado = operacaoAlteracaoEmMassaSchema.safeParse(item);
       return resultado.success ? [resultado.data] : [];
     });
-  }, [campos, listas, medidasAbertas, valores]);
+  }, [campos, medidasAbertas, valores]);
 
   useEffect(() => onOperacoesChange(operacoes), [onOperacoesChange, operacoes]);
   useEffect(
@@ -273,14 +247,6 @@ export function ConfiguradorOperacoesProdutos({
 
   function definir(chave: string, valor: string) {
     setValores((atuais) => ({ ...atuais, [chave]: valor }));
-  }
-
-  function alternarLista(chave: "secoes", id: string) {
-    setListas((atuais) => {
-      const lista = new Set(atuais[chave]);
-      lista.has(id) ? lista.delete(id) : lista.add(id);
-      return { ...atuais, [chave]: lista };
-    });
   }
 
   function definirMedida(
@@ -340,7 +306,6 @@ export function ConfiguradorOperacoesProdutos({
   );
   const grupo = GRUPOS.find((item) => item.id === grupoAtivo) ?? GRUPOS[0];
   const quantidadeGrupo = (item: (typeof GRUPOS)[number]) => {
-    if (item.id === "exibicao") return listas.secoes.size > 0 ? 1 : 0;
     if (item.id === "medidas" && !medidasAbertas) return 0;
     return item.campos.filter((campo) => campos.has(campo)).length;
   };
@@ -348,12 +313,6 @@ export function ConfiguradorOperacoesProdutos({
     const valoresAtuais = [...new Set(produtosSelecionados.map(obter))];
     return valoresAtuais.length === 1 ? valoresAtuais[0] : "Valores diferentes";
   };
-  const secoesAtuais = valorAtual((produto) => {
-    const rotulos = SECOES_LOJA.filter((secao) =>
-      produto.secoesLoja.includes(secao.id),
-    ).map((secao) => secao.rotulo);
-    return rotulos.length ? rotulos.join(", ") : "Nenhuma";
-  });
   const precoAtual = valorAtual((produto) => {
     const preco = produto.precosModalidades.find(
       (item) => item.modalidade === valores.preco_modalidade,
@@ -671,65 +630,6 @@ export function ConfiguradorOperacoesProdutos({
             onRemover={removerTodasMedidas}
             produtosSelecionados={produtosSelecionados}
           />
-        )}
-
-        {grupoAtivo === "exibicao" && (
-          <article className="bg-card rounded-xl border border-blue-200 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
-              <div>
-                <h3 className="text-sm font-semibold">Seções da Loja</h3>
-                <p className="text-muted-foreground text-xs">
-                  Escolha a operação e as seções reais do catálogo.
-                </p>
-                <p className="mt-1 text-xs">
-                  Atual: <strong>{secoesAtuais}</strong>
-                </p>
-              </div>
-              <Badge variant="secondary">
-                {listas.secoes.size} selecionada(s)
-              </Badge>
-            </div>
-            <div className="space-y-4 p-4">
-              <Controle rotulo="Operação">
-                <Select
-                  value={valores.secoes_operacao}
-                  onValueChange={(valor) => definir("secoes_operacao", valor)}
-                >
-                  <SelectTrigger className="max-w-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="adicionar">
-                      Adicionar às atuais
-                    </SelectItem>
-                    <SelectItem value="remover">Remover das atuais</SelectItem>
-                    <SelectItem value="substituir">
-                      Substituir atuais
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </Controle>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {SECOES_LOJA.map((item) => (
-                  <label
-                    key={item.id}
-                    className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm"
-                  >
-                    <Checkbox
-                      checked={listas.secoes.has(item.id)}
-                      onCheckedChange={() => alternarLista("secoes", item.id)}
-                    />
-                    <span>{item.icone}</span>
-                    {item.rotulo}
-                  </label>
-                ))}
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Resumo: {valores.secoes_operacao} · {listas.secoes.size}{" "}
-                seção(ões).
-              </p>
-            </div>
-          </article>
         )}
       </section>
     </div>

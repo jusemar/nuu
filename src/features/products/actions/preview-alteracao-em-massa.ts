@@ -18,7 +18,6 @@ const ROTULOS_CAMPOS = {
   status: "Status",
   categoria: "Categoria",
   marca: "Marca",
-  secoes: "Seções da Loja",
   preco: "Preço",
   prazo: "Prazo",
   estoque: "Estoque",

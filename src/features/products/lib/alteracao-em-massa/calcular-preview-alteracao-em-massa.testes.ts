@@ -3,7 +3,10 @@ import { describe, it } from "node:test";
 
 import { normalizarModalidadePreco } from "../../constants/modalidades-preco";
 import type { OperacaoAlteracaoEmMassa } from "../../schemas/alteracao-em-massa/operacoes-alteracao-em-massa.schema";
-import { solicitarPreviewAlteracaoEmMassaSchema } from "../../schemas/alteracao-em-massa/operacoes-alteracao-em-massa.schema";
+import {
+  aplicarAlteracaoEmMassaSchema,
+  solicitarPreviewAlteracaoEmMassaSchema,
+} from "../../schemas/alteracao-em-massa/operacoes-alteracao-em-massa.schema";
 import type {
   DadosAlteracaoEmMassa,
   ProdutoAlteracaoEmMassa,
@@ -104,18 +107,32 @@ describe("motor de alteração em massa", () => {
     assert.equal(plano.alteracoes.estoque, undefined);
   });
 
-  it("aplica operação explícita às Seções da Loja", () => {
-    const plano = calcular([
-      {
-        campo: "secoes",
-        operacao: "adicionar",
-        secoesIds: ["featured"],
-      },
-    ]);
-    assert.deepEqual(plano.alteracoes.produto.secoesLoja, [
-      "featured",
-      "general",
-    ]);
+  it("rejeita payload antigo de Seções da Loja antes do preview", () => {
+    const resultado = solicitarPreviewAlteracaoEmMassaSchema.safeParse({
+      produtosIds: [produto.id],
+      operacoes: [
+        {
+          campo: "secoes",
+          operacao: "adicionar",
+          secoesIds: ["featured"],
+        },
+      ],
+    });
+    assert.equal(resultado.success, false);
+    assert.equal(
+      aplicarAlteracaoEmMassaSchema.safeParse({
+        produtosIds: [produto.id],
+        operacoes: [
+          {
+            campo: "secoes",
+            operacao: "substituir",
+            secoesIds: ["sale"],
+          },
+        ],
+        assinaturaPreview: "a".repeat(64),
+      }).success,
+      false,
+    );
   });
 
   it("mantém catálogo fechado e rejeita logística fora do escopo", () => {

@@ -31,6 +31,7 @@ const produto: ProdutoAlteracaoEmMassa = {
   varianteTecnicaId: "00000000-0000-4000-8000-000000000004",
   estoqueVarianteTecnica: 5,
   varianteTecnicaAtualizadaEm: agora,
+  varianteTecnicaVersaoConcorrencia: "2026-01-01 00:00:00.000000",
   precosModalidades: [
     {
       id: "00000000-0000-4000-8000-000000000005",
@@ -38,6 +39,7 @@ const produto: ProdutoAlteracaoEmMassa = {
       precoEmCentavos: 10_000,
       prazo: "Imediato",
       atualizadoEm: agora,
+      versaoConcorrencia: "2026-01-01 00:00:00.000000",
     },
   ],
   classificacoesLogisticasIds: [],
@@ -45,6 +47,7 @@ const produto: ProdutoAlteracaoEmMassa = {
   permiteEntregaPropria: false,
   modeloRetiradaId: null,
   atualizadoEm: agora,
+  versaoConcorrencia: "2026-01-01 00:00:00.000000",
 };
 
 const dados: DadosAlteracaoEmMassa = {
@@ -127,5 +130,50 @@ describe("motor de alteração em massa", () => {
       ],
     });
     assert.equal(resultado.success, false);
+  });
+
+  it("planeja vários campos do produto sem criar conflito entre eles", () => {
+    const plano = calcular([
+      { campo: "status", valor: false },
+      { campo: "ncm", valor: "85171200" },
+      { campo: "estoque", operacao: "aumentar", valor: 2 },
+    ]);
+    assert.equal(
+      plano.linhas.every((linha) => linha.resultado === "alterado"),
+      true,
+    );
+    assert.equal(plano.alteracoes.produto.ativo, false);
+    assert.equal(plano.alteracoes.estoque?.quantidade, 7);
+  });
+
+  it("combina preço e prazo da mesma modalidade em uma única escrita planejada", () => {
+    const plano = calcular([
+      {
+        campo: "preco",
+        modalidade: "stock",
+        operacao: "aumentar_valor",
+        valor: 10,
+      },
+      {
+        campo: "prazo",
+        modalidade: "stock",
+        valor: "2 dias",
+      },
+    ]);
+    assert.equal(plano.alteracoes.precos.length, 1);
+    assert.equal(plano.alteracoes.precos[0].precoEmCentavos, 11_000);
+    assert.equal(plano.alteracoes.precos[0].prazo, "2 dias");
+  });
+
+  it("planeja produto pai e variante técnica na mesma aplicação", () => {
+    const plano = calcular([
+      { campo: "status", valor: false },
+      { campo: "estoque", operacao: "definir", valor: 9 },
+    ]);
+    assert.equal(plano.alteracoes.produto.ativo, false);
+    assert.equal(
+      plano.alteracoes.estoque?.varianteId,
+      produto.varianteTecnicaId,
+    );
   });
 });

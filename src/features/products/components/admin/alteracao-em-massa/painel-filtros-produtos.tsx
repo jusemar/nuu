@@ -24,6 +24,7 @@ type PainelFiltrosProdutosProps = {
   dados: DadosAlteracaoEmMassa;
   estado: EstadoListagemAlteracaoEmMassa;
   compacto?: boolean;
+  onTentarAtualizar?: () => Promise<void>;
 };
 
 function GrupoFiltro({
@@ -141,6 +142,7 @@ export function PainelFiltrosProdutos({
   dados,
   estado,
   compacto = false,
+  onTentarAtualizar,
 }: PainelFiltrosProdutosProps) {
   const tiposPresentes = new Set(
     dados.produtos.map((produto) => produto.tipoProduto),
@@ -167,6 +169,12 @@ export function PainelFiltrosProdutos({
         titulo="Categorias"
         dica="Ao selecionar uma categoria pai, os produtos de todas as categorias descendentes também são incluídos. Uma categoria filha filtra somente aquela ramificação."
       >
+        {dados.avisos?.categorias ? (
+          <AvisoAuxiliar
+            mensagem={dados.avisos.categorias}
+            onTentarAtualizar={onTentarAtualizar}
+          />
+        ) : null}
         <ArvoreCategorias
           categorias={dados.categorias}
           selecionadas={estado.categoriasIds}
@@ -175,6 +183,12 @@ export function PainelFiltrosProdutos({
       </GrupoFiltro>
 
       <GrupoFiltro titulo="Marcas">
+        {dados.avisos?.marcas ? (
+          <AvisoAuxiliar
+            mensagem={dados.avisos.marcas}
+            onTentarAtualizar={onTentarAtualizar}
+          />
+        ) : null}
         {dados.marcas.map((marca) => (
           <OpcaoFiltro
             key={marca.id}
@@ -253,5 +267,33 @@ export function PainelFiltrosProdutos({
       <Separator />
       <ScrollArea className="h-[calc(100vh-7rem)]">{conteudo}</ScrollArea>
     </aside>
+  );
+}
+
+function AvisoAuxiliar({
+  mensagem,
+  onTentarAtualizar,
+}: {
+  mensagem: string;
+  onTentarAtualizar?: () => Promise<void>;
+}) {
+  return (
+    <div
+      className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"
+      role="status"
+    >
+      <p>{mensagem}</p>
+      {onTentarAtualizar ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="mt-1 h-7 px-2"
+          onClick={() => void onTentarAtualizar().catch(() => undefined)}
+        >
+          <RotateCcw className="size-3" /> Tentar novamente
+        </Button>
+      ) : null}
+    </div>
   );
 }

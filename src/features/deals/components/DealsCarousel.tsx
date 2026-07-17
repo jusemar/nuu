@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
-// O carousel de ofertas usa o mesmo contrato visual dos cards de "Os mais queridos".
+// O carousel de ofertas usa o mesmo contrato visual dos cards de "Mais vendidos".
 interface DealProduct {
   id: string;
   slug?: string;

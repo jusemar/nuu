@@ -72,7 +72,7 @@ export interface FeaturedProduct {
 export const useFeaturedProducts = () => {
   // 🔄 PASSO 1: Buscar dados crus do banco
   // useProductsByFlag já gerencia: cache, loading, error, retry
-  const queryResult = useProductsByFlag(["featured", "new"]) as UseQueryResult<
+  const queryResult = useProductsByFlag(["new"]) as UseQueryResult<
     RawProductFromDB[],
     Error
   >;
@@ -94,7 +94,7 @@ export const useFeaturedProducts = () => {
       hasPromo && promoPriceInCents ? promoPriceInCents : originalPriceInCents;
 
     // 🖼️ TRATAMENTO DE IMAGEM: Fallback se não tiver
-    let imageUrl = "/images/product-placeholder.jpg";
+    let imageUrl = "/placeholder-product.jpg";
     if (product.mainImage?.imageUrl) {
       // Se tiver base URL configurada, adiciona (ex: CDN)
       const baseUrl = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "";
@@ -126,7 +126,7 @@ export const useFeaturedProducts = () => {
       hasFreeShipping: product.hasFreeShipping || false,
 
       // 🏷️ FLAGS ESPECIAIS
-      isFeatured: true, // Sempre true, pois filtramos por 'featured'
+      isFeatured: storeFlags.includes("featured"),
       isExclusive: storeFlags.includes("exclusive"),
       isTrending: storeFlags.includes("trending"),
       badgePromocao: product.mainPrice?.badgePromocional ?? null,

@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { recarregarListagemAlteracaoEmMassa } from "../../../actions/recarregar-listagem-alteracao-em-massa";
 import { useListagemAlteracaoEmMassa } from "../../../hooks/alteracao-em-massa/use-listagem-alteracao-em-massa";
 import type { ResultadoAlteracaoEmMassa } from "../../../types/alteracao-em-massa.types";
 import { BarraSelecaoProdutos } from "./barra-selecao-produtos";
@@ -41,20 +42,26 @@ type PaginaAlteracaoEmMassaProps = {
 export function PaginaAlteracaoEmMassaProdutosAdmin({
   resultado,
 }: PaginaAlteracaoEmMassaProps) {
-  const estado = useListagemAlteracaoEmMassa(resultado.dados);
+  const [resultadoAtual, setResultadoAtual] = useState(resultado);
+  const estado = useListagemAlteracaoEmMassa(resultadoAtual.dados);
   const [painelAberto, setPainelAberto] = useState(false);
-  const produtosSelecionados = resultado.dados.produtos.filter((produto) =>
+  const produtosSelecionados = resultadoAtual.dados.produtos.filter((produto) =>
     estado.selecionadosIds.has(produto.id),
   );
+  async function atualizarListagem() {
+    const atualizado = await recarregarListagemAlteracaoEmMassa();
+    if (!atualizado.sucesso) throw new Error(atualizado.erro);
+    setResultadoAtual(atualizado);
+  }
 
-  if (!resultado.sucesso) {
+  if (!resultadoAtual.sucesso) {
     return (
       <main className="mx-auto w-full max-w-[1600px] p-4 md:p-6">
         <div className="flex min-h-96 flex-col items-center justify-center rounded-xl border border-rose-200 bg-rose-50/60 p-8 text-center">
           <AlertCircle className="size-10 text-rose-600" />
           <h1 className="mt-4 text-xl font-semibold">Alteração em massa</h1>
           <p className="mt-2 max-w-lg text-sm text-rose-800">
-            {resultado.erro}
+            {resultadoAtual.erro}
           </p>
           <Button
             className="mt-5"
@@ -171,9 +178,10 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
               </SheetHeader>
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <PainelFiltrosProdutos
-                  dados={resultado.dados}
+                  dados={resultadoAtual.dados}
                   estado={estado}
                   compacto
+                  onTentarAtualizar={atualizarListagem}
                 />
               </div>
               <div className="border-t p-4">
@@ -192,11 +200,15 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
       </header>
 
       <div className="flex items-start gap-5">
-        <PainelFiltrosProdutos dados={resultado.dados} estado={estado} />
+        <PainelFiltrosProdutos
+          dados={resultadoAtual.dados}
+          estado={estado}
+          onTentarAtualizar={atualizarListagem}
+        />
         <section className="min-w-0 flex-1" aria-label="Produtos encontrados">
           <TabelaProdutosAlteracaoEmMassa
             estado={estado}
-            totalProdutos={resultado.dados.produtos.length}
+            totalProdutos={resultadoAtual.dados.produtos.length}
           />
         </section>
       </div>
@@ -210,8 +222,9 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
         aberto={painelAberto}
         onOpenChange={setPainelAberto}
         produtosSelecionados={produtosSelecionados}
-        dados={resultado.dados}
+        dados={resultadoAtual.dados}
         onAplicacaoConcluida={estado.limparSelecao}
+        onAtualizarListagem={atualizarListagem}
       />
     </main>
   );

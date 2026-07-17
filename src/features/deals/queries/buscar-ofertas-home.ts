@@ -23,6 +23,7 @@ export interface ProdutoPromocionalHome {
   brand: string | null;
   cardShortText: string | null;
   description: string | null;
+  isActive: boolean | null;
   hasFreeShipping: boolean | null;
   storeProductFlags: string[] | null;
   galleryImages: Array<{
@@ -65,6 +66,7 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
         brand: productTable.brand,
         cardShortText: productTable.cardShortText,
         description: productTable.description,
+        isActive: productTable.isActive,
         hasFreeShipping: productTable.hasFreeShipping,
         storeProductFlags: productTable.storeProductFlags,
       },
@@ -197,7 +199,11 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
       );
     }),
     produtosPromocaoNormal: produtosComPrecosVitrine.filter(
-      (produto) => produto.pricing[0]?.promoType === "normal",
+      (produto) =>
+        produto.isActive === true &&
+        produto.storeProductFlags?.includes("sale") &&
+        produto.pricing[0]?.hasPromo === true &&
+        produto.pricing[0]?.promoType === "normal",
     ),
   };
 }

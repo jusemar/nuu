@@ -1,5 +1,5 @@
 // src/app/category/[slug]/page.tsx
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
@@ -56,6 +56,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
     where: and(
       eq(productTable.categoryId, category.id),
       eq(productTable.isActive, true),
+      sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
     ),
     with: {
       galleryImages: true,
@@ -447,6 +448,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
                       discount={precoVitrine?.percentualOff}
                       economyInCents={precoVitrine?.economiaEmCentavos}
                       badgePromocional={precoVitrine?.badgePromocional}
+                      isFeatured={product.storeProductFlags?.includes(
+                        "featured",
+                      )}
                       hasFreeShipping={hasFreeShipping}
                       hasFlashSale={hasFlashSale}
                       hasBestPrice={hasBestPrice}

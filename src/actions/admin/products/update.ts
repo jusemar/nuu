@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/connection";
+import { dbTransacional } from "@/db/transaction";
 import {
   categoryTable,
   productTable,
@@ -9,7 +10,7 @@ import {
   productGalleryImagesTable,
   marcaTable,
 } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
@@ -20,33 +21,91 @@ import type {
   ProductVariantFormInput,
 } from "@/features/products";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import {
+  descreverErroBancoParaLog,
+  erroEhTransitorioDeBanco,
+} from "@/features/products/lib/classificar-erro-banco";
 
-function revalidateAdminProductsPath() {
+function revalidatePathSeguro(path: string, recurso: string) {
   try {
-    revalidatePath("/admin/products");
+    revalidatePath(path);
   } catch (error) {
-    console.warn("Nao foi possivel revalidar /admin/products:", error);
+    console.warn("[produto:atualizacao:falha-revalidacao]", {
+      recurso,
+      tipo: error instanceof Error ? error.name : "Erro desconhecido",
+    });
   }
 }
 
 const categoriaIdSchema = z.string().uuid();
+const produtoIdSchema = z.string().uuid();
+
+type CodigoErroAtualizacaoProduto =
+  | "DADOS_INVALIDOS"
+  | "PRODUTO_NAO_ENCONTRADO"
+  | "CATEGORIA_INEXISTENTE"
+  | "CATEGORIA_INATIVA"
+  | "BANCO_INDISPONIVEL"
+  | "ERRO_INTERNO";
+
+function falha(codigo: CodigoErroAtualizacaoProduto, message: string) {
+  return { success: false as const, codigo, message };
+}
+
+function aguardar(milissegundos: number) {
+  return new Promise((resolve) => setTimeout(resolve, milissegundos));
+}
+
+async function executarLeituraComRetry<T>(
+  etapa: string,
+  operacao: () => Promise<T>,
+) {
+  try {
+    return await operacao();
+  } catch (erro) {
+    if (!erroEhTransitorioDeBanco(erro)) throw erro;
+
+    console.warn("[produto:atualizacao:retry-leitura]", {
+      etapa,
+      tentativa: 2,
+      ...descreverErroBancoParaLog(erro),
+    });
+    await aguardar(250);
+    return operacao();
+  }
+}
 
 async function buscarCategoriaAtivaPorId(id: string) {
   const idValidado = categoriaIdSchema.safeParse(id);
-  if (!idValidado.success) return null;
+  if (!idValidado.success) return { situacao: "id_invalido" as const };
 
-  const [categoria] = await db
-    .select({ id: categoryTable.id })
-    .from(categoryTable)
-    .where(
-      and(
-        eq(categoryTable.id, idValidado.data),
-        eq(categoryTable.isActive, true),
-      ),
-    )
-    .limit(1);
+  const [categoria] = await executarLeituraComRetry("categoria", () =>
+    db
+      .select({ id: categoryTable.id, isActive: categoryTable.isActive })
+      .from(categoryTable)
+      .where(eq(categoryTable.id, idValidado.data))
+      .limit(1),
+  );
 
-  return categoria ?? null;
+  if (!categoria) return { situacao: "inexistente" as const };
+  if (!categoria.isActive) return { situacao: "inativa" as const };
+  return { situacao: "ativa" as const, categoria };
+}
+
+function dadosBasicosSaoValidos(id: string, data: UpdateProductData) {
+  if (!produtoIdSchema.safeParse(id).success) return false;
+  if (data.categoryId && !categoriaIdSchema.safeParse(data.categoryId).success)
+    return false;
+  if (data.name !== undefined && !data.name.trim()) return false;
+  if (data.slug !== undefined && !data.slug.trim()) return false;
+  if (data.sku !== undefined && !data.sku.trim()) return false;
+  if (
+    !Array.isArray(data.storeProductFlags) ||
+    data.storeProductFlags.some((flag) => typeof flag !== "string")
+  )
+    return false;
+
+  return true;
 }
 
 function converterValorEmInteiro(valor?: string) {
@@ -142,28 +201,46 @@ async function buscarMarcaPorId(id: string) {
 }
 
 export async function updateProduct(id: string, data: UpdateProductData) {
+  let etapaAtual = "validacao_dados";
+
   try {
-    const [existingProduct] = await db
-      .select()
-      .from(productTable)
-      .where(eq(productTable.id, id))
-      .limit(1);
+    if (!dadosBasicosSaoValidos(id, data)) {
+      return falha(
+        "DADOS_INVALIDOS",
+        "Verifique os dados informados e tente novamente.",
+      );
+    }
+
+    etapaAtual = "consulta_produto";
+    const [existingProduct] = await executarLeituraComRetry("produto", () =>
+      db.select().from(productTable).where(eq(productTable.id, id)).limit(1),
+    );
 
     if (!existingProduct) {
-      return {
-        success: false,
-        message: "Produto não encontrado",
-      };
+      return falha("PRODUTO_NAO_ENCONTRADO", "Produto não encontrado.");
     }
 
     if (data.categoryId !== undefined) {
-      const categoria = await buscarCategoriaAtivaPorId(data.categoryId);
-      if (!categoria) {
-        return {
-          success: false,
-          message: "Selecione uma categoria válida e ativa.",
-        };
-      }
+      etapaAtual = "validacao_categoria";
+      const resultadoCategoria = await buscarCategoriaAtivaPorId(
+        data.categoryId,
+      );
+
+      if (resultadoCategoria.situacao === "id_invalido")
+        return falha(
+          "DADOS_INVALIDOS",
+          "O identificador da categoria é inválido.",
+        );
+      if (resultadoCategoria.situacao === "inexistente")
+        return falha(
+          "CATEGORIA_INEXISTENTE",
+          "A categoria selecionada não existe.",
+        );
+      if (resultadoCategoria.situacao === "inativa")
+        return falha(
+          "CATEGORIA_INATIVA",
+          "A categoria selecionada está inativa. Escolha uma categoria ativa.",
+        );
     }
 
     // ✅ CONSTRUIR APENAS CAMPOS QUE FORAM ENVIADOS
@@ -172,9 +249,15 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     };
 
     if (data.brandId !== undefined) {
-      const marcaPadrao = await buscarMarcaPadrao();
+      etapaAtual = "validacao_marca";
+      const marcaPadrao = await executarLeituraComRetry(
+        "marca_padrao",
+        buscarMarcaPadrao,
+      );
       const marcaSelecionada = data.brandId
-        ? await buscarMarcaPorId(data.brandId)
+        ? await executarLeituraComRetry("marca_selecionada", () =>
+            buscarMarcaPorId(data.brandId!),
+          )
         : null;
       const marcaFinal = marcaSelecionada ?? marcaPadrao;
       updateFields.marcaId = marcaFinal.id;
@@ -248,128 +331,145 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updateFields.prazoRetiradaCustom = data.entrega.prazoCustom || null;
     }
 
-    // ✅ ATUALIZAR APENAS SE HOUVER CAMPOS MODIFICADOS
-    if (Object.keys(updateFields).length > 1) {
-      await db
-        .update(productTable)
-        .set(updateFields)
-        .where(eq(productTable.id, id));
-    }
+    etapaAtual = "transacao_atualizacao";
+    await dbTransacional.transaction(async (tx) => {
+      if (Object.keys(updateFields).length > 1) {
+        await tx
+          .update(productTable)
+          .set(updateFields)
+          .where(eq(productTable.id, id));
+      }
 
-    // ✅ MODALIDADES DE PREÇO (apenas se modalities for fornecida)
-    if (data.pricing?.modalities !== undefined) {
-      await db
-        .delete(productPricingTable)
-        .where(eq(productPricingTable.productId, id));
+      if (data.pricing?.modalities !== undefined) {
+        await tx
+          .delete(productPricingTable)
+          .where(eq(productPricingTable.productId, id));
 
-      const pricingEntries = Object.entries(data.pricing.modalities)
-        .filter(([_, modality]) => modality.price)
-        .map(([type, modality]: [string, any]) => {
-          // Calcular duration a partir do endDate
-          let promoDuration = null;
-          let promoDurationUnit = null;
+        const pricingEntries = Object.entries(data.pricing.modalities)
+          .filter(([_, modality]) => modality.price)
+          .map(([type, modality]: [string, any]) => {
+            let promoDuration = null;
+            let promoDurationUnit = null;
 
-          if (modality.promo?.endDate) {
-            const now = new Date();
-            const endDate = new Date(modality.promo.endDate);
-            const diffHours = Math.ceil(
-              (endDate.getTime() - now.getTime()) / (1000 * 60 * 60),
-            );
+            if (modality.promo?.endDate) {
+              const now = new Date();
+              const endDate = new Date(modality.promo.endDate);
+              const diffHours = Math.ceil(
+                (endDate.getTime() - now.getTime()) / (1000 * 60 * 60),
+              );
 
-            if (diffHours > 0) {
-              promoDuration = diffHours;
-              promoDurationUnit = "hours";
+              if (diffHours > 0) {
+                promoDuration = diffHours;
+                promoDurationUnit = "hours";
+              }
             }
-          }
 
-          return {
+            return {
+              productId: id,
+              type,
+              price: Math.round(parseFloat(modality.price) * 100),
+              deliveryDays: modality.deliveryText || "",
+              pricingModalDescription: modality.deliveryText || "",
+              mainCardPrice: data.pricing?.mainCardPriceType === type,
+              isActive: true,
+              hasPromo: modality.promo?.active || false,
+              promoType: modality.promo?.type || "normal",
+              promoPrice: modality.promo?.price
+                ? Math.round(parseFloat(modality.promo.price) * 100)
+                : null,
+              promoEndDate: modality.promo?.endDate || null,
+              promoDuration,
+              promoDurationUnit,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          });
+
+        if (pricingEntries.length > 0) {
+          await tx.insert(productPricingTable).values(pricingEntries);
+        }
+      }
+
+      if (data.images !== undefined) {
+        await tx
+          .delete(productGalleryImagesTable)
+          .where(eq(productGalleryImagesTable.productId, id));
+
+        const validImages = data.images.filter((image) => image.url);
+
+        if (validImages.length > 0) {
+          const imageEntries = validImages.map((image, index) => ({
             productId: id,
-            type: type,
-            price: Math.round(parseFloat(modality.price) * 100),
-            deliveryDays: modality.deliveryText || "",
-            pricingModalDescription: modality.deliveryText || "",
-            mainCardPrice: data.pricing?.mainCardPriceType === type,
-            isActive: true,
-            // CAMPOS DE PROMOÇÃO
-            hasPromo: modality.promo?.active || false,
-            promoType: modality.promo?.type || "normal",
-            promoPrice: modality.promo?.price
-              ? Math.round(parseFloat(modality.promo.price) * 100)
-              : null,
-            promoEndDate: modality.promo?.endDate || null,
-            promoDuration: promoDuration,
-            promoDurationUnit: promoDurationUnit,
+            imageUrl: image.url!,
+            altText: image.altText || data.name || existingProduct.name,
+            isPrimary: image.isPrimary,
+            sortOrder: index,
             createdAt: new Date(),
             updatedAt: new Date(),
-          };
-        });
+          }));
 
-      if (pricingEntries.length > 0) {
-        await db.insert(productPricingTable).values(pricingEntries);
+          await tx.insert(productGalleryImagesTable).values(imageEntries);
+        }
       }
-    }
 
-    // ✅ IMAGENS (apenas se images for fornecida)
-    if (data.images !== undefined) {
-      await db
-        .delete(productGalleryImagesTable)
-        .where(eq(productGalleryImagesTable.productId, id));
+      if (data.entrega !== undefined) {
+        await salvarPrecosEntregaPropriaProduto(
+          id,
+          data.entrega.permiteEntregaPropria
+            ? (data.entrega.precosEntregaPropria ?? [])
+            : [],
+          { executor: tx, revalidar: false },
+        );
+      }
 
-      const validImages = data.images.filter((image) => image.url);
-
-      if (validImages.length > 0) {
-        const imageEntries = validImages.map((image, index) => ({
+      if (
+        data.productKind !== undefined ||
+        data.attributes !== undefined ||
+        data.variants !== undefined
+      ) {
+        await salvarEstruturaVariantesProduto({
           productId: id,
-          imageUrl: image.url!,
-          altText: image.altText || data.name || existingProduct.name,
-          isPrimary: image.isPrimary,
-          sortOrder: index,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
-
-        await db.insert(productGalleryImagesTable).values(imageEntries);
+          productKind:
+            data.productKind ?? existingProduct.productKind ?? "simple",
+          attributes: data.attributes ?? [],
+          variants: data.variants ?? [],
+          executor: tx,
+        });
       }
-    }
+    });
 
-    if (data.entrega !== undefined) {
-      await salvarPrecosEntregaPropriaProduto(
-        id,
-        data.entrega.permiteEntregaPropria
-          ? (data.entrega.precosEntregaPropria ?? [])
-          : [],
-      );
-    }
-
-    if (
-      data.productKind !== undefined ||
-      data.attributes !== undefined ||
-      data.variants !== undefined
-    ) {
-      await salvarEstruturaVariantesProduto({
-        productId: id,
-        productKind:
-          data.productKind ?? existingProduct.productKind ?? "simple",
-        attributes: data.attributes ?? [],
-        variants: data.variants ?? [],
-      });
-    }
-
-    revalidateAdminProductsPath();
-    revalidatePath(`/product/${existingProduct.slug}`);
+    etapaAtual = "revalidacao_cache";
+    revalidatePathSeguro("/admin/products", "lista_admin");
+    revalidatePathSeguro(`/admin/products/${id}/edit`, "edicao_admin");
+    revalidatePathSeguro(
+      `/product/${existingProduct.slug}`,
+      "pdp_slug_anterior",
+    );
     if (data.slug && data.slug !== existingProduct.slug) {
-      revalidatePath(`/product/${data.slug}`);
+      revalidatePathSeguro(`/product/${data.slug}`, "pdp_slug_atual");
     }
 
     return {
       success: true,
       message: "Produto atualizado com sucesso!",
     };
-  } catch (error: any) {
-    console.error("Erro ao atualizar produto:", error);
-    return {
-      success: false,
-      message: "Erro interno ao atualizar produto",
-    };
+  } catch (error: unknown) {
+    const detalhes = descreverErroBancoParaLog(error);
+    console.error("[produto:atualizacao:falha]", {
+      etapa: etapaAtual,
+      ...detalhes,
+    });
+
+    if (erroEhTransitorioDeBanco(error)) {
+      return falha(
+        "BANCO_INDISPONIVEL",
+        "Não foi possível conectar ao banco de dados. Tente novamente em alguns instantes.",
+      );
+    }
+
+    return falha(
+      "ERRO_INTERNO",
+      "Não foi possível atualizar o produto. Tente novamente.",
+    );
   }
 }

@@ -24,6 +24,7 @@ type SaveProductVariantsInput = {
   productKind?: ProductKind | string | null;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
+  executor?: any;
 };
 
 function toIntegerOrNull(value: unknown) {
@@ -41,14 +42,15 @@ export async function salvarEstruturaVariantesProduto({
   productKind,
   attributes = [],
   variants = [],
+  executor = db,
 }: SaveProductVariantsInput) {
   const normalizedKind = normalizeProductKind(productKind);
 
-  await db
+  await executor
     .delete(productAttributeTable)
     .where(eq(productAttributeTable.productId, productId));
 
-  await db
+  await executor
     .delete(productVariantTable)
     .where(eq(productVariantTable.productId, productId));
 
@@ -68,7 +70,7 @@ export async function salvarEstruturaVariantesProduto({
     .filter((attribute) => attribute.values.length > 0);
 
   if (parsedAttributes.length > 0) {
-    await db.insert(productAttributeTable).values(
+    await executor.insert(productAttributeTable).values(
       parsedAttributes.map((attribute) => ({
         productId,
         name: attribute.name,
@@ -101,31 +103,37 @@ export async function salvarEstruturaVariantesProduto({
     .map((result) => result.data);
 
   if (parsedVariants.length > 0) {
-    const variantesInseridas = await db.insert(productVariantTable).values(
-      parsedVariants.map((variant) => ({
-        productId,
-        sku: variant.sku,
-        name: variant.name,
-        attributes: variant.attributes,
-        priceInCents: variant.priceInCents,
-        comparePriceInCents: variant.comparePriceInCents,
-        stockQuantity: variant.stockQuantity,
-        weightInGrams: variant.weightInGrams,
-        heightInCm: variant.heightInCm,
-        widthInCm: variant.widthInCm,
-        lengthInCm: variant.lengthInCm,
-        imageUrl: variant.imageUrl,
-        isActive: variant.isActive,
-        isDefault: variant.isDefault,
-        updatedAt: new Date(),
-      })),
-    ).returning({
-      id: productVariantTable.id,
-      sku: productVariantTable.sku,
-    });
+    const variantesInseridas = await executor
+      .insert(productVariantTable)
+      .values(
+        parsedVariants.map((variant) => ({
+          productId,
+          sku: variant.sku,
+          name: variant.name,
+          attributes: variant.attributes,
+          priceInCents: variant.priceInCents,
+          comparePriceInCents: variant.comparePriceInCents,
+          stockQuantity: variant.stockQuantity,
+          weightInGrams: variant.weightInGrams,
+          heightInCm: variant.heightInCm,
+          widthInCm: variant.widthInCm,
+          lengthInCm: variant.lengthInCm,
+          imageUrl: variant.imageUrl,
+          isActive: variant.isActive,
+          isDefault: variant.isDefault,
+          updatedAt: new Date(),
+        })),
+      )
+      .returning({
+        id: productVariantTable.id,
+        sku: productVariantTable.sku,
+      });
 
     const varianteIdPorSku = new Map(
-      variantesInseridas.map((variante) => [variante.sku, variante.id]),
+      variantesInseridas.map((variante: { id: string; sku: string }) => [
+        variante.sku,
+        variante.id,
+      ]),
     );
     const vinculosClassificacoes = parsedVariants.flatMap((variant) => {
       const varianteId = varianteIdPorSku.get(variant.sku);
@@ -141,7 +149,7 @@ export async function salvarEstruturaVariantesProduto({
     });
 
     if (vinculosClassificacoes.length > 0) {
-      await db
+      await executor
         .insert(variantesTiposLogisticosTable)
         .values(vinculosClassificacoes)
         .onConflictDoNothing();

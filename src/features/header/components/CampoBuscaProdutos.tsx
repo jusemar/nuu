@@ -281,9 +281,16 @@ export function CampoBuscaProdutos() {
                           className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-slate-800">
-                            {produto.nome}
-                          </p>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate text-sm font-medium text-slate-800">
+                              {produto.nome}
+                            </p>
+                            {produto.destaque ? (
+                              <span className="bg-primary text-primary-foreground shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase">
+                                Destaque
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="text-xs text-slate-500">
                             {produto.categoriaNome ?? "Sem categoria"}
                           </p>
@@ -313,9 +320,16 @@ export function CampoBuscaProdutos() {
                           className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-slate-800">
-                            {produto.nome}
-                          </p>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate text-sm font-medium text-slate-800">
+                              {produto.nome}
+                            </p>
+                            {produto.destaque ? (
+                              <span className="bg-primary text-primary-foreground shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase">
+                                Destaque
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="text-xs text-slate-500">
                             {produto.categoriaNome ?? "Sem categoria"}
                           </p>

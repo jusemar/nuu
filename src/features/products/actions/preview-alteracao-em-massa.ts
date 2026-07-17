@@ -65,7 +65,11 @@ export async function solicitarPreviewAlteracaoEmMassa(input: unknown) {
   const { produtosIds, operacoes } = validacao.data;
   const resultado = await listarDadosAlteracaoEmMassa(produtosIds);
   if (!resultado.sucesso)
-    return { sucesso: false as const, erro: resultado.erro };
+    return {
+      sucesso: false as const,
+      erro: "Não foi possível carregar os produtos para o preview. Nenhuma alteração foi aplicada.",
+      etapa: "carregamento_essencial_do_preview" as const,
+    };
 
   const planos = calcularPlanoAlteracaoEmMassa(
     resultado.dados.produtos,

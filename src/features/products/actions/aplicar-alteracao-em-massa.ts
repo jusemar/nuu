@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import {
   productPricingTable,
@@ -13,6 +13,11 @@ import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-aces
 
 import { validarAssinaturaPreview } from "../lib/alteracao-em-massa/assinatura-preview-alteracao-em-massa";
 import { calcularPlanoAlteracaoEmMassa } from "../lib/alteracao-em-massa/calcular-preview-alteracao-em-massa";
+import {
+  compararVersaoEntidade,
+  localizarConflitoProduto,
+  type ConflitoConcorrenciaAlteracaoEmMassa,
+} from "../lib/alteracao-em-massa/concorrencia-alteracao-em-massa";
 import { listarDadosAlteracaoEmMassa } from "../queries/alteracao-em-massa/listar-dados-alteracao-em-massa";
 import {
   aplicarAlteracaoEmMassaSchema,
@@ -22,7 +27,14 @@ import type { ResultadoAplicacaoAlteracaoEmMassa } from "../types/resultado-alte
 
 const LIMITE_LOTE_ALTERACAO_EM_MASSA = 25;
 
-class ErroConcorrenciaAlteracaoEmMassa extends Error {}
+class ErroConcorrenciaAlteracaoEmMassa extends Error {
+  constructor(
+    readonly produtoId: string,
+    readonly diagnostico: ConflitoConcorrenciaAlteracaoEmMassa,
+  ) {
+    super(diagnostico.mensagem);
+  }
+}
 
 function dividirEmLotes<T>(itens: T[], tamanho: number) {
   return Array.from(
@@ -63,7 +75,12 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
 
   const resultadoDados = await listarDadosAlteracaoEmMassa(produtosIds);
   if (!resultadoDados.sucesso) {
-    return { sucesso: false as const, erro: resultadoDados.erro };
+    return {
+      sucesso: false as const,
+      erro: "Não foi possível validar os produtos antes da escrita. Nenhuma alteração foi aplicada.",
+      tipoErro: "aplicacao" as const,
+      etapa: "carregamento_essencial_antes_da_transacao" as const,
+    };
   }
   const planos = calcularPlanoAlteracaoEmMassa(
     resultadoDados.dados.produtos,
@@ -82,10 +99,43 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
     divergentes.length > 0 ||
     conflitos.length > 0
   ) {
+    const detalhesConflitos: ResultadoAplicacaoAlteracaoEmMassa["detalhes"] =
+      divergentes.map((plano) => {
+        const diagnostico = localizarConflitoProduto(
+          assinatura.versoes[plano.produto.id],
+          plano.produto,
+        );
+        return {
+          produtoId: plano.produto.id,
+          produto: plano.produto.nome,
+          sku: plano.produto.sku,
+          resultado: "erro" as const,
+          mensagem:
+            diagnostico?.mensagem ??
+            "Os dados do produto mudaram após o preview.",
+          entidade: diagnostico?.entidade ?? "produto",
+          campoVersao: diagnostico?.campoVersao,
+          versaoEsperada: diagnostico?.versaoEsperada,
+          versaoEncontrada: diagnostico?.versaoEncontrada,
+          etapa: diagnostico?.etapa ?? "validacao_antes_da_escrita",
+          orientacao:
+            diagnostico?.orientacao ??
+            "Gere um novo preview para revisar os valores atuais.",
+          conflitoConcorrencia: true,
+        };
+      });
     return {
       sucesso: false as const,
       erro: "Os dados mudaram ou existem conflitos. Gere um novo preview.",
       requerNovoPreview: true as const,
+      resultado: {
+        status: "falha" as const,
+        alterados: 0,
+        ignorados: 0,
+        semMudanca: 0,
+        erros: detalhesConflitos.length,
+        detalhes: detalhesConflitos,
+      },
       produtosComConflito: [
         ...new Set([
           ...produtosIds.filter((id) => !encontrados.has(id)),
@@ -114,12 +164,14 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
     ...ignorados.map((plano) => ({
       produtoId: plano.produto.id,
       produto: plano.produto.nome,
+      sku: plano.produto.sku,
       resultado: "ignorado" as const,
       mensagem: "Produto com variantes ignorado.",
     })),
     ...semMudanca.map((plano) => ({
       produtoId: plano.produto.id,
       produto: plano.produto.nome,
+      sku: plano.produto.sku,
       resultado: "sem_alteracao" as const,
     })),
   ];
@@ -133,59 +185,159 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
     try {
       await dbTransacional.transaction(async (tx) => {
         const agora = new Date();
+
+        // Todas as versões são validadas sob lock antes da primeira escrita.
+        // Assim, uma atualização deste próprio lote nunca vira conflito.
         for (const plano of lote) {
-          const mudancas = plano.alteracoes.produto;
-          const [produtoAtualizado] = await tx
-            .update(productTable)
-            .set({
-              ...(mudancas.ativo !== undefined && {
-                isActive: mudancas.ativo,
-              }),
-              ...(mudancas.categoriaId !== undefined && {
-                categoryId: mudancas.categoriaId,
-              }),
-              ...(mudancas.marcaId !== undefined && {
-                marcaId: mudancas.marcaId,
-                brand: mudancas.marcaNome,
-              }),
-              ...(mudancas.secoesLoja !== undefined && {
-                storeProductFlags: mudancas.secoesLoja,
-              }),
-              ...(mudancas.ncm !== undefined && { ncmCode: mudancas.ncm }),
-              ...(mudancas.pesoEmGramas !== undefined && {
-                weight: mudancas.pesoEmGramas,
-              }),
-              ...(mudancas.alturaEmCm !== undefined && {
-                height: mudancas.alturaEmCm,
-              }),
-              ...(mudancas.larguraEmCm !== undefined && {
-                width: mudancas.larguraEmCm,
-              }),
-              ...(mudancas.comprimentoEmCm !== undefined && {
-                length: mudancas.comprimentoEmCm,
-              }),
-              updatedAt: agora,
+          const [produtoBloqueado] = await tx
+            .select({
+              id: productTable.id,
+              tipoProduto: productTable.productKind,
+              versao: sql<string>`${productTable.updatedAt}::text`,
             })
-            .where(
-              and(
-                eq(productTable.id, plano.produto.id),
-                eq(productTable.updatedAt, plano.produto.atualizadoEm),
-                eq(productTable.productKind, "simple"),
-              ),
-            )
-            .returning({ id: productTable.id });
-          if (!produtoAtualizado) {
+            .from(productTable)
+            .where(eq(productTable.id, plano.produto.id))
+            .for("update");
+          const conflitoProduto = compararVersaoEntidade({
+            entidade: "produto",
+            esperada: plano.produto.versaoConcorrencia,
+            encontrada: produtoBloqueado?.versao ?? "produto não encontrado",
+          });
+          if (!produtoBloqueado || produtoBloqueado.tipoProduto !== "simple") {
             throw new ErroConcorrenciaAlteracaoEmMassa(
-              "Produto alterado durante a aplicação.",
+              plano.produto.id,
+              conflitoProduto ?? {
+                entidade: "produto",
+                campoVersao: "updatedAt",
+                versaoEsperada: plano.produto.versaoConcorrencia,
+                versaoEncontrada: "produto indisponível ou não simples",
+                etapa: "validacao_antes_da_escrita",
+                mensagem:
+                  "O produto não está mais disponível para esta operação.",
+                orientacao:
+                  "Gere um novo preview para revisar os produtos elegíveis.",
+              },
+            );
+          }
+          if (conflitoProduto) {
+            throw new ErroConcorrenciaAlteracaoEmMassa(
+              plano.produto.id,
+              conflitoProduto,
             );
           }
 
+          const idsPrecos = plano.alteracoes.precos.map(
+            (preco) => preco.precoId,
+          );
+          if (idsPrecos.length) {
+            const precosBloqueados = await tx
+              .select({
+                id: productPricingTable.id,
+                versao: sql<string>`${productPricingTable.updatedAt}::text`,
+              })
+              .from(productPricingTable)
+              .where(inArray(productPricingTable.id, idsPrecos))
+              .for("update");
+            for (const alteracaoPreco of plano.alteracoes.precos) {
+              const esperado = plano.produto.precosModalidades.find(
+                (preco) => preco.id === alteracaoPreco.precoId,
+              );
+              const encontrado = precosBloqueados.find(
+                (preco) => preco.id === alteracaoPreco.precoId,
+              );
+              const conflito = compararVersaoEntidade({
+                entidade: "preco",
+                esperada: esperado?.versaoConcorrencia ?? "preço inexistente",
+                encontrada: encontrado?.versao ?? "preço não encontrado",
+                modalidade: alteracaoPreco.modalidade,
+              });
+              if (conflito) {
+                throw new ErroConcorrenciaAlteracaoEmMassa(
+                  plano.produto.id,
+                  conflito,
+                );
+              }
+            }
+          }
+
+          if (plano.alteracoes.estoque) {
+            const [varianteBloqueada] = await tx
+              .select({
+                id: productVariantTable.id,
+                versao: sql<string>`${productVariantTable.updatedAt}::text`,
+              })
+              .from(productVariantTable)
+              .where(
+                and(
+                  eq(
+                    productVariantTable.id,
+                    plano.alteracoes.estoque.varianteId,
+                  ),
+                  eq(productVariantTable.productId, plano.produto.id),
+                ),
+              )
+              .for("update");
+            const conflito = compararVersaoEntidade({
+              entidade: "estoque",
+              esperada:
+                plano.produto.varianteTecnicaVersaoConcorrencia ??
+                "variante inexistente",
+              encontrada:
+                varianteBloqueada?.versao ?? "variante não encontrada",
+            });
+            if (conflito) {
+              throw new ErroConcorrenciaAlteracaoEmMassa(
+                plano.produto.id,
+                conflito,
+              );
+            }
+          }
+        }
+
+        for (const plano of lote) {
+          const mudancas = plano.alteracoes.produto;
+          if (Object.keys(mudancas).length > 0) {
+            await tx
+              .update(productTable)
+              .set({
+                ...(mudancas.ativo !== undefined && {
+                  isActive: mudancas.ativo,
+                }),
+                ...(mudancas.categoriaId !== undefined && {
+                  categoryId: mudancas.categoriaId,
+                }),
+                ...(mudancas.marcaId !== undefined && {
+                  marcaId: mudancas.marcaId,
+                  brand: mudancas.marcaNome,
+                }),
+                ...(mudancas.secoesLoja !== undefined && {
+                  storeProductFlags: mudancas.secoesLoja,
+                }),
+                ...(mudancas.ncm !== undefined && { ncmCode: mudancas.ncm }),
+                ...(mudancas.pesoEmGramas !== undefined && {
+                  weight: mudancas.pesoEmGramas,
+                }),
+                ...(mudancas.alturaEmCm !== undefined && {
+                  height: mudancas.alturaEmCm,
+                }),
+                ...(mudancas.larguraEmCm !== undefined && {
+                  width: mudancas.larguraEmCm,
+                }),
+                ...(mudancas.comprimentoEmCm !== undefined && {
+                  length: mudancas.comprimentoEmCm,
+                }),
+                updatedAt: agora,
+              })
+              .where(
+                and(
+                  eq(productTable.id, plano.produto.id),
+                  eq(productTable.productKind, "simple"),
+                ),
+              );
+          }
+
           for (const preco of plano.alteracoes.precos) {
-            const atual = plano.produto.precosModalidades.find(
-              (item) => item.id === preco.precoId,
-            );
-            if (!atual) throw new ErroConcorrenciaAlteracaoEmMassa();
-            const [precoAtualizado] = await tx
+            await tx
               .update(productPricingTable)
               .set({
                 ...(preco.precoEmCentavos !== undefined && {
@@ -196,18 +348,11 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                 }),
                 updatedAt: agora,
               })
-              .where(
-                and(
-                  eq(productPricingTable.id, preco.precoId),
-                  eq(productPricingTable.updatedAt, atual.atualizadoEm),
-                ),
-              )
-              .returning({ id: productPricingTable.id });
-            if (!precoAtualizado) throw new ErroConcorrenciaAlteracaoEmMassa();
+              .where(eq(productPricingTable.id, preco.precoId));
           }
 
           if (plano.alteracoes.estoque) {
-            const [varianteAtualizada] = await tx
+            await tx
               .update(productVariantTable)
               .set({
                 stockQuantity: plano.alteracoes.estoque.quantidade,
@@ -220,16 +365,8 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                     plano.alteracoes.estoque.varianteId,
                   ),
                   eq(productVariantTable.productId, plano.produto.id),
-                  eq(
-                    productVariantTable.updatedAt,
-                    plano.produto.varianteTecnicaAtualizadaEm!,
-                  ),
                 ),
-              )
-              .returning({ id: productVariantTable.id });
-            if (!varianteAtualizada) {
-              throw new ErroConcorrenciaAlteracaoEmMassa();
-            }
+              );
           }
         }
       });
@@ -239,6 +376,7 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
         ...lote.map((plano) => ({
           produtoId: plano.produto.id,
           produto: plano.produto.nome,
+          sku: plano.produto.sku,
           resultado: "alterado" as const,
         })),
       );
@@ -246,17 +384,43 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
       console.error("[produtos:alteracao-em-massa:aplicar-lote]", {
         produtosIds: lote.map((plano) => plano.produto.id),
         mensagem: erro instanceof Error ? erro.message : "Erro desconhecido",
+        ...(erro instanceof ErroConcorrenciaAlteracaoEmMassa && {
+          produtoId: erro.produtoId,
+          entidade: erro.diagnostico.entidade,
+          campoVersao: erro.diagnostico.campoVersao,
+          versaoEsperada: erro.diagnostico.versaoEsperada,
+          versaoEncontrada: erro.diagnostico.versaoEncontrada,
+          etapa: erro.diagnostico.etapa,
+        }),
       });
       erros += lote.length;
       detalhes.push(
         ...lote.map((plano) => ({
           produtoId: plano.produto.id,
           produto: plano.produto.nome,
+          sku: plano.produto.sku,
           resultado: "erro" as const,
-          mensagem:
-            erro instanceof ErroConcorrenciaAlteracaoEmMassa
-              ? "Dados alterados durante a aplicação."
-              : "Falha ao aplicar este lote.",
+          ...(erro instanceof ErroConcorrenciaAlteracaoEmMassa &&
+          erro.produtoId === plano.produto.id
+            ? {
+                mensagem: erro.diagnostico.mensagem,
+                entidade: erro.diagnostico.entidade,
+                campoVersao: erro.diagnostico.campoVersao,
+                versaoEsperada: erro.diagnostico.versaoEsperada,
+                versaoEncontrada: erro.diagnostico.versaoEncontrada,
+                etapa: erro.diagnostico.etapa,
+                orientacao: erro.diagnostico.orientacao,
+                conflitoConcorrencia: true,
+              }
+            : {
+                mensagem:
+                  "O lote foi desfeito porque outro produto apresentou conflito.",
+                entidade: "lote" as const,
+                etapa: "rollback_do_lote",
+                orientacao: "Gere um novo preview antes de tentar novamente.",
+                conflitoConcorrencia:
+                  erro instanceof ErroConcorrenciaAlteracaoEmMassa,
+              }),
         })),
       );
     }
@@ -264,7 +428,6 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
 
   revalidatePath("/admin/products");
   revalidatePath("/admin/products/alteracao-em-massa");
-  revalidatePath("/", "layout");
   const resultado: ResultadoAplicacaoAlteracaoEmMassa = {
     status: erros === 0 ? "sucesso" : alterados > 0 ? "parcial" : "falha",
     alterados,

@@ -16,6 +16,7 @@ export type PrecoModalidadeProduto = {
   precoEmCentavos: number;
   prazo: string | null;
   atualizadoEm: Date;
+  versaoConcorrencia: string;
 };
 
 export type ProdutoAlteracaoEmMassa = {
@@ -38,12 +39,14 @@ export type ProdutoAlteracaoEmMassa = {
   varianteTecnicaId: string | null;
   estoqueVarianteTecnica: number | null;
   varianteTecnicaAtualizadaEm: Date | null;
+  varianteTecnicaVersaoConcorrencia: string | null;
   precosModalidades: PrecoModalidadeProduto[];
   classificacoesLogisticasIds: string[];
   permiteRetirada: boolean;
   permiteEntregaPropria: boolean;
   modeloRetiradaId: string | null;
   atualizadoEm: Date;
+  versaoConcorrencia: string;
 };
 
 export type CategoriaAlteracaoEmMassa = {
@@ -80,6 +83,12 @@ export type DadosAlteracaoEmMassa = {
   marcas: MarcaAlteracaoEmMassa[];
   classificacoesLogisticas: ClassificacaoLogisticaAlteracaoEmMassa[];
   modelosRetirada: ModeloRetiradaAlteracaoEmMassa[];
+  avisos?: {
+    marcas?: string;
+    categorias?: string;
+    classificacoesLogisticas?: string;
+    modelosRetirada?: string;
+  };
 };
 
 export type ResultadoAlteracaoEmMassa =

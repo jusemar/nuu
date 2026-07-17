@@ -117,7 +117,7 @@ export const initialProductData: ProductFormData = {
   sku: "",
   isActive: true,
   status: "draft",
-  storeProductFlags: [],
+  storeProductFlags: ["general"],
   collection: "",
   tags: [],
   productKind: "simple",

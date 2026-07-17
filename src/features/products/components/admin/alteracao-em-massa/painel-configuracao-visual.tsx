@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AlertTriangle,
   CheckCircle2,
   Eye,
   Layers3,
@@ -44,6 +45,7 @@ type Props = {
   produtosSelecionados: ProdutoAlteracaoEmMassa[];
   dados: DadosAlteracaoEmMassa;
   onAplicacaoConcluida: () => void;
+  onAtualizarListagem: () => Promise<void>;
 };
 
 export function PainelConfiguracaoVisual({
@@ -52,6 +54,7 @@ export function PainelConfiguracaoVisual({
   produtosSelecionados,
   dados,
   onAplicacaoConcluida,
+  onAtualizarListagem,
 }: Props) {
   const [operacoes, setOperacoes] = useState<OperacaoAlteracaoEmMassa[]>([]);
   const [camposAtivos, setCamposAtivos] = useState(0);
@@ -81,6 +84,7 @@ export function PainelConfiguracaoVisual({
     produtosIds,
     operacoes,
     onSucesso: onAplicacaoConcluida,
+    onAtualizarListagem,
   });
   const assinaturaOperacoes = JSON.stringify(operacoes);
   const assinaturaProdutos = produtosIds.join(",");
@@ -169,6 +173,14 @@ export function PainelConfiguracaoVisual({
               confirmar; produtos alterados após o preview serão bloqueados.
             </span>
           </div>
+          {fluxo.erroControlado ? (
+            <div
+              className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+              role="alert"
+            >
+              {fluxo.erroControlado}
+            </div>
+          ) : null}
         </DialogHeader>
 
         <div className="min-h-0 overflow-hidden bg-slate-50/50">
@@ -209,6 +221,13 @@ export function PainelConfiguracaoVisual({
                   onOpenChange(false);
                 }
               }}
+              onGerarNovoPreview={() => {
+                fluxo.limparResultado();
+                void fluxo.revisar();
+              }}
+              erroAtualizacao={fluxo.erroAtualizacao}
+              atualizandoListagem={fluxo.atualizandoListagem}
+              onAtualizarListagem={() => void fluxo.atualizarListagem()}
             />
           ) : (
             <div className="grid h-[calc(100%-3.25rem)] min-h-0 lg:h-full lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_430px]">
@@ -222,6 +241,7 @@ export function PainelConfiguracaoVisual({
                   <ConfiguradorOperacoesProdutos
                     key={chaveEditor}
                     dados={dados}
+                    produtosSelecionados={produtosSelecionados}
                     onOperacoesChange={receberOperacoes}
                     onCamposAtivosChange={receberCamposAtivos}
                   />
@@ -372,17 +392,22 @@ export function PainelConfiguracaoVisual({
                 <Button
                   variant="outline"
                   onClick={() => setConfirmacaoAberta(false)}
+                  disabled={fluxo.aplicando}
                 >
                   Cancelar
                 </Button>
                 <Button
                   autoFocus
-                  onClick={() => {
+                  disabled={fluxo.aplicando}
+                  onClick={async () => {
+                    await fluxo.aplicar();
                     setConfirmacaoAberta(false);
-                    void fluxo.aplicar();
                   }}
                 >
-                  Confirmar aplicação
+                  {fluxo.aplicando ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : null}
+                  {fluxo.aplicando ? "Aplicando..." : "Confirmar aplicação"}
                 </Button>
               </div>
             </section>
@@ -397,16 +422,31 @@ function ResultadoAplicacao({
   resultado,
   onVoltar,
   onNovaAlteracao,
+  onGerarNovoPreview,
+  erroAtualizacao,
+  atualizandoListagem,
+  onAtualizarListagem,
 }: {
   resultado: ResultadoAplicacaoAlteracaoEmMassa;
   onVoltar: () => void;
   onNovaAlteracao: () => void;
+  onGerarNovoPreview: () => void;
+  erroAtualizacao: string | null;
+  atualizandoListagem: boolean;
+  onAtualizarListagem: () => void;
 }) {
+  const possuiConflito = resultado.detalhes.some(
+    (item) => item.conflitoConcorrencia,
+  );
   return (
     <main className="h-full overflow-y-auto p-5 sm:p-8">
       <div className="mx-auto max-w-3xl space-y-6 rounded-xl border bg-white p-5 shadow-sm sm:p-7">
         <div className="text-center">
-          <CheckCircle2 className="mx-auto size-10 text-emerald-600" />
+          {resultado.status === "sucesso" ? (
+            <CheckCircle2 className="mx-auto size-10 text-emerald-600" />
+          ) : (
+            <AlertTriangle className="mx-auto size-10 text-amber-600" />
+          )}
           <h2 className="mt-3 text-xl font-semibold">Resultado da aplicação</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             Status: {resultado.status}
@@ -422,6 +462,27 @@ function ResultadoAplicacao({
             destaque={resultado.erros > 0}
           />
         </div>
+        {erroAtualizacao ? (
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"
+            role="alert"
+          >
+            <p>
+              <strong>As alterações foram salvas.</strong> {erroAtualizacao}
+            </p>
+            <Button
+              className="mt-3"
+              variant="outline"
+              onClick={onAtualizarListagem}
+              disabled={atualizandoListagem}
+            >
+              {atualizandoListagem ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Tentar atualizar a listagem
+            </Button>
+          </div>
+        ) : null}
         {resultado.detalhes.some((item) => item.resultado === "erro") && (
           <div className="space-y-2">
             <h3 className="font-semibold">Detalhes</h3>
@@ -433,7 +494,35 @@ function ResultadoAplicacao({
                   className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm"
                 >
                   <p className="font-medium">{item.produto}</p>
-                  <p className="text-amber-800">{item.mensagem}</p>
+                  <p className="text-muted-foreground font-mono text-xs">
+                    SKU: {item.sku}
+                  </p>
+                  <dl className="mt-2 grid gap-1 text-amber-950 sm:grid-cols-2">
+                    <div>
+                      <dt className="font-medium">Status</dt>
+                      <dd>Falha</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Entidade / campo</dt>
+                      <dd>
+                        {item.entidade ?? "lote"}
+                        {item.campoVersao ? ` · ${item.campoVersao}` : ""}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-2 text-amber-900">{item.mensagem}</p>
+                  {item.versaoEsperada && item.versaoEncontrada ? (
+                    <div className="mt-2 rounded border border-amber-200 bg-white/70 p-2 font-mono text-[11px] break-all">
+                      <p>Esperada: {item.versaoEsperada}</p>
+                      <p>Encontrada: {item.versaoEncontrada}</p>
+                      <p>Etapa: {item.etapa}</p>
+                    </div>
+                  ) : null}
+                  {item.orientacao ? (
+                    <p className="mt-2 font-medium text-amber-950">
+                      {item.orientacao}
+                    </p>
+                  ) : null}
                 </div>
               ))}
           </div>
@@ -447,6 +536,9 @@ function ResultadoAplicacao({
               ? "Realizar nova alteração"
               : "Voltar à configuração"}
           </Button>
+          {possuiConflito ? (
+            <Button onClick={onGerarNovoPreview}>Gerar novo preview</Button>
+          ) : null}
         </div>
       </div>
     </main>

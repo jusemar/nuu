@@ -33,6 +33,7 @@ interface CategoryProductCardProps {
   discount?: number | null;
   economyInCents?: number | null;
   badgePromocional?: TipoBadgePromocionalVisual | null;
+  isFeatured?: boolean;
   hasFreeShipping?: boolean;
   hasFlashSale?: boolean;
   hasBestPrice?: boolean;
@@ -50,6 +51,7 @@ export function CategoryProductCard({
   originalPrice,
   discount,
   badgePromocional,
+  isFeatured = false,
   hasFreeShipping,
   hasFlashSale,
   hasBestPrice,
@@ -116,6 +118,11 @@ export function CategoryProductCard({
       <Link href={`/product/${slug}`} className="block">
         {/* Container da Imagem */}
         <div className="relative aspect-[1/0.75] overflow-hidden bg-gray-50">
+          {isFeatured ? (
+            <span className="bg-primary text-primary-foreground absolute top-3 left-3 z-10 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase shadow-sm">
+              Destaque
+            </span>
+          ) : null}
           {imageUrl ? (
             <div className="relative h-full w-full">
               <Image

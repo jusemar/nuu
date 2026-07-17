@@ -29,7 +29,7 @@ export async function getProductsLoadMore(page: number = 1) {
           slug: productTable.slug,
           name: productTable.name,
           cardShortText: productTable.cardShortText, // Texto curto que aparece no card
-          storeProductFlags: productTable.storeProductFlags, // Array de flags (ex: ['general', 'new'])
+          storeProductFlags: productTable.storeProductFlags,
           description: productTable.description,
           productKind: productTable.productKind,
           hasFreeShipping: productTable.hasFreeShipping,
@@ -75,12 +75,11 @@ export async function getProductsLoadMore(page: number = 1) {
       )
 
       // === FILTRO IMPORTANTE ===
-      // Só mostra produtos que têm a flag 'general'
-      // Isso faz o grid se comportar igual ao carousel que mostra produtos com flag 'general'
+      // A seção "Mais vendidos" é selecionada manualmente pelo gestor.
       .where(
         and(
           eq(productTable.isActive, true),
-          sql`${productTable.storeProductFlags} && ARRAY['general']::text[]`,
+          sql`${productTable.storeProductFlags} @> ARRAY['bestseller']::text[]`,
         ),
       )
 

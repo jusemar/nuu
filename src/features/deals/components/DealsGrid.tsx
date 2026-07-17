@@ -37,7 +37,7 @@ export const DealsGrid = ({
       originalPrice: hasPromo ? priceNormal : undefined,
       discount,
       hasFreeShipping: produto.hasFreeShipping || false,
-      isFeatured: false,
+      isFeatured: produto.storeProductFlags?.includes("featured") || false,
       isExclusive: false,
       isTrending: produto.storeProductFlags?.includes("trending") || false,
       badgePromocao: precoPromocional?.badgePromocional ?? "promocao",

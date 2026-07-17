@@ -1,47 +1,77 @@
 import "server-only";
 
+import { getSessionCookie } from "better-auth/cookies";
 import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 
 import { emailPossuiPermissaoAdmin } from "../../lib/permissoes-admin";
+import {
+  classificarSessaoAdmin,
+  consultarSessaoComRepeticao,
+  diagnosticarErroSessaoAdmin,
+} from "../../lib/diagnosticar-erro-sessao-admin";
 
 export type ResultadoSessaoAdmin = {
   sessao: Awaited<ReturnType<typeof auth.api.getSession>>;
   autorizado: boolean;
-  motivo: "ok" | "sem_sessao" | "sem_permissao" | "indisponivel";
+  motivo:
+    | "ok"
+    | "sessao_ausente"
+    | "sessao_expirada"
+    | "sem_permissao"
+    | "indisponivel";
 };
 
 export async function buscarSessaoAdmin(): Promise<ResultadoSessaoAdmin> {
   let sessao: Awaited<ReturnType<typeof auth.api.getSession>> = null;
+  // ReadonlyHeaders do Next expõe uma propriedade `headers` interna que
+  // confunde o detector do Better Auth. A cópia nativa preserva os cookies.
+  const cabecalhos = new Headers(await headers());
+  const cookieSessaoPresente = Boolean(getSessionCookie(cabecalhos));
+
+  if (!cookieSessaoPresente) {
+    return { sessao: null, autorizado: false, motivo: "sessao_ausente" };
+  }
 
   try {
-    sessao = await auth.api.getSession({ headers: await headers() });
+    sessao = await consultarSessaoComRepeticao({
+      consultar: () => auth.api.getSession({ headers: cabecalhos }),
+      aoFalhar: ({ diagnostico, tentativa, repetira }) => {
+        console.warn("[autenticacao:sessao-admin:tentativa-falhou]", {
+          tipo: diagnostico.tipo,
+          codigo: diagnostico.codigo,
+          status: diagnostico.status,
+          tentativa,
+          repetira,
+          cookieSessaoPresente,
+        });
+      },
+    });
   } catch (erro) {
-    const causa =
-      erro instanceof Error && erro.cause instanceof Error ? erro.cause : null;
-    const codigo =
-      causa && "code" in causa && typeof causa.code === "string"
-        ? causa.code
-        : undefined;
+    const diagnostico = diagnosticarErroSessaoAdmin(erro);
 
     console.error("[autenticacao:sessao-admin:indisponivel]", {
-      mensagem: causa?.message ?? "Falha ao consultar sessão administrativa.",
-      codigo,
+      tipo: diagnostico.tipo,
+      mensagem: diagnostico.mensagem,
+      codigo: diagnostico.codigo,
+      status: diagnostico.status,
+      cookieSessaoPresente,
     });
 
     return { sessao: null, autorizado: false, motivo: "indisponivel" };
   }
 
-  if (!sessao?.user) {
-    return { sessao: null, autorizado: false, motivo: "sem_sessao" };
-  }
-
-  const autorizado = emailPossuiPermissaoAdmin(sessao.user.email);
+  const autorizado = emailPossuiPermissaoAdmin(sessao?.user?.email);
+  const motivo = classificarSessaoAdmin({
+    cookieSessaoPresente,
+    usuarioPresente: Boolean(sessao?.user),
+    autorizado,
+  });
 
   return {
     sessao,
     autorizado,
-    motivo: autorizado ? "ok" : "sem_permissao",
+    motivo,
   };
 }

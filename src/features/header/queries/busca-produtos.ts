@@ -26,6 +26,7 @@ export type ProdutoAutocomplete = {
   percentualOff?: number | null;
   economiaEmCentavos?: number | null;
   badgePromocional?: "promocao" | "relampago" | null;
+  destaque: boolean;
   imagemUrl: string | null;
 };
 
@@ -90,6 +91,7 @@ export async function buscarProdutosParaAutocomplete({
       p.slug,
       p.category_id,
       p.brand,
+      coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['featured']::text[] AS destaque,
       c.name AS category_name,
       c.slug AS category_slug,
       imagem.image_url,
@@ -141,6 +143,7 @@ export async function buscarProdutosParaAutocomplete({
       LIMIT 1
     ) preco ON true
     WHERE p.is_active = true
+      AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
       AND (${categoriaId ?? null}::uuid IS NULL OR p.category_id = ${categoriaId ?? null}::uuid)
       AND (
         lower(p.name) LIKE ${limitarTermoCurto ? termoPrefixo : termoLike}
@@ -188,6 +191,7 @@ export async function buscarProdutosParaAutocomplete({
       SELECT p.name AS termo, 2 AS prioridade
       FROM product p
       WHERE p.is_active = true
+        AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
         AND lower(p.name) LIKE ${termoLike}
 
       UNION ALL
@@ -195,6 +199,7 @@ export async function buscarProdutosParaAutocomplete({
       SELECT DISTINCT p.brand AS termo, 3 AS prioridade
       FROM product p
       WHERE p.is_active = true
+        AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
         AND p.brand IS NOT NULL
         AND lower(p.brand) LIKE ${termoLike}
     )
@@ -252,6 +257,7 @@ export async function buscarProdutosParaAutocomplete({
         percentualOff: precoVitrine?.percentualOff ?? null,
         economiaEmCentavos: precoVitrine?.economiaEmCentavos ?? null,
         badgePromocional: precoVitrine?.badgePromocional ?? null,
+        destaque: Boolean(produto.destaque),
         imagemUrl: produto.image_url ? String(produto.image_url) : null,
       };
     }),

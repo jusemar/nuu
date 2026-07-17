@@ -5,6 +5,7 @@ import type {
   ModalidadePrecoProduto,
   ProdutoAlteracaoEmMassa,
 } from "../../types/alteracao-em-massa.types";
+import { serializarVersoesProdutoAlteracaoEmMassa } from "./concorrencia-alteracao-em-massa";
 
 export type ResultadoLinhaPreview =
   | "alterado"
@@ -115,13 +116,7 @@ function calcularSecoes(
 export function obterVersaoProdutoAlteracaoEmMassa(
   produto: ProdutoAlteracaoEmMassa,
 ) {
-  return JSON.stringify({
-    produto: produto.atualizadoEm.toISOString(),
-    variante: produto.varianteTecnicaAtualizadaEm?.toISOString() ?? null,
-    precos: produto.precosModalidades
-      .map((preco) => [preco.modalidade, preco.atualizadoEm.toISOString()])
-      .toSorted(([a], [b]) => a.localeCompare(b)),
-  });
+  return serializarVersoesProdutoAlteracaoEmMassa(produto);
 }
 
 export function calcularPlanoAlteracaoEmMassa(

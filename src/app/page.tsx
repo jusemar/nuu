@@ -92,7 +92,7 @@ const Home = async () => {
         {/* Novidades — carousel + mini banners */}
         <section aria-label="Novidades">
           <div className="mb-5 md:mb-6">
-            <SectionTitle icon="star">Chegou agora</SectionTitle>
+            <SectionTitle icon="star">Novidades</SectionTitle>
           </div>
 
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3 lg:gap-5">
@@ -145,7 +145,7 @@ const Home = async () => {
         {/* Produtos em destaque */}
         <section aria-label="Produtos em destaque">
           <div className="mb-5 md:mb-6">
-            <SectionTitle icon="flame">Os mais queridos</SectionTitle>
+            <SectionTitle icon="flame">Mais vendidos</SectionTitle>
           </div>
           <ProductGridWithLoadMore />
         </section>

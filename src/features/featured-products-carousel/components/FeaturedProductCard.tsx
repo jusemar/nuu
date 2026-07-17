@@ -65,13 +65,12 @@ export const FeaturedProductCard = ({
     externalIsFavorite !== undefined ? externalIsFavorite : internalIsFavorite;
 
   const calculatedDiscount = discount;
-  const dadosBadgePrincipal =
-    !badgePromocao && isFeatured
-      ? {
-          label: "Destaque",
-          className: "bg-primary text-primary-foreground",
-        }
-      : null;
+  const dadosBadgePrincipal = isFeatured
+    ? {
+        label: "Destaque",
+        className: "bg-primary text-primary-foreground",
+      }
+    : null;
 
   const formatPrice = (price: number) => {
     return price.toLocaleString("pt-BR", {
@@ -150,20 +149,21 @@ export const FeaturedProductCard = ({
       tabIndex={slug ? 0 : undefined}
     >
       {/* Badge principal no topo */}
-      {badgePromocao ? (
-        <div className="absolute top-3 left-3 z-10">
-          <BadgePromocional
-            tipo={badgePromocao}
-            percentualOff={calculatedDiscount}
-          />
-        </div>
-      ) : dadosBadgePrincipal ? (
-        <div className="absolute top-3 left-3 z-10">
-          <span
-            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase shadow-sm ${dadosBadgePrincipal.className}`}
-          >
-            {dadosBadgePrincipal.label}
-          </span>
+      {badgePromocao || dadosBadgePrincipal ? (
+        <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5">
+          {badgePromocao ? (
+            <BadgePromocional
+              tipo={badgePromocao}
+              percentualOff={calculatedDiscount}
+            />
+          ) : null}
+          {dadosBadgePrincipal ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase shadow-sm ${dadosBadgePrincipal.className}`}
+            >
+              {dadosBadgePrincipal.label}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

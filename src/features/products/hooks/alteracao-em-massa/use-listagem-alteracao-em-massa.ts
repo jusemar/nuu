@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { produtoCorrespondeBuscaAlteracaoEmMassa } from "../../lib/alteracao-em-massa/buscar-produtos-alteracao-em-massa";
 import type {
   CategoriaAlteracaoEmMassa,
   DadosAlteracaoEmMassa,
@@ -11,10 +12,6 @@ import type {
 } from "../../types/alteracao-em-massa.types";
 
 export type CampoOrdenacaoProdutos = "nome" | "sku" | "categoria" | "marca";
-
-function normalizarBusca(valor: string) {
-  return valor.trim().toLocaleLowerCase("pt-BR");
-}
 
 function coletarCategoriaEDescendentes(
   categoriaId: string,
@@ -69,12 +66,11 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
   }, [categoriasIds, dados.categorias]);
 
   const produtosFiltrados = useMemo(() => {
-    const termo = normalizarBusca(busca);
     const filtrados = dados.produtos.filter((produto) => {
-      const correspondeBusca =
-        !termo ||
-        normalizarBusca(produto.nome).includes(termo) ||
-        normalizarBusca(produto.sku).includes(termo);
+      const correspondeBusca = produtoCorrespondeBuscaAlteracaoEmMassa(
+        produto,
+        busca,
+      );
       const correspondeStatus =
         status.size === 0 || status.has(produto.ativo ? "ativo" : "inativo");
       const correspondeCategoria =

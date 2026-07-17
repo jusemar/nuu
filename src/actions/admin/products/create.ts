@@ -152,7 +152,7 @@ export async function createProduct(data: CreateProductData) {
         ncmCode: data.ncmCode,
         collection: data.collection,
         tags: data.tags,
-        storeProductFlags: data.storeProductFlags || [],
+        storeProductFlags: data.storeProductFlags ?? ["general"],
         cardShortText: data.cardShortText,
         productKind: data.productKind ?? "simple",
         costPrice: converterPrecoEmCentavos(data.pricing?.costPrice),

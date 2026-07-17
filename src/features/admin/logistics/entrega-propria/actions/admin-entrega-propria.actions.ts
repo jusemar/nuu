@@ -534,8 +534,14 @@ function montarDestinoPrecoProduto(
 export async function salvarPrecosEntregaPropriaProduto(
   productId: string,
   items: ProductOwnDeliveryPriceFormItem[] = [],
+  opcoes?: {
+    executor?: any;
+    revalidar?: boolean;
+  },
 ) {
-  await db
+  const executor = opcoes?.executor ?? db;
+
+  await executor
     .delete(productOwnDeliveryPrices)
     .where(eq(productOwnDeliveryPrices.productId, productId));
 
@@ -544,10 +550,12 @@ export async function salvarPrecosEntregaPropriaProduto(
     .map((item) => montarDestinoPrecoProduto(productId, item));
 
   if (entries.length > 0) {
-    await db.insert(productOwnDeliveryPrices).values(entries);
+    await executor.insert(productOwnDeliveryPrices).values(entries);
   }
 
-  revalidarProdutoComEntregaPropria(productId);
+  if (opcoes?.revalidar !== false) {
+    revalidarProdutoComEntregaPropria(productId);
+  }
 }
 
 export async function removerBairroDaRegiaoEntregaPropria(

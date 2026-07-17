@@ -47,6 +47,7 @@ import {
 import type {
   CategoriaAlteracaoEmMassa,
   DadosAlteracaoEmMassa,
+  ProdutoAlteracaoEmMassa,
 } from "../../../types/alteracao-em-massa.types";
 
 type CampoEditor =
@@ -70,6 +71,33 @@ type GrupoEditor =
   | "fiscal"
   | "medidas"
   | "exibicao";
+
+function resumirMedidaAtual(
+  produtos: ProdutoAlteracaoEmMassa[],
+  campo: "peso" | "altura" | "largura" | "comprimento",
+  unidade: string,
+) {
+  const chave =
+    campo === "peso"
+      ? "pesoEmGramas"
+      : campo === "altura"
+        ? "alturaEmCm"
+        : campo === "largura"
+          ? "larguraEmCm"
+          : "comprimentoEmCm";
+  const valores = [
+    ...new Set(
+      produtos.map((produto) => {
+        const valor = produto[chave];
+        if (valor === null) return "Não cadastrado";
+        return campo === "peso"
+          ? `${(valor / 1000).toLocaleString("pt-BR")} ${unidade}`
+          : `${valor.toLocaleString("pt-BR")} ${unidade}`;
+      }),
+    ),
+  ];
+  return valores.length === 1 ? valores[0] : "Valores diferentes";
+}
 
 const GRUPOS: Array<{
   id: GrupoEditor;
@@ -140,12 +168,14 @@ function ordenarCategorias(
 
 type Props = {
   dados: DadosAlteracaoEmMassa;
+  produtosSelecionados: ProdutoAlteracaoEmMassa[];
   onOperacoesChange: (operacoes: OperacaoAlteracaoEmMassa[]) => void;
   onCamposAtivosChange: (quantidade: number) => void;
 };
 
 export function ConfiguradorOperacoesProdutos({
   dados,
+  produtosSelecionados,
   onOperacoesChange,
   onCamposAtivosChange,
 }: Props) {
@@ -314,6 +344,33 @@ export function ConfiguradorOperacoesProdutos({
     if (item.id === "medidas" && !medidasAbertas) return 0;
     return item.campos.filter((campo) => campos.has(campo)).length;
   };
+  const valorAtual = (obter: (produto: ProdutoAlteracaoEmMassa) => string) => {
+    const valoresAtuais = [...new Set(produtosSelecionados.map(obter))];
+    return valoresAtuais.length === 1 ? valoresAtuais[0] : "Valores diferentes";
+  };
+  const secoesAtuais = valorAtual((produto) => {
+    const rotulos = SECOES_LOJA.filter((secao) =>
+      produto.secoesLoja.includes(secao.id),
+    ).map((secao) => secao.rotulo);
+    return rotulos.length ? rotulos.join(", ") : "Nenhuma";
+  });
+  const precoAtual = valorAtual((produto) => {
+    const preco = produto.precosModalidades.find(
+      (item) => item.modalidade === valores.preco_modalidade,
+    );
+    return preco
+      ? (preco.precoEmCentavos / 100).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        })
+      : "Não cadastrado";
+  });
+  const prazoAtual = valorAtual(
+    (produto) =>
+      produto.precosModalidades.find(
+        (item) => item.modalidade === valores.preco_modalidade,
+      )?.prazo ?? "Não cadastrado",
+  );
 
   return (
     <div className="grid min-h-0 gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -375,6 +432,9 @@ export function ConfiguradorOperacoesProdutos({
               dica="Ativa ou desativa os produtos simples selecionados."
               ativo={campos.has("status")}
               onAlternar={alternarCampo}
+              valorAtual={valorAtual((produto) =>
+                produto.ativo ? "Ativo" : "Inativo",
+              )}
             >
               <Select
                 value={valores.status}
@@ -396,6 +456,7 @@ export function ConfiguradorOperacoesProdutos({
               ativo={campos.has("categoria")}
               onAlternar={alternarCampo}
               valido={operacoes.some((item) => item.campo === "categoria")}
+              valorAtual={valorAtual((produto) => produto.categoriaNome)}
             >
               <Select
                 value={valores.categoria}
@@ -421,10 +482,12 @@ export function ConfiguradorOperacoesProdutos({
               ativo={campos.has("marca")}
               onAlternar={alternarCampo}
               valido={operacoes.some((item) => item.campo === "marca")}
+              valorAtual={valorAtual((produto) => produto.marcaNome)}
             >
               <Select
                 value={valores.marca}
                 onValueChange={(valor) => definir("marca", valor)}
+                disabled={Boolean(dados.avisos?.marcas)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha uma marca" />
@@ -439,6 +502,11 @@ export function ConfiguradorOperacoesProdutos({
                     ))}
                 </SelectContent>
               </Select>
+              {dados.avisos?.marcas ? (
+                <p className="text-xs text-amber-700" role="status">
+                  {dados.avisos.marcas}
+                </p>
+              ) : null}
             </CampoConfiguravel>
           </div>
         )}
@@ -451,6 +519,7 @@ export function ConfiguradorOperacoesProdutos({
             ativo={campos.has("preco")}
             onAlternar={alternarCampo}
             valido={operacoes.some((item) => item.campo === "preco")}
+            valorAtual={precoAtual}
           >
             <div className="grid gap-4 md:grid-cols-3">
               <Controle rotulo="Modalidade">
@@ -508,6 +577,9 @@ export function ConfiguradorOperacoesProdutos({
                   <span className="text-muted-foreground text-xs">
                     Usa a mesma modalidade selecionada acima.
                   </span>
+                  <span className="mt-1 block text-xs">
+                    Atual: <strong>{prazoAtual}</strong>
+                  </span>
                 </span>
               </label>
               {campos.has("prazo") && (
@@ -550,6 +622,11 @@ export function ConfiguradorOperacoesProdutos({
             ativo={campos.has("estoque")}
             onAlternar={alternarCampo}
             valido={operacoes.some((item) => item.campo === "estoque")}
+            valorAtual={valorAtual((produto) =>
+              produto.estoqueVarianteTecnica === null
+                ? "Não cadastrado"
+                : `${produto.estoqueVarianteTecnica} unidade(s)`,
+            )}
           >
             <OperacaoNumero
               prefixo="estoque"
@@ -568,6 +645,9 @@ export function ConfiguradorOperacoesProdutos({
             ativo={campos.has("ncm")}
             onAlternar={alternarCampo}
             valido={operacoes.some((item) => item.campo === "ncm")}
+            valorAtual={valorAtual(
+              (produto) => produto.ncm ?? "Não cadastrado",
+            )}
           >
             <Controle rotulo="Novo NCM">
               <Input
@@ -589,6 +669,7 @@ export function ConfiguradorOperacoesProdutos({
             definirMedida={definirMedida}
             definirOperacao={definirOperacaoMedida}
             onRemover={removerTodasMedidas}
+            produtosSelecionados={produtosSelecionados}
           />
         )}
 
@@ -599,6 +680,9 @@ export function ConfiguradorOperacoesProdutos({
                 <h3 className="text-sm font-semibold">Seções da Loja</h3>
                 <p className="text-muted-foreground text-xs">
                   Escolha a operação e as seções reais do catálogo.
+                </p>
+                <p className="mt-1 text-xs">
+                  Atual: <strong>{secoesAtuais}</strong>
                 </p>
               </div>
               <Badge variant="secondary">
@@ -659,6 +743,7 @@ function CampoConfiguravel({
   ativo,
   onAlternar,
   valido = true,
+  valorAtual,
   children,
 }: {
   campo: CampoEditor;
@@ -667,6 +752,7 @@ function CampoConfiguravel({
   ativo: boolean;
   onAlternar: (campo: CampoEditor) => void;
   valido?: boolean;
+  valorAtual?: string;
   children: ReactNode;
 }) {
   return (
@@ -687,6 +773,11 @@ function CampoConfiguravel({
           className="flex-1 cursor-pointer text-sm font-semibold"
         >
           {rotulo}
+          {valorAtual ? (
+            <span className="text-muted-foreground mt-1 block text-xs font-normal">
+              Atual: <strong className="text-foreground">{valorAtual}</strong>
+            </span>
+          ) : null}
         </Label>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -735,6 +826,7 @@ function BlocoMedidas({
   definirMedida,
   definirOperacao,
   onRemover,
+  produtosSelecionados,
 }: {
   aberto: boolean;
   onAbertoChange: (aberto: boolean) => void;
@@ -749,6 +841,7 @@ function BlocoMedidas({
     operacao: string,
   ) => void;
   onRemover: () => void;
+  produtosSelecionados: ProdutoAlteracaoEmMassa[];
 }) {
   const medidas = [
     ["peso", "Peso", "kg"],
@@ -810,6 +903,12 @@ function BlocoMedidas({
                     {unidade}
                   </span>
                 </div>
+                <p className="text-muted-foreground mb-2 text-xs">
+                  Atual:{" "}
+                  <strong className="text-foreground">
+                    {resumirMedidaAtual(produtosSelecionados, campo, unidade)}
+                  </strong>
+                </p>
                 <OperacaoMedida
                   campo={campo}
                   valores={valores}

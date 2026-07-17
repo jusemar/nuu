@@ -25,7 +25,15 @@ export type ResultadoAplicacaoAlteracaoEmMassa = {
   detalhes: Array<{
     produtoId: string;
     produto: string;
+    sku: string;
     resultado: "alterado" | "ignorado" | "sem_alteracao" | "erro";
     mensagem?: string;
+    entidade?: "produto" | "preco" | "estoque" | "lote";
+    campoVersao?: "updatedAt";
+    versaoEsperada?: string;
+    versaoEncontrada?: string;
+    etapa?: string;
+    orientacao?: string;
+    conflitoConcorrencia?: boolean;
   }>;
 };

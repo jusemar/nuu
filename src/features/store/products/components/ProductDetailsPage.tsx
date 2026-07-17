@@ -407,6 +407,7 @@ export function ProductDetail({
           <div className="order-1 xl:max-w-[420px]">
             <ProductGallery
               imagens={galleryImages}
+              nomeProduto={product.name}
               isLancamento={true}
               tipoBadge={tipoBadgeGaleria}
               dataFimRelampago={dataFimPromocaoModalidadeAtiva}

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -43,7 +43,14 @@ export async function listarVinculosProdutosLaquila() {
       produtoId: productTable.id,
       produtoNome: productTable.name,
       produtoSku: productTable.sku,
-      produtoPrecoCentavos: productTable.salePrice,
+      produtoPrecoCentavos: sql<number | null>`(
+        select preco.price_in_cents
+        from product_pricing preco
+        where preco.product_id = ${productTable.id}
+          and preco.is_active = true
+        order by preco.main_card_price desc nulls last, preco.created_at asc
+        limit 1
+      )`,
     })
     .from(fornecedorProdutoVinculosTable)
     .innerJoin(

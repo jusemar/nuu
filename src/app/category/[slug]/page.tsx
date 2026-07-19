@@ -1,6 +1,7 @@
 // src/app/category/[slug]/page.tsx
 import { and, eq, sql } from "drizzle-orm";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
 import { Header } from "@/features/header/components/Header";
@@ -20,6 +21,12 @@ import {
 
 // Services
 import { getSubcategoryTabs } from "@/features/store/category/services/categoryTabsService";
+import { buscarCategoriaPublicaPorSlug } from "@/features/store/category/queries/buscar-categoria-publica";
+import {
+  descreverErroBancoParaLog,
+  erroEhTransitorioDeBanco,
+  executarLeituraComRetry,
+} from "@/lib/db/classificar-erro-banco";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -32,6 +39,39 @@ type ItemFiltro = {
   count: number;
 };
 
+async function executarLeituraCategoria<T>(
+  contexto: string,
+  operacao: () => Promise<T>,
+) {
+  try {
+    return await executarLeituraComRetry(contexto, operacao);
+  } catch (erro) {
+    console.error(`[${contexto}:erro]`, descreverErroBancoParaLog(erro));
+    throw new Error(
+      erroEhTransitorioDeBanco(erro)
+        ? "BANCO_INDISPONIVEL"
+        : "ERRO_INTERNO_CATEGORIA",
+    );
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: CategoryPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const resultado = await buscarCategoriaPublicaPorSlug(slug);
+  if (!resultado) return {};
+
+  return {
+    title: resultado.categoria.metaTitle || resultado.categoria.name,
+    description:
+      resultado.categoria.metaDescription ||
+      resultado.categoria.description ||
+      undefined,
+    alternates: { canonical: `/category/${resultado.categoria.slug}` },
+  };
+}
+
 const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   const { slug } = await params;
   const filtrosUrl = (await searchParams) ?? {};
@@ -39,11 +79,10 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   // =================================================================
   // PASSO 1: Buscar dados da categoria atual
   // =================================================================
-  const category = await db.query.categoryTable.findFirst({
-    where: eq(categoryTable.slug, slug),
-  });
+  const resultadoCategoria = await buscarCategoriaPublicaPorSlug(slug);
 
-  if (!category) return notFound();
+  if (!resultadoCategoria) return notFound();
+  const { categoria: category, breadcrumb } = resultadoCategoria;
 
   // =================================================================
   // PASSO 2: Buscar produtos da categoria com todos os relacionamentos
@@ -52,21 +91,30 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   // - variants: variantes do produto (fallback para preço/imagem)
   // - pricing: tabela de preços (contém o preço principal)
   // =================================================================
-  const products = await db.query.productTable.findMany({
-    where: and(
-      eq(productTable.categoryId, category.id),
-      eq(productTable.isActive, true),
-      sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
-    ),
-    with: {
-      galleryImages: true,
-      variants: true,
-      pricing: true,
-    },
-  });
+  const products = await executarLeituraCategoria(
+    "categorias:loja:produtos",
+    () =>
+      db.query.productTable.findMany({
+        where: and(
+          eq(productTable.categoryId, category.id),
+          eq(productTable.isActive, true),
+          eq(productTable.status, "published"),
+          sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
+        ),
+        with: {
+          galleryImages: true,
+          variants: true,
+          pricing: true,
+          marca: true,
+        },
+      }),
+  );
   const precosVitrineCategoria: PrecosVitrineNormalizados =
     await adaptarPrecosVitrine(products).catch((error) => {
-      console.error("Erro ao adaptar precos da categoria", error);
+      console.error(
+        "[categorias:loja:precos:erro]",
+        descreverErroBancoParaLog(error),
+      );
 
       return {
         precosPorChave: {},
@@ -80,16 +128,19 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   const subcategoryTabs = await getSubcategoryTabs(category.id);
   const activeFiltersCount = 0;
 
-  const [subcategoriasDiretas, categoriasIrmas] = await Promise.all([
-    db.query.categoryTable.findMany({
-      where: eq(categoryTable.parentId, category.id),
-    }),
-    category.parentId
-      ? db.query.categoryTable.findMany({
-          where: eq(categoryTable.parentId, category.parentId),
-        })
-      : Promise.resolve([]),
-  ]);
+  const [subcategoriasDiretas, categoriasIrmas] =
+    await executarLeituraCategoria("categorias:loja:filtros-hierarquia", () =>
+      Promise.all([
+        db.query.categoryTable.findMany({
+          where: eq(categoryTable.parentId, category.id),
+        }),
+        category.parentId
+          ? db.query.categoryTable.findMany({
+              where: eq(categoryTable.parentId, category.parentId),
+            })
+          : Promise.resolve([]),
+      ]),
+    );
 
   const categoriasFiltroBase =
     subcategoriasDiretas.length > 0
@@ -133,12 +184,13 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   };
 
   products.forEach((produto) => {
-    if (produto.brand?.trim()) {
-      const chave = produto.brand.trim().toLowerCase();
+    const nomeMarca = produto.marca?.nome?.trim();
+    if (nomeMarca) {
+      const chave = nomeMarca.toLowerCase();
       const atual = marcasMap.get(chave);
       marcasMap.set(chave, {
         id: chave,
-        name: produto.brand.trim(),
+        name: nomeMarca,
         count: (atual?.count ?? 0) + 1,
       });
     }
@@ -257,7 +309,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
           return false;
         }
 
-        const marca = product.brand?.trim().toLowerCase();
+        const marca = product.marca?.nome?.trim().toLowerCase();
         if (
           marcasSelecionadas.size > 0 &&
           (!marca || !marcasSelecionadas.has(marca))
@@ -364,10 +416,12 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
               />
             </div>
 
-            {/* Breadcrumb + Ordenação (desktop) */}
-            <div className="mb-6 hidden items-center justify-between lg:flex">
-              <CategoryBreadcrumb categoryName={category.name} />
-              <SortSection />
+            {/* Breadcrumb + Ordenação */}
+            <div className="mb-6 flex items-center justify-between">
+              <CategoryBreadcrumb categories={breadcrumb} />
+              <div className="hidden lg:block">
+                <SortSection />
+              </div>
             </div>
 
             {/* Tabs de subcategorias */}

@@ -27,6 +27,18 @@ import type { ResultadoAplicacaoAlteracaoEmMassa } from "../types/resultado-alte
 
 const LIMITE_LOTE_ALTERACAO_EM_MASSA = 25;
 
+function revalidarPathAlteracaoEmMassa(path: string, type?: "layout" | "page") {
+  try {
+    if (type) revalidatePath(path, type);
+    else revalidatePath(path);
+  } catch (erro) {
+    console.warn("[produtos:alteracao-em-massa:revalidacao]", {
+      path,
+      tipo: erro instanceof Error ? erro.name : "Erro desconhecido",
+    });
+  }
+}
+
 class ErroConcorrenciaAlteracaoEmMassa extends Error {
   constructor(
     readonly produtoId: string,
@@ -96,8 +108,7 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
   );
   if (
     produtosIds.some((id) => !encontrados.has(id)) ||
-    divergentes.length > 0 ||
-    conflitos.length > 0
+    divergentes.length > 0
   ) {
     const detalhesConflitos: ResultadoAplicacaoAlteracaoEmMassa["detalhes"] =
       divergentes.map((plano) => {
@@ -140,7 +151,6 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
         ...new Set([
           ...produtosIds.filter((id) => !encontrados.has(id)),
           ...divergentes.map((plano) => plano.produto.id),
-          ...conflitos.map((plano) => plano.produto.id),
         ]),
       ],
     };
@@ -152,6 +162,7 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
   const semMudanca = planos.filter(
     (plano) =>
       plano.produto.tipoProduto === "simple" &&
+      !plano.linhas.some((linha) => linha.resultado === "conflito") &&
       !plano.linhas.some((linha) => linha.resultado === "alterado"),
   );
   const aplicaveis = planos.filter(
@@ -174,10 +185,24 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
       sku: plano.produto.sku,
       resultado: "sem_alteracao" as const,
     })),
+    ...conflitos.map((plano) => ({
+      produtoId: plano.produto.id,
+      produto: plano.produto.nome,
+      sku: plano.produto.sku,
+      resultado: "erro" as const,
+      mensagem:
+        plano.linhas.find((linha) => linha.resultado === "conflito")?.motivo ??
+        "O produto não é elegível para esta alteração.",
+      entidade: "preco" as const,
+      etapa: "validacao_da_modalidade",
+      orientacao:
+        "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
+    })),
   ];
 
   let alterados = 0;
-  let erros = 0;
+  let erros = conflitos.length;
+  const produtosAlteradosIds = new Set<string>();
   for (const lote of dividirEmLotes(
     aplicaveis,
     LIMITE_LOTE_ALTERACAO_EM_MASSA,
@@ -369,6 +394,7 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
       });
 
       alterados += lote.length;
+      lote.forEach((plano) => produtosAlteradosIds.add(plano.produto.id));
       detalhes.push(
         ...lote.map((plano) => ({
           produtoId: plano.produto.id,
@@ -423,8 +449,18 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
     }
   }
 
-  revalidatePath("/admin/products");
-  revalidatePath("/admin/products/alteracao-em-massa");
+  if (produtosAlteradosIds.size > 0) {
+    revalidarPathAlteracaoEmMassa("/admin/products");
+    revalidarPathAlteracaoEmMassa("/admin/products/alteracao-em-massa");
+    revalidarPathAlteracaoEmMassa("/");
+    revalidarPathAlteracaoEmMassa("/category/[slug]", "page");
+
+    planos
+      .filter((plano) => produtosAlteradosIds.has(plano.produto.id))
+      .forEach((plano) =>
+        revalidarPathAlteracaoEmMassa(`/product/${plano.produto.slug}`),
+      );
+  }
   const resultado: ResultadoAplicacaoAlteracaoEmMassa = {
     status: erros === 0 ? "sucesso" : alterados > 0 ? "parcial" : "falha",
     alterados,

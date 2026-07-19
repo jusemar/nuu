@@ -5,7 +5,7 @@ import {
   useQueryClient,
   UseQueryOptions,
 } from "@tanstack/react-query";
-import { getCategoryById, getAllCategories } from '../services/categoryService'
+import { getCategoryById, getAllCategories } from "../services/categoryService";
 
 // Chaves de query específicas para detalhes
 export const categoryDetailKeys = {
@@ -25,18 +25,16 @@ export function useCategoryDetail(
   id: string | undefined,
   options?: UseQueryOptions<Category, Error>,
 ) {
-
-  
   return useQuery<Category, Error>({
     queryKey: categoryDetailKeys.byId(id || ""),
-    queryFn: async () => {      
+    queryFn: async () => {
       if (!id) {
         throw new Error("ID da categoria é necessário");
       }
 
       try {
         const category = await getCategoryById(id);
-         
+
         if (!category) {
           throw new Error("Categoria não encontrada");
         }
@@ -53,13 +51,8 @@ export function useCategoryDetail(
     enabled: !!id, // Só executa se tiver ID
     staleTime: 2 * 60 * 1000, // 2 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: (failureCount, error) => {
-      // Não retenta se for erro 404 (não encontrado)
-      if (error.message.includes("não encontrada")) {
-        return false;
-      }
-      return failureCount < 2; // Retenta até 2 vezes
-    },
+    // A leitura server-side já faz no máximo uma repetição transitória.
+    retry: false,
     ...options,
   });
 }
@@ -117,29 +110,32 @@ export function useCategoryBySlug(
  */
 export function useCategorySubcategories(
   categoryId: string | undefined,
-  options?: UseQueryOptions<HierarchicalSubcategory[], Error>
+  options?: UseQueryOptions<HierarchicalSubcategory[], Error>,
 ) {
   return useQuery<HierarchicalSubcategory[], Error>({
-    queryKey: categoryDetailKeys.subcategories(categoryId || ''),
+    queryKey: categoryDetailKeys.subcategories(categoryId || ""),
     queryFn: async () => {
       if (!categoryId) {
-        throw new Error('ID da categoria é necessário')
+        throw new Error("ID da categoria é necessário");
       }
-      
+
       try {
-        const category = await getCategoryById(categoryId)
+        const category = await getCategoryById(categoryId);
         // ⚠️ category.subcategories é HierarchicalSubcategory[] (veio do service)
-        return category?.subcategories || []
+        return category?.subcategories || [];
       } catch (error) {
-        console.error(`Erro ao buscar subcategorias da categoria ${categoryId}:`, error)
-        throw new Error('Falha ao carregar subcategorias')
+        console.error(
+          `Erro ao buscar subcategorias da categoria ${categoryId}:`,
+          error,
+        );
+        throw new Error("Falha ao carregar subcategorias");
       }
     },
     enabled: !!categoryId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
-    ...options
-  })
+    ...options,
+  });
 }
 
 /**

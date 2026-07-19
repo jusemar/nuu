@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
-import { useCallback } from 'react'
+import { useCallback } from "react";
+import { normalizarSlugCategoria } from "../../../lib/slug-categoria";
 
 /**
  * Hook para gerar slugs de forma consistente
@@ -9,20 +10,12 @@ import { useCallback } from 'react'
  */
 export const useSlugGenerator = () => {
   const generateSlug = useCallback((text: string): string => {
-    if (!text || text.trim() === '') {
-      return ''
+    if (!text || text.trim() === "") {
+      return "";
     }
-    
-    return text
-      .toLowerCase() // Converte para minúsculas
-      .normalize('NFD') // Separa letras de acentos (Normalization Form Decomposed)
-      .replace(/[\u0300-\u036f]/g, '') // Remove todos os diacríticos (acentos)
-      .replace(/\s+/g, '-') // Substitui espaços por hífens
-      .replace(/[^\w-]+/g, '') // Remove tudo que não for letra, número ou hífen
-      .replace(/--+/g, '-') // Remove hífens duplicados
-      .replace(/^-+/, '') // Remove hífens do início
-      .replace(/-+$/, '') // Remove hífens do final
-  }, [])
 
-  return { generateSlug }
-}
+    return normalizarSlugCategoria(text);
+  }, []);
+
+  return { generateSlug };
+};

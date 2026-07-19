@@ -263,11 +263,8 @@ export default function EditProductPage() {
       component: (
         <ShippingTab
           data={productData}
-          onChange={(updates: Partial<{ [key: string]: any }>) =>
-            setProductData((prev) => ({
-              ...prev,
-              shipping: { ...prev.shipping, ...updates },
-            }))
+          onChange={(updates) =>
+            setProductData((prev) => ({ ...prev, ...updates }))
           }
         />
       ),

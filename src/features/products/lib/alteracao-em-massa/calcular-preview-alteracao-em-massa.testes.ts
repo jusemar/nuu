@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { normalizarModalidadePreco } from "../../constants/modalidades-preco";
@@ -11,7 +12,10 @@ import type {
   DadosAlteracaoEmMassa,
   ProdutoAlteracaoEmMassa,
 } from "../../types/alteracao-em-massa.types";
-import { calcularPlanoAlteracaoEmMassa } from "./calcular-preview-alteracao-em-massa";
+import {
+  calcularPlanoAlteracaoEmMassa,
+  calcularPreviewAlteracaoEmMassa,
+} from "./calcular-preview-alteracao-em-massa";
 
 const agora = new Date("2026-01-01T00:00:00.000Z");
 const produto: ProdutoAlteracaoEmMassa = {
@@ -73,13 +77,52 @@ function calcular(operacoes: OperacaoAlteracaoEmMassa[]) {
   return calcularPlanoAlteracaoEmMassa([produto], operacoes, dados)[0];
 }
 
+const modalidadesTeste = [
+  "stock",
+  "preSale",
+  "dropshipping",
+  "orderBasis",
+] as const;
+
+function produtoComModalidades(quantidade: number) {
+  return {
+    ...produto,
+    precosModalidades: modalidadesTeste
+      .slice(0, quantidade)
+      .map((modalidade, indice) => ({
+        ...produto.precosModalidades[0],
+        id: `00000000-0000-4000-8000-00000000001${indice}`,
+        modalidade,
+        precoEmCentavos: 10_000 + indice * 2_000,
+        prazo: `${indice + 1} dia(s)`,
+      })),
+  } satisfies ProdutoAlteracaoEmMassa;
+}
+
+function operacaoPreco(
+  operacao:
+    | "definir"
+    | "aumentar_valor"
+    | "reduzir_valor"
+    | "aumentar_percentual"
+    | "reduzir_percentual",
+  valor: number,
+): OperacaoAlteracaoEmMassa {
+  return {
+    campo: "preco",
+    escopo: "todas_modalidades_com_preco",
+    operacao,
+    valor,
+  };
+}
+
 describe("motor de alteração em massa", () => {
   it("reconhece Estoque Próprio e calcula percentual em centavos", () => {
     assert.equal(normalizarModalidadePreco("stock"), "stock");
     const plano = calcular([
       {
         campo: "preco",
-        modalidade: "stock",
+        escopo: "todas_modalidades_com_preco",
         operacao: "aumentar_percentual",
         valor: 10,
       },
@@ -92,7 +135,7 @@ describe("motor de alteração em massa", () => {
     const plano = calcular([
       {
         campo: "preco",
-        modalidade: "stock",
+        escopo: "todas_modalidades_com_preco",
         operacao: "reduzir_valor",
         valor: 101,
       },
@@ -166,7 +209,7 @@ describe("motor de alteração em massa", () => {
     const plano = calcular([
       {
         campo: "preco",
-        modalidade: "stock",
+        escopo: "todas_modalidades_com_preco",
         operacao: "aumentar_valor",
         valor: 10,
       },
@@ -181,6 +224,54 @@ describe("motor de alteração em massa", () => {
     assert.equal(plano.alteracoes.precos[0].prazo, "2 dias");
   });
 
+  it("altera somente o prazo e preserva o preço da modalidade", () => {
+    const plano = calcular([
+      {
+        campo: "prazo",
+        modalidade: "stock",
+        valor: "2-3 dias úteis",
+      },
+    ]);
+
+    assert.equal(plano.linhas.length, 1);
+    assert.equal(plano.linhas[0].campo, "Prazo · Estoque Próprio");
+    assert.equal(plano.linhas[0].resultado, "alterado");
+    assert.equal(plano.alteracoes.precos.length, 1);
+    assert.equal(plano.alteracoes.precos[0].precoEmCentavos, undefined);
+    assert.equal(plano.alteracoes.precos[0].prazo, "2-3 dias úteis");
+  });
+
+  it("altera somente o preço sem planejar alteração de prazo", () => {
+    const plano = calcular([
+      {
+        campo: "preco",
+        escopo: "todas_modalidades_com_preco",
+        operacao: "definir",
+        valor: 120,
+      },
+    ]);
+
+    assert.equal(plano.alteracoes.precos[0].precoEmCentavos, 12_000);
+    assert.equal(plano.alteracoes.precos[0].prazo, undefined);
+  });
+
+  it("mantém conflito de prazo somente no produto sem modalidade real", () => {
+    const semModalidade: ProdutoAlteracaoEmMassa = {
+      ...produto,
+      id: "00000000-0000-4000-8000-000000000099",
+      precosModalidades: [],
+    };
+    const planos = calcularPlanoAlteracaoEmMassa(
+      [produto, semModalidade],
+      [{ campo: "prazo", modalidade: "stock", valor: "2 dias" }],
+      { ...dados, produtos: [produto, semModalidade] },
+    );
+
+    assert.equal(planos[0].linhas[0].resultado, "alterado");
+    assert.equal(planos[1].linhas[0].resultado, "conflito");
+    assert.equal(planos[1].alteracoes.precos.length, 0);
+  });
+
   it("planeja produto pai e variante técnica na mesma aplicação", () => {
     const plano = calcular([
       { campo: "status", valor: false },
@@ -191,5 +282,168 @@ describe("motor de alteração em massa", () => {
       plano.alteracoes.estoque?.varianteId,
       produto.varianteTecnicaId,
     );
+  });
+
+  it("mapeia todos os campos suportados para as fontes oficiais", () => {
+    const novaCategoria = {
+      id: "00000000-0000-4000-8000-000000000006",
+      nome: "Nova categoria",
+      parentId: null,
+      nivel: 0,
+      ordem: 1,
+      ativa: true,
+    };
+    const novaMarca = {
+      id: "00000000-0000-4000-8000-000000000007",
+      nome: "Nova marca",
+      ativa: true,
+    };
+    const plano = calcularPlanoAlteracaoEmMassa(
+      [produto],
+      [
+        { campo: "status", valor: false },
+        { campo: "categoria", categoriaId: novaCategoria.id },
+        { campo: "marca", marcaId: novaMarca.id },
+        {
+          campo: "preco",
+          escopo: "todas_modalidades_com_preco",
+          operacao: "definir",
+          valor: 125,
+        },
+        { campo: "prazo", modalidade: "stock", valor: "3 dias" },
+        { campo: "estoque", operacao: "definir", valor: 8 },
+        { campo: "ncm", valor: "12345678" },
+        { campo: "peso", operacao: "definir", valor: 2.5 },
+        { campo: "altura", operacao: "definir", valor: 11 },
+        { campo: "largura", operacao: "definir", valor: 21 },
+        { campo: "comprimento", operacao: "definir", valor: 31 },
+      ],
+      {
+        ...dados,
+        categorias: [...dados.categorias, novaCategoria],
+        marcas: [...dados.marcas, novaMarca],
+      },
+    )[0];
+
+    assert.deepEqual(plano.alteracoes.produto, {
+      ativo: false,
+      categoriaId: novaCategoria.id,
+      marcaId: novaMarca.id,
+      marcaNome: novaMarca.nome,
+      ncm: "1234.56.78",
+      pesoEmGramas: 2500,
+      alturaEmCm: 11,
+      larguraEmCm: 21,
+      comprimentoEmCm: 31,
+    });
+    assert.deepEqual(plano.alteracoes.precos, [
+      {
+        precoId: produto.precosModalidades[0].id,
+        modalidade: "stock",
+        precoEmCentavos: 12_500,
+        prazo: "3 dias",
+      },
+    ]);
+    assert.deepEqual(plano.alteracoes.estoque, {
+      varianteId: produto.varianteTecnicaId,
+      quantidade: 8,
+    });
+  });
+
+  it("altera uma, duas e quatro modalidades já existentes", () => {
+    for (const quantidade of [1, 2, 4]) {
+      const item = produtoComModalidades(quantidade);
+      const plano = calcularPlanoAlteracaoEmMassa(
+        [item],
+        [operacaoPreco("aumentar_percentual", 10)],
+        { ...dados, produtos: [item] },
+      )[0];
+      assert.equal(plano.alteracoes.precos.length, quantidade);
+      assert.equal(
+        plano.linhas.filter((linha) => linha.campo.startsWith("Preço ·"))
+          .length,
+        quantidade,
+      );
+    }
+  });
+
+  it("aplica todas as operações de preço a todas as modalidades", () => {
+    const item = produtoComModalidades(2);
+    const casos = [
+      ["definir", 150, [15_000, 15_000]],
+      ["aumentar_valor", 10, [11_000, 13_000]],
+      ["reduzir_valor", 10, [9_000, 11_000]],
+      ["aumentar_percentual", 10, [11_000, 13_200]],
+      ["reduzir_percentual", 10, [9_000, 10_800]],
+    ] as const;
+
+    casos.forEach(([operacao, valor, esperados]) => {
+      const plano = calcularPlanoAlteracaoEmMassa(
+        [item],
+        [operacaoPreco(operacao, valor)],
+        { ...dados, produtos: [item] },
+      )[0];
+      assert.deepEqual(
+        plano.alteracoes.precos.map((preco) => preco.precoEmCentavos),
+        esperados,
+      );
+    });
+  });
+
+  it("não cria modalidades ausentes e preserva prazos sem operação explícita", () => {
+    const item = produtoComModalidades(2);
+    const plano = calcularPlanoAlteracaoEmMassa(
+      [item],
+      [operacaoPreco("definir", 150)],
+      { ...dados, produtos: [item] },
+    )[0];
+    assert.equal(plano.alteracoes.precos.length, 2);
+    assert.deepEqual(
+      plano.alteracoes.precos.map((preco) => preco.modalidade),
+      ["stock", "preSale"],
+    );
+    assert.equal(
+      plano.alteracoes.precos.every((preco) => preco.prazo === undefined),
+      true,
+    );
+  });
+
+  it("continua ignorando produtos com variantes", () => {
+    const variavel: ProdutoAlteracaoEmMassa = {
+      ...produtoComModalidades(4),
+      tipoProduto: "variable",
+    };
+    const plano = calcularPlanoAlteracaoEmMassa(
+      [variavel],
+      [operacaoPreco("definir", 150)],
+      { ...dados, produtos: [variavel] },
+    )[0];
+    assert.equal(plano.linhas[0].resultado, "ignorado");
+    assert.equal(plano.alteracoes.precos.length, 0);
+  });
+
+  it("mantém preview client-side e plano autoritativo equivalentes", () => {
+    const item = produtoComModalidades(4);
+    const operacoes = [operacaoPreco("aumentar_percentual", 10)];
+    const dadosTeste = { ...dados, produtos: [item] };
+    const linhasServidor = calcularPlanoAlteracaoEmMassa(
+      [item],
+      operacoes,
+      dadosTeste,
+    ).flatMap((plano) => plano.linhas);
+    assert.deepEqual(
+      calcularPreviewAlteracaoEmMassa([item], operacoes, dadosTeste),
+      linhasServidor,
+    );
+  });
+
+  it("preserva promoções e atualiza modalidades do produto na mesma transação", () => {
+    const fonte = readFileSync(
+      new URL("../../actions/aplicar-alteracao-em-massa.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(fonte, /dbTransacional\.transaction/);
+    assert.match(fonte, /for \(const preco of plano\.alteracoes\.precos\)/);
+    assert.doesNotMatch(fonte, /promoPrice|promo_price_in_cents|hasPromo/);
   });
 });

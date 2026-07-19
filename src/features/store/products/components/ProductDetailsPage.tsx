@@ -27,6 +27,7 @@ import { ProductTabs } from "./product-tabs";
 import { UpsellSection } from "./upsell-section";
 import { Header } from "@/features/header";
 import { Footer } from "@/components/common/footer";
+import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
@@ -83,7 +84,7 @@ interface ProductDetailProps {
     } | null;
   };
   nomeComercialLoja: string | null;
-  breadcrumbCategorias: string[];
+  breadcrumbCategorias: Array<{ id: string; name: string; slug: string }>;
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
   precosCalculadosPorVariante: PrecosProdutoPorModalidade;
 }
@@ -98,11 +99,6 @@ export function ProductDetail({
   precosCalculadosPorModalidade,
   precosCalculadosPorVariante,
 }: ProductDetailProps) {
-  const caminhoCategorias =
-    breadcrumbCategorias.length > 0
-      ? `${breadcrumbCategorias.join(" / ")} / `
-      : "";
-
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
 
@@ -389,14 +385,12 @@ export function ProductDetail({
 
       {/* BREADCRUMB: Indica onde o usuário está (Home > Categoria > Produto) */}
       <div className="mx-auto max-w-7xl px-4 py-2.5 sm:px-6">
-        <div className="text-text-hint flex gap-1.5 text-xs">
-          <span>
-            Home / {caminhoCategorias}
-            <span className="text-primary ml-1 font-semibold">
-              {product.name}
-            </span>
-          </span>
-        </div>
+        <CategoryBreadcrumb
+          categories={breadcrumbCategorias}
+          currentPage={product.name}
+          className="text-xs"
+          currentPageClassName="text-primary font-semibold"
+        />
       </div>
 
       {/* CONTEÚDO PRINCIPAL: Grid de 3 colunas */}

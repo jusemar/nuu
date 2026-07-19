@@ -85,17 +85,7 @@ export function ModalRascunhoProdutoFornecedor({
     {
       label: "Frete",
       valor: "shipping",
-      conteudo: (
-        <ShippingTab
-          data={produto}
-          onChange={(updates) =>
-            setProduto((atual) => ({
-              ...atual,
-              shipping: { ...atual.shipping, ...updates },
-            }))
-          }
-        />
-      ),
+      conteudo: <ShippingTab data={produto} onChange={atualizarProduto} />,
     },
     {
       label: "Entrega",

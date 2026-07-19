@@ -14,6 +14,7 @@ export type PrecoProdutoExibicao = {
   modalidade: PrecoModalidadeProduto["modalidade"];
   rotulo: string;
   valorFormatado: string;
+  prazoFormatado: string;
 };
 
 /** Mantém apenas preços reais e segue a ordem central das modalidades. */
@@ -28,11 +29,17 @@ export function resumirPrecosProduto(
   );
 
   return precos
+    .filter(
+      (preco) =>
+        Number.isSafeInteger(preco.precoEmCentavos) &&
+        preco.precoEmCentavos >= 0,
+    )
     .map((preco) => ({
       id: preco.id,
       modalidade: preco.modalidade,
       rotulo: obterRotuloModalidadePreco(preco.modalidade),
       valorFormatado: formatadorMoeda.format(preco.precoEmCentavos / 100),
+      prazoFormatado: preco.prazo?.trim() || "Prazo não informado",
     }))
     .toSorted(
       (a, b) =>

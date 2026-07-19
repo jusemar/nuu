@@ -107,9 +107,7 @@ export function BasicInfoCard({
             </div>
             <p className="text-xs text-gray-500">
               Preview:{" "}
-              <span className="font-mono">
-                /categorias/{data.slug || "nome"}
-              </span>
+              <span className="font-mono">/category/{data.slug || "nome"}</span>
             </p>
           </div>
 

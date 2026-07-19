@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/db/connection"
-import { productTable, categoryTable } from "@/db/schema"
+import { productTable, categoryTable, marcaTable } from "@/db/schema"
 import { eq, desc } from "drizzle-orm"
 
 export async function getProducts() {
@@ -13,7 +13,7 @@ export async function getProducts() {
         name: productTable.name,
         slug: productTable.slug,
         description: productTable.description,
-        brand: productTable.brand,
+        brand: marcaTable.nome,
         
         // Códigos
         sku: productTable.sku,
@@ -40,6 +40,7 @@ export async function getProducts() {
       })
       .from(productTable)
       .leftJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
+      .leftJoin(marcaTable, eq(productTable.marcaId, marcaTable.id))
       .orderBy(desc(productTable.updatedAt))
 
     return products

@@ -168,7 +168,6 @@ export function ConfiguradorOperacoesProdutos({
   const [campos, setCampos] = useState<Set<CampoEditor>>(new Set());
   const [valores, setValores] = useState<Record<string, string>>({
     status: "true",
-    preco_modalidade: "stock",
     preco_operacao: "definir",
     prazo_modalidade: "stock",
     estoque_operacao: "definir",
@@ -191,14 +190,14 @@ export function ConfiguradorOperacoesProdutos({
     if (campos.has("preco"))
       candidatas.push({
         campo: "preco",
-        modalidade: valores.preco_modalidade,
+        escopo: "todas_modalidades_com_preco",
         operacao: valores.preco_operacao,
         valor: numeroDigitado(valores.preco_valor),
       });
     if (campos.has("prazo"))
       candidatas.push({
         campo: "prazo",
-        modalidade: valores.preco_modalidade,
+        modalidade: valores.prazo_modalidade,
         valor: valores.prazo_valor,
       });
     if (campos.has("estoque"))
@@ -314,22 +313,23 @@ export function ConfiguradorOperacoesProdutos({
     return valoresAtuais.length === 1 ? valoresAtuais[0] : "Valores diferentes";
   };
   const precoAtual = valorAtual((produto) => {
-    const preco = produto.precosModalidades.find(
-      (item) => item.modalidade === valores.preco_modalidade,
-    );
-    return preco
-      ? (preco.precoEmCentavos / 100).toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        })
-      : "Não cadastrado";
+    const quantidade = produto.precosModalidades.filter(
+      (preco) =>
+        Number.isSafeInteger(preco.precoEmCentavos) &&
+        preco.precoEmCentavos >= 0,
+    ).length;
+    return quantidade
+      ? `${quantidade} modalidade(s) com preço`
+      : "Nenhuma modalidade com preço";
   });
   const prazoAtual = valorAtual(
     (produto) =>
       produto.precosModalidades.find(
-        (item) => item.modalidade === valores.preco_modalidade,
+        (item) => item.modalidade === valores.prazo_modalidade,
       )?.prazo ?? "Não cadastrado",
   );
+  const operacaoPreco = operacoes.find((item) => item.campo === "preco");
+  const operacaoPrazo = operacoes.find((item) => item.campo === "prazo");
 
   return (
     <div className="grid min-h-0 gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -473,20 +473,21 @@ export function ConfiguradorOperacoesProdutos({
         {grupoAtivo === "precos" && (
           <CampoConfiguravel
             campo="preco"
-            rotulo="Preço por modalidade"
-            dica="Altera somente a modalidade escolhida; promoções permanecem intactas."
+            rotulo="Preço em todas as modalidades"
+            dica="Aplica a operação a cada modalidade com preço já cadastrada. Não cria modalidades e preserva promoções e prazos."
             ativo={campos.has("preco")}
             onAlternar={alternarCampo}
-            valido={operacoes.some((item) => item.campo === "preco")}
+            valido={Boolean(operacaoPreco || operacaoPrazo)}
             valorAtual={precoAtual}
           >
-            <div className="grid gap-4 md:grid-cols-3">
-              <Controle rotulo="Modalidade">
-                <SelecaoModalidade
-                  valor={valores.preco_modalidade}
-                  onChange={(valor) => definir("preco_modalidade", valor)}
-                />
-              </Controle>
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+              <strong>Aplicar a todas as modalidades com preço</strong>
+              <p className="mt-1 text-xs text-blue-800">
+                Somente registros já existentes serão alterados. Modalidades
+                ausentes, promoções e prazos permanecem intactos.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
               <Controle rotulo="Operação">
                 <Select
                   value={valores.preco_operacao}
@@ -534,7 +535,8 @@ export function ConfiguradorOperacoesProdutos({
                     Alterar também o prazo
                   </span>
                   <span className="text-muted-foreground text-xs">
-                    Usa a mesma modalidade selecionada acima.
+                    O prazo continua opcional e usa somente a modalidade
+                    escolhida abaixo.
                   </span>
                   <span className="mt-1 block text-xs">
                     Atual: <strong>{prazoAtual}</strong>
@@ -542,32 +544,33 @@ export function ConfiguradorOperacoesProdutos({
                 </span>
               </label>
               {campos.has("prazo") && (
-                <div className="mt-3">
-                  <Label htmlFor="prazo-modalidade" className="mb-2">
-                    Novo prazo
-                  </Label>
-                  <Input
-                    id="prazo-modalidade"
-                    value={valores.prazo_valor ?? ""}
-                    onChange={(evento) =>
-                      definir("prazo_valor", evento.target.value)
-                    }
-                    placeholder="Ex: 2-3 dias p/ entrega"
-                  />
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Controle rotulo="Modalidade do prazo">
+                    <SelecaoModalidade
+                      valor={valores.prazo_modalidade}
+                      onChange={(valor) => definir("prazo_modalidade", valor)}
+                    />
+                  </Controle>
+                  <Controle rotulo="Novo prazo">
+                    <Input
+                      id="prazo-modalidade"
+                      value={valores.prazo_valor ?? ""}
+                      onChange={(evento) =>
+                        definir("prazo_valor", evento.target.value)
+                      }
+                      placeholder="Ex: 2-3 dias p/ entrega"
+                    />
+                  </Controle>
                 </div>
               )}
             </div>
             <p className="text-muted-foreground mt-3 text-xs">
-              Resumo:{" "}
-              {
-                MODALIDADES_PRECO_PRODUTO.find(
-                  (item) => item.id === valores.preco_modalidade,
-                )?.rotulo
-              }{" "}
-              · {valores.preco_operacao?.replaceAll("_", " ")}
-              {valores.preco_valor ? ` · ${valores.preco_valor}` : ""}
-              {campos.has("prazo") && valores.prazo_valor
-                ? ` · prazo: ${valores.prazo_valor}`
+              Resumo: todas as modalidades com preço{" "}
+              {operacaoPreco
+                ? `· ${operacaoPreco.operacao.replaceAll("_", " ")} · ${operacaoPreco.valor}`
+                : "· Preço inalterado"}
+              {operacaoPrazo
+                ? ` · Prazo (${MODALIDADES_PRECO_PRODUTO.find((item) => item.id === operacaoPrazo.modalidade)?.rotulo}): ${operacaoPrazo.valor}`
                 : ""}
             </p>
           </CampoConfiguravel>

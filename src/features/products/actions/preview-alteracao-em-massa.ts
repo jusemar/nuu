@@ -2,6 +2,7 @@
 
 import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-acesso-admin";
 
+import { MODALIDADES_PRECO_PRODUTO } from "../constants/modalidades-preco";
 import {
   criarAssinaturaPreview,
   type ConteudoAssinaturaPreview,
@@ -33,6 +34,10 @@ function resumir(
   produtosSimples: number,
   linhas: LinhaPreviewAlteracaoEmMassa[],
   campos: string[],
+  produtos: Awaited<
+    ReturnType<typeof listarDadosAlteracaoEmMassa>
+  >["dados"]["produtos"],
+  incluiPreco: boolean,
 ) {
   const contar = (resultado: LinhaPreviewAlteracaoEmMassa["resultado"]) =>
     linhas.filter((linha) => linha.resultado === resultado).length;
@@ -48,6 +53,37 @@ function resumir(
     alteracoesEfetivas: contar("alterado"),
     semMudanca: contar("sem_alteracao"),
     conflitos: contar("conflito"),
+    produtosAfetados: new Set(
+      linhas
+        .filter((linha) => linha.resultado === "alterado")
+        .map((linha) => linha.produtoId),
+    ).size,
+    precosAlterados: linhas.filter(
+      (linha) =>
+        linha.resultado === "alterado" && linha.campo.startsWith("Preço ·"),
+    ).length,
+    modalidadesIgnoradasSemPreco: incluiPreco
+      ? produtos
+          .filter((produto) => produto.tipoProduto === "simple")
+          .reduce((total, produto) => {
+            const modalidadesValidas = new Set(
+              produto.precosModalidades
+                .filter(
+                  (preco) =>
+                    Number.isSafeInteger(preco.precoEmCentavos) &&
+                    preco.precoEmCentavos >= 0,
+                )
+                .map((preco) => preco.modalidade),
+            );
+            return (
+              total +
+              Math.max(
+                0,
+                MODALIDADES_PRECO_PRODUTO.length - modalidadesValidas.size,
+              )
+            );
+          }, 0)
+      : 0,
     campos,
   };
 }
@@ -110,6 +146,8 @@ export async function solicitarPreviewAlteracaoEmMassa(input: unknown) {
       planos.filter((plano) => plano.produto.tipoProduto === "simple").length,
       linhas,
       [...new Set(operacoes.map((operacao) => ROTULOS_CAMPOS[operacao.campo]))],
+      resultado.dados.produtos,
+      operacoes.some((operacao) => operacao.campo === "preco"),
     ),
     assinaturaPreview: criarAssinaturaPreview(conteudo),
   };

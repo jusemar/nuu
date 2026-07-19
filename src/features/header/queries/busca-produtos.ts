@@ -90,7 +90,7 @@ export async function buscarProdutosParaAutocomplete({
       p.name,
       p.slug,
       p.category_id,
-      p.brand,
+      m.nome AS brand,
       coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['featured']::text[] AS destaque,
       c.name AS category_name,
       c.slug AS category_slug,
@@ -109,7 +109,7 @@ export async function buscarProdutosParaAutocomplete({
         WHEN lower(p.name) LIKE ${termoPrefixo} THEN 1
         WHEN lower(p.name) LIKE ${termoLike} THEN 2
         WHEN lower(c.name) LIKE ${termoLike} THEN 3
-        WHEN lower(coalesce(p.brand, '')) LIKE ${termoLike} THEN 4
+        WHEN lower(coalesce(m.nome, '')) LIKE ${termoLike} THEN 4
         WHEN EXISTS (
           SELECT 1
           FROM unnest(coalesce(p.tags, ARRAY[]::text[])) AS tag
@@ -127,6 +127,7 @@ export async function buscarProdutosParaAutocomplete({
       END AS relevancia
     FROM product p
     LEFT JOIN category c ON c.id = p.category_id
+    LEFT JOIN marca m ON m.id = p.marca_id
     LEFT JOIN LATERAL (
       SELECT image_url
       FROM product_gallery_images
@@ -143,6 +144,7 @@ export async function buscarProdutosParaAutocomplete({
       LIMIT 1
     ) preco ON true
     WHERE p.is_active = true
+      AND p.status = 'published'
       AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
       AND (${categoriaId ?? null}::uuid IS NULL OR p.category_id = ${categoriaId ?? null}::uuid)
       AND (
@@ -150,7 +152,7 @@ export async function buscarProdutosParaAutocomplete({
         OR lower(coalesce(c.name, '')) LIKE ${limitarTermoCurto ? termoPrefixo : termoLike}
         OR (
           ${!limitarTermoCurto}
-          AND lower(coalesce(p.brand, '')) LIKE ${termoLike}
+          AND lower(coalesce(m.nome, '')) LIKE ${termoLike}
         )
         OR (
           ${!limitarTermoCurto}
@@ -191,17 +193,20 @@ export async function buscarProdutosParaAutocomplete({
       SELECT p.name AS termo, 2 AS prioridade
       FROM product p
       WHERE p.is_active = true
+        AND p.status = 'published'
         AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
         AND lower(p.name) LIKE ${termoLike}
 
       UNION ALL
 
-      SELECT DISTINCT p.brand AS termo, 3 AS prioridade
+      SELECT DISTINCT m.nome AS termo, 3 AS prioridade
       FROM product p
+      LEFT JOIN marca m ON m.id = p.marca_id
       WHERE p.is_active = true
+        AND p.status = 'published'
         AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
-        AND p.brand IS NOT NULL
-        AND lower(p.brand) LIKE ${termoLike}
+        AND m.nome IS NOT NULL
+        AND lower(m.nome) LIKE ${termoLike}
     )
     SELECT termo
     FROM sugestoes

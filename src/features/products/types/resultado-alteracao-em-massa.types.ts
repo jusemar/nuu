@@ -7,6 +7,9 @@ export type ResumoPreviewAlteracaoEmMassa = {
   alteracoesEfetivas: number;
   semMudanca: number;
   conflitos: number;
+  produtosAfetados: number;
+  precosAlterados: number;
+  modalidadesIgnoradasSemPreco: number;
   campos: string[];
 };
 

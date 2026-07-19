@@ -35,18 +35,23 @@ export async function getProductBySlug(slug: string) {
     // findFirst = busca UM registro que combine com o filtro
     // "with" = carrega as relações (JOIN automático do Drizzle)
     const product = await db.query.productTable.findFirst({
-      where: and(eq(productTable.slug, slug), eq(productTable.isActive, true)),
+      where: and(
+        eq(productTable.slug, slug),
+        eq(productTable.isActive, true),
+        eq(productTable.status, "published"),
+      ),
       with: {
         galleryImages: true,
         pricing: true,
         attributes: true,
         variants: true,
         modeloRetirada: true,
+        marca: true,
       },
     });
 
     // Apenas a ausência real do registro segue para o notFound() da página.
-    return product ?? null;
+    return product ? { ...product, brand: product.marca?.nome ?? null } : null;
   } catch (error) {
     const codigo = crypto.randomUUID();
     const tipo =

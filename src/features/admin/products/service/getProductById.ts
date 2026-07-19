@@ -58,7 +58,10 @@ async function carregarClassificacoesLogisticasVariantes(
       .from(variantesTiposLogisticosTable)
       .innerJoin(
         tiposLogisticosTable,
-        eq(variantesTiposLogisticosTable.tipoLogisticoId, tiposLogisticosTable.id),
+        eq(
+          variantesTiposLogisticosTable.tipoLogisticoId,
+          tiposLogisticosTable.id,
+        ),
       )
       .where(
         inArray(
@@ -104,7 +107,7 @@ export async function getProductById(id: string) {
         slug: productTable.slug,
         description: productTable.description,
         cardShortText: productTable.cardShortText,
-        brand: productTable.brand,
+        brand: marcaTable.nome,
         brandId: productTable.marcaId,
         sku: productTable.sku,
         isActive: productTable.isActive,

@@ -51,6 +51,9 @@ export function CategoryForm({
 }: CategoryFormProps) {
   const router = useRouter();
   const { generateSlug } = useSlugGenerator();
+  const [slugEditadoManualmente, setSlugEditadoManualmente] = useState(
+    Boolean(initialData?.slug),
+  );
 
   // Hooks para criar ou atualizar categoria
   const createCategoryMutation = useCreateCategory();
@@ -234,11 +237,12 @@ export function CategoryForm({
   // =====================================================================
   // PASSO 6: Handlers de subcategoria (já existentes, mantidos iguais)
   // =====================================================================
-  const handleAddSubcategory = (name: string) => {
+  const handleAddSubcategory = (name: string, slug: string) => {
     if (!name.trim()) return;
     const newSubcategory: SubcategoryItem = {
       id: generateSubcategoryId(),
       name: name.trim(),
+      slug: slug.trim(),
       level: 1,
       expanded: false,
       childrenCount: 0,
@@ -260,18 +264,32 @@ export function CategoryForm({
     );
   };
 
-  const handleEditSubcategory = (id: string, newName: string) => {
+  const handleEditSubcategory = (id: string, newName: string, slug: string) => {
     try {
-      const updatedList = updateSubcategoryName(id, newName, subcategories);
+      const updatedList = updateSubcategoryName(
+        id,
+        newName,
+        slug,
+        subcategories,
+      );
       setSubcategories(updatedList);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Erro ao atualizar");
     }
   };
 
-  const handleAddChildSubcategory = (parentId: string, name: string) => {
+  const handleAddChildSubcategory = (
+    parentId: string,
+    name: string,
+    slug: string,
+  ) => {
     try {
-      const newChild = createChildSubcategory(parentId, name, subcategories);
+      const newChild = createChildSubcategory(
+        parentId,
+        name,
+        slug,
+        subcategories,
+      );
       const insertIndex = calculateChildInsertPosition(parentId, subcategories);
       const newList = [...subcategories];
       newList.splice(insertIndex, 0, newChild);
@@ -421,12 +439,14 @@ export function CategoryForm({
             data={categoryData}
             onDataChange={(updates) => {
               if (updates.name !== undefined) {
-                const generatedSlug = generateSlug(updates.name);
-                updates = { ...updates, slug: generatedSlug };
+                if (!slugEditadoManualmente) {
+                  const generatedSlug = generateSlug(updates.name);
+                  updates = { ...updates, slug: generatedSlug };
+                }
               }
               setCategoryData((prev) => ({ ...prev, ...updates }));
             }}
-            onSlugChange={() => {}}
+            onSlugChange={() => setSlugEditadoManualmente(true)}
             isLoading={isLoading}
             metaTitleCount={categoryData.metaTitle.length}
             metaDescCount={categoryData.metaDescription.length}

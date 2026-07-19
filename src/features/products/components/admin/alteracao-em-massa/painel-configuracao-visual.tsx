@@ -102,9 +102,13 @@ export function PainelConfiguracaoVisual({
   const semAlteracao = previewExibido.filter(
     (linha) => linha.resultado === "sem_alteracao",
   ).length;
+  const produtosAplicaveis = new Set(
+    previewExibido
+      .filter((linha) => linha.resultado === "alterado")
+      .map((linha) => linha.produtoId),
+  ).size;
   const podeAplicar = Boolean(
     fluxo.previewServidor &&
-      fluxo.previewServidor.resumo.conflitos === 0 &&
       fluxo.previewServidor.resumo.alteracoesEfetivas > 0 &&
       !fluxo.revisando &&
       !fluxo.aplicando,
@@ -277,6 +281,25 @@ export function PainelConfiguracaoVisual({
                     }
                   />
                   <Resumo rotulo="Operações válidas" valor={operacoes.length} />
+                  {fluxo.previewServidor ? (
+                    <>
+                      <Resumo
+                        rotulo="Produtos afetados"
+                        valor={fluxo.previewServidor.resumo.produtosAfetados}
+                      />
+                      <Resumo
+                        rotulo="Preços alterados"
+                        valor={fluxo.previewServidor.resumo.precosAlterados}
+                      />
+                      <Resumo
+                        rotulo="Modalidades inexistentes"
+                        valor={
+                          fluxo.previewServidor.resumo
+                            .modalidadesIgnoradasSemPreco
+                        }
+                      />
+                    </>
+                  ) : null}
                   <Resumo
                     rotulo="Conflitos"
                     valor={conflitos}
@@ -358,7 +381,7 @@ export function PainelConfiguracaoVisual({
                   {!fluxo.previewServidor
                     ? "Gere o preview no servidor antes de confirmar."
                     : conflitos > 0
-                      ? "Resolva os conflitos antes de aplicar."
+                      ? "Aplicar os produtos elegíveis; produtos com conflito serão preservados."
                       : "Aplicar alterações revisadas."}
                 </TooltipContent>
               </Tooltip>
@@ -384,9 +407,9 @@ export function PainelConfiguracaoVisual({
                 id="descricao-confirmacao-massa"
                 className="text-muted-foreground mt-2 text-sm"
               >
-                Esta ação atualizará{" "}
-                {fluxo.previewServidor?.resumo.produtosSimples ?? 0} produto(s)
-                simples. Produtos variáveis continuarão ignorados.
+                Esta ação atualizará {produtosAplicaveis} produto(s)
+                elegível(is). Produtos com conflito e produtos variáveis
+                continuarão preservados.
               </p>
               <div className="mt-5 flex justify-end gap-2">
                 <Button

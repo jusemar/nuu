@@ -13,9 +13,7 @@ import { getProductBySlug } from "@/features/store/products/service/productServi
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
 import { calcularPrecosProduto } from "@/features/precificacao";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
-import { db } from "@/db/connection";
-import { categoryTable } from "@/db/table/categories/categories";
-import { eq } from "drizzle-orm";
+import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
 import type {
   Modalidade,
   PrecoModalidade,
@@ -95,36 +93,6 @@ export default async function ProductPage({ params }: PageProps) {
     notFound();
   }
 
-  async function buscarCaminhoCategoriaAtual(categoriaId: string) {
-    const nomes: string[] = [];
-    let categoriaAtualId: string | null = categoriaId;
-    const visitados = new Set<string>();
-
-    while (categoriaAtualId && !visitados.has(categoriaAtualId)) {
-      visitados.add(categoriaAtualId);
-      const categoria: {
-        id: string;
-        name: string;
-        parentId: string | null;
-      } | null =
-        (await db.query.categoryTable.findFirst({
-          where: eq(categoryTable.id, categoriaAtualId),
-          columns: {
-            id: true,
-            name: true,
-            parentId: true,
-          },
-        })) ?? null;
-
-      if (!categoria) break;
-
-      nomes.unshift(categoria.name);
-      categoriaAtualId = categoria.parentId;
-    }
-
-    return nomes;
-  }
-
   const pricing = normalizarPrecosProduto(product.pricing || []);
   const precosCalculadosPorModalidade = await calcularPrecosProduto(
     pricing.map((preco) => ({
@@ -142,7 +110,7 @@ export default async function ProductPage({ params }: PageProps) {
         precoBaseEmCentavos: variant.priceInCents,
       })),
   );
-  const breadcrumbCategorias = await buscarCaminhoCategoriaAtual(
+  const breadcrumbCategorias = await buscarBreadcrumbCategoriaPorId(
     product.categoryId,
   );
   const configuracaoLoja = await buscarConfiguracaoLoja();

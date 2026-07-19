@@ -3,7 +3,11 @@ import "server-only";
 import { asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { fornecedorProdutoVinculosTable, productTable } from "@/db/schema";
+import {
+  fornecedorProdutoVinculosTable,
+  marcaTable,
+  productTable,
+} from "@/db/schema";
 
 import type { ProdutoVinculadoFornecedorAdmin } from "../types/fornecedores.types";
 
@@ -21,7 +25,7 @@ export async function listarVinculosProdutosFornecedoresAdmin(
       produtoId: fornecedorProdutoVinculosTable.produtoId,
       produtoNome: productTable.name,
       produtoSku: productTable.sku,
-      produtoMarca: productTable.brand,
+      produtoMarca: marcaTable.nome,
       codigoFornecedor: fornecedorProdutoVinculosTable.codigoFornecedor,
       tipoVinculo: fornecedorProdutoVinculosTable.tipoVinculo,
       status: fornecedorProdutoVinculosTable.status,
@@ -33,7 +37,10 @@ export async function listarVinculosProdutosFornecedoresAdmin(
       productTable,
       eq(productTable.id, fornecedorProdutoVinculosTable.produtoId),
     )
-    .where(inArray(fornecedorProdutoVinculosTable.fornecedorId, fornecedoresIds))
+    .innerJoin(marcaTable, eq(marcaTable.id, productTable.marcaId))
+    .where(
+      inArray(fornecedorProdutoVinculosTable.fornecedorId, fornecedoresIds),
+    )
     .orderBy(
       asc(fornecedorProdutoVinculosTable.fornecedorId),
       asc(productTable.name),

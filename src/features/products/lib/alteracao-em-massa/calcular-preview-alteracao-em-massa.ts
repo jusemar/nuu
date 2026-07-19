@@ -137,7 +137,7 @@ export function calcularPlanoAlteracaoEmMassa(
       };
     }
 
-    const linhas = operacoes.map((operacao, indice) => {
+    const linhas = operacoes.flatMap((operacao, indice) => {
       let resultado: LinhaPreviewAlteracaoEmMassa;
       switch (operacao.campo) {
         case "status":
@@ -151,7 +151,7 @@ export function calcularPlanoAlteracaoEmMassa(
           if (resultado.resultado === "alterado") {
             alteracoes.produto.ativo = operacao.valor;
           }
-          return resultado;
+          return [resultado];
         case "categoria": {
           const categoria = dados.categorias.find(
             (item) => item.id === operacao.categoriaId && item.ativa,
@@ -167,7 +167,7 @@ export function calcularPlanoAlteracaoEmMassa(
           if (resultado.resultado === "alterado") {
             alteracoes.produto.categoriaId = operacao.categoriaId;
           }
-          return resultado;
+          return [resultado];
         }
         case "marca": {
           const marca = dados.marcas.find(
@@ -185,59 +185,69 @@ export function calcularPlanoAlteracaoEmMassa(
             alteracoes.produto.marcaId = operacao.marcaId;
             alteracoes.produto.marcaNome = marca.nome;
           }
-          return resultado;
+          return [resultado];
         }
         case "preco": {
-          const preco = produto.precosModalidades.find(
-            (item) => item.modalidade === operacao.modalidade,
+          const precosExistentes = produto.precosModalidades.filter(
+            (preco) =>
+              Number.isSafeInteger(preco.precoEmCentavos) &&
+              preco.precoEmCentavos >= 0,
           );
-          const rotulo = obterRotuloModalidadePreco(operacao.modalidade);
-          if (!preco) {
-            return linha(
-              produto,
-              indice,
-              `Preço · ${rotulo}`,
-              "Sem modalidade",
-              "—",
-              "A modalidade não existe neste produto.",
+          if (precosExistentes.length === 0) {
+            return [
+              linha(
+                produto,
+                indice,
+                "Preço",
+                "Nenhuma modalidade com preço",
+                "—",
+                "O produto não possui modalidade com preço válido.",
+              ),
+            ];
+          }
+
+          return precosExistentes.map((preco, indiceModalidade) => {
+            const rotulo = obterRotuloModalidadePreco(preco.modalidade);
+            const valorOperacao = operacao.operacao.includes("percentual")
+              ? operacao.valor
+              : Math.round(operacao.valor * 100);
+            const novoPreco = aplicarNumero(
+              preco.precoEmCentavos,
+              operacao.operacao,
+              valorOperacao,
             );
-          }
-          const valorOperacao = operacao.operacao.includes("percentual")
-            ? operacao.valor
-            : Math.round(operacao.valor * 100);
-          const novoPreco = aplicarNumero(
-            preco.precoEmCentavos,
-            operacao.operacao,
-            valorOperacao,
-          );
-          resultado = linha(
-            produto,
-            indice,
-            `Preço · ${rotulo}`,
-            dinheiro(preco.precoEmCentavos),
-            novoPreco < 0 ? "—" : dinheiro(novoPreco),
-            novoPreco < 0 ? "O preço resultante seria negativo." : undefined,
-          );
-          if (resultado.resultado === "alterado") {
-            alteracoes.precos.push({
-              precoId: preco.id,
-              modalidade: operacao.modalidade,
-              precoEmCentavos: novoPreco,
-            });
-          }
-          return resultado;
+            const resultadoPreco = linha(
+              produto,
+              indice * 10 + indiceModalidade,
+              `Preço · ${rotulo}`,
+              dinheiro(preco.precoEmCentavos),
+              novoPreco < 0 ? "—" : dinheiro(novoPreco),
+              novoPreco < 0 ? "O preço resultante seria negativo." : undefined,
+            );
+            if (resultadoPreco.resultado === "alterado") {
+              alteracoes.precos.push({
+                precoId: preco.id,
+                modalidade: preco.modalidade,
+                precoEmCentavos: novoPreco,
+              });
+            }
+            return resultadoPreco;
+          });
         }
         case "prazo": {
           const preco = produto.precosModalidades.find(
             (item) => item.modalidade === operacao.modalidade,
           );
+          const rotulo = obterRotuloModalidadePreco(operacao.modalidade);
           resultado = linha(
             produto,
             indice,
-            `Prazo · ${obterRotuloModalidadePreco(operacao.modalidade)}`,
+            `Prazo · ${rotulo}`,
             preco?.prazo || "Não informado",
             operacao.valor,
-            preco ? undefined : "A modalidade não existe neste produto.",
+            preco
+              ? undefined
+              : `A modalidade ${rotulo} não está cadastrada neste produto; o prazo pertence ao registro da modalidade.`,
           );
           if (resultado.resultado === "alterado" && preco) {
             const existente = alteracoes.precos.find(
@@ -252,19 +262,21 @@ export function calcularPlanoAlteracaoEmMassa(
               });
             }
           }
-          return resultado;
+          return [resultado];
         }
         case "estoque": {
           const atual = produto.estoqueVarianteTecnica;
           if (atual === null || !produto.varianteTecnicaId) {
-            return linha(
-              produto,
-              indice,
-              "Estoque",
-              "Sem variante técnica",
-              "—",
-              "Produto simples sem variante técnica confiável.",
-            );
+            return [
+              linha(
+                produto,
+                indice,
+                "Estoque",
+                "Sem variante técnica",
+                "—",
+                "Produto simples sem variante técnica confiável.",
+              ),
+            ];
           }
           const novo = aplicarNumero(atual, operacao.operacao, operacao.valor);
           resultado = linha(
@@ -281,7 +293,7 @@ export function calcularPlanoAlteracaoEmMassa(
               quantidade: novo,
             };
           }
-          return resultado;
+          return [resultado];
         }
         case "ncm": {
           const numeros = operacao.valor.replace(/\D/g, "");
@@ -296,7 +308,7 @@ export function calcularPlanoAlteracaoEmMassa(
           if (resultado.resultado === "alterado") {
             alteracoes.produto.ncm = formatado;
           }
-          return resultado;
+          return [resultado];
         }
         case "peso":
         case "altura":
@@ -333,7 +345,7 @@ export function calcularPlanoAlteracaoEmMassa(
               alteracoes.produto.comprimentoEmCm = novo;
             }
           }
-          return resultado;
+          return [resultado];
         }
       }
     });

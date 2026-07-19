@@ -20,17 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
 import type {
   CampoOrdenacaoProdutos,
   EstadoListagemAlteracaoEmMassa,
 } from "../../../hooks/alteracao-em-massa/use-listagem-alteracao-em-massa";
-import { resumirPrecosProduto } from "../../../lib/alteracao-em-massa/resumir-precos-produto";
+import { CelulaPrecosProduto } from "./celula-precos-produto";
 
 type TabelaProdutosProps = {
   estado: EstadoListagemAlteracaoEmMassa;
@@ -141,14 +135,12 @@ export function TabelaProdutosAlteracaoEmMassa({
                   Marca
                 </CabecalhoOrdenavel>
               </TableHead>
-              <TableHead className="min-w-48">Preços</TableHead>
+              <TableHead className="min-w-80">Preços</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {estado.produtosPagina.map((produto) => {
               const selecionado = estado.selecionadosIds.has(produto.id);
-              const precos = resumirPrecosProduto(produto.precosModalidades);
-              const precoPrincipal = precos[0];
               return (
                 <TableRow
                   key={produto.id}
@@ -197,47 +189,7 @@ export function TabelaProdutosAlteracaoEmMassa({
                   <TableCell>{produto.categoriaNome}</TableCell>
                   <TableCell>{produto.marcaNome}</TableCell>
                   <TableCell>
-                    {precoPrincipal ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="focus-visible:ring-ring max-w-48 rounded-sm text-left focus-visible:ring-2 focus-visible:outline-none"
-                            aria-label={`Consultar preços de ${produto.nome}`}
-                          >
-                            <span className="block text-sm font-medium whitespace-nowrap">
-                              {precoPrincipal.valorFormatado}
-                            </span>
-                            <span className="text-muted-foreground block truncate text-xs">
-                              {precoPrincipal.rotulo}
-                              {precos.length > 1
-                                ? ` · +${precos.length - 1} modalidade(s)`
-                                : ""}
-                            </span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-72 p-3">
-                          <ul
-                            className="space-y-1.5"
-                            aria-label="Modalidades de preço"
-                          >
-                            {precos.map((preco) => (
-                              <li
-                                key={preco.id}
-                                className="flex justify-between gap-4"
-                              >
-                                <span>{preco.rotulo}</span>
-                                <strong>{preco.valorFormatado}</strong>
-                              </li>
-                            ))}
-                          </ul>
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">
-                        Nenhum preço cadastrado
-                      </span>
-                    )}
+                    <CelulaPrecosProduto precos={produto.precosModalidades} />
                   </TableCell>
                 </TableRow>
               );

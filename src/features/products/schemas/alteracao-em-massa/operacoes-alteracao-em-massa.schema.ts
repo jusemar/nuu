@@ -32,7 +32,7 @@ export const operacaoAlteracaoEmMassaSchema = z.discriminatedUnion("campo", [
   z.object({ campo: z.literal("marca"), marcaId: z.string().uuid() }),
   z.object({
     campo: z.literal("preco"),
-    modalidade: modalidadesPrecoSchema,
+    escopo: z.literal("todas_modalidades_com_preco"),
     operacao: operacaoPrecoSchema,
     valor: z.number().nonnegative(),
   }),

@@ -52,6 +52,7 @@ export interface CreateCategoryInput {
   metaTitle?: string;
   metaDescription?: string;
   orderIndex: number;
+  parentId?: string | null;
   // userId pode ser opcional no input — o servidor pode preencher a partir do contexto de autenticação
   userId?: string;
   // Novo: subs hierárquicas (opcional – pode criar categoria sem subs)

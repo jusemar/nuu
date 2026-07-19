@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -28,7 +28,14 @@ export async function salvarVinculoProdutoRecebidoFornecedor(entrada: unknown) {
       id: productTable.id,
       nome: productTable.name,
       sku: productTable.sku,
-      precoCentavos: productTable.salePrice,
+      precoCentavos: sql<number | null>`(
+        select preco.price_in_cents
+        from product_pricing preco
+        where preco.product_id = ${productTable.id}
+          and preco.is_active = true
+        order by preco.main_card_price desc nulls last, preco.created_at asc
+        limit 1
+      )`,
     })
     .from(productTable)
     .where(eq(productTable.id, dados.produtoId))

@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "@/db/connection";
 import {
+  marcaTable,
   productGalleryImagesTable,
   productPricingTable,
   productTable,
@@ -63,7 +64,7 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
         sku: productTable.sku,
         slug: productTable.slug,
         name: productTable.name,
-        brand: productTable.brand,
+        brand: marcaTable.nome,
         cardShortText: productTable.cardShortText,
         description: productTable.description,
         isActive: productTable.isActive,
@@ -91,6 +92,7 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
       productPricingTable,
       eq(productPricingTable.productId, productTable.id),
     )
+    .innerJoin(marcaTable, eq(marcaTable.id, productTable.marcaId))
     .leftJoin(
       productGalleryImagesTable,
       and(
@@ -101,6 +103,8 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
     .where(
       and(
         eq(productTable.productKind, "simple"),
+        eq(productTable.isActive, true),
+        eq(productTable.status, "published"),
         eq(productPricingTable.isActive, true),
         eq(productPricingTable.mainCardPrice, true),
         eq(productPricingTable.hasPromo, true),

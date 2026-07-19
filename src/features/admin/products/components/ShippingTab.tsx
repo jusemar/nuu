@@ -75,6 +75,8 @@ import {
 } from "lucide-react";
 import { summarizeVariantEditor } from "@/features/products";
 import type { ProductVariantFormInput } from "@/features/products";
+import { DimensoesFreteExterno } from "@/features/admin/logistica/components/produto/DimensoesFreteExterno";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 
 // ==========================================
 // TIPOS
@@ -368,13 +370,14 @@ type ShippingTabProps = {
   data?: {
     productKind?: string;
     variants?: ProductVariantFormInput[];
+    dimensoesFreteExterno?: DimensoesFreteExternoProduto;
     shipping?: Record<string, any>;
     [key: string]: any;
   };
   onChange?: (updates: Record<string, any>) => void;
 };
 
-export function ShippingTab({ data }: ShippingTabProps) {
+export function ShippingTab({ data, onChange }: ShippingTabProps) {
   // -----------------------------------------
   // ESTADOS
   // -----------------------------------------
@@ -435,14 +438,6 @@ export function ShippingTab({ data }: ShippingTabProps) {
       reason: "Entrega premium - região nobre",
     },
   ]);
-
-  // Dimensões do produto (mock)
-  const [dimensions, setDimensions] = useState({
-    weight: "",
-    length: "",
-    width: "",
-    height: "",
-  });
 
   // Sensors para drag & drop
   const sensors = useSensors(
@@ -704,66 +699,12 @@ export function ShippingTab({ data }: ShippingTabProps) {
               ABA 1: MÉTODOS DE ENTREGA
               ========================================== */}
           <TabsContent value="methods" className="space-y-6">
-            {/* Card: Dimensões do Produto */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-gray-500" />
-                  <CardTitle className="text-base">
-                    Dimensões do Produto
-                  </CardTitle>
-                </div>
-                <CardDescription>
-                  Usado para cálculo de frete nas transportadoras
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-1 text-sm">
-                      Peso (kg) <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      placeholder="0,00"
-                      value={dimensions.weight}
-                      onChange={(e) =>
-                        setDimensions({ ...dimensions, weight: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm">Comprimento (cm)</Label>
-                    <Input
-                      placeholder="0"
-                      value={dimensions.length}
-                      onChange={(e) =>
-                        setDimensions({ ...dimensions, length: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm">Largura (cm)</Label>
-                    <Input
-                      placeholder="0"
-                      value={dimensions.width}
-                      onChange={(e) =>
-                        setDimensions({ ...dimensions, width: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm">Altura (cm)</Label>
-                    <Input
-                      placeholder="0"
-                      value={dimensions.height}
-                      onChange={(e) =>
-                        setDimensions({ ...dimensions, height: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <DimensoesFreteExterno
+              dimensoes={data?.dimensoesFreteExterno ?? {}}
+              aoAlterar={(dimensoesFreteExterno) =>
+                onChange?.({ dimensoesFreteExterno })
+              }
+            />
 
             {/* Card: Métodos de Entrega com Drag & Drop */}
             <Card>

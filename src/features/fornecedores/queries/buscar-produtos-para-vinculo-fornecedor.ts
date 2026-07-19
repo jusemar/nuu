@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { categoryTable, productTable } from "@/db/schema";
+import { categoryTable, marcaTable, productTable } from "@/db/schema";
 
 import { buscaProdutoVinculoFornecedorSchema } from "../schemas/fornecedores.schema";
 import type { ProdutoParaVinculoFornecedor } from "../types/fornecedores.types";
@@ -23,12 +23,20 @@ export async function buscarProdutosParaVinculoFornecedor(
       nome: productTable.name,
       sku: productTable.sku,
       slug: productTable.slug,
-      marca: productTable.brand,
+      marca: marcaTable.nome,
       categoria: categoryTable.name,
-      precoCentavos: productTable.salePrice,
+      precoCentavos: sql<number | null>`(
+        select preco.price_in_cents
+        from product_pricing preco
+        where preco.product_id = ${productTable.id}
+          and preco.is_active = true
+        order by preco.main_card_price desc nulls last, preco.created_at asc
+        limit 1
+      )`,
     })
     .from(productTable)
     .leftJoin(categoryTable, eq(productTable.categoryId, categoryTable.id))
+    .leftJoin(marcaTable, eq(productTable.marcaId, marcaTable.id))
     .where(
       and(
         eq(productTable.isActive, true),
@@ -37,7 +45,7 @@ export async function buscarProdutosParaVinculoFornecedor(
           ilike(productTable.sku, `%${filtros.busca}%`),
           ilike(productTable.productCode, `%${filtros.busca}%`),
           ilike(productTable.internalCode, `%${filtros.busca}%`),
-          ilike(productTable.brand, `%${filtros.busca}%`),
+          ilike(marcaTable.nome, `%${filtros.busca}%`),
           ilike(productTable.slug, `%${filtros.busca}%`),
         ),
       ),

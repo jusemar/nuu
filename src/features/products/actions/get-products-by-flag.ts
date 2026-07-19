@@ -69,6 +69,7 @@ export async function getProductsByFlag(flags: string[]) {
       .where(
         and(
           eq(productTable.isActive, true),
+          eq(productTable.status, "published"),
           sql`${productTable.storeProductFlags} && ARRAY[${sql.join(filteredFlags, sql`, `)}]::text[]`,
         ),
       )

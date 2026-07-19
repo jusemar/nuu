@@ -29,7 +29,6 @@ export type ProdutoAlteracaoEmMassa = {
   categoriaNome: string;
   marcaId: string;
   marcaNome: string;
-  secoesLoja: string[];
   tipoProduto: string;
   ncm: string | null;
   pesoEmGramas: number | null;

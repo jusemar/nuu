@@ -1,14 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Bell,
-  HelpCircle,
-  Menu,
-  TrendingUp,
-  Zap,
-  Tag,
-} from "lucide-react";
+import { Bell, Compass, HelpCircle, Menu, Zap, Tag } from "lucide-react";
 import { useHeader } from "../hooks/useHeader";
 import { useState } from "react";
 import { NavigationDrawer } from "../../store/menu/components/NavigationDrawer";
@@ -181,16 +174,16 @@ export const Header = ({}: HeaderProps) => {
                 Ofertas do Dia
               </Link>
 
-              {/* Mais Vendidos — teal */}
+              {/* Descoberta de produtos gerais */}
               <Link
-                href="/mais-vendidos"
+                href="/#confira-tambem"
                 className="flex items-center gap-1.5 rounded-md px-3 py-1.5 whitespace-nowrap transition"
                 style={{ color: DS.text }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = DS.primary)}
                 onMouseLeave={(e) => (e.currentTarget.style.color = DS.text)}
               >
-                <TrendingUp className="h-4 w-4" style={{ color: DS.success }} />
-                Mais Vendidos
+                <Compass className="h-4 w-4" style={{ color: DS.success }} />
+                Confira também
               </Link>
 
               {/* Lançamentos */}

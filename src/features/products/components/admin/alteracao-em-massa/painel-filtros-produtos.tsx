@@ -13,7 +13,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { SECOES_LOJA } from "../../../constants/secoes-loja";
 import type { EstadoListagemAlteracaoEmMassa } from "../../../hooks/alteracao-em-massa/use-listagem-alteracao-em-massa";
 import type {
   CategoriaAlteracaoEmMassa,
@@ -197,21 +196,6 @@ export function PainelFiltrosProdutos({
             checked={estado.marcasIds.has(marca.id)}
             onChange={() => estado.alternarMarca(marca.id)}
             detalhe={!marca.ativa ? "inativa" : undefined}
-          />
-        ))}
-      </GrupoFiltro>
-
-      <GrupoFiltro
-        titulo="Seções da Loja"
-        dica="O filtro usa o campo real storeProductFlags. Ao marcar mais de uma seção, o produto precisa pertencer a todas elas."
-      >
-        {SECOES_LOJA.map((secao) => (
-          <OpcaoFiltro
-            key={secao.id}
-            id={`secao-${secao.id}-${compacto ? "mobile" : "desktop"}`}
-            rotulo={`${secao.icone} ${secao.rotulo}`}
-            checked={estado.secoesIds.has(secao.id)}
-            onChange={() => estado.alternarSecao(secao.id)}
           />
         ))}
       </GrupoFiltro>

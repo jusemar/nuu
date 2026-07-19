@@ -9,113 +9,117 @@ import {
 } from "@/db/schema";
 
 import { and, eq, inArray, sql } from "drizzle-orm"; // Permite escrever SQL puro quando necessário
-import { desc } from "drizzle-orm"; // Ordem decrescente (do mais novo para o mais antigo)
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
-// Quantos produtos mostrar por página (você pode mudar esse número se quiser)
-const PAGE_SIZE = 12;
+const TAMANHOS_PAGINA_PERMITIDOS = new Set([6, 9, 12, 15]);
 
-export async function getProductsLoadMore(page: number = 1) {
+export async function getProductsLoadMore(
+  page: number = 1,
+  seed = "descoberta",
+  pageSize = 6,
+) {
   try {
+    const paginaSegura = Number.isInteger(page) && page > 0 ? page : 1;
+    const tamanhoPaginaSeguro = TAMANHOS_PAGINA_PERMITIDOS.has(pageSize)
+      ? pageSize
+      : 6;
+    const seedSeguro = seed.trim().slice(0, 120) || "descoberta";
+
     // Calcula quantos produtos pular (para paginação)
-    // Exemplo: página 1 → pula 0, página 2 → pula 12, página 3 → pula 24...
-    const offset = (page - 1) * PAGE_SIZE;
+    const offset = (paginaSegura - 1) * tamanhoPaginaSeguro;
 
-    const products = await db
+    // O seed mantém a ordem estável entre as páginas do mesmo carregamento.
+    const produtosElegiveis = await db
       .select({
-        // === DADOS DO PRODUTO PRINCIPAL ===
-        product: {
-          id: productTable.id,
-          slug: productTable.slug,
-          name: productTable.name,
-          cardShortText: productTable.cardShortText, // Texto curto que aparece no card
-          storeProductFlags: productTable.storeProductFlags,
-          description: productTable.description,
-          productKind: productTable.productKind,
-          hasFreeShipping: productTable.hasFreeShipping,
-          createdAt: productTable.createdAt, // Data de criação (usada para ordenar)
-        },
-
-        // === IMAGEM PRINCIPAL DO PRODUTO ===
-        // Pega apenas a imagem marcada como "isPrimary = true"
-        mainImage: {
-          imageUrl: productGalleryImagesTable.imageUrl,
-          altText: productGalleryImagesTable.altText,
-        },
-
-        // === PREÇO PRINCIPAL DO PRODUTO ===
-        // Pega apenas o preço marcado como "mainCardPrice = true"
-        mainPrice: {
-          price: productPricingTable.price, // Preço normal (em centavos)
-          promoPrice: productPricingTable.promoPrice, // Preço promocional (em centavos)
-          hasPromo: productPricingTable.hasPromo, // Se tem promoção
-          promoType: productPricingTable.promoType,
-          promoEndDate: productPricingTable.promoEndDate,
-          type: productPricingTable.type,
-        },
+        id: productTable.id,
+        slug: productTable.slug,
+        name: productTable.name,
+        cardShortText: productTable.cardShortText,
+        storeProductFlags: productTable.storeProductFlags,
+        description: productTable.description,
+        productKind: productTable.productKind,
+        hasFreeShipping: productTable.hasFreeShipping,
+        createdAt: productTable.createdAt,
       })
-      .from(productTable) // Começa pela tabela principal de produtos
-
-      // LEFT JOIN = traz o produto mesmo se não tiver imagem principal
-      .leftJoin(
-        productGalleryImagesTable,
-        sql`
-          ${productTable.id} = ${productGalleryImagesTable.productId}
-          AND ${productGalleryImagesTable.isPrimary} = true
-        `,
-      )
-
-      // LEFT JOIN = traz o produto mesmo se não tiver preço principal definido
-      .leftJoin(
-        productPricingTable,
-        sql`
-          ${productTable.id} = ${productPricingTable.productId}
-          AND ${productPricingTable.mainCardPrice} = true
-        `,
-      )
-
-      // === FILTRO IMPORTANTE ===
-      // A seção "Mais vendidos" é selecionada manualmente pelo gestor.
+      .from(productTable)
       .where(
         and(
           eq(productTable.isActive, true),
-          sql`${productTable.storeProductFlags} @> ARRAY['bestseller']::text[]`,
+          eq(productTable.status, "published"),
+          sql`${productTable.storeProductFlags} @> ARRAY['general']::text[]`,
         ),
       )
-
-      // Agrupa para evitar linhas duplicadas (caso tenha mais de uma imagem/preço)
-      .groupBy(
-        productTable.id,
-        productGalleryImagesTable.id,
-        productPricingTable.id,
-      )
-
-      // Ordena do mais novo para o mais antigo
-      .orderBy(desc(productTable.createdAt))
-
-      // Limita a quantidade de produtos por página
-      .limit(PAGE_SIZE)
-
-      // Pula os produtos das páginas anteriores
+      .orderBy(sql`md5(${productTable.id}::text || ${seedSeguro})`)
+      .limit(tamanhoPaginaSeguro + 1)
       .offset(offset);
 
-    const idsProdutos = products.map(({ product }) => product.id);
-    const variantes =
+    const hasMore = produtosElegiveis.length > tamanhoPaginaSeguro;
+    const products = produtosElegiveis.slice(0, tamanhoPaginaSeguro);
+    const idsProdutos = products.map((product) => product.id);
+
+    const [imagens, precos, variantes] =
       idsProdutos.length > 0
-        ? await db
-            .select({
-              productId: productVariantTable.productId,
-              id: productVariantTable.id,
-              sku: productVariantTable.sku,
-              name: productVariantTable.name,
-              priceInCents: productVariantTable.priceInCents,
-              comparePriceInCents: productVariantTable.comparePriceInCents,
-              stockQuantity: productVariantTable.stockQuantity,
-              isActive: productVariantTable.isActive,
-            })
-            .from(productVariantTable)
-            .where(inArray(productVariantTable.productId, idsProdutos))
-        : [];
+        ? await Promise.all([
+            db
+              .select({
+                productId: productGalleryImagesTable.productId,
+                imageUrl: productGalleryImagesTable.imageUrl,
+                altText: productGalleryImagesTable.altText,
+              })
+              .from(productGalleryImagesTable)
+              .where(
+                and(
+                  inArray(productGalleryImagesTable.productId, idsProdutos),
+                  eq(productGalleryImagesTable.isPrimary, true),
+                ),
+              ),
+            db
+              .select({
+                productId: productPricingTable.productId,
+                price: productPricingTable.price,
+                promoPrice: productPricingTable.promoPrice,
+                hasPromo: productPricingTable.hasPromo,
+                promoType: productPricingTable.promoType,
+                promoEndDate: productPricingTable.promoEndDate,
+                type: productPricingTable.type,
+              })
+              .from(productPricingTable)
+              .where(
+                and(
+                  inArray(productPricingTable.productId, idsProdutos),
+                  eq(productPricingTable.mainCardPrice, true),
+                ),
+              ),
+            db
+              .select({
+                productId: productVariantTable.productId,
+                id: productVariantTable.id,
+                sku: productVariantTable.sku,
+                name: productVariantTable.name,
+                priceInCents: productVariantTable.priceInCents,
+                comparePriceInCents: productVariantTable.comparePriceInCents,
+                stockQuantity: productVariantTable.stockQuantity,
+                isActive: productVariantTable.isActive,
+              })
+              .from(productVariantTable)
+              .where(inArray(productVariantTable.productId, idsProdutos)),
+          ])
+        : [[], [], []];
+
+    const imagemPorProduto = new Map<string, (typeof imagens)[number]>();
+    imagens.forEach((imagem) => {
+      if (!imagemPorProduto.has(imagem.productId)) {
+        imagemPorProduto.set(imagem.productId, imagem);
+      }
+    });
+
+    const precoPorProduto = new Map<string, (typeof precos)[number]>();
+    precos.forEach((preco) => {
+      if (!precoPorProduto.has(preco.productId)) {
+        precoPorProduto.set(preco.productId, preco);
+      }
+    });
+
     const variantesPorProduto = new Map<string, typeof variantes>();
 
     variantes.forEach((variante) => {
@@ -124,25 +128,20 @@ export async function getProductsLoadMore(page: number = 1) {
       variantesPorProduto.set(variante.productId, variantesAtuais);
     });
 
-    // Verifica se ainda tem mais produtos para carregar
-    const hasMore = products.length === PAGE_SIZE;
-
     // Formata os dados para o formato que o componente do grid espera
-    const formattedProducts = products.map(
-      ({ product, mainImage, mainPrice }) => ({
-        ...product, // Todos os dados do produto
-        mainImage: mainImage || null, // Se não tiver imagem, coloca null
-        mainPrice: mainPrice || null, // Se não tiver preço principal, coloca null
-        variants: variantesPorProduto.get(product.id) ?? [],
-      }),
-    );
+    const formattedProducts = products.map((product) => ({
+      ...product,
+      mainImage: imagemPorProduto.get(product.id) ?? null,
+      mainPrice: precoPorProduto.get(product.id) ?? null,
+      variants: variantesPorProduto.get(product.id) ?? [],
+    }));
     const produtosComPrecosVitrine =
       await aplicarPrecosVitrineProdutos(formattedProducts);
 
     // Retorna os produtos e informa se tem próxima página
     return {
       products: produtosComPrecosVitrine,
-      nextPage: hasMore ? page + 1 : null, // Se carregou 12, tem próxima página
+      nextPage: hasMore ? paginaSegura + 1 : null,
     };
   } catch (error) {
     // Se der erro, mostra no console e retorna vazio (para não quebrar a página)

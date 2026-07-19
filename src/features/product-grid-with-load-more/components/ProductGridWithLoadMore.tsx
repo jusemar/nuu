@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { FeaturedProductCard } from "@/features/featured-products-carousel/components/FeaturedProductCard";
 import { ProductGridSkeleton } from "./ProductGridSkeleton";
 import { useProductsInfinite } from "../hooks/useInfiniteProducts";
@@ -58,8 +57,6 @@ function formatProductForCard(product: any) {
 }
 
 export function ProductGridWithLoadMore() {
-  const router = useRouter();
-
   // 🎯 USANDO NOSSO HOOK: Ele gerencia o carregamento dos produtos
   const {
     data, // Dados carregados
@@ -67,11 +64,19 @@ export function ProductGridWithLoadMore() {
     isFetchingNextPage, // Carregando mais produtos
     fetchNextPage, // Função para carregar mais
     hasNextPage, // Tem mais produtos para carregar?
+    configurando,
   } = useProductsInfinite();
 
   // 📦 JUNTANDO TODOS OS PRODUTOS:
   // O hook retorna páginas separadas, mas nós queremos uma lista única
-  const allProducts = data?.pages.flatMap((page) => page.products) || [];
+  const allProducts = Array.from(
+    new Map(
+      (data?.pages.flatMap((page) => page.products) || []).map((product) => [
+        product.id,
+        product,
+      ]),
+    ).values(),
+  );
 
   // 🔄 ATUALIZAR URL QUANDO CARREGA MAIS:
   // Quando o usuário clica "Ver mais", a URL muda para ?page=2, ?page=3, etc.
@@ -96,7 +101,7 @@ export function ProductGridWithLoadMore() {
     "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
 
   // 🌀 PRIMEIRO CARREGAMENTO: Mostra esqueletos enquanto busca dados
-  if (isLoading && allProducts.length === 0) {
+  if ((configurando || isLoading) && allProducts.length === 0) {
     return <ProductGridSkeleton />;
   }
 
@@ -131,33 +136,13 @@ export function ProductGridWithLoadMore() {
             disabled={isFetchingNextPage} // 🚫 Desabilita enquanto carrega
             className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg px-8 py-3 text-sm font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isFetchingNextPage ? (
-              // 🔄 MOSTRANDO QUE ESTÁ CARREGANDO
-              <span className="flex items-center justify-center gap-2">
+            <span className="flex items-center justify-center gap-2">
+              {isFetchingNextPage && (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Carregando...
-              </span>
-            ) : (
-              // 📄 TEXTO NORMAL DO BOTÃO
-              "Ver mais produtos"
-            )}
+              )}
+              Ver mais
+            </span>
           </button>
-
-          {/* 📊 INFO DA PÁGINA ATUAL (opcional) */}
-          {data?.pages.length && (
-            <p className="text-muted-foreground mt-2 text-sm">
-              Página {data.pages.length} • {allProducts.length} produtos
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* 🏁 SEM MAIS PRODUTOS PARA CARREGAR */}
-      {!hasNextPage && allProducts.length > 0 && (
-        <div className="border-border border-t py-6 text-center">
-          <p className="text-muted-foreground">
-            Você viu todos os {allProducts.length} produtos
-          </p>
         </div>
       )}
     </div>

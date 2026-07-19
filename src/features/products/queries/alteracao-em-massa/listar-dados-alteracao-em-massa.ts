@@ -62,7 +62,6 @@ export async function listarDadosAlteracaoEmMassa(
         categoriaNome: categoryTable.name,
         marcaId: productTable.marcaId,
         marcaNome: marcaTable.nome,
-        secoesLoja: productTable.storeProductFlags,
         tipoProduto: productTable.productKind,
         ncm: productTable.ncmCode,
         pesoEmGramas: productTable.weight,
@@ -278,7 +277,6 @@ export async function listarDadosAlteracaoEmMassa(
           return {
             ...produto,
             ativo: produto.ativo ?? false,
-            secoesLoja: produto.secoesLoja ?? [],
             permiteRetirada: produto.permiteRetirada ?? false,
             permiteEntregaPropria: produto.permiteEntregaPropria ?? false,
             varianteTecnicaId: varianteTecnica?.id ?? null,

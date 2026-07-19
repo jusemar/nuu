@@ -27,7 +27,8 @@ export const SECOES_LOJA = [
     id: "bestseller",
     rotulo: "+ Vendidos",
     icone: "🏆",
-    descricao: "Exibe na seção Mais vendidos da página inicial.",
+    descricao: "Disponível futuramente com base em vendas reais.",
+    indisponivel: true,
   },
 ] as const;
 

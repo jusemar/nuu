@@ -142,10 +142,10 @@ const Home = async () => {
           />
         </section>
 
-        {/* Produtos em destaque */}
-        <section aria-label="Produtos em destaque">
+        {/* Descoberta de produtos gerais */}
+        <section id="confira-tambem" aria-label="Confira também">
           <div className="mb-5 md:mb-6">
-            <SectionTitle icon="flame">Mais vendidos</SectionTitle>
+            <SectionTitle icon="star">Confira também</SectionTitle>
           </div>
           <ProductGridWithLoadMore />
         </section>

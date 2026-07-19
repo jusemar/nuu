@@ -56,6 +56,7 @@ export function StoreProductFlags({
       <CardContent className="grid grid-cols-1 gap-2 px-4 pt-0 pb-4 sm:grid-cols-2 sm:px-5">
         {SECOES_LOJA.map((secao) => {
           const selecionada = value.includes(secao.id);
+          const indisponivel = "indisponivel" in secao && secao.indisponivel;
           const Icone = ICONES_SECOES[secao.id];
 
           return (
@@ -64,7 +65,8 @@ export function StoreProductFlags({
               type="button"
               role="checkbox"
               aria-checked={selecionada}
-              disabled={disabled}
+              aria-disabled={disabled || indisponivel}
+              disabled={disabled || indisponivel}
               onClick={() => alternarSecao(secao.id)}
               className={`focus-visible:ring-ring flex min-h-20 items-start gap-3 rounded-lg border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
                 selecionada

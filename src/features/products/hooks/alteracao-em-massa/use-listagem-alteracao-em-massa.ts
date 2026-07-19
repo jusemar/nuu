@@ -40,7 +40,6 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
   const [status, setStatus] = useState<Set<StatusFiltroProduto>>(new Set());
   const [categoriasIds, setCategoriasIds] = useState<Set<string>>(new Set());
   const [marcasIds, setMarcasIds] = useState<Set<string>>(new Set());
-  const [secoesIds, setSecoesIds] = useState<Set<string>>(new Set());
   const [tipos, setTipos] = useState<Set<TipoProdutoConfiavel>>(new Set());
   const [selecionadosIds, setSelecionadosIds] = useState<Set<string>>(
     new Set(),
@@ -78,11 +77,6 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
         categoriasAbrangidas.has(produto.categoriaId);
       const correspondeMarca =
         marcasIds.size === 0 || marcasIds.has(produto.marcaId);
-      const correspondeSecoes =
-        secoesIds.size === 0 ||
-        Array.from(secoesIds).every((secao) =>
-          produto.secoesLoja.includes(secao),
-        );
       const correspondeTipo =
         tipos.size === 0 ||
         tipos.has(produto.tipoProduto as TipoProdutoConfiavel);
@@ -92,7 +86,6 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
         correspondeStatus &&
         correspondeCategoria &&
         correspondeMarca &&
-        correspondeSecoes &&
         correspondeTipo
       );
     });
@@ -119,7 +112,6 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
     dados.produtos,
     direcaoOrdenacao,
     marcasIds,
-    secoesIds,
     status,
     tipos,
   ]);
@@ -135,15 +127,7 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
 
   useEffect(() => {
     setPagina(0);
-  }, [
-    busca,
-    status,
-    categoriasIds,
-    marcasIds,
-    secoesIds,
-    tipos,
-    itensPorPagina,
-  ]);
+  }, [busca, status, categoriasIds, marcasIds, tipos, itensPorPagina]);
 
   useEffect(() => {
     if (pagina >= totalPaginas) setPagina(totalPaginas - 1);
@@ -190,7 +174,6 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
     setStatus(new Set());
     setCategoriasIds(new Set());
     setMarcasIds(new Set());
-    setSecoesIds(new Set());
     setTipos(new Set());
   }
 
@@ -204,18 +187,12 @@ export function useListagemAlteracaoEmMassa(dados: DadosAlteracaoEmMassa) {
     alternarCategoria: (id: string) => alternarEmConjunto(id, setCategoriasIds),
     marcasIds,
     alternarMarca: (id: string) => alternarEmConjunto(id, setMarcasIds),
-    secoesIds,
-    alternarSecao: (id: string) => alternarEmConjunto(id, setSecoesIds),
     tipos,
     alternarTipo: (tipo: TipoProdutoConfiavel) =>
       alternarEmConjunto(tipo, setTipos),
     limparFiltros,
     totalFiltrosAtivos:
-      status.size +
-      categoriasIds.size +
-      marcasIds.size +
-      secoesIds.size +
-      tipos.size,
+      status.size + categoriasIds.size + marcasIds.size + tipos.size,
     produtosFiltrados,
     produtosPagina,
     selecionadosIds,

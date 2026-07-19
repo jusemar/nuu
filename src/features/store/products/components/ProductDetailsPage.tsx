@@ -82,6 +82,7 @@ interface ProductDetailProps {
       ativo: boolean | null;
     } | null;
   };
+  nomeComercialLoja: string | null;
   breadcrumbCategorias: string[];
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
   precosCalculadosPorVariante: PrecosProdutoPorModalidade;
@@ -92,6 +93,7 @@ interface ProductDetailProps {
 // ==========================================
 export function ProductDetail({
   product,
+  nomeComercialLoja,
   breadcrumbCategorias,
   precosCalculadosPorModalidade,
   precosCalculadosPorVariante,
@@ -428,7 +430,7 @@ export function ProductDetail({
               sku={product.sku}
               rating={ratingProduto}
               totalAvaliacoes={totalAvaliacoesProduto}
-              vendedor={product.brand ? `Loja ${product.brand}` : undefined}
+              vendedor={nomeComercialLoja || undefined}
               vendedorRating={0}
               descricao={productShortDescription}
               // === ESTADO GLOBAL DE MODALIDADES (NOVO) ===

@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/features/store/products/service/productService";
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
 import { calcularPrecosProduto } from "@/features/precificacao";
+import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { db } from "@/db/connection";
 import { categoryTable } from "@/db/table/categories/categories";
 import { eq } from "drizzle-orm";
@@ -101,14 +102,19 @@ export default async function ProductPage({ params }: PageProps) {
 
     while (categoriaAtualId && !visitados.has(categoriaAtualId)) {
       visitados.add(categoriaAtualId);
-      const categoria = await db.query.categoryTable.findFirst({
-        where: eq(categoryTable.id, categoriaAtualId),
-        columns: {
-          id: true,
-          name: true,
-          parentId: true,
-        },
-      });
+      const categoria: {
+        id: string;
+        name: string;
+        parentId: string | null;
+      } | null =
+        (await db.query.categoryTable.findFirst({
+          where: eq(categoryTable.id, categoriaAtualId),
+          columns: {
+            id: true,
+            name: true,
+            parentId: true,
+          },
+        })) ?? null;
 
       if (!categoria) break;
 
@@ -139,11 +145,13 @@ export default async function ProductPage({ params }: PageProps) {
   const breadcrumbCategorias = await buscarCaminhoCategoriaAtual(
     product.categoryId,
   );
+  const configuracaoLoja = await buscarConfiguracaoLoja();
 
   // 4. Passa os dados REAIS para o componente client renderizar
   return (
     <ProductDetail
       product={{ ...product, pricing }}
+      nomeComercialLoja={configuracaoLoja.nomeComercial}
       breadcrumbCategorias={breadcrumbCategorias}
       precosCalculadosPorModalidade={precosCalculadosPorModalidade}
       precosCalculadosPorVariante={precosCalculadosPorVariante}

@@ -133,10 +133,8 @@ export function ProductInfo({
             <>
               <span className="bg-surface-border-mid h-1 w-1 rounded-full" />
               <span className="text-text-muted text-xs">
-                Vendido por{" "}
-                <a href="#" className="text-primary font-semibold no-underline">
-                  {vendedor}
-                </a>
+                Vendido por:{" "}
+                <span className="text-primary font-semibold">{vendedor}</span>
               </span>
               {vendedorRating > 0 ? (
                 <span className="bg-success-light text-success inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold">
@@ -170,9 +168,7 @@ export function ProductInfo({
         <p className="text-text-muted text-[13px]">
           Este produto está sem variantes disponíveis no momento.
         </p>
-      ) : (
-        null
-      )}
+      ) : null}
 
       {/* DIVISOR */}
       <div className="bg-surface-border h-px w-full" />

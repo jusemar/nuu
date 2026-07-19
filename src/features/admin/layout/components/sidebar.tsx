@@ -269,6 +269,12 @@ export const menuAdmin = [
     icon: "Settings",
     items: [
       {
+        id: "dados-loja",
+        label: "Dados da loja",
+        href: "/admin/configuracoes/loja",
+        icon: "Store",
+      },
+      {
         id: "banners-home",
         label: "Banners da Home",
         href: "/admin/configuracoes/banners-home",

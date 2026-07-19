@@ -510,6 +510,10 @@ export {
   type BannerHome,
   type NovoBannerHome,
 } from "./tables/banners-home";
+export {
+  configuracoesLojaTable,
+  type ConfiguracaoLoja,
+} from "./tables/configuracoes-loja/tabelas/configuracoes-loja";
 export { categoryTable } from "./table/categories/categories";
 export { marcaTable } from "./table/marcas/marcas";
 export { productTable } from "./table/products/products";

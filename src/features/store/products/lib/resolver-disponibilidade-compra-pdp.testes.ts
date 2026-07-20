@@ -10,7 +10,7 @@ const precoValido = {
   cartao: { ativo: true, valorEmCentavos: 11_000 },
 } as PrecoProdutoCalculado;
 
-const modalidade = { isActive: true } as Parameters<
+const modalidade = { isActive: true, type: "pre_sale" } as Parameters<
   typeof resolverDisponibilidadeCompraPdp
 >[0]["modalidade"];
 
@@ -22,6 +22,19 @@ const variante = {
   typeof resolverDisponibilidadeCompraPdp
 >[0]["varianteSelecionada"];
 
+const varianteTecnica = {
+  situacao: "confiavel" as const,
+  variante: {
+    id: "tecnica-1",
+    sku: "SIMPLES-1",
+    atributos: {},
+    precoEmCentavos: 10_000,
+    estoque: 2,
+    ativa: true,
+    principal: true,
+  },
+};
+
 test("mantém modalidades sem estoque local compráveis", () => {
   const resultado = resolverDisponibilidadeCompraPdp({
     tipoProduto: "simple",
@@ -29,12 +42,42 @@ test("mantém modalidades sem estoque local compráveis", () => {
     precoCalculado: precoValido,
     varianteSelecionada: null,
     possuiVariantesPublicas: false,
+    varianteTecnicaProdutoSimples: varianteTecnica,
   });
 
   assert.deepEqual(resultado, {
     estado: "disponivel",
     estoqueMaximo: null,
   });
+});
+
+test("usa o estoque técnico na modalidade de estoque próprio", () => {
+  const resultado = resolverDisponibilidadeCompraPdp({
+    tipoProduto: "simple",
+    modalidade: { ...modalidade!, type: "stock" },
+    precoCalculado: precoValido,
+    varianteSelecionada: null,
+    possuiVariantesPublicas: false,
+    varianteTecnicaProdutoSimples: varianteTecnica,
+  });
+
+  assert.deepEqual(resultado, { estado: "disponivel", estoqueMaximo: 2 });
+});
+
+test("bloqueia estoque próprio simples sem saldo", () => {
+  const resultado = resolverDisponibilidadeCompraPdp({
+    tipoProduto: "simple",
+    modalidade: { ...modalidade!, type: "stock" },
+    precoCalculado: precoValido,
+    varianteSelecionada: null,
+    possuiVariantesPublicas: false,
+    varianteTecnicaProdutoSimples: {
+      ...varianteTecnica,
+      variante: { ...varianteTecnica.variante, estoque: 0 },
+    },
+  });
+
+  assert.equal(resultado.estado, "indisponivel");
 });
 
 test("solicita seleção antes de liberar produto variável", () => {
@@ -84,6 +127,7 @@ test("bloqueia produto sem forma de pagamento com preço válido", () => {
     },
     varianteSelecionada: null,
     possuiVariantesPublicas: false,
+    varianteTecnicaProdutoSimples: varianteTecnica,
   });
 
   assert.equal(resultado.estado, "indisponivel");

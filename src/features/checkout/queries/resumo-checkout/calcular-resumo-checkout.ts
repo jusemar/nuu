@@ -17,10 +17,7 @@ import {
   calcularFreteItensCheckout,
   resolverFreteItemCheckout,
 } from "../../lib/resumo-checkout/calcular-frete-itens-checkout";
-import {
-  resolverItemVendavelCheckout,
-  selecionarPrecoProdutoCheckout,
-} from "../../lib/pedidos/normalizar-checkout-visitante";
+import { resolverItemVendavelCheckout } from "../../lib/pedidos/normalizar-checkout-visitante";
 import type { ResumoCheckoutCalculado } from "../../types/checkout.types";
 
 type CalcularResumoCheckoutParams = {
@@ -107,13 +104,7 @@ export async function calcularResumoCheckout({
 
     const itemVendavel = resolverItemVendavelCheckout({ item, produto });
     const precoSelecionado =
-      itemVendavel.tipo === "simple"
-        ? selecionarPrecoProdutoCheckout(
-            produto,
-            item.variante,
-            item.modalidadeTipo,
-          )
-        : null;
+      itemVendavel.tipo === "simple" ? itemVendavel.precoSelecionado : null;
     const precoBaseEmCentavos =
       itemVendavel.tipo === "variant"
         ? itemVendavel.variante.priceInCents
@@ -158,7 +149,9 @@ export async function calcularResumoCheckout({
       id: item.id,
       produtoId: produto.id,
       produtoVarianteId:
-        itemVendavel.tipo === "variant" ? itemVendavel.variante.id : undefined,
+        itemVendavel.tipo === "variant"
+          ? itemVendavel.variante.id
+          : itemVendavel.varianteTecnica.id,
       nome: produto.name,
       sku:
         itemVendavel.tipo === "variant"

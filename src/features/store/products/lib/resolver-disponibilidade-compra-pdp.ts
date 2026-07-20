@@ -1,4 +1,5 @@
 import type { PrecoProdutoCalculado } from "@/features/precificacao";
+import type { ResultadoVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 
 import type {
   PrecoModalidade,
@@ -25,12 +26,14 @@ export function resolverDisponibilidadeCompraPdp({
   precoCalculado,
   varianteSelecionada,
   possuiVariantesPublicas,
+  varianteTecnicaProdutoSimples,
 }: {
   tipoProduto?: string | null;
   modalidade: PrecoModalidade | null | undefined;
   precoCalculado: PrecoProdutoCalculado | null | undefined;
   varianteSelecionada: VarianteProdutoLoja | null;
   possuiVariantesPublicas: boolean;
+  varianteTecnicaProdutoSimples?: ResultadoVarianteTecnicaProdutoSimples | null;
 }): DisponibilidadeCompraPdp {
   if (tipoProduto === "variable") {
     if (!possuiVariantesPublicas) {
@@ -78,7 +81,31 @@ export function resolverDisponibilidadeCompraPdp({
     };
   }
 
-  // Produtos simples são vendidos pelas modalidades comerciais cadastradas.
+  if (varianteTecnicaProdutoSimples?.situacao !== "confiavel") {
+    return {
+      estado: "indisponivel",
+      estoqueMaximo: 0,
+      motivo:
+        varianteTecnicaProdutoSimples?.motivo ||
+        "Este produto está sem estoque interno confiável.",
+    };
+  }
+
+  if (modalidade.type === "stock") {
+    if (varianteTecnicaProdutoSimples.variante.estoque <= 0) {
+      return {
+        estado: "indisponivel",
+        estoqueMaximo: 0,
+        motivo: "Este produto está sem estoque no momento.",
+      };
+    }
+
+    return {
+      estado: "disponivel",
+      estoqueMaximo: varianteTecnicaProdutoSimples.variante.estoque,
+    };
+  }
+
   // Pré-venda, dropshipping e sob encomenda não dependem de estoque local.
   return { estado: "disponivel", estoqueMaximo: null };
 }

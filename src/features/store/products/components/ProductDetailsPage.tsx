@@ -31,6 +31,7 @@ import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 import type {
   ParcelamentoCartaoCalculado,
   PrecosProdutoPorModalidade,
@@ -132,6 +133,21 @@ export function ProductDetail({
   const publicVariants = (product.variants || []).filter(
     (variant) => variant.isActive,
   );
+  const varianteTecnicaProdutoSimples =
+    product.productKind !== "variable"
+      ? identificarVarianteTecnicaProdutoSimples({
+          skuProduto: product.sku,
+          variantes: (product.variants || []).map((variant) => ({
+            id: variant.id,
+            sku: variant.sku,
+            atributos: variant.attributes,
+            precoEmCentavos: variant.priceInCents,
+            estoque: variant.stockQuantity,
+            ativa: variant.isActive,
+            principal: variant.isDefault,
+          })),
+        })
+      : null;
   const [selectedVariant, setSelectedVariant] =
     useState<VarianteProdutoLoja | null>(null);
   const hasSelectedVariant =
@@ -171,6 +187,7 @@ export function ProductDetail({
     precoCalculado: precoCompraCalculado,
     varianteSelecionada: selectedVariant,
     possuiVariantesPublicas: publicVariants.length > 0,
+    varianteTecnicaProdutoSimples,
   });
   const parcelamentoSelecionado = selecionarParcelamentoExibido(
     precoCompraCalculado?.cartao.parcelamentos || [],
@@ -324,7 +341,11 @@ export function ProductDetail({
 
     return {
       produtoId: product.id,
-      produtoVarianteId: selectedVariant?.id,
+      produtoVarianteId:
+        selectedVariant?.id ||
+        (varianteTecnicaProdutoSimples?.situacao === "confiavel"
+          ? varianteTecnicaProdutoSimples.variante.id
+          : undefined),
       produtoSlug: product.slug,
       produtoUrl: `/product/${product.slug}`,
       nome: product.name,
@@ -346,7 +367,11 @@ export function ProductDetail({
         : modalidadeAtiva.deliveryDays || "Consulte prazo",
       imagemUrl: galleryImages[0] || "/produto-sem-foto.webp",
       precoEmCentavos,
-      estoqueDisponivel: selectedVariant?.stockQuantity,
+      estoqueDisponivel:
+        selectedVariant?.stockQuantity ??
+        (varianteTecnicaProdutoSimples?.situacao === "confiavel"
+          ? varianteTecnicaProdutoSimples.variante.estoque
+          : undefined),
       pesoEmGramas: selectedVariant?.weightInGrams,
       alturaEmCm: selectedVariant?.heightInCm,
       larguraEmCm: selectedVariant?.widthInCm,

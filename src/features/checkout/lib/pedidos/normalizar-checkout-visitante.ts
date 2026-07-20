@@ -1,4 +1,5 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 import {
   calcularPrecoProduto,
   type ConfiguracaoPagamentoCalculavel,
@@ -25,6 +26,7 @@ type ProdutoCheckout = {
   sku: string;
   productKind?: string | null;
   isActive?: boolean | null;
+  status?: string | null;
   pricing: PrecoProdutoCheckout[];
   galleryImages?: Array<{
     imageUrl: string;
@@ -47,6 +49,7 @@ type VarianteProdutoCheckout = {
   widthInCm: number | null;
   lengthInCm: number | null;
   isActive: boolean;
+  isDefault: boolean;
 };
 
 export function normalizarEmailCheckout(email: string) {
@@ -71,26 +74,48 @@ export function selecionarPrecoProdutoCheckout(
   variante?: string,
   modalidadeTipo?: string,
 ) {
+  const modalidadeSolicitada = modalidadeTipo?.trim();
+  const precosAtivos = produto.pricing.filter((preco) => preco.isActive);
+  const precoPorModalidade = modalidadeSolicitada
+    ? produto.pricing.find((preco) => preco.type === modalidadeSolicitada)
+    : null;
+
+  if (modalidadeSolicitada && !precoPorModalidade?.isActive) {
+    throw new Error(`Modalidade indisponível para ${produto.name}`);
+  }
+
   const precoSelecionado =
-    produto.pricing.find((preco) => preco.type === modalidadeTipo) ||
-    produto.pricing.find(
+    precoPorModalidade ||
+    precosAtivos.find(
       (preco) =>
         preco.pricingModalDescription === variante || preco.type === variante,
     ) ||
-    produto.pricing.find((preco) => preco.mainCardPrice) ||
-    produto.pricing.find((preco) => preco.isActive) ||
-    produto.pricing[0];
+    precosAtivos.find((preco) => preco.mainCardPrice) ||
+    precosAtivos[0];
 
   if (!precoSelecionado) {
     throw new Error(`Produto sem preço ativo: ${produto.name}`);
+  }
+
+  const precoEfetivo =
+    precoSelecionado.hasPromo && precoSelecionado.promoPrice
+      ? precoSelecionado.promoPrice
+      : precoSelecionado.price;
+
+  if (!Number.isSafeInteger(precoEfetivo) || precoEfetivo <= 0) {
+    throw new Error(`Produto sem preço válido: ${produto.name}`);
   }
 
   return precoSelecionado;
 }
 
 function validarProdutoCheckout(produto: ProdutoCheckout, quantidade: number) {
-  if (produto.isActive === false) {
+  if (produto.isActive === false || produto.status === "archived") {
     throw new Error(`Produto indisponível: ${produto.name}`);
+  }
+
+  if (produto.status && produto.status !== "published") {
+    throw new Error(`Produto não publicado: ${produto.name}`);
   }
 
   if (!Number.isInteger(quantidade) || quantidade <= 0) {
@@ -118,8 +143,46 @@ export function resolverItemVendavelCheckout({
   validarProdutoCheckout(produto, item.quantidade);
 
   if (produto.productKind !== "variable") {
+    const precoSelecionado = selecionarPrecoProdutoCheckout(
+      produto,
+      item.variante,
+      item.modalidadeTipo,
+    );
+    const identificacao = identificarVarianteTecnicaProdutoSimples({
+      skuProduto: produto.sku,
+      variantes: (produto.variants || []).map((variante) => ({
+        id: variante.id,
+        sku: variante.sku,
+        atributos: variante.attributes,
+        precoEmCentavos: variante.priceInCents,
+        estoque: variante.stockQuantity,
+        ativa: variante.isActive,
+        principal: variante.isDefault,
+      })),
+    });
+
+    if (identificacao.situacao !== "confiavel") {
+      throw new Error(`${produto.name}: ${identificacao.motivo}`);
+    }
+
+    if (
+      item.produtoVarianteId &&
+      item.produtoVarianteId !== identificacao.variante.id
+    ) {
+      throw new Error(`Variante técnica inválida para ${produto.name}`);
+    }
+
+    if (
+      precoSelecionado.type === "stock" &&
+      identificacao.variante.estoque < item.quantidade
+    ) {
+      throw new Error(`Estoque insuficiente para ${produto.name}`);
+    }
+
     return {
       tipo: "simple" as const,
+      precoSelecionado,
+      varianteTecnica: identificacao.variante,
       imagemUrl: item.imagemUrl || obterImagemGaleriaProduto(produto) || null,
     };
   }
@@ -205,11 +268,7 @@ export function montarSnapshotItemPedidoCheckout({
     };
   }
 
-  const precoSelecionado = selecionarPrecoProdutoCheckout(
-    produto,
-    item.variante,
-    item.modalidadeTipo,
-  );
+  const precoSelecionado = itemVendavel.precoSelecionado;
   const precoBaseEmCentavos =
     precoSelecionado.hasPromo && precoSelecionado.promoPrice
       ? precoSelecionado.promoPrice
@@ -229,7 +288,7 @@ export function montarSnapshotItemPedidoCheckout({
 
   return {
     produtoId: produto.id,
-    varianteId: null,
+    varianteId: itemVendavel.varianteTecnica.id,
     nomeProduto: produto.name,
     nomeVariante: null,
     atributosVariante: {},

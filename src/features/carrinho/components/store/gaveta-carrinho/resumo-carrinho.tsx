@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -31,11 +33,15 @@ export function ResumoCarrinho({
   subtotalEmCentavos,
   onContinuarComprando,
 }: ResumoCarrinhoProps) {
+  const router = useRouter();
   const [resultadoCupom, setResultadoCupom] =
     useState<ResultadoValidarCupomPromocao | null>(null);
   const [previaTotais, setPreviaTotais] =
     useState<ResultadoCalcularPreviaTotaisPedido | null>(null);
+  const [erroValidacao, setErroValidacao] = useState<string | null>(null);
+  const finalizacaoEmCursoRef = useRef(false);
   const [, startTransition] = useTransition();
+  const [finalizandoCompra, iniciarFinalizacao] = useTransition();
 
   const totaisEstimados = previaTotais?.totaisPorFormaPagamento.cartao;
   const descontoCupomEmCentavos = totaisEstimados?.descontoCupomEmCentavos ?? 0;
@@ -62,11 +68,65 @@ export function ResumoCarrinho({
   );
 
   useEffect(() => {
+    let consultaCancelada = false;
+
     startTransition(async () => {
-      const previa = await calcularPreviaTotaisPedido({ itens });
-      setPreviaTotais(previa);
+      try {
+        const previa = await calcularPreviaTotaisPedido({ itens });
+        if (!consultaCancelada) {
+          setPreviaTotais(previa);
+          setErroValidacao(null);
+        }
+      } catch (error) {
+        if (!consultaCancelada) {
+          setPreviaTotais(null);
+          setErroValidacao(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível validar os itens do carrinho.",
+          );
+        }
+      }
     });
+
+    return () => {
+      consultaCancelada = true;
+    };
   }, [itens, subtotalEmCentavos]);
+
+  function finalizarCompra() {
+    if (finalizacaoEmCursoRef.current) return;
+
+    finalizacaoEmCursoRef.current = true;
+    setErroValidacao(null);
+    iniciarFinalizacao(async () => {
+      if (itens.length === 0) {
+        setErroValidacao("Seu carrinho está vazio.");
+        finalizacaoEmCursoRef.current = false;
+        return;
+      }
+
+      try {
+        const previa = await calcularPreviaTotaisPedido({ itens });
+
+        if (!previa) {
+          setErroValidacao("Seu carrinho está vazio.");
+          finalizacaoEmCursoRef.current = false;
+          return;
+        }
+
+        setPreviaTotais(previa);
+        router.push("/checkout");
+      } catch (error) {
+        finalizacaoEmCursoRef.current = false;
+        setErroValidacao(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível validar os itens do carrinho.",
+        );
+      }
+    });
+  }
 
   return (
     <footer className="border-t border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -149,8 +209,31 @@ export function ResumoCarrinho({
         </div>
 
         <div className="grid gap-2">
-          <Button className="h-11 w-full rounded-md" asChild>
-            <Link href="/checkout">Finalizar compra</Link>
+          {erroValidacao ? (
+            <div
+              className="flex gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"
+              role="alert"
+            >
+              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>{erroValidacao}</span>
+            </div>
+          ) : null}
+
+          <Button
+            aria-busy={finalizandoCompra}
+            className="h-11 w-full rounded-md"
+            disabled={finalizandoCompra || itens.length === 0}
+            type="button"
+            onClick={finalizarCompra}
+          >
+            {finalizandoCompra ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Validando carrinho...
+              </>
+            ) : (
+              "Finalizar compra"
+            )}
           </Button>
 
           <Button

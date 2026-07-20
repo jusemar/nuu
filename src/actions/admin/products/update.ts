@@ -7,6 +7,7 @@ import {
   categoryTable,
   productTable,
   productPricingTable,
+  productVariantTable,
   productGalleryImagesTable,
   marcaTable,
 } from "@/db/schema";
@@ -25,6 +26,7 @@ import {
   descreverErroBancoParaLog,
   erroEhTransitorioDeBanco,
 } from "@/features/products/lib/classificar-erro-banco";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 function revalidatePathSeguro(path: string, recurso: string) {
   try {
@@ -333,11 +335,70 @@ export async function updateProduct(id: string, data: UpdateProductData) {
 
     etapaAtual = "transacao_atualizacao";
     await dbTransacional.transaction(async (tx) => {
+      const tipoProdutoFinal =
+        data.productKind ?? existingProduct.productKind ?? "simple";
+      let varianteTecnicaConfiavelId: string | null = null;
+      if (
+        tipoProdutoFinal === "simple" &&
+        existingProduct.productKind === "simple"
+      ) {
+        const variantesAtuais = await tx
+          .select({
+            id: productVariantTable.id,
+            sku: productVariantTable.sku,
+            atributos: productVariantTable.attributes,
+            precoEmCentavos: productVariantTable.priceInCents,
+            estoque: productVariantTable.stockQuantity,
+            ativa: productVariantTable.isActive,
+            principal: productVariantTable.isDefault,
+          })
+          .from(productVariantTable)
+          .where(eq(productVariantTable.productId, id));
+        const identificacao = identificarVarianteTecnicaProdutoSimples({
+          skuProduto: existingProduct.sku,
+          variantes: variantesAtuais,
+        });
+        varianteTecnicaConfiavelId =
+          identificacao.situacao === "confiavel"
+            ? identificacao.variante.id
+            : null;
+      }
+
       if (Object.keys(updateFields).length > 1) {
         await tx
           .update(productTable)
           .set(updateFields)
           .where(eq(productTable.id, id));
+      }
+
+      if (
+        varianteTecnicaConfiavelId &&
+        (data.sku !== undefined ||
+          data.name !== undefined ||
+          data.dimensoesFreteExterno !== undefined)
+      ) {
+        await tx
+          .update(productVariantTable)
+          .set({
+            ...(data.sku !== undefined && { sku: data.sku }),
+            ...(data.name !== undefined && { name: data.name }),
+            ...(data.dimensoesFreteExterno !== undefined && {
+              weightInGrams: converterPesoEmGramas(
+                data.dimensoesFreteExterno.pesoEmKg,
+              ),
+              heightInCm: converterValorEmInteiro(
+                data.dimensoesFreteExterno.alturaEmCm,
+              ),
+              widthInCm: converterValorEmInteiro(
+                data.dimensoesFreteExterno.larguraEmCm,
+              ),
+              lengthInCm: converterValorEmInteiro(
+                data.dimensoesFreteExterno.comprimentoEmCm,
+              ),
+            }),
+            updatedAt: new Date(),
+          })
+          .where(eq(productVariantTable.id, varianteTecnicaConfiavelId));
       }
 
       if (data.pricing?.modalities !== undefined) {
@@ -433,6 +494,8 @@ export async function updateProduct(id: string, data: UpdateProductData) {
             data.productKind ?? existingProduct.productKind ?? "simple",
           attributes: data.attributes ?? [],
           variants: data.variants ?? [],
+          preservarVarianteTecnicaProdutoSimples:
+            existingProduct.productKind === "simple",
           executor: tx,
         });
       }

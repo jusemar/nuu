@@ -245,10 +245,10 @@ export async function createProduct(data: CreateProductData) {
     });
 
     let varianteTecnicaId: string | null = null;
-    if (
-      (data.productKind ?? "simple") === "simple" &&
-      data.varianteTecnicaProdutoSimples
-    ) {
+    if ((data.productKind ?? "simple") === "simple") {
+      const precoTecnico =
+        data.varianteTecnicaProdutoSimples?.precoEmCentavos ??
+        obterPrecoPrincipalFormulario(data.pricing);
       const [varianteTecnica] = await db
         .insert(productVariantTable)
         .values({
@@ -256,8 +256,8 @@ export async function createProduct(data: CreateProductData) {
           sku: data.sku,
           name: data.name,
           attributes: {},
-          priceInCents: data.varianteTecnicaProdutoSimples.precoEmCentavos,
-          stockQuantity: data.varianteTecnicaProdutoSimples.estoque,
+          priceInCents: precoTecnico,
+          stockQuantity: data.varianteTecnicaProdutoSimples?.estoque ?? 0,
           weightInGrams: converterPesoEmGramas(
             data.dimensoesFreteExterno?.pesoEmKg,
           ),
@@ -270,7 +270,11 @@ export async function createProduct(data: CreateProductData) {
           lengthInCm: converterValorEmInteiro(
             data.dimensoesFreteExterno?.comprimentoEmCm,
           ),
-          imageUrl: data.varianteTecnicaProdutoSimples.imagemUrl ?? null,
+          imageUrl:
+            data.varianteTecnicaProdutoSimples?.imagemUrl ??
+            validImages.find((imagem) => imagem.isPrimary)?.url ??
+            validImages[0]?.url ??
+            null,
           isActive: true,
           isDefault: true,
           updatedAt: new Date(),
@@ -306,4 +310,20 @@ export async function createProduct(data: CreateProductData) {
       error: "Erro ao criar produto. Tente novamente.",
     };
   }
+}
+
+function obterPrecoPrincipalFormulario(pricing: CreateProductData["pricing"]) {
+  const modalidades = pricing?.modalities ?? {};
+  const principal = pricing?.mainCardPriceType
+    ? modalidades[pricing.mainCardPriceType]
+    : undefined;
+  const precoPrincipal = converterPrecoEmCentavos(principal?.price);
+  if (precoPrincipal !== null) return precoPrincipal;
+
+  for (const tipo of ["stock", "preSale", "dropshipping", "orderBasis"]) {
+    const preco = converterPrecoEmCentavos(modalidades[tipo]?.price);
+    if (preco !== null) return preco;
+  }
+
+  return 0;
 }

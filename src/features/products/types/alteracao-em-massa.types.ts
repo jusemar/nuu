@@ -39,6 +39,8 @@ export type ProdutoAlteracaoEmMassa = {
   estoqueVarianteTecnica: number | null;
   varianteTecnicaAtualizadaEm: Date | null;
   varianteTecnicaVersaoConcorrencia: string | null;
+  conflitoVarianteTecnica?: string | null;
+  resumoEstoqueVariantes?: string | null;
   precosModalidades: PrecoModalidadeProduto[];
   classificacoesLogisticasIds: string[];
   permiteRetirada: boolean;

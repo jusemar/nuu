@@ -31,9 +31,13 @@ import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
-import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+import type {
+  ParcelamentoCartaoCalculado,
+  PrecosProdutoPorModalidade,
+} from "@/features/precificacao";
 import { stripProductRichText } from "../utils/rich-text";
 import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
+import { resolverDisponibilidadeCompraPdp } from "../lib/resolver-disponibilidade-compra-pdp";
 
 import type {
   AtributoProdutoLoja,
@@ -107,6 +111,17 @@ export function ProductDetail({
   // -----------------------------------------
   // modalPgto: controla se o modal de pagamento está aberto
   const [modalPgto, setModalPgto] = useState(false);
+  const [formaPagamentoSelecionada, setFormaPagamentoSelecionada] = useState<
+    "pix" | "cartao"
+  >(() => {
+    const precosIniciais =
+      Object.values(precosCalculadosPorModalidade)[0] ??
+      Object.values(precosCalculadosPorVariante)[0];
+    return precosIniciais?.pix.ativo ? "pix" : "cartao";
+  });
+  const [parcelasSelecionadas, setParcelasSelecionadas] = useState<
+    number | null
+  >(null);
 
   // cupomAplicado: cupom de desconto ativo (ainda mock)
   const [cupomAplicado, setCupomAplicado] = useState<null | {
@@ -118,16 +133,7 @@ export function ProductDetail({
     (variant) => variant.isActive,
   );
   const [selectedVariant, setSelectedVariant] =
-    useState<VarianteProdutoLoja | null>(() => {
-      if (product.productKind !== "variable") return null;
-
-      return (
-        publicVariants.find((variant) => variant.isDefault) ||
-        publicVariants.find((variant) => variant.stockQuantity > 0) ||
-        publicVariants[0] ||
-        null
-      );
-    });
+    useState<VarianteProdutoLoja | null>(null);
   const hasSelectedVariant =
     product.productKind === "variable" && Boolean(selectedVariant);
 
@@ -157,6 +163,19 @@ export function ProductDetail({
     precoVarianteSelecionada?.cartao.parcelamentos || [];
   const precoModalidadeAtivaCalculado =
     precosCalculadosPorModalidade[modalidadeAtiva.type];
+  const precoCompraCalculado =
+    precoVarianteSelecionada ?? precoModalidadeAtivaCalculado;
+  const disponibilidadeCompra = resolverDisponibilidadeCompraPdp({
+    tipoProduto: product.productKind,
+    modalidade: modalidadeAtiva,
+    precoCalculado: precoCompraCalculado,
+    varianteSelecionada: selectedVariant,
+    possuiVariantesPublicas: publicVariants.length > 0,
+  });
+  const parcelamentoSelecionado = selecionarParcelamentoExibido(
+    precoCompraCalculado?.cartao.parcelamentos || [],
+    parcelasSelecionadas,
+  );
   const promocaoVisualModalidadeAtiva = formatarPromocaoPrecoPdp(
     precoModalidadeAtivaCalculado,
   );
@@ -468,10 +487,10 @@ export function ProductDetail({
               promocaoVisual={promocaoVisualCompra}
               prazoEntrega={prazoEntrega}
               // Dados reais de entrega
-              estoque={
-                selectedVariant?.stockQuantity ??
-                (product.productKind === "variable" ? 0 : 0)
-              }
+              disponibilidadeCompra={disponibilidadeCompra}
+              formaPagamentoSelecionada={formaPagamentoSelecionada}
+              precoCalculado={precoCompraCalculado}
+              parcelamentoSelecionado={parcelamentoSelecionado}
               selectedVariantLabel={
                 selectedVariant
                   ? selectedVariant.name ||
@@ -573,8 +592,27 @@ export function ProductDetail({
             ? parcelamentosVariante
             : parcelamentosCartao
         }
+        precoCalculado={precoCompraCalculado}
+        formaSelecionada={formaPagamentoSelecionada}
+        parcelasSelecionadas={parcelamentoSelecionado?.parcelas ?? null}
+        onSelecionarForma={setFormaPagamentoSelecionada}
+        onSelecionarParcelas={(parcelas) => {
+          setFormaPagamentoSelecionada("cartao");
+          setParcelasSelecionadas(parcelas);
+        }}
       />
     </div>
+  );
+}
+
+function selecionarParcelamentoExibido(
+  parcelamentos: ParcelamentoCartaoCalculado[],
+  parcelasSelecionadas: number | null,
+) {
+  return (
+    parcelamentos.find(
+      (parcelamento) => parcelamento.parcelas === parcelasSelecionadas,
+    ) ?? parcelamentos[0]
   );
 }
 const tituloModalidadePorTipo: Record<string, string> = {

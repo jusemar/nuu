@@ -7,7 +7,10 @@
 
 "use client"; // Precisa ser client porque o modal fecha por interação do usuário
 
-import type { Parcelamento } from "../../types/product.types";
+import type {
+  ParcelamentoCartaoCalculado,
+  PrecoProdutoCalculado,
+} from "@/features/precificacao";
 
 // ==========================================
 // INTERFACE DAS PROPS (o que o componente recebe)
@@ -15,7 +18,12 @@ import type { Parcelamento } from "../../types/product.types";
 interface PaymentModalProps {
   isOpen: boolean; // true = modal visível, false = escondido
   onClose: () => void; // função que fecha o modal (vem do pai)
-  parcelamentos: Parcelamento[]; // array com opções de parcelamento
+  parcelamentos: ParcelamentoCartaoCalculado[];
+  precoCalculado?: PrecoProdutoCalculado | null;
+  formaSelecionada: "pix" | "cartao";
+  parcelasSelecionadas: number | null;
+  onSelecionarForma: (forma: "pix" | "cartao") => void;
+  onSelecionarParcelas: (parcelas: number) => void;
 }
 
 // ==========================================
@@ -25,6 +33,11 @@ export function PaymentModal({
   isOpen,
   onClose,
   parcelamentos,
+  precoCalculado,
+  formaSelecionada,
+  parcelasSelecionadas,
+  onSelecionarForma,
+  onSelecionarParcelas,
 }: PaymentModalProps) {
   // Se o modal não estiver aberto, não renderiza nada (retorna null)
   // Isso é importante para não poluir o DOM quando fechado
@@ -61,6 +74,9 @@ export function PaymentModal({
         animate-[slideUp_0.3s_ease]: animação de entrada (sobe de baixo)
       */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-formas-pagamento"
         className="max-h-[90vh] w-full max-w-md animate-[slideUp_0.3s_ease] overflow-y-auto rounded-t-[18px] bg-white p-5 sm:rounded-2xl sm:p-6"
         onClick={(e) => e.stopPropagation()} // Impede que clique na caixa feche o modal
       >
@@ -69,7 +85,10 @@ export function PaymentModal({
             ----------------------------------------- */}
         <div className="mb-5 flex items-center justify-between">
           {/* Título do modal */}
-          <h3 className="text-text-primary text-base font-extrabold">
+          <h3
+            id="titulo-formas-pagamento"
+            className="text-text-primary text-base font-extrabold"
+          >
             Formas de Pagamento
           </h3>
 
@@ -84,6 +103,8 @@ export function PaymentModal({
             transition-colors: animação suave da cor
           */}
           <button
+            type="button"
+            aria-label="Fechar formas de pagamento"
             onClick={onClose}
             className="hover:bg-surface-border flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-lg transition-colors"
           >
@@ -94,8 +115,55 @@ export function PaymentModal({
         {/* -----------------------------------------
             TÍTULO: Cartão de Crédito
             ----------------------------------------- */}
+        <div
+          role="radiogroup"
+          aria-label="Forma de pagamento"
+          className="mb-4 grid grid-cols-2 gap-2"
+        >
+          {precoCalculado?.pix.ativo ? (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={formaSelecionada === "pix"}
+              onClick={() => onSelecionarForma("pix")}
+              className={`rounded-xl border p-3 text-left transition-all ${
+                formaSelecionada === "pix"
+                  ? "border-primary bg-primary-light ring-primary ring-1"
+                  : "border-surface-border hover:border-primary-mid bg-white"
+              }`}
+            >
+              <span className="text-text-primary block text-sm font-extrabold">
+                PIX
+              </span>
+              <span className="text-success block text-xs font-semibold">
+                {precoCalculado.pix.valor}
+              </span>
+            </button>
+          ) : null}
+          {precoCalculado?.cartao.ativo ? (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={formaSelecionada === "cartao"}
+              onClick={() => onSelecionarForma("cartao")}
+              className={`rounded-xl border p-3 text-left transition-all ${
+                formaSelecionada === "cartao"
+                  ? "border-primary bg-primary-light ring-primary ring-1"
+                  : "border-surface-border hover:border-primary-mid bg-white"
+              }`}
+            >
+              <span className="text-text-primary block text-sm font-extrabold">
+                Cartão
+              </span>
+              <span className="text-text-muted block text-xs font-semibold">
+                {precoCalculado.cartao.valor}
+              </span>
+            </button>
+          ) : null}
+        </div>
+
         <div className="text-text-hint mb-2 text-[10px] font-bold tracking-wider uppercase">
-          Cartão de Crédito — preço normal
+          Parcelamento no cartão
         </div>
 
         {/* -----------------------------------------
@@ -107,13 +175,20 @@ export function PaymentModal({
         <div className="flex flex-col gap-1">
           {/* Mapeia o array de parcelamentos e cria um item para cada um */}
           {parcelamentos.map((parcela, index) => (
-            /* 
-              DIV: cada opção é apenas informativa
-              Não há seleção porque a escolha de parcelamento acontece no checkout/gateway
-            */
-            <div
-              key={index}
-              className="border-surface-border flex items-center gap-2.5 rounded-lg border-[1.5px] p-2.5"
+            <button
+              type="button"
+              key={parcela.parcelas || index}
+              onClick={() => onSelecionarParcelas(parcela.parcelas)}
+              aria-pressed={
+                formaSelecionada === "cartao" &&
+                parcelasSelecionadas === parcela.parcelas
+              }
+              className={`flex items-center gap-2.5 rounded-lg border-[1.5px] p-2.5 text-left transition-all ${
+                formaSelecionada === "cartao" &&
+                parcelasSelecionadas === parcela.parcelas
+                  ? "border-primary bg-primary-light ring-primary ring-1"
+                  : "border-surface-border hover:border-primary-mid"
+              }`}
             >
               {/* Informações da parcela */}
               <div className="flex-1">
@@ -133,7 +208,7 @@ export function PaymentModal({
                   sem juros
                 </span>
               )}
-            </div>
+            </button>
           ))}
         </div>
 
@@ -141,6 +216,7 @@ export function PaymentModal({
             BOTÃO FECHAR
             ----------------------------------------- */}
         <button
+          type="button"
           onClick={onClose}
           className="bg-primary hover:bg-primary-mid mt-4 w-full rounded-lg py-3 text-sm font-bold text-white transition-all active:scale-[0.98]"
         >

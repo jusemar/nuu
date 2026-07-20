@@ -274,7 +274,8 @@ export function calcularPlanoAlteracaoEmMassa(
                 "Estoque",
                 "Sem variante técnica",
                 "—",
-                "Produto simples sem variante técnica confiável.",
+                produto.conflitoVarianteTecnica ??
+                  "Produto simples sem variante técnica confiável.",
               ),
             ];
           }

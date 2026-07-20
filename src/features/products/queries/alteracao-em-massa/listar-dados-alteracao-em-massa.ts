@@ -15,6 +15,10 @@ import {
 } from "@/db/schema";
 
 import { normalizarModalidadePreco } from "../../constants/modalidades-preco";
+import {
+  identificarVarianteTecnicaProdutoSimples,
+  resumirEstoqueVariantesProduto,
+} from "../../lib/variante-tecnica-produto-simples";
 import type { ResultadoAlteracaoEmMassa } from "../../types/alteracao-em-massa.types";
 
 const DADOS_VAZIOS = {
@@ -211,7 +215,10 @@ export async function listarDadosAlteracaoEmMassa(
               id: productVariantTable.id,
               produtoId: productVariantTable.productId,
               sku: productVariantTable.sku,
+              atributos: productVariantTable.attributes,
+              precoEmCentavos: productVariantTable.priceInCents,
               estoque: productVariantTable.stockQuantity,
+              ativa: productVariantTable.isActive,
               principal: productVariantTable.isDefault,
               atualizadoEm: productVariantTable.updatedAt,
               versaoConcorrencia:
@@ -265,14 +272,24 @@ export async function listarDadosAlteracaoEmMassa(
       dados: {
         produtos: produtos.map((produto) => {
           const variantesProduto = variantesPorProduto.get(produto.id) ?? [];
-          const varianteTecnica =
+          const identificacaoVarianteTecnica =
             produto.tipoProduto === "simple"
-              ? (variantesProduto.find((variante) => variante.principal) ??
-                variantesProduto.find(
-                  (variante) => variante.sku === produto.sku,
-                ) ??
-                variantesProduto[0])
-              : undefined;
+              ? identificarVarianteTecnicaProdutoSimples({
+                  skuProduto: produto.sku,
+                  variantes: variantesProduto,
+                })
+              : null;
+          const varianteTecnica =
+            identificacaoVarianteTecnica?.situacao === "confiavel"
+              ? (variantesProduto.find(
+                  (variante) =>
+                    variante.id === identificacaoVarianteTecnica.variante.id,
+                ) ?? null)
+              : null;
+          const resumoEstoqueVariantes =
+            produto.tipoProduto === "variable"
+              ? resumirEstoqueVariantesProduto(variantesProduto)
+              : null;
 
           return {
             ...produto,
@@ -284,6 +301,12 @@ export async function listarDadosAlteracaoEmMassa(
             varianteTecnicaAtualizadaEm: varianteTecnica?.atualizadoEm ?? null,
             varianteTecnicaVersaoConcorrencia:
               varianteTecnica?.versaoConcorrencia ?? null,
+            conflitoVarianteTecnica:
+              identificacaoVarianteTecnica &&
+              identificacaoVarianteTecnica.situacao !== "confiavel"
+                ? identificacaoVarianteTecnica.motivo
+                : null,
+            resumoEstoqueVariantes: resumoEstoqueVariantes?.rotulo ?? null,
             precosModalidades: (precosPorProduto.get(produto.id) ?? []).flatMap(
               (preco) => {
                 const modalidade = normalizarModalidadePreco(preco.modalidade);

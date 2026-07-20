@@ -98,7 +98,7 @@ export function TabelaProdutosAlteracaoEmMassa({
   return (
     <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
       <div className="overflow-x-auto">
-        <Table className="min-w-[980px]">
+        <Table className="min-w-[1080px]">
           <TableHeader className="bg-muted/60">
             <TableRow>
               <TableHead className="w-12">
@@ -136,6 +136,7 @@ export function TabelaProdutosAlteracaoEmMassa({
                 </CabecalhoOrdenavel>
               </TableHead>
               <TableHead className="min-w-80">Preços</TableHead>
+              <TableHead className="min-w-36">Estoque</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -190,6 +191,28 @@ export function TabelaProdutosAlteracaoEmMassa({
                   <TableCell>{produto.marcaNome}</TableCell>
                   <TableCell>
                     <CelulaPrecosProduto precos={produto.precosModalidades} />
+                  </TableCell>
+                  <TableCell>
+                    {produto.tipoProduto === "simple" ? (
+                      produto.estoqueVarianteTecnica !== null ? (
+                        <span className="font-mono text-sm font-semibold">
+                          {produto.estoqueVarianteTecnica} un.
+                        </span>
+                      ) : (
+                        <span
+                          className="text-muted-foreground"
+                          title={produto.conflitoVarianteTecnica ?? undefined}
+                        >
+                          —
+                        </span>
+                      )
+                    ) : produto.tipoProduto === "variable" ? (
+                      <span className="text-muted-foreground text-xs whitespace-nowrap">
+                        {produto.resumoEstoqueVariantes ?? "—"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                 </TableRow>
               );

@@ -185,19 +185,29 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
       sku: plano.produto.sku,
       resultado: "sem_alteracao" as const,
     })),
-    ...conflitos.map((plano) => ({
-      produtoId: plano.produto.id,
-      produto: plano.produto.nome,
-      sku: plano.produto.sku,
-      resultado: "erro" as const,
-      mensagem:
-        plano.linhas.find((linha) => linha.resultado === "conflito")?.motivo ??
-        "O produto não é elegível para esta alteração.",
-      entidade: "preco" as const,
-      etapa: "validacao_da_modalidade",
-      orientacao:
-        "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
-    })),
+    ...conflitos.map((plano) => {
+      const linhaConflito = plano.linhas.find(
+        (linha) => linha.resultado === "conflito",
+      );
+      const conflitoEstoque = linhaConflito?.campo === "Estoque";
+
+      return {
+        produtoId: plano.produto.id,
+        produto: plano.produto.nome,
+        sku: plano.produto.sku,
+        resultado: "erro" as const,
+        mensagem:
+          linhaConflito?.motivo ??
+          "O produto não é elegível para esta alteração.",
+        entidade: conflitoEstoque ? ("estoque" as const) : ("preco" as const),
+        etapa: conflitoEstoque
+          ? "validacao_da_variante_tecnica"
+          : "validacao_da_modalidade",
+        orientacao: conflitoEstoque
+          ? "Corrija o registro técnico do produto simples antes de alterar seu estoque em massa."
+          : "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
+      };
+    }),
   ];
 
   let alterados = 0;

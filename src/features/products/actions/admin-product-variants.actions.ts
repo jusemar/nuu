@@ -24,6 +24,7 @@ type SaveProductVariantsInput = {
   productKind?: ProductKind | string | null;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
+  preservarVarianteTecnicaProdutoSimples?: boolean;
   executor?: any;
 };
 
@@ -42,6 +43,7 @@ export async function salvarEstruturaVariantesProduto({
   productKind,
   attributes = [],
   variants = [],
+  preservarVarianteTecnicaProdutoSimples = false,
   executor = db,
 }: SaveProductVariantsInput) {
   const normalizedKind = normalizeProductKind(productKind);
@@ -49,6 +51,11 @@ export async function salvarEstruturaVariantesProduto({
   await executor
     .delete(productAttributeTable)
     .where(eq(productAttributeTable.productId, productId));
+
+  if (normalizedKind === "simple" && preservarVarianteTecnicaProdutoSimples) {
+    // Edições de um produto já simples mantêm seu registro técnico.
+    return;
+  }
 
   await executor
     .delete(productVariantTable)

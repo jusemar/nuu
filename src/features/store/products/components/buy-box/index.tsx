@@ -13,6 +13,11 @@ import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
 import { montarFreteFrenetSelecionado } from "../../lib/frete/montar-frete-frenet-selecionado";
 import type { PromocaoVisualPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade } from "../../types/product.types";
+import type {
+  ParcelamentoCartaoCalculado,
+  PrecoProdutoCalculado,
+} from "@/features/precificacao";
+import type { DisponibilidadeCompraPdp } from "../../lib/resolver-disponibilidade-compra-pdp";
 
 // ==========================================
 // INTERFACE
@@ -25,7 +30,10 @@ interface BuyBoxProps {
   precoParc: string;
   descontoPix: number;
   promocaoVisual?: PromocaoVisualPdp | null;
-  estoque: number;
+  disponibilidadeCompra: DisponibilidadeCompraPdp;
+  formaPagamentoSelecionada: "pix" | "cartao";
+  precoCalculado?: PrecoProdutoCalculado | null;
+  parcelamentoSelecionado?: ParcelamentoCartaoCalculado;
   freteGratisMin?: number;
   prazoEntrega: string;
   selectedVariantLabel?: string | null;
@@ -101,7 +109,10 @@ export function BuyBox({
   precoParc,
   descontoPix,
   promocaoVisual = null,
-  estoque,
+  disponibilidadeCompra,
+  formaPagamentoSelecionada,
+  precoCalculado,
+  parcelamentoSelecionado,
   freteGratisMin = 299,
   prazoEntrega,
   selectedVariantLabel,
@@ -117,6 +128,8 @@ export function BuyBox({
   modalidadeAtiva,
   onTrocarModalidade,
 }: BuyBoxProps) {
+  const compraDisponivel = disponibilidadeCompra.estado === "disponivel";
+  const estoque = disponibilidadeCompra.estoqueMaximo;
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
   const [cep, setCep] = useState("");
@@ -163,7 +176,7 @@ export function BuyBox({
 
   // HANDLERS
   function aumentarQuantidade() {
-    if (quantidade < estoque) setQuantidade((q) => q + 1);
+    if (estoque === null || quantidade < estoque) setQuantidade((q) => q + 1);
   }
 
   function diminuirQuantidade() {
@@ -353,22 +366,42 @@ export function BuyBox({
           </div>
         )}
 
-        <div className="bg-pix-bg border-pix-border rounded-xl border p-3">
-          <div className="text-success mb-1 text-[11px] font-bold tracking-wide uppercase">
-            💸 PIX — {descontoPix}% de desconto
+        <div
+          className={`rounded-xl border p-3 ${
+            formaPagamentoSelecionada === "pix"
+              ? "bg-pix-bg border-pix-border"
+              : "border-primary/25 bg-primary-light"
+          }`}
+        >
+          <div
+            className={`mb-1 text-[11px] font-bold tracking-wide uppercase ${
+              formaPagamentoSelecionada === "pix"
+                ? "text-success"
+                : "text-primary"
+            }`}
+          >
+            {formaPagamentoSelecionada === "pix"
+              ? `💸 PIX — ${descontoPix}% de desconto`
+              : "Cartão de crédito"}
           </div>
 
           <div className="text-text-primary text-2xl font-extrabold tracking-tight">
-            {cupomAplicado
+            {formaPagamentoSelecionada === "pix" && cupomAplicado
               ? `R$ ${(precoNumerico * (1 - cupomAplicado.desconto / 100)).toFixed(2).replace(".", ",")}`
-              : precoPix}
+              : formaPagamentoSelecionada === "pix"
+                ? precoCalculado?.pix.valor || precoPix
+                : precoCalculado?.cartao.valor || precoNormal}
           </div>
 
           <div className="text-pix-text mt-1 text-xs">
-            Preço final ao pagar com PIX
+            {formaPagamentoSelecionada === "pix"
+              ? "Preço final ao pagar com PIX"
+              : parcelamentoSelecionado
+                ? `${parcelamentoSelecionado.parcelas}x de ${parcelamentoSelecionado.valor}${parcelamentoSelecionado.semJuros ? " sem juros" : ` · total ${parcelamentoSelecionado.total}`}`
+                : "Preço no cartão"}
           </div>
 
-          {cupomAplicado && (
+          {formaPagamentoSelecionada === "pix" && cupomAplicado && (
             <div className="text-pix-text mt-0.5 text-[11px] font-bold">
               + cupom {cupomAplicado.code}: -{cupomAplicado.desconto}% adicional
             </div>
@@ -376,7 +409,10 @@ export function BuyBox({
         </div>
 
         <div className="text-text-muted mt-2 text-xs">
-          ou <strong className="text-text-primary">{precoParc}</strong>
+          {formaPagamentoSelecionada === "pix" ? "ou " : "PIX por "}
+          <strong className="text-text-primary">
+            {formaPagamentoSelecionada === "pix" ? precoParc : precoPix}
+          </strong>
         </div>
 
         {onShowPaymentOptions && (
@@ -414,7 +450,9 @@ export function BuyBox({
             <button
               className="border-surface-border hover:border-primary flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] bg-white text-lg transition-colors disabled:opacity-50"
               onClick={aumentarQuantidade}
-              disabled={quantidade >= estoque}
+              disabled={
+                !compraDisponivel || (estoque !== null && quantidade >= estoque)
+              }
             >
               +
             </button>
@@ -422,13 +460,17 @@ export function BuyBox({
         </div>
 
         <div
-          className={`text-[11px] font-semibold ${estoque <= 10 ? "text-danger" : "text-success"}`}
+          className={`text-[11px] font-semibold ${compraDisponivel ? "text-success" : "text-danger"}`}
         >
-          {estoque <= 0
-            ? "Indisponível no momento"
-            : estoque <= 10
-              ? `⚠️ Apenas ${estoque} unidades!`
-              : `✓ ${estoque} unidades disponíveis`}
+          {disponibilidadeCompra.estado === "selecione_variante"
+            ? "Selecione as opções do produto para continuar."
+            : disponibilidadeCompra.estado === "indisponivel"
+              ? disponibilidadeCompra.motivo
+              : estoque === null
+                ? "✓ Disponível para compra"
+                : estoque <= 10
+                  ? `⚠️ Apenas ${estoque} unidades!`
+                  : `✓ ${estoque} unidades disponíveis`}
         </div>
       </div>
 
@@ -779,21 +821,32 @@ export function BuyBox({
 
       {/* BOTÕES */}
       <div className="flex flex-col gap-2">
-        <button
-          className="bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
-          onClick={comprarAgoraComFrete}
-          disabled={estoque <= 0}
-        >
-          {estoque > 0 ? "Comprar" : "Indisponível"}
-        </button>
+        {compraDisponivel ? (
+          <>
+            <button
+              className="bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
+              onClick={comprarAgoraComFrete}
+            >
+              Comprar
+            </button>
 
-        <button
-          className="text-primary border-primary hover:bg-primary-light disabled:border-surface-border disabled:text-text-hint w-full rounded-xl border-[1.5px] bg-white py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
-          onClick={adicionarAoCarrinhoComFrete}
-          disabled={estoque <= 0}
-        >
-          Adicionar ao carrinho
-        </button>
+            <button
+              className="text-primary border-primary hover:bg-primary-light disabled:border-surface-border disabled:text-text-hint w-full rounded-xl border-[1.5px] bg-white py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
+              onClick={adicionarAoCarrinhoComFrete}
+            >
+              Adicionar ao carrinho
+            </button>
+          </>
+        ) : (
+          <div
+            role="status"
+            className="bg-surface-border text-text-hint w-full rounded-xl px-4 py-3.5 text-center text-sm font-bold"
+          >
+            {disponibilidadeCompra.estado === "selecione_variante"
+              ? "Selecione uma variante"
+              : "Indisponível"}
+          </div>
+        )}
       </div>
 
       <div className="bg-surface-border h-px" />

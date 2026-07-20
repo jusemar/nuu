@@ -149,6 +149,25 @@ describe("motor de alteração em massa", () => {
     assert.equal(plano.alteracoes.estoque, undefined);
   });
 
+  it("preserva a causa específica quando a variante técnica é inconsistente", () => {
+    const plano = calcularPlanoAlteracaoEmMassa(
+      [
+        {
+          ...produto,
+          varianteTecnicaId: null,
+          estoqueVarianteTecnica: null,
+          conflitoVarianteTecnica:
+            "Produto simples possui 2 registros internos; deveria possuir exatamente um.",
+        },
+      ],
+      [{ campo: "estoque", operacao: "definir", valor: 8 }],
+      dados,
+    )[0];
+
+    assert.equal(plano.linhas[0].resultado, "conflito");
+    assert.match(plano.linhas[0].motivo ?? "", /2 registros internos/);
+  });
+
   it("rejeita payload antigo de Seções da Loja antes do preview", () => {
     const resultado = solicitarPreviewAlteracaoEmMassaSchema.safeParse({
       produtosIds: [produto.id],

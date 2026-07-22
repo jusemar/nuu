@@ -18,6 +18,7 @@ import {
   BadgePromocional,
   type TipoBadgePromocionalVisual,
 } from "@/features/promocoes/components/store/badge-promocional";
+import { PrevisaoEntregaProdutoCard } from "@/features/logistica/components/store/previsao-entrega-produto-card";
 
 // =====================================================================
 // TIPO: CategoryProductCardProps
@@ -218,6 +219,8 @@ export function CategoryProductCard({
             </button>
           </div>
         </div>
+
+        <PrevisaoEntregaProdutoCard produtoId={id} />
 
         {/* Badges */}
         {(hasFreeShipping || hasFlashSale) && (

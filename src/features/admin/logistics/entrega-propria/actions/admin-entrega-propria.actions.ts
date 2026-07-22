@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/connection";
+import { dbTransacional } from "@/db/transaction";
 import {
   bairrosAvulsos,
   regioBairros,
   productOwnDeliveryPrices,
   shippingPendingNeighborhoods,
   shippingRegionCepRanges,
+  shippingRegionSlots,
   shippingRegions,
   shippingZipAddresses,
 } from "@/db/table/logistics/entrega-propria";
@@ -15,6 +17,7 @@ import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/se
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { ProductOwnDeliveryPriceFormItem } from "../types/shipping";
+import { agendaEntregaPropriaSchema } from "../schemas/agenda-entrega-propria.schema";
 
 function revalidarEntregaPropria() {
   revalidatePath("/admin/logistics/entrega-propria");
@@ -135,6 +138,72 @@ export async function alternarStatusRegiaoEntregaPropria(id: number) {
 
   revalidarEntregaPropria();
   revalidatePath(`/admin/logistics/entrega-propria/regioes/${id}`);
+}
+
+export async function salvarAgendaEntregaPropria(
+  regiaoId: number,
+  entrada: unknown,
+) {
+  const validacao = agendaEntregaPropriaSchema.safeParse(entrada);
+
+  if (!validacao.success) {
+    return {
+      sucesso: false as const,
+      erro:
+        validacao.error.issues[0]?.message ??
+        "Revise os dados informados para a agenda.",
+    };
+  }
+
+  const regiao = await buscarRegiaoObrigatoria(regiaoId);
+  const agenda = validacao.data;
+  const slotsExistentes = await db.query.shippingRegionSlots.findMany({
+    where: eq(shippingRegionSlots.regionId, regiao.id),
+  });
+
+  await dbTransacional.transaction(async (tx) => {
+    await tx
+      .update(shippingRegions)
+      .set({
+        agendaAtiva: agenda.ativa,
+        horarioCorte: agenda.horarioCorte,
+        updatedAt: new Date(),
+      })
+      .where(eq(shippingRegions.id, regiao.id));
+
+    await tx
+      .delete(shippingRegionSlots)
+      .where(eq(shippingRegionSlots.regionId, regiao.id));
+
+    if (agenda.diasDaSemana.length > 0) {
+      await tx.insert(shippingRegionSlots).values(
+        agenda.diasDaSemana.map((diaDaSemana) => {
+          const slotExistente = slotsExistentes.find(
+            (slot) => slot.dayOfWeek === diaDaSemana,
+          );
+
+          return {
+            regionId: regiao.id,
+            dayOfWeek: diaDaSemana,
+            // Os campos são obrigatórios na estrutura legada, mas não
+            // participam mais da previsão. Mantemos os dados anteriores.
+            startTime:
+              slotExistente?.startTime ??
+              regiao.periodoEntregaInicio ??
+              "00:00",
+            endTime:
+              slotExistente?.endTime ?? regiao.periodoEntregaFim ?? "23:59",
+            isActive: true,
+          };
+        }),
+      );
+    }
+  });
+
+  revalidarEntregaPropria();
+  revalidatePath(`/admin/logistics/entrega-propria/regioes/${regiao.id}`);
+
+  return { sucesso: true as const };
 }
 
 export async function adicionarBairroNaRegiaoEntregaPropria(

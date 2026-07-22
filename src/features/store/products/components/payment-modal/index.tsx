@@ -20,10 +20,6 @@ interface PaymentModalProps {
   onClose: () => void; // função que fecha o modal (vem do pai)
   parcelamentos: ParcelamentoCartaoCalculado[];
   precoCalculado?: PrecoProdutoCalculado | null;
-  formaSelecionada: "pix" | "cartao";
-  parcelasSelecionadas: number | null;
-  onSelecionarForma: (forma: "pix" | "cartao") => void;
-  onSelecionarParcelas: (parcelas: number) => void;
 }
 
 // ==========================================
@@ -34,10 +30,6 @@ export function PaymentModal({
   onClose,
   parcelamentos,
   precoCalculado,
-  formaSelecionada,
-  parcelasSelecionadas,
-  onSelecionarForma,
-  onSelecionarParcelas,
 }: PaymentModalProps) {
   // Se o modal não estiver aberto, não renderiza nada (retorna null)
   // Isso é importante para não poluir o DOM quando fechado
@@ -115,50 +107,26 @@ export function PaymentModal({
         {/* -----------------------------------------
             TÍTULO: Cartão de Crédito
             ----------------------------------------- */}
-        <div
-          role="radiogroup"
-          aria-label="Forma de pagamento"
-          className="mb-4 grid grid-cols-2 gap-2"
-        >
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {precoCalculado?.pix.ativo ? (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={formaSelecionada === "pix"}
-              onClick={() => onSelecionarForma("pix")}
-              className={`rounded-xl border p-3 text-left transition-all ${
-                formaSelecionada === "pix"
-                  ? "border-primary bg-primary-light ring-primary ring-1"
-                  : "border-surface-border hover:border-primary-mid bg-white"
-              }`}
-            >
+            <div className="border-pix-border bg-pix-bg rounded-xl border p-3">
               <span className="text-text-primary block text-sm font-extrabold">
                 PIX
               </span>
               <span className="text-success block text-xs font-semibold">
                 {precoCalculado.pix.valor}
               </span>
-            </button>
+            </div>
           ) : null}
           {precoCalculado?.cartao.ativo ? (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={formaSelecionada === "cartao"}
-              onClick={() => onSelecionarForma("cartao")}
-              className={`rounded-xl border p-3 text-left transition-all ${
-                formaSelecionada === "cartao"
-                  ? "border-primary bg-primary-light ring-primary ring-1"
-                  : "border-surface-border hover:border-primary-mid bg-white"
-              }`}
-            >
+            <div className="border-surface-border rounded-xl border bg-white p-3">
               <span className="text-text-primary block text-sm font-extrabold">
                 Cartão
               </span>
               <span className="text-text-muted block text-xs font-semibold">
                 {precoCalculado.cartao.valor}
               </span>
-            </button>
+            </div>
           ) : null}
         </div>
 
@@ -175,20 +143,9 @@ export function PaymentModal({
         <div className="flex flex-col gap-1">
           {/* Mapeia o array de parcelamentos e cria um item para cada um */}
           {parcelamentos.map((parcela, index) => (
-            <button
-              type="button"
+            <div
               key={parcela.parcelas || index}
-              onClick={() => onSelecionarParcelas(parcela.parcelas)}
-              aria-pressed={
-                formaSelecionada === "cartao" &&
-                parcelasSelecionadas === parcela.parcelas
-              }
-              className={`flex items-center gap-2.5 rounded-lg border-[1.5px] p-2.5 text-left transition-all ${
-                formaSelecionada === "cartao" &&
-                parcelasSelecionadas === parcela.parcelas
-                  ? "border-primary bg-primary-light ring-primary ring-1"
-                  : "border-surface-border hover:border-primary-mid"
-              }`}
+              className="border-surface-border flex items-center gap-2.5 rounded-lg border-[1.5px] p-2.5"
             >
               {/* Informações da parcela */}
               <div className="flex-1">
@@ -208,7 +165,7 @@ export function PaymentModal({
                   sem juros
                 </span>
               )}
-            </button>
+            </div>
           ))}
         </div>
 

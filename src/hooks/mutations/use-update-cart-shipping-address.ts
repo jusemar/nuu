@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { updateCartShippingAddress } from "@/actions/update-cart-shipping-address";
 import { UpdateCartShippingAddressSchema } from "@/actions/update-cart-shipping-address/schema";
+import { chaveCepEnderecoCliente } from "@/features/logistica/constants/chaves-query-logistica";
+import { notificarEnderecoClienteAtualizado } from "@/features/logistica/lib/cep-cliente";
 
 import { getUseCartQueryKey } from "../queries/use-cart";
 
@@ -20,6 +22,8 @@ export const useUpdateCartShippingAddress = () => {
       queryClient.invalidateQueries({
         queryKey: getUseCartQueryKey(),
       });
+      queryClient.invalidateQueries({ queryKey: chaveCepEnderecoCliente });
+      notificarEnderecoClienteAtualizado();
     },
   });
 };

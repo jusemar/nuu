@@ -32,6 +32,18 @@ descrever("adaptarCotacaoLogisticaParaConsultaFrete", () => {
           descricao: "Entrega atendida",
           metadados: {
             nivelEntregaPropriaAtual: "cep-especifico",
+            promessaEntregaPropria: {
+              dataPrometida: "2026-07-22",
+              texto: "Entrega hoje",
+              observacaoPagamento:
+                "Para pedidos com pagamento aprovado até 13:00.",
+              diasConfigurados: [1, 3],
+              horarioCorteAplicado: "13:00",
+              periodoEntrega: null,
+              timezone: "America/Sao_Paulo",
+              calculadoEm: "2026-07-22T15:00:00.000Z",
+              feriadosConsiderados: false,
+            },
             bairro: "Centro",
             cidade: "Belo Horizonte",
             uf: "MG",
@@ -54,6 +66,11 @@ descrever("adaptarCotacaoLogisticaParaConsultaFrete", () => {
       afirmacoes.equal(resultado.shippingPrice, 2400);
       afirmacoes.equal(resultado.level, "cep-especifico");
       afirmacoes.equal(resultado.endereco.cidade, "Belo Horizonte");
+      afirmacoes.equal(resultado.promessaEntrega?.texto, "Entrega hoje");
+      afirmacoes.equal(
+        resultado.promessaEntrega?.observacaoPagamento,
+        "Para pedidos com pagamento aprovado até 13:00.",
+      );
     }
   });
 

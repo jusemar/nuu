@@ -1,7 +1,10 @@
+import type { PromessaEntregaPropria } from "@/features/logistica/lib/entrega-propria/calcular-promessa-entrega-propria";
+
 export interface ConsultaFreteSucesso {
   found: true;
   shippingPrice: number;
   deliveryDeadline?: string | null;
+  promessaEntrega?: PromessaEntregaPropria | null;
   level: "cep-especifico" | "regiao" | "bairro-avulso";
   message: string;
   bairro: string;

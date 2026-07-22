@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useMemo, useState, useTransition } from "react";
 import {
+  CalendarClock,
   ArrowLeft,
   ChevronDown,
   ChevronRight,
@@ -16,6 +17,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -24,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -41,6 +49,7 @@ import {
   ignorarBairroPendenteEntregaPropria,
   removerFaixaCepRegiaoEntregaPropria,
   removerBairroDaRegiaoEntregaPropria,
+  salvarAgendaEntregaPropria,
   vincularBairroPendenteNaRegiaoEntregaPropria,
 } from "../../actions/admin-entrega-propria.actions";
 import type { EntregaPropriaRegiaoDetalhe } from "../../queries/admin-entrega-propria.queries";
@@ -62,6 +71,15 @@ export function RegiaoBairrosEntregaPropriaPage({
   const [cepStart, setCepStart] = useState("");
   const [cepEnd, setCepEnd] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [agendaAtiva, setAgendaAtiva] = useState(regiao.agenda.ativa);
+  const [diasAtendidos, setDiasAtendidos] = useState(
+    regiao.agenda.diasDaSemana,
+  );
+  const [horarioCorte, setHorarioCorte] = useState(regiao.agenda.horarioCorte);
+  const [mensagemAgenda, setMensagemAgenda] = useState<{
+    tipo: "sucesso" | "erro";
+    texto: string;
+  } | null>(null);
 
   const totalCepsVinculados = useMemo(() => {
     return regiao.bairros.reduce(
@@ -166,6 +184,40 @@ export function RegiaoBairrosEntregaPropriaPage({
     });
   }
 
+  const diasSemana = [
+    { valor: 1, nome: "Segunda" },
+    { valor: 2, nome: "Terça" },
+    { valor: 3, nome: "Quarta" },
+    { valor: 4, nome: "Quinta" },
+    { valor: 5, nome: "Sexta" },
+    { valor: 6, nome: "Sábado" },
+    { valor: 0, nome: "Domingo" },
+  ];
+
+  function alternarDiaAtendido(dia: number) {
+    setDiasAtendidos((atuais) =>
+      atuais.includes(dia)
+        ? atuais.filter((atual) => atual !== dia)
+        : [...atuais, dia],
+    );
+  }
+
+  function handleSalvarAgenda() {
+    setMensagemAgenda(null);
+    startTransition(async () => {
+      const resultado = await salvarAgendaEntregaPropria(regiao.id, {
+        ativa: agendaAtiva,
+        diasDaSemana: diasAtendidos,
+        horarioCorte,
+      });
+      setMensagemAgenda(
+        resultado.sucesso
+          ? { tipo: "sucesso", texto: "Agenda salva com sucesso." }
+          : { tipo: "erro", texto: resultado.erro },
+      );
+    });
+  }
+
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-8">
@@ -196,6 +248,105 @@ export function RegiaoBairrosEntregaPropriaPage({
           </div>
         </div>
       </div>
+
+      <Accordion
+        type="single"
+        collapsible
+        className="mb-6 rounded-lg border border-gray-200 bg-white px-4 sm:px-5"
+      >
+        <AccordionItem value="agenda-entrega" className="border-b-0">
+          <AccordionTrigger className="py-4 hover:no-underline sm:py-5">
+            <span className="flex items-center gap-3 text-left">
+              <span className="rounded-lg bg-blue-50 p-2 text-blue-700">
+                <CalendarClock className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block font-semibold text-gray-900">
+                  Agenda de entrega
+                </span>
+                <span className="mt-1 block text-sm font-normal text-gray-500">
+                  {agendaAtiva ? "Agenda ativa" : "Agenda inativa"}
+                </span>
+              </span>
+            </span>
+          </AccordionTrigger>
+
+          <AccordionContent className="space-y-5 pb-5">
+            <p className="text-sm text-gray-500">
+              O horário de corte é o limite interno para entregar no próprio dia
+              atendido.
+            </p>
+
+            <div className="flex items-center gap-3 rounded-md border border-gray-100 p-3">
+              <Switch
+                checked={agendaAtiva}
+                onCheckedChange={setAgendaAtiva}
+                aria-label="Agenda ativa"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  Agenda ativa
+                </p>
+                <p className="text-xs text-gray-500">
+                  Sem agenda ativa, permanece o prazo textual do produto.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Dias atendidos</Label>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {diasSemana.map((dia) => (
+                  <label
+                    key={dia.valor}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={diasAtendidos.includes(dia.valor)}
+                      onChange={() => alternarDiaAtendido(dia.valor)}
+                      className="accent-blue-600"
+                    />
+                    {dia.nome}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="max-w-xs space-y-2">
+              <Label htmlFor="horario-corte">Horário de corte</Label>
+              <Input
+                id="horario-corte"
+                type="time"
+                value={horarioCorte}
+                onChange={(evento) => setHorarioCorte(evento.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end border-t border-gray-100 pt-4">
+              <Button onClick={handleSalvarAgenda} disabled={isPending}>
+                {isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Salvar agenda
+              </Button>
+            </div>
+
+            {mensagemAgenda ? (
+              <p
+                role="status"
+                className={
+                  mensagemAgenda.tipo === "sucesso"
+                    ? "text-sm text-emerald-700"
+                    : "text-sm text-red-700"
+                }
+              >
+                {mensagemAgenda.texto}
+              </p>
+            ) : null}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className="relative flex-1">
@@ -475,7 +626,15 @@ export function RegiaoBairrosEntregaPropriaPage({
           </div>
 
           <div className="space-y-2">
-            {bairrosPendentesDisponiveis.length === 0 ? (
+            {regiao.bairrosPendentesIndisponiveis ? (
+              <p
+                role="alert"
+                className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+              >
+                Não foi possível carregar os bairros pendentes agora. A região,
+                sua agenda e os CEPs continuam disponíveis.
+              </p>
+            ) : bairrosPendentesDisponiveis.length === 0 ? (
               <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-500">
                 Nenhum bairro pendente disponivel para esta cidade.
               </p>

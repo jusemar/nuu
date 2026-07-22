@@ -2,6 +2,9 @@ import type { ItemCarrinho } from "@/features/carrinho";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 import {
   calcularPrecoProduto,
+  modalidadePrecoExigeEstoqueLocal,
+  modalidadesPrecoSaoEquivalentes,
+  normalizarModalidadePrecoCanonica,
   type ConfiguracaoPagamentoCalculavel,
 } from "@/features/precificacao";
 
@@ -77,11 +80,26 @@ export function selecionarPrecoProdutoCheckout(
   const modalidadeSolicitada = modalidadeTipo?.trim();
   const precosAtivos = produto.pricing.filter((preco) => preco.isActive);
   const precoPorModalidade = modalidadeSolicitada
-    ? produto.pricing.find((preco) => preco.type === modalidadeSolicitada)
+    ? produto.pricing.find((preco) =>
+        modalidadesPrecoSaoEquivalentes(preco.type, modalidadeSolicitada),
+      )
     : null;
 
-  if (modalidadeSolicitada && !precoPorModalidade?.isActive) {
-    throw new Error(`Modalidade indisponível para ${produto.name}`);
+  if (
+    modalidadeSolicitada &&
+    !normalizarModalidadePrecoCanonica(modalidadeSolicitada)
+  ) {
+    throw new Error(
+      `Modalidade inválida para ${produto.name}: ${modalidadeSolicitada}`,
+    );
+  }
+
+  if (modalidadeSolicitada && !precoPorModalidade) {
+    throw new Error(`Modalidade não encontrada para ${produto.name}`);
+  }
+
+  if (precoPorModalidade && !precoPorModalidade.isActive) {
+    throw new Error(`Modalidade inativa para ${produto.name}`);
   }
 
   const precoSelecionado =
@@ -173,7 +191,7 @@ export function resolverItemVendavelCheckout({
     }
 
     if (
-      precoSelecionado.type === "stock" &&
+      modalidadePrecoExigeEstoqueLocal(precoSelecionado.type) &&
       identificacao.variante.estoque < item.quantidade
     ) {
       throw new Error(`Estoque insuficiente para ${produto.name}`);
@@ -207,13 +225,28 @@ export function resolverItemVendavelCheckout({
     throw new Error(`Variante sem preço válido: ${produto.name}`);
   }
 
-  if (variante.stockQuantity < item.quantidade) {
+  const modalidadeLegadaDaVariante =
+    item.modalidadeTipo?.startsWith("variant:");
+  const precoSelecionado = modalidadeLegadaDaVariante
+    ? null
+    : selecionarPrecoProdutoCheckout(
+        produto,
+        item.variante,
+        item.modalidadeTipo,
+      );
+
+  if (
+    (modalidadeLegadaDaVariante ||
+      modalidadePrecoExigeEstoqueLocal(precoSelecionado?.type)) &&
+    variante.stockQuantity < item.quantidade
+  ) {
     throw new Error(`Estoque insuficiente para ${produto.name}`);
   }
 
   return {
     tipo: "variant" as const,
     variante,
+    precoSelecionado,
     imagemUrl:
       variante.imageUrl ||
       item.imagemUrl ||
@@ -259,7 +292,9 @@ export function montarSnapshotItemPedidoCheckout({
         null,
       atributosVariante: itemVendavel.variante.attributes,
       skuProduto: itemVendavel.variante.sku,
-      modalidade: null,
+      modalidade:
+        itemVendavel.precoSelecionado?.pricingModalDescription ||
+        normalizarModalidadePrecoCanonica(itemVendavel.precoSelecionado?.type),
       prazoModalidade: item.prazoModalidade || "Consulte prazo",
       imagemUrl: itemVendavel.imagemUrl,
       quantidade: item.quantidade,

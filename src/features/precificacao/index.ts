@@ -5,6 +5,12 @@ export { calcularPrecoProduto } from "./lib/calculos/calcular-preco-produto";
 export { aplicarPromocoesPrecificacao } from "./lib/calculos/aplicar-promocoes-precificacao";
 export { formatarPrecoEmReais } from "./lib/formatar-preco";
 export {
+  modalidadePrecoExigeEstoqueLocal,
+  modalidadesPrecoSaoEquivalentes,
+  normalizarModalidadePrecoCanonica,
+  type ModalidadePrecoCanonica,
+} from "./lib/normalizar-modalidade-preco";
+export {
   adaptarPrecosVitrine,
   criarChavePrecoVitrine,
   criarPrecoPrincipalCompatibilidadeVitrine,

@@ -6,18 +6,17 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatCEP, isValidCEP } from "../../utils/formatters";
 import { consultarFreteAction } from "../../actions/consultarFreteAction";
 import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
 import { montarFreteFrenetSelecionado } from "../../lib/frete/montar-frete-frenet-selecionado";
 import type { PromocaoVisualPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade } from "../../types/product.types";
-import type {
-  ParcelamentoCartaoCalculado,
-  PrecoProdutoCalculado,
-} from "@/features/precificacao";
+import type { PrecoProdutoCalculado } from "@/features/precificacao";
 import type { DisponibilidadeCompraPdp } from "../../lib/resolver-disponibilidade-compra-pdp";
+import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
+import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 
 // ==========================================
 // INTERFACE
@@ -31,9 +30,7 @@ interface BuyBoxProps {
   descontoPix: number;
   promocaoVisual?: PromocaoVisualPdp | null;
   disponibilidadeCompra: DisponibilidadeCompraPdp;
-  formaPagamentoSelecionada: "pix" | "cartao";
   precoCalculado?: PrecoProdutoCalculado | null;
-  parcelamentoSelecionado?: ParcelamentoCartaoCalculado;
   freteGratisMin?: number;
   prazoEntrega: string;
   selectedVariantLabel?: string | null;
@@ -98,6 +95,25 @@ interface BuyBoxProps {
   onTrocarModalidade?: (tipo: Modalidade) => void;
 }
 
+function PrevisaoEntregaPropriaPdp({
+  resultado,
+  fallback,
+}: {
+  resultado: ConsultaFreteResult | null;
+  fallback: string;
+}) {
+  const promessa = resultado?.found ? resultado.promessaEntrega : null;
+
+  return (
+    <div className="text-text-hint text-[11px] leading-snug">
+      <p>{promessa?.texto ?? fallback}</p>
+      {promessa?.observacaoPagamento ? (
+        <p className="mt-0.5">{promessa.observacaoPagamento}</p>
+      ) : null}
+    </div>
+  );
+}
+
 // ==========================================
 // COMPONENTE
 // ==========================================
@@ -110,9 +126,7 @@ export function BuyBox({
   descontoPix,
   promocaoVisual = null,
   disponibilidadeCompra,
-  formaPagamentoSelecionada,
   precoCalculado,
-  parcelamentoSelecionado,
   freteGratisMin = 299,
   prazoEntrega,
   selectedVariantLabel,
@@ -128,8 +142,10 @@ export function BuyBox({
   modalidadeAtiva,
   onTrocarModalidade,
 }: BuyBoxProps) {
+  const { cep: cepContextoLogistico } = useContextoCepLogistica();
   const compraDisponivel = disponibilidadeCompra.estado === "disponivel";
   const estoque = disponibilidadeCompra.estoqueMaximo;
+  const pixPrincipal = precoCalculado?.pix.ativo !== false;
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
   const [cep, setCep] = useState("");
@@ -147,6 +163,8 @@ export function BuyBox({
   const [erroFrete, setErroFrete] = useState("");
   const freteRef = useRef<HTMLDivElement | null>(null);
   const consultaFreteIdRef = useRef(0);
+  const cepEditadoManualmenteRef = useRef(false);
+  const consultaAutomaticaRef = useRef("");
 
   // CÁLCULOS
   const precoNumerico = parseFloat(
@@ -184,6 +202,7 @@ export function BuyBox({
   }
 
   function handleCepChange(valor: string) {
+    cepEditadoManualmenteRef.current = true;
     const formatado = formatCEP(valor);
     setCep(formatado);
     setErroFrete("");
@@ -195,12 +214,16 @@ export function BuyBox({
     consultaFreteIdRef.current += 1;
   }
 
-  async function consultarFrete() {
+  async function consultarFrete(
+    cepInformado = cep,
+    registrarComoManual = true,
+  ) {
     setErroFrete("");
 
-    const cepParaConsulta = cep.replace(/\D/g, "");
+    const cepFormatado = formatCEP(cepInformado);
+    const cepParaConsulta = cepInformado.replace(/\D/g, "");
 
-    if (isValidCEP(cep)) {
+    if (isValidCEP(cepFormatado)) {
       const consultaId = consultaFreteIdRef.current + 1;
       consultaFreteIdRef.current = consultaId;
       setCepConsultado(true);
@@ -216,6 +239,11 @@ export function BuyBox({
           varianteIdSelecionada,
         );
         if (consultaFreteIdRef.current !== consultaId) return;
+        // O CEP foi efetivamente consultado. Cada card ainda valida produto,
+        // cobertura, preço e região antes de exibir qualquer previsão.
+        if (registrarComoManual) {
+          registrarCepClienteIdentificado(cepParaConsulta);
+        }
         setEntregaPropriaResult(result);
       } catch (error) {
         void error;
@@ -231,6 +259,20 @@ export function BuyBox({
       }
     }
   }
+
+  useEffect(() => {
+    if (cepEditadoManualmenteRef.current || cepContextoLogistico.length !== 8) {
+      return;
+    }
+
+    const chaveConsulta = `${productId}:${varianteIdSelecionada ?? ""}:${cepContextoLogistico}`;
+    if (consultaAutomaticaRef.current === chaveConsulta) return;
+    consultaAutomaticaRef.current = chaveConsulta;
+    setCep(formatCEP(cepContextoLogistico));
+    void consultarFrete(cepContextoLogistico, false);
+    // A função usa exclusivamente os valores representados na chave acima.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cepContextoLogistico, productId, varianteIdSelecionada]);
 
   function handleAplicarCupom() {
     setErroCupom("");
@@ -264,7 +306,7 @@ export function BuyBox({
       return {
         id: "entrega-propria" as const,
         nome: "Entrega Própria",
-        prazo: prazoEntrega,
+        prazo: prazoEntregaPropria,
         valorEmCentavos: resultadoDoCepAtual.shippingPrice,
         cep,
       };
@@ -367,41 +409,31 @@ export function BuyBox({
         )}
 
         <div
-          className={`rounded-xl border p-3 ${
-            formaPagamentoSelecionada === "pix"
-              ? "bg-pix-bg border-pix-border"
-              : "border-primary/25 bg-primary-light"
-          }`}
+          className={`rounded-xl border p-3 ${pixPrincipal ? "bg-pix-bg border-pix-border" : "border-primary/25 bg-primary-light"}`}
         >
           <div
-            className={`mb-1 text-[11px] font-bold tracking-wide uppercase ${
-              formaPagamentoSelecionada === "pix"
-                ? "text-success"
-                : "text-primary"
-            }`}
+            className={`mb-1 text-[11px] font-bold tracking-wide uppercase ${pixPrincipal ? "text-success" : "text-primary"}`}
           >
-            {formaPagamentoSelecionada === "pix"
+            {pixPrincipal
               ? `💸 PIX — ${descontoPix}% de desconto`
               : "Cartão de crédito"}
           </div>
 
           <div className="text-text-primary text-2xl font-extrabold tracking-tight">
-            {formaPagamentoSelecionada === "pix" && cupomAplicado
+            {pixPrincipal && cupomAplicado
               ? `R$ ${(precoNumerico * (1 - cupomAplicado.desconto / 100)).toFixed(2).replace(".", ",")}`
-              : formaPagamentoSelecionada === "pix"
+              : pixPrincipal
                 ? precoCalculado?.pix.valor || precoPix
                 : precoCalculado?.cartao.valor || precoNormal}
           </div>
 
           <div className="text-pix-text mt-1 text-xs">
-            {formaPagamentoSelecionada === "pix"
+            {pixPrincipal
               ? "Preço final ao pagar com PIX"
-              : parcelamentoSelecionado
-                ? `${parcelamentoSelecionado.parcelas}x de ${parcelamentoSelecionado.valor}${parcelamentoSelecionado.semJuros ? " sem juros" : ` · total ${parcelamentoSelecionado.total}`}`
-                : "Preço no cartão"}
+              : "Condição principal disponível no cartão"}
           </div>
 
-          {formaPagamentoSelecionada === "pix" && cupomAplicado && (
+          {pixPrincipal && cupomAplicado && (
             <div className="text-pix-text mt-0.5 text-[11px] font-bold">
               + cupom {cupomAplicado.code}: -{cupomAplicado.desconto}% adicional
             </div>
@@ -409,14 +441,13 @@ export function BuyBox({
         </div>
 
         <div className="text-text-muted mt-2 text-xs">
-          {formaPagamentoSelecionada === "pix" ? "ou " : "PIX por "}
-          <strong className="text-text-primary">
-            {formaPagamentoSelecionada === "pix" ? precoParc : precoPix}
-          </strong>
+          {pixPrincipal ? "ou " : ""}
+          <strong className="text-text-primary">{precoParc}</strong>
         </div>
 
         {onShowPaymentOptions && (
           <button
+            type="button"
             onClick={onShowPaymentOptions}
             className="text-primary mt-1 block text-left text-xs underline hover:no-underline"
           >
@@ -543,7 +574,7 @@ export function BuyBox({
             className="border-surface-border focus:border-primary w-44 rounded-lg border-[1.5px] bg-white px-3 py-2 text-sm outline-none"
           />
           <button
-            onClick={consultarFrete}
+            onClick={() => consultarFrete()}
             disabled={!isValidCEP(cep)}
             className="bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint rounded-lg px-4 py-2 text-sm font-bold text-white transition-colors disabled:cursor-not-allowed"
           >
@@ -596,9 +627,10 @@ export function BuyBox({
                       <div className="text-text-primary flex-1 text-xs font-semibold">
                         Entrega Própria
                       </div>
-                      <div className="text-text-hint text-[11px]">
-                        {prazoEntregaPropria}
-                      </div>
+                      <PrevisaoEntregaPropriaPdp
+                        resultado={resultadoDoCepAtual}
+                        fallback={prazoEntregaPropria}
+                      />
                       {resultadoDoCepAtual?.found && (
                         <div className="text-text-primary text-xs font-bold">
                           R${" "}
@@ -697,9 +729,10 @@ export function BuyBox({
                         <div className="text-text-primary flex-1 text-xs font-medium">
                           Entrega Própria
                         </div>
-                        <div className="text-text-hint text-[11px]">
-                          {prazoEntregaPropria}
-                        </div>
+                        <PrevisaoEntregaPropriaPdp
+                          resultado={resultadoDoCepAtual}
+                          fallback={prazoEntregaPropria}
+                        />
                         <div className="text-text-primary text-xs font-bold">
                           R${" "}
                           {(resultadoDoCepAtual.shippingPrice / 100)

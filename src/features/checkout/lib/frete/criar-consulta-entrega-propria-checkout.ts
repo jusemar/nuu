@@ -28,7 +28,15 @@ export function criarConsultaEntregaPropriaCheckout() {
     return {
       disponivel: true,
       valorEmCentavos: entrega.valorEmCentavos,
-      descricao: entrega.descricao,
+      descricao: entrega.prazoEntrega ?? entrega.descricao,
+      metadados: {
+        nivelEntregaPropriaAtual: entrega.nivel,
+        promessaEntregaPropria: entrega.promessaEntrega ?? null,
+        regiaoEntregaPropria: entrega.regiaoResolvida ?? null,
+        bairro: entrega.bairro,
+        cidade: entrega.cidade,
+        uf: entrega.uf,
+      },
     };
   };
 }

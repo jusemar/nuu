@@ -1,4 +1,5 @@
 import type { ResultadoCotacaoFrete } from "@/features/logistica";
+import type { PromessaEntregaPropria } from "@/features/logistica/lib/entrega-propria/calcular-promessa-entrega-propria";
 
 import type {
   ConsultaFreteResult,
@@ -9,6 +10,7 @@ import type {
 type MetadadosEntregaPropriaAtual = {
   nivelEntregaPropriaAtual?: ConsultaFreteSucesso["level"];
   prazoEntregaPropriaAtual?: string | null;
+  promessaEntregaPropria?: PromessaEntregaPropria | null;
   bairro?: string;
   cidade?: string;
   uf?: string;
@@ -55,15 +57,18 @@ function obterTransportadoraOpcaoEntrega(
 function obterOpcoesEntrega(resultado: ResultadoCotacaoFrete) {
   return resultado.opcoes
     .filter((opcao) => opcao.tipo === "entrega")
-    .map((opcao) => ({
-      identificador: opcao.identificador,
-      provedor: opcao.provedor,
-      servico: opcao.servico,
-      nome: opcao.nome,
-      prazo: obterPrazoOpcaoEntrega(opcao),
-      valorEmCentavos: opcao.valorEmCentavos,
-      transportadora: obterTransportadoraOpcaoEntrega(opcao),
-    }));
+    .map((opcao) => {
+      const transportadora = obterTransportadoraOpcaoEntrega(opcao);
+      return {
+        identificador: opcao.identificador,
+        provedor: opcao.provedor,
+        servico: opcao.servico,
+        nome: opcao.nome,
+        prazo: obterPrazoOpcaoEntrega(opcao),
+        valorEmCentavos: opcao.valorEmCentavos,
+        ...(transportadora ? { transportadora } : {}),
+      };
+    });
 }
 
 export function adaptarCotacaoLogisticaParaConsultaFrete(
@@ -89,6 +94,7 @@ export function adaptarCotacaoLogisticaParaConsultaFrete(
     found: true,
     shippingPrice: opcao.valorEmCentavos,
     deliveryDeadline: metadados.prazoEntregaPropriaAtual ?? null,
+    promessaEntrega: metadados.promessaEntregaPropria ?? null,
     level: metadados.nivelEntregaPropriaAtual ?? "regiao",
     message: opcao.descricao || opcao.nome,
     bairro: metadados.bairro ?? "",

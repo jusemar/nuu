@@ -205,6 +205,20 @@ function criarOpcaoEntrega(valorEmCentavos = 1800) {
     descricao: "Hoje",
     metadados: {
       origem: "fluxo-atual",
+      promessaEntregaPropria: {
+        dataPrometida: "2026-07-22",
+        texto: "Entrega amanhã",
+        horarioCorteAplicado: "13:00",
+        periodoEntrega: {
+          inicio: "14:00",
+          fim: "18:00",
+        },
+        timezone: "America/Sao_Paulo",
+      },
+      regiaoEntregaPropria: {
+        id: 7,
+        nome: "Região Centro",
+      },
       detalheInterno: {
         ignorado: true,
       },
@@ -260,6 +274,20 @@ descrever("revalidarFreteCheckout", () => {
       );
       afirmacoes.deepEqual(resultado.snapshotFrete.itens[0]?.metadataResumida, {
         origem: "fluxo-atual",
+        promessaEntregaPropria: {
+          dataPrometida: "2026-07-22",
+          texto: "Entrega amanhã",
+          horarioCorteAplicado: "13:00",
+          periodoEntrega: {
+            inicio: "14:00",
+            fim: "18:00",
+          },
+          timezone: "America/Sao_Paulo",
+        },
+        regiaoEntregaPropria: {
+          id: 7,
+          nome: "Região Centro",
+        },
       });
     }
   });

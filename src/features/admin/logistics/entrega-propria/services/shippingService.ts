@@ -40,6 +40,10 @@ import type {
   NewShippingRegionSlot,
   NewShippingBairroAvulsoSlot,
 } from "@/db/table/logistics/entrega-propria";
+import {
+  calcularPromessaEntregaPropria,
+  type PromessaEntregaPropria,
+} from "@/features/logistica/lib/entrega-propria/calcular-promessa-entrega-propria";
 
 const DAY_NAMES = [
   "Domingo",
@@ -281,6 +285,29 @@ async function buscarPrecoProdutoDestino(params: {
   });
 }
 
+async function calcularPromessaDaRegiao(regiaoId: number) {
+  const regiao = await db.query.shippingRegions.findFirst({
+    where: eq(shippingRegions.id, regiaoId),
+    with: { slots: true },
+  });
+
+  if (!regiao) return null;
+
+  return calcularPromessaEntregaPropria({
+    agenda: {
+      ativa: regiao.agendaAtiva,
+      diasDaSemana: regiao.slots
+        .filter((slot) => slot.isActive)
+        .map((slot) => slot.dayOfWeek),
+      horarioCorte: regiao.horarioCorte,
+      periodoInicio: regiao.periodoEntregaInicio,
+      periodoFim: regiao.periodoEntregaFim,
+    },
+    // A função aceita feriados; a tabela existente ainda não integra este fluxo.
+    feriados: [],
+  });
+}
+
 export async function getProductOwnDeliveryPrice(
   productId: string,
   cep: string,
@@ -319,6 +346,21 @@ export async function getProductOwnDeliveryPrice(
     };
   }
 
+  const faixaRegiao = await db.query.shippingRegionCepRanges.findFirst({
+    where: and(
+      lte(shippingRegionCepRanges.cepStart, cleanCep),
+      gte(shippingRegionCepRanges.cepEnd, cleanCep),
+      eq(shippingRegionCepRanges.isActive, true),
+    ),
+    with: { region: true },
+  });
+  const faixaRegiaoCompativel =
+    faixaRegiao?.region?.isActive &&
+    faixaRegiao.region.state === state &&
+    normalizarTextoFrete(faixaRegiao.region.city) === normalizarTextoFrete(city)
+      ? faixaRegiao
+      : null;
+
   const cepEspecifico = await db.query.cepsEspecificos.findFirst({
     where: and(
       eq(cepsEspecificos.cep, cleanCep),
@@ -334,11 +376,15 @@ export async function getProductOwnDeliveryPrice(
     });
 
     if (preco) {
+      const promessa = faixaRegiaoCompativel
+        ? await calcularPromessaDaRegiao(faixaRegiaoCompativel.region.id)
+        : null;
       return {
         found: true,
         level: "cep-especifico",
         shippingPrice: preco.shippingPrice,
-        deliveryDeadline: preco.deliveryDeadline ?? null,
+        deliveryDeadline: promessa?.texto ?? preco.deliveryDeadline ?? null,
+        promessaEntrega: promessa,
         message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
         cep: cepEspecifico.cep,
         neighborhood: cepEspecifico.neighborhood,
@@ -348,40 +394,29 @@ export async function getProductOwnDeliveryPrice(
     }
   }
 
-  const faixaRegiao = await db.query.shippingRegionCepRanges.findFirst({
-    where: and(
-      lte(shippingRegionCepRanges.cepStart, cleanCep),
-      gte(shippingRegionCepRanges.cepEnd, cleanCep),
-      eq(shippingRegionCepRanges.isActive, true),
-    ),
-    with: {
-      region: true,
-    },
-  });
-
-  if (
-    faixaRegiao?.region?.isActive &&
-    faixaRegiao.region.state === state &&
-    normalizarTextoFrete(faixaRegiao.region.city) === normalizarTextoFrete(city)
-  ) {
+  if (faixaRegiaoCompativel) {
     const preco = await buscarPrecoProdutoDestino({
       productId,
       destinationType: "region",
-      destinationId: faixaRegiao.region.id,
+      destinationId: faixaRegiaoCompativel.region.id,
     });
 
     if (preco) {
+      const promessa = await calcularPromessaDaRegiao(
+        faixaRegiaoCompativel.region.id,
+      );
       return {
         found: true,
         level: "regiao",
         shippingPrice: preco.shippingPrice,
-        deliveryDeadline: preco.deliveryDeadline ?? null,
+        deliveryDeadline: promessa?.texto ?? preco.deliveryDeadline ?? null,
+        promessaEntrega: promessa,
         message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
         region: {
-          id: faixaRegiao.region.id,
-          name: faixaRegiao.region.name,
-          city: faixaRegiao.region.city,
-          state: faixaRegiao.region.state,
+          id: faixaRegiaoCompativel.region.id,
+          name: faixaRegiaoCompativel.region.name,
+          city: faixaRegiaoCompativel.region.city,
+          state: faixaRegiaoCompativel.region.state,
         },
       };
     }
@@ -424,11 +459,15 @@ export async function getProductOwnDeliveryPrice(
       );
 
       if (regiaoComPreco) {
+        const promessa = await calcularPromessaDaRegiao(
+          regiaoComPreco.regiao.id,
+        );
         return {
           found: true,
           level: "regiao",
           shippingPrice: preco.shippingPrice,
-          deliveryDeadline: preco.deliveryDeadline ?? null,
+          deliveryDeadline: promessa?.texto ?? preco.deliveryDeadline ?? null,
+          promessaEntrega: promessa,
           message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
           region: {
             id: regiaoComPreco.regiao.id,
@@ -470,6 +509,7 @@ export async function getProductOwnDeliveryPrice(
       level: "bairro-avulso",
       shippingPrice: preco.shippingPrice,
       deliveryDeadline: preco.deliveryDeadline ?? null,
+      promessaEntrega: null,
       message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
       bairro: {
         id: bairroAvulso.id,
@@ -485,6 +525,178 @@ export async function getProductOwnDeliveryPrice(
     message: "Consulte o vendedor",
     pendingEligible: true,
   };
+}
+
+export async function getProductsOwnDeliveryForecasts(
+  productIds: string[],
+  cep: string,
+  neighborhood: string,
+  city: string,
+  state: string,
+) {
+  const ids = [...new Set(productIds)].slice(0, 80);
+  const cleanCep = cep.replace(/\D/g, "");
+  if (ids.length === 0 || cleanCep.length !== 8) return {};
+
+  const [estadoAtivo, cidadeAtiva, faixaRegiao, cepEspecifico, regioesBairro] =
+    await Promise.all([
+      db.query.states.findFirst({
+        where: and(eq(states.uf, state), eq(states.isActive, true)),
+      }),
+      db.query.cities.findFirst({
+        where: and(
+          eq(cities.name, city),
+          eq(cities.stateUf, state),
+          eq(cities.isActive, true),
+        ),
+      }),
+      db.query.shippingRegionCepRanges.findFirst({
+        where: and(
+          lte(shippingRegionCepRanges.cepStart, cleanCep),
+          gte(shippingRegionCepRanges.cepEnd, cleanCep),
+          eq(shippingRegionCepRanges.isActive, true),
+        ),
+        with: { region: true },
+      }),
+      db.query.cepsEspecificos.findFirst({
+        where: and(
+          eq(cepsEspecificos.cep, cleanCep),
+          eq(cepsEspecificos.isActive, true),
+        ),
+      }),
+      db.query.regioBairros.findMany({
+        where: eq(regioBairros.neighborhood, neighborhood),
+        with: { regiao: true },
+      }),
+    ]);
+
+  if (!estadoAtivo || !cidadeAtiva) return {};
+
+  const faixaCompativel =
+    faixaRegiao?.region?.isActive &&
+    faixaRegiao.region.state === state &&
+    normalizarTextoFrete(faixaRegiao.region.city) === normalizarTextoFrete(city)
+      ? faixaRegiao
+      : null;
+  const regioesCompativeis = regioesBairro.filter(
+    (item) =>
+      normalizarTextoFrete(item.neighborhood) ===
+        normalizarTextoFrete(neighborhood) &&
+      item.regiao.isActive &&
+      item.regiao.state === state &&
+      normalizarTextoFrete(item.regiao.city) === normalizarTextoFrete(city),
+  );
+  const regionIds = faixaCompativel
+    ? [faixaCompativel.region.id]
+    : regioesCompativeis.map((item) => item.regiao.id);
+  const bairroAvulso =
+    !faixaCompativel && regionIds.length === 0
+      ? await db.query.bairrosAvulsos.findFirst({
+          where: and(
+            eq(bairrosAvulsos.neighborhood, neighborhood),
+            eq(bairrosAvulsos.city, city),
+            eq(bairrosAvulsos.state, state),
+            eq(bairrosAvulsos.isActive, true),
+          ),
+        })
+      : null;
+
+  const filtrosDestino = [
+    cepEspecifico
+      ? and(
+          eq(productOwnDeliveryPrices.destinationType, "cep-especifico"),
+          eq(productOwnDeliveryPrices.cepEspecificoId, cepEspecifico.id),
+        )
+      : undefined,
+    regionIds.length > 0
+      ? and(
+          eq(productOwnDeliveryPrices.destinationType, "region"),
+          inArray(productOwnDeliveryPrices.regionId, regionIds),
+        )
+      : undefined,
+    bairroAvulso
+      ? and(
+          eq(productOwnDeliveryPrices.destinationType, "bairro-avulso"),
+          eq(productOwnDeliveryPrices.bairroAvulsoId, bairroAvulso.id),
+        )
+      : undefined,
+  ].filter((filtro) => filtro !== undefined);
+
+  if (filtrosDestino.length === 0) return {};
+
+  const [precos, regioesAgenda] = await Promise.all([
+    db.query.productOwnDeliveryPrices.findMany({
+      where: and(
+        inArray(productOwnDeliveryPrices.productId, ids),
+        eq(productOwnDeliveryPrices.isActive, true),
+        or(...filtrosDestino),
+      ),
+    }),
+    regionIds.length > 0
+      ? db.query.shippingRegions.findMany({
+          where: inArray(shippingRegions.id, regionIds),
+          with: { slots: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const promessasPorRegiao = new Map(
+    regioesAgenda.map((regiao) => [
+      regiao.id,
+      calcularPromessaEntregaPropria({
+        agenda: {
+          ativa: regiao.agendaAtiva,
+          diasDaSemana: regiao.slots
+            .filter((slot) => slot.isActive)
+            .map((slot) => slot.dayOfWeek),
+          horarioCorte: regiao.horarioCorte,
+          periodoInicio: regiao.periodoEntregaInicio,
+          periodoFim: regiao.periodoEntregaFim,
+        },
+        feriados: [],
+      }),
+    ]),
+  );
+
+  return Object.fromEntries(
+    ids.flatMap((productId) => {
+      const precoCep = cepEspecifico
+        ? precos.find(
+            (preco) =>
+              preco.productId === productId &&
+              preco.destinationType === "cep-especifico" &&
+              preco.cepEspecificoId === cepEspecifico.id,
+          )
+        : null;
+      const precoRegiao = precos.find(
+        (preco) =>
+          preco.productId === productId &&
+          preco.destinationType === "region" &&
+          preco.regionId !== null &&
+          regionIds.includes(preco.regionId),
+      );
+      const precoBairro = bairroAvulso
+        ? precos.find(
+            (preco) =>
+              preco.productId === productId &&
+              preco.destinationType === "bairro-avulso" &&
+              preco.bairroAvulsoId === bairroAvulso.id,
+          )
+        : null;
+
+      // Mantém a mesma prioridade do fluxo unitário. Faixa regional encontrada
+      // sem preço não cai para bairro ou outra modalidade.
+      const regiaoPromessaId = precoCep
+        ? faixaCompativel?.region.id
+        : precoRegiao?.regionId;
+      const precoValido = precoCep ?? precoRegiao ?? precoBairro;
+      const promessa = regiaoPromessaId
+        ? promessasPorRegiao.get(regiaoPromessaId)
+        : null;
+
+      return precoValido && promessa ? [[productId, promessa.texto]] : [];
+    }),
+  ) as Record<string, string>;
 }
 
 /**
@@ -907,6 +1119,7 @@ export type ShippingPriceResult =
       level: "cep-especifico" | "regiao" | "bairro-avulso";
       shippingPrice: number;
       deliveryDeadline?: string | null;
+      promessaEntrega?: PromessaEntregaPropria | null;
       message: string;
       cep?: string;
       neighborhood?: string;

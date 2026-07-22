@@ -51,6 +51,7 @@ export type ConsultaEntregaPropriaRevalidacaoCheckout =
       disponivel: true;
       valorEmCentavos: number;
       descricao?: string | null;
+      metadados?: Record<string, unknown> | null;
     }
   | {
       disponivel: false;
@@ -267,7 +268,24 @@ function resumirMetadataFrete(metadados?: Record<string, unknown> | null) {
     })
     .slice(0, 12);
 
-  return registros.length > 0 ? Object.fromEntries(registros) : null;
+  const resumo: Record<string, unknown> = Object.fromEntries(registros);
+
+  // A promessa e a região são parte do compromisso feito ao cliente e devem
+  // sobreviver no pedido sem depender de recálculo futuro.
+  if (
+    metadados.promessaEntregaPropria &&
+    typeof metadados.promessaEntregaPropria === "object"
+  ) {
+    resumo.promessaEntregaPropria = metadados.promessaEntregaPropria;
+  }
+  if (
+    metadados.regiaoEntregaPropria &&
+    typeof metadados.regiaoEntregaPropria === "object"
+  ) {
+    resumo.regiaoEntregaPropria = metadados.regiaoEntregaPropria;
+  }
+
+  return Object.keys(resumo).length > 0 ? resumo : null;
 }
 
 function montarSnapshotItemFrete({

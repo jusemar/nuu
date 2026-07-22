@@ -175,7 +175,74 @@ test("bloqueia modalidade que ficou inativa depois da inclusão", () => {
 
   assert.throws(
     () => resolverItemVendavelCheckout({ item: itemBase, produto }),
-    /Modalidade indisponível/,
+    /Modalidade inativa/,
+  );
+});
+
+test("aceita Sob encomenda canônica quando o banco usa a chave histórica", () => {
+  const produto = produtoSimples();
+  produto.pricing = [{ ...precoBase, type: "orderBasis" }];
+  produto.variants = [{ ...varianteTecnica, stockQuantity: 0 }];
+
+  const resultado = resolverItemVendavelCheckout({
+    item: { ...itemBase, modalidadeTipo: "order_basis" },
+    produto,
+  });
+
+  assert.equal(resultado.tipo, "simple");
+  assert.equal(resultado.precoSelecionado.type, "orderBasis");
+});
+
+test("mantém item antigo cuja chave de Sob encomenda usa camelCase", () => {
+  const produto = produtoSimples();
+  produto.pricing = [{ ...precoBase, type: "order_basis" }];
+
+  const resultado = resolverItemVendavelCheckout({
+    item: { ...itemBase, modalidadeTipo: "orderBasis" },
+    produto,
+  });
+
+  assert.equal(resultado.tipo, "simple");
+});
+
+test("bloqueia com motivo específico modalidade conhecida ausente", () => {
+  assert.throws(
+    () =>
+      resolverItemVendavelCheckout({
+        item: { ...itemBase, modalidadeTipo: "order_basis" },
+        produto: produtoSimples(),
+      }),
+    /Modalidade não encontrada/,
+  );
+});
+
+test("produto variável em Sob encomenda não exige estoque local", () => {
+  const produto = {
+    ...produtoSimples(),
+    productKind: "variable",
+    pricing: [{ ...precoBase, type: "orderBasis" }],
+    variants: [{ ...varianteTecnica, stockQuantity: 0 }],
+  };
+
+  const resultado = resolverItemVendavelCheckout({
+    item: { ...itemBase, modalidadeTipo: "order_basis" },
+    produto,
+  });
+
+  assert.equal(resultado.tipo, "variant");
+  assert.equal(resultado.precoSelecionado?.type, "orderBasis");
+});
+
+test("produto variável em Estoque próprio continua exigindo estoque", () => {
+  const produto = {
+    ...produtoSimples(),
+    productKind: "variable",
+    variants: [{ ...varianteTecnica, stockQuantity: 0 }],
+  };
+
+  assert.throws(
+    () => resolverItemVendavelCheckout({ item: itemBase, produto }),
+    /Estoque insuficiente/,
   );
 });
 

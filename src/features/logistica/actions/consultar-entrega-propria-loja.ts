@@ -7,8 +7,12 @@ import {
   mapViaCepToEnderecoCep,
 } from "@/features/admin/logistics/entrega-propria/lib/shipping-zip-address-mapper";
 import { buscarEnderecoCepEntregaPropria } from "@/features/admin/logistics/entrega-propria/queries/shipping-zip-addresses.queries";
-import { getProductOwnDeliveryPrice } from "@/features/admin/logistics/entrega-propria/services/shippingService";
+import {
+  getProductOwnDeliveryPrice,
+  getProductsOwnDeliveryForecasts,
+} from "@/features/admin/logistics/entrega-propria/services/shippingService";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
+import type { PromessaEntregaPropria } from "../lib/entrega-propria/calcular-promessa-entrega-propria";
 
 export type EnderecoEntregaPropriaLoja = {
   cep: string;
@@ -25,6 +29,13 @@ export type ResultadoConsultaEntregaPropriaLoja =
       nivel: "cep-especifico" | "regiao" | "bairro-avulso";
       descricao: string;
       prazoEntrega?: string | null;
+      promessaEntrega?: PromessaEntregaPropria | null;
+      regiaoResolvida?: {
+        id: number;
+        nome: string;
+        cidade: string;
+        estado: string;
+      } | null;
       bairro: string;
       cidade: string;
       uf: string;
@@ -80,31 +91,19 @@ async function buscarEnderecoEntregaPropriaLoja(cepLimpo: string) {
   return endereco;
 }
 
-export async function consultarEntregaPropriaLoja({
+async function consultarProdutoNoEndereco({
   produtoId,
-  cep,
+  cepLimpo,
+  endereco,
+  registrarPendente,
 }: {
   produtoId: string;
-  cep: string;
+  cepLimpo: string;
+  endereco: NonNullable<
+    Awaited<ReturnType<typeof buscarEnderecoEntregaPropriaLoja>>
+  >;
+  registrarPendente: boolean;
 }): Promise<ResultadoConsultaEntregaPropriaLoja> {
-  const cepLimpo = cep.replace(/\D/g, "");
-
-  if (!produtoId || cepLimpo.length !== 8) {
-    return {
-      disponivel: false,
-      mensagem: cepLimpo.length !== 8 ? "CEP inválido" : "Consulte o vendedor",
-    };
-  }
-
-  const endereco = await buscarEnderecoEntregaPropriaLoja(cepLimpo);
-
-  if (!endereco || !endereco.bairro) {
-    return {
-      disponivel: false,
-      mensagem: "Consulte o vendedor",
-    };
-  }
-
   const bairro = endereco.bairro;
   const cidade = endereco.localidade || "";
   const uf = endereco.uf || "";
@@ -134,7 +133,7 @@ export async function consultarEntregaPropriaLoja({
     };
   }
 
-  if (!resultado.found && resultado.pendingEligible) {
+  if (!resultado.found && resultado.pendingEligible && registrarPendente) {
     try {
       await registrarBairroPendenteEntregaPropria({
         cep: cepLimpo,
@@ -161,9 +160,72 @@ export async function consultarEntregaPropriaLoja({
     nivel: resultado.level,
     descricao: resultado.message,
     prazoEntrega: resultado.deliveryDeadline ?? null,
+    promessaEntrega: resultado.promessaEntrega ?? null,
+    regiaoResolvida: resultado.region
+      ? {
+          id: resultado.region.id,
+          nome: resultado.region.name,
+          cidade: resultado.region.city,
+          estado: resultado.region.state,
+        }
+      : null,
     bairro,
     cidade,
     uf,
     endereco: enderecoConsultado,
   };
+}
+
+export async function consultarEntregaPropriaLoja({
+  produtoId,
+  cep,
+}: {
+  produtoId: string;
+  cep: string;
+}): Promise<ResultadoConsultaEntregaPropriaLoja> {
+  const cepLimpo = cep.replace(/\D/g, "");
+
+  if (!produtoId || cepLimpo.length !== 8) {
+    return {
+      disponivel: false,
+      mensagem: cepLimpo.length !== 8 ? "CEP inválido" : "Consulte o vendedor",
+    };
+  }
+
+  const endereco = await buscarEnderecoEntregaPropriaLoja(cepLimpo);
+  if (!endereco?.bairro) {
+    return { disponivel: false, mensagem: "Consulte o vendedor" };
+  }
+
+  return consultarProdutoNoEndereco({
+    produtoId,
+    cepLimpo,
+    endereco,
+    registrarPendente: true,
+  });
+}
+
+export async function consultarPrevisoesEntregaPropriaProdutosLoja({
+  produtosIds,
+  cep,
+}: {
+  produtosIds: string[];
+  cep: string;
+}) {
+  const cepLimpo = cep.replace(/\D/g, "");
+  const idsUnicos = [...new Set(produtosIds.filter(Boolean))].slice(0, 80);
+  if (cepLimpo.length !== 8 || idsUnicos.length === 0) return {};
+
+  // O endereço é resolvido uma única vez para todo o lote. Cada produto ainda
+  // passa pela mesma validação oficial de preço, cobertura, modalidade e agenda.
+  const endereco = await buscarEnderecoEntregaPropriaLoja(cepLimpo);
+  if (!endereco?.bairro) return {};
+
+  return getProductsOwnDeliveryForecasts(
+    idsUnicos,
+    cepLimpo,
+    endereco.bairro,
+    endereco.localidade || "",
+    endereco.uf || "",
+  );
 }

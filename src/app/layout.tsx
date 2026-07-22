@@ -7,6 +7,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import ReactQueryProvider from "@/providers/react-query";
 import { CategoriesProvider } from "@/providers/categories-provider";
+import { ContextoCepLogisticaProvider } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 
 // ─── Fontes ───────────────────────────────────────────────────────────────────
 const geistSans = Geist({
@@ -29,7 +30,13 @@ export const metadata: Metadata = {
   },
   description:
     "Encontre os melhores produtos com qualidade, garantia e entrega rápida na Do Rocha. Frete grátis acima de R$ 299.",
-  keywords: ["loja virtual", "e-commerce", "produtos", "entrega rápida", "frete grátis"],
+  keywords: [
+    "loja virtual",
+    "e-commerce",
+    "produtos",
+    "entrega rápida",
+    "frete grátis",
+  ],
   authors: [{ name: "Do Rocha" }],
   creator: "Do Rocha",
   // Open Graph — aparência ao compartilhar no WhatsApp, Facebook etc.
@@ -38,7 +45,8 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     siteName: "Do Rocha",
     title: "Do Rocha | Sua Loja Virtual",
-    description: "Encontre os melhores produtos com qualidade e entrega rápida.",
+    description:
+      "Encontre os melhores produtos com qualidade e entrega rápida.",
   },
   // Robots
   robots: {
@@ -51,7 +59,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#0C447C" }, // azul primário
-    { media: "(prefers-color-scheme: dark)",  color: "#0C447C" },
+    { media: "(prefers-color-scheme: dark)", color: "#0C447C" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -66,25 +74,23 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={`
-          ${geistSans.variable} ${geistMono.variable}
-          antialiased min-h-screen flex flex-col
-          bg-background text-foreground
-        `}
+        className={` ${geistSans.variable} ${geistMono.variable} bg-background text-foreground flex min-h-screen flex-col antialiased`}
       >
         <CategoriesProvider>
           <ReactQueryProvider>
-            {children}
+            <ContextoCepLogisticaProvider>
+              {children}
+            </ContextoCepLogisticaProvider>
 
             {/* Toaster — notificações globais alinhadas ao design system */}
             <Toaster
               position="bottom-right"
               toastOptions={{
                 classNames: {
-                  success: "bg-[#14B8A6] text-white border-none",   // teal — sucesso
-                  error:   "bg-[#DC2626] text-white border-none",   // vermelho — erro
-                  warning: "bg-[#EF9F27] text-white border-none",   // âmbar — atenção
-                  info:    "bg-[#0C447C] text-white border-none",   // azul — info
+                  success: "bg-[#14B8A6] text-white border-none", // teal — sucesso
+                  error: "bg-[#DC2626] text-white border-none", // vermelho — erro
+                  warning: "bg-[#EF9F27] text-white border-none", // âmbar — atenção
+                  info: "bg-[#0C447C] text-white border-none", // azul — info
                 },
               }}
             />

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { consultarEnderecoCep } from "@/features/checkout/actions/consultar-endereco-cep";
+import { notificarEnderecoClienteAtualizado } from "@/features/logistica/lib/cep-cliente";
 
 import { salvarCadastroCliente } from "../../../actions/cadastro/salvar-cadastro-cliente";
 import {
@@ -154,6 +155,7 @@ export function FormularioCompletarCadastro({
     }
 
     toast.success(resultado.mensagem ?? "Cadastro salvo.");
+    notificarEnderecoClienteAtualizado();
     router.replace("/minha-conta");
     router.refresh();
   }

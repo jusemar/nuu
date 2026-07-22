@@ -58,6 +58,12 @@ export const shippingRegions = pgTable("shipping_regions", {
   /** Se a região está ativa para entrega */
   isActive: boolean("is_active").default(true).notNull(),
 
+  /** Agenda regional usada para calcular a promessa exibida na loja. */
+  agendaAtiva: boolean("agenda_ativa").default(false).notNull(),
+  horarioCorte: varchar("horario_corte", { length: 5 }),
+  periodoEntregaInicio: varchar("periodo_entrega_inicio", { length: 5 }),
+  periodoEntregaFim: varchar("periodo_entrega_fim", { length: 5 }),
+
   /** Data de criação */
   createdAt: timestamp("created_at").defaultNow().notNull(),
 

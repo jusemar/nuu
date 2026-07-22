@@ -11,7 +11,10 @@
 import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/features/store/products/service/productService";
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
-import { calcularPrecosProduto } from "@/features/precificacao";
+import {
+  calcularPrecosProduto,
+  normalizarModalidadePrecoCanonica,
+} from "@/features/precificacao";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
 import type {
@@ -22,23 +25,6 @@ import type {
 // Props que o Next.js injeta automaticamente em pages com [slug]
 interface PageProps {
   params: Promise<{ slug: string }>;
-}
-
-const tiposModalidadeValidos = new Set([
-  "stock",
-  "pre_sale",
-  "preSale",
-  "dropshipping",
-  "order_basis",
-  "orderBasis",
-]);
-
-function normalizarTipoModalidade(tipo: string): Modalidade | null {
-  if (tipo === "stock") return "stock";
-  if (tipo === "pre_sale" || tipo === "preSale") return "pre_sale";
-  if (tipo === "dropshipping") return "dropshipping";
-  if (tipo === "order_basis" || tipo === "orderBasis") return "order_basis";
-  return null;
 }
 
 function converterDataPromocao(data: Date | string | null | undefined) {
@@ -62,23 +48,28 @@ function obterPrecoBaseModalidade(preco: PrecoModalidade) {
 function normalizarPrecosProduto(
   pricing: NonNullable<Awaited<ReturnType<typeof getProductBySlug>>>["pricing"],
 ): PrecoModalidade[] {
-  return pricing
-    .filter((preco) => tiposModalidadeValidos.has(preco.type))
-    .map((preco) => ({
-      type: normalizarTipoModalidade(preco.type) as Modalidade,
-      price: preco.price,
-      mainCardPrice: Boolean(preco.mainCardPrice),
-      pricingModalDescription: preco.pricingModalDescription,
-      deliveryDays: preco.deliveryDays,
-      hasPromo: Boolean(preco.hasPromo),
-      promoType:
-        preco.promoType === "flash" || preco.promoType === "normal"
-          ? preco.promoType
-          : null,
-      promoPrice: preco.promoPrice,
-      promoEndDate: converterDataPromocao(preco.promoEndDate),
-      isActive: Boolean(preco.isActive),
-    }));
+  return pricing.flatMap((preco) => {
+    const modalidade = normalizarModalidadePrecoCanonica(preco.type);
+    if (!modalidade) return [];
+
+    return [
+      {
+        type: modalidade as Modalidade,
+        price: preco.price,
+        mainCardPrice: Boolean(preco.mainCardPrice),
+        pricingModalDescription: preco.pricingModalDescription,
+        deliveryDays: preco.deliveryDays,
+        hasPromo: Boolean(preco.hasPromo),
+        promoType:
+          preco.promoType === "flash" || preco.promoType === "normal"
+            ? preco.promoType
+            : null,
+        promoPrice: preco.promoPrice,
+        promoEndDate: converterDataPromocao(preco.promoEndDate),
+        isActive: Boolean(preco.isActive),
+      },
+    ];
+  });
 }
 
 export default async function ProductPage({ params }: PageProps) {

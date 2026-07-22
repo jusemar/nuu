@@ -1,4 +1,5 @@
 import type { ModalidadePrecoProduto } from "../types/alteracao-em-massa.types";
+import { normalizarModalidadePrecoCanonica } from "@/features/precificacao";
 
 export const MODALIDADES_PRECO_PRODUTO: ReadonlyArray<{
   id: ModalidadePrecoProduto;
@@ -13,13 +14,10 @@ export const MODALIDADES_PRECO_PRODUTO: ReadonlyArray<{
 export function normalizarModalidadePreco(
   modalidade: string,
 ): ModalidadePrecoProduto | null {
-  if (modalidade === "stock") return "stock";
-  if (modalidade === "preSale" || modalidade === "pre_sale") return "preSale";
-  if (modalidade === "dropshipping") return "dropshipping";
-  if (modalidade === "orderBasis" || modalidade === "order_basis") {
-    return "orderBasis";
-  }
-  return null;
+  const modalidadeCanonica = normalizarModalidadePrecoCanonica(modalidade);
+  if (modalidadeCanonica === "pre_sale") return "preSale";
+  if (modalidadeCanonica === "order_basis") return "orderBasis";
+  return modalidadeCanonica;
 }
 
 export function obterRotuloModalidadePreco(modalidade: ModalidadePrecoProduto) {

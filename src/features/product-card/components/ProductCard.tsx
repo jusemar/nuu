@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useCarrinho } from "@/features/carrinho";
+import { PrevisaoEntregaProdutoCard } from "@/features/logistica/components/store/previsao-entrega-produto-card";
 import {
   BadgePromocional,
   type TipoBadgePromocionalVisual,
@@ -242,6 +243,8 @@ export const ProductCard = ({
             </button>
           </div>
         </div>
+
+        <PrevisaoEntregaProdutoCard produtoId={id} />
 
         {/* Badges - FRETE GRÁTIS e OFERTA RELÂMPAGO na mesma linha */}
         {(hasFreeShipping || hasFlashSale) && (

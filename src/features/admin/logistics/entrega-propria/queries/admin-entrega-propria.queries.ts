@@ -84,10 +84,18 @@ export type EntregaPropriaBairroPendente = {
 };
 
 export type EntregaPropriaRegiaoDetalhe = EntregaPropriaRegiaoResumo & {
+  agenda: {
+    ativa: boolean;
+    diasDaSemana: number[];
+    horarioCorte: string;
+    periodoInicio: string;
+    periodoFim: string;
+  };
   bairros: EntregaPropriaBairroRegiao[];
   bairrosBaseLocal: EntregaPropriaBairroBaseLocal[];
   cepRanges: EntregaPropriaFaixaCepRegiao[];
   bairrosPendentes: EntregaPropriaBairroPendente[];
+  bairrosPendentesIndisponiveis: boolean;
 };
 
 export type EntregaPropriaDestinoProduto = {
@@ -112,6 +120,78 @@ export type EntregaPropriaPrecoProduto = {
 
 function toNumber(value: unknown): number {
   return Number(value ?? 0);
+}
+
+function detalharErroBanco(erro: unknown) {
+  const principal = erro instanceof Error ? erro : new Error(String(erro));
+  const causa = principal.cause;
+  const causaRegistro =
+    causa && typeof causa === "object"
+      ? (causa as Record<string, unknown>)
+      : null;
+
+  return {
+    nome: principal.name,
+    mensagem: principal.message,
+    causa: causaRegistro
+      ? {
+          nome: causaRegistro.name,
+          mensagem: causaRegistro.message,
+          codigo: causaRegistro.code,
+          detalhe: causaRegistro.detail,
+        }
+      : causa
+        ? String(causa)
+        : null,
+  };
+}
+
+function erroBancoTransitorio(erro: unknown) {
+  const detalhes = JSON.stringify(detalharErroBanco(erro));
+  return /EAI_AGAIN|ECONNRESET|ETIMEDOUT|fetch failed|Failed to fetch/i.test(
+    detalhes,
+  );
+}
+
+async function buscarBairrosPendentesDaRegiao(state: string, city: string) {
+  const consultar = () =>
+    db.query.shippingPendingNeighborhoods.findMany({
+      where: and(
+        eq(shippingPendingNeighborhoods.state, state),
+        eq(shippingPendingNeighborhoods.city, city),
+        eq(shippingPendingNeighborhoods.status, "pending"),
+      ),
+      orderBy: (shippingPendingNeighborhoods, { desc }) => [
+        desc(shippingPendingNeighborhoods.consultationCount),
+        desc(shippingPendingNeighborhoods.lastConsultedAt),
+      ],
+    });
+
+  try {
+    return { dados: await consultar(), indisponiveis: false };
+  } catch (erro) {
+    if (erroBancoTransitorio(erro)) {
+      try {
+        return { dados: await consultar(), indisponiveis: false };
+      } catch (erroRepetido) {
+        console.error("[entrega-propria] bairros pendentes indisponíveis", {
+          state,
+          city,
+          erro: detalharErroBanco(erroRepetido),
+        });
+        return { dados: [], indisponiveis: true };
+      }
+    }
+
+    // Erros estruturais não derrubam a região, mas ficam explícitos no log e
+    // na interface para não serem confundidos com uma lista realmente vazia.
+    console.error("[entrega-propria] falha estrutural em bairros pendentes", {
+      state,
+      city,
+      erro: detalharErroBanco(erro),
+    });
+    return { dados: [], indisponiveis: true };
+  }
 }
 
 async function listarNomesBairrosVinculadosNaCidade(
@@ -284,24 +364,17 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
     where: eq(shippingRegions.id, id),
     with: {
       bairros: true,
+      slots: true,
     },
   });
 
   if (!regiao) return null;
 
-  const bairrosPendentes = await db.query.shippingPendingNeighborhoods.findMany(
-    {
-      where: and(
-        eq(shippingPendingNeighborhoods.state, regiao.state),
-        eq(shippingPendingNeighborhoods.city, regiao.city),
-        eq(shippingPendingNeighborhoods.status, "pending"),
-      ),
-      orderBy: (shippingPendingNeighborhoods, { desc }) => [
-        desc(shippingPendingNeighborhoods.consultationCount),
-        desc(shippingPendingNeighborhoods.lastConsultedAt),
-      ],
-    },
+  const bairrosPendentesResultado = await buscarBairrosPendentesDaRegiao(
+    regiao.state,
+    regiao.city,
   );
+  const bairrosPendentes = bairrosPendentesResultado.dados;
   const cepRanges = await db.query.shippingRegionCepRanges.findMany({
     where: eq(shippingRegionCepRanges.regionId, regiao.id),
     orderBy: (shippingRegionCepRanges, { asc }) => [
@@ -369,6 +442,16 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
     isActive: regiao.isActive,
     bairrosCount: regiao.bairros.length,
     createdAt: regiao.createdAt,
+    agenda: {
+      ativa: regiao.agendaAtiva,
+      diasDaSemana: regiao.slots
+        .filter((slot) => slot.isActive)
+        .map((slot) => slot.dayOfWeek)
+        .sort((a, b) => a - b),
+      horarioCorte: regiao.horarioCorte ?? "13:00",
+      periodoInicio: regiao.periodoEntregaInicio ?? "14:00",
+      periodoFim: regiao.periodoEntregaFim ?? "18:00",
+    },
     bairros: regiao.bairros.map((bairro) => {
       const ceps = cepsAgrupadosPorBairro.get(bairro.neighborhood) ?? [];
 
@@ -410,6 +493,7 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
         consultationCount: bairro.consultationCount,
         lastConsultedAt: bairro.lastConsultedAt,
       })),
+    bairrosPendentesIndisponiveis: bairrosPendentesResultado.indisponiveis,
   };
 }
 

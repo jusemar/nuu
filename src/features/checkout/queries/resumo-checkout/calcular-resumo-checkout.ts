@@ -10,6 +10,7 @@ import {
   calcularParcelamentosCartao,
   calcularPrecoProduto,
   formatarPrecoEmReais,
+  normalizarModalidadePrecoCanonica,
 } from "@/features/precificacao";
 
 import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
@@ -115,6 +116,11 @@ export async function calcularResumoCheckout({
       itemVendavel.tipo === "variant"
         ? `variant:${itemVendavel.variante.id}`
         : precoSelecionado!.type;
+    const tipoModalidadeCanonica = normalizarModalidadePrecoCanonica(
+      itemVendavel.tipo === "variant"
+        ? itemVendavel.precoSelecionado?.type
+        : precoSelecionado!.type,
+    );
     const precos = calcularPrecoProduto({
       entrada: {
         produtoId: produto.id,
@@ -125,10 +131,8 @@ export async function calcularResumoCheckout({
     });
     const frete = resolverFreteItemCheckout(item);
     const visualModalidade =
-      itemVendavel.tipo === "variant"
-        ? configuracaoVisualModalidade.stock
-        : (configuracaoVisualModalidade[precoSelecionado!.type] ??
-          configuracaoVisualModalidade.stock);
+      configuracaoVisualModalidade[tipoModalidadeCanonica || "stock"] ??
+      configuracaoVisualModalidade.stock;
     const tituloItem =
       itemVendavel.tipo === "variant"
         ? itemVendavel.variante.name ||
@@ -136,7 +140,7 @@ export async function calcularResumoCheckout({
           "Variante"
         : item.modalidadeTitulo ||
           obterTituloModalidade({
-            tipo: precoSelecionado!.type,
+            tipo: tipoModalidadeCanonica || precoSelecionado!.type,
             descricao: precoSelecionado!.pricingModalDescription,
             prazo: precoSelecionado!.deliveryDays,
           });

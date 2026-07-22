@@ -32,10 +32,7 @@ import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
-import type {
-  ParcelamentoCartaoCalculado,
-  PrecosProdutoPorModalidade,
-} from "@/features/precificacao";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
 import { stripProductRichText } from "../utils/rich-text";
 import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
 import { resolverDisponibilidadeCompraPdp } from "../lib/resolver-disponibilidade-compra-pdp";
@@ -112,18 +109,6 @@ export function ProductDetail({
   // -----------------------------------------
   // modalPgto: controla se o modal de pagamento está aberto
   const [modalPgto, setModalPgto] = useState(false);
-  const [formaPagamentoSelecionada, setFormaPagamentoSelecionada] = useState<
-    "pix" | "cartao"
-  >(() => {
-    const precosIniciais =
-      Object.values(precosCalculadosPorModalidade)[0] ??
-      Object.values(precosCalculadosPorVariante)[0];
-    return precosIniciais?.pix.ativo ? "pix" : "cartao";
-  });
-  const [parcelasSelecionadas, setParcelasSelecionadas] = useState<
-    number | null
-  >(null);
-
   // cupomAplicado: cupom de desconto ativo (ainda mock)
   const [cupomAplicado, setCupomAplicado] = useState<null | {
     desconto: number;
@@ -189,10 +174,6 @@ export function ProductDetail({
     possuiVariantesPublicas: publicVariants.length > 0,
     varianteTecnicaProdutoSimples,
   });
-  const parcelamentoSelecionado = selecionarParcelamentoExibido(
-    precoCompraCalculado?.cartao.parcelamentos || [],
-    parcelasSelecionadas,
-  );
   const promocaoVisualModalidadeAtiva = formatarPromocaoPrecoPdp(
     precoModalidadeAtivaCalculado,
   );
@@ -350,21 +331,16 @@ export function ProductDetail({
       produtoUrl: `/product/${product.slug}`,
       nome: product.name,
       sku: selectedVariant?.sku || product.sku,
-      modalidadeTipo: selectedVariant
-        ? `variant:${selectedVariant.id}`
-        : modalidadeAtiva.type,
-      modalidadeTitulo: selectedVariant
-        ? descricaoVariante
-        : tituloModalidadePorTipo[modalidadeAtiva.type] ||
-          (!textoParecePrazo(modalidadeAtiva.pricingModalDescription)
-            ? modalidadeAtiva.pricingModalDescription
-            : null) ||
-          modalidadeAtiva.type,
+      modalidadeTipo: modalidadeAtiva.type,
+      modalidadeTitulo:
+        tituloModalidadePorTipo[modalidadeAtiva.type] ||
+        (!textoParecePrazo(modalidadeAtiva.pricingModalDescription)
+          ? modalidadeAtiva.pricingModalDescription
+          : null) ||
+        modalidadeAtiva.type,
       variante: descricaoVariante,
       atributosVariante: selectedVariant?.attributes,
-      prazoModalidade: selectedVariant
-        ? "Consulte prazo"
-        : modalidadeAtiva.deliveryDays || "Consulte prazo",
+      prazoModalidade: modalidadeAtiva.deliveryDays || "Consulte prazo",
       imagemUrl: galleryImages[0] || "/produto-sem-foto.webp",
       precoEmCentavos,
       estoqueDisponivel:
@@ -513,9 +489,7 @@ export function ProductDetail({
               prazoEntrega={prazoEntrega}
               // Dados reais de entrega
               disponibilidadeCompra={disponibilidadeCompra}
-              formaPagamentoSelecionada={formaPagamentoSelecionada}
               precoCalculado={precoCompraCalculado}
-              parcelamentoSelecionado={parcelamentoSelecionado}
               selectedVariantLabel={
                 selectedVariant
                   ? selectedVariant.name ||
@@ -618,28 +592,11 @@ export function ProductDetail({
             : parcelamentosCartao
         }
         precoCalculado={precoCompraCalculado}
-        formaSelecionada={formaPagamentoSelecionada}
-        parcelasSelecionadas={parcelamentoSelecionado?.parcelas ?? null}
-        onSelecionarForma={setFormaPagamentoSelecionada}
-        onSelecionarParcelas={(parcelas) => {
-          setFormaPagamentoSelecionada("cartao");
-          setParcelasSelecionadas(parcelas);
-        }}
       />
     </div>
   );
 }
 
-function selecionarParcelamentoExibido(
-  parcelamentos: ParcelamentoCartaoCalculado[],
-  parcelasSelecionadas: number | null,
-) {
-  return (
-    parcelamentos.find(
-      (parcelamento) => parcelamento.parcelas === parcelasSelecionadas,
-    ) ?? parcelamentos[0]
-  );
-}
 const tituloModalidadePorTipo: Record<string, string> = {
   stock: "Estoque Próprio",
   pre_sale: "Pré-venda",

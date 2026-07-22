@@ -1,5 +1,3 @@
-"use server";
-
 export { alternarStatusPromocaoAdmin } from "./alternar-status-promocao-admin";
 export { alternarStatusCupomPromocaoAdmin } from "./alternar-status-cupom-promocao-admin";
 export { buscarCategoriasPromocaoAdmin } from "./buscar-categorias-promocao-admin";

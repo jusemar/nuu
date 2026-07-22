@@ -221,7 +221,7 @@ export async function calcularFreteGratisPromocionalPedido({
   totais: TotaisCheckout;
   freteGratisProgressivo: ResultadoFreteGratisProgressivo;
   aplicarFreteGratisPromocional: boolean;
-}): ResultadoFreteGratisPromocionalPedido {
+}): Promise<ResultadoFreteGratisPromocionalPedido> {
   const valorFreteOriginalEmCentavos = Math.max(totais.freteEmCentavos, 0);
   const elegivel =
     freteGratisProgressivo.freteGratisAtingido &&

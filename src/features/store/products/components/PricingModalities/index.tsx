@@ -9,7 +9,7 @@ import {
 import type { ElementType } from "react";
 import { useRef, useState } from "react";
 
-import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
 
 import { formatarPromocaoPrecoPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade, PrecoModalidade } from "../../types/product.types";

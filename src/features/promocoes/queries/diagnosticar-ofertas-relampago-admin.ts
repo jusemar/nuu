@@ -8,7 +8,7 @@ import {
   productTable,
   productVariantTable,
 } from "../../../db/schema";
-import { adaptarPrecosVitrine } from "../../precificacao";
+import { adaptarPrecosVitrine } from "../../precificacao/server";
 import type {
   ItemDiagnosticoOfertaRelampagoAdmin,
   ResultadoDiagnosticoOfertasRelampagoAdmin,

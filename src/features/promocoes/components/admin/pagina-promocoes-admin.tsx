@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   Activity,
   CalendarDays,
@@ -257,6 +257,8 @@ export function PaginaPromocoesAdmin({
 }: PaginaPromocoesAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const referenciaFormularioPromocao = useRef<HTMLDivElement>(null);
+  const referenciaNomePromocao = useRef<HTMLInputElement>(null);
   const [formulario, setFormulario] =
     useState<FormularioPromocaoAdmin>(formularioInicial);
   const [buscaProdutos, setBuscaProdutos] = useState("");
@@ -447,6 +449,40 @@ export function PaginaPromocoesAdmin({
         ? { slug: gerarSlug(String(valor)) }
         : {}),
     }));
+  }
+
+  function focarFormularioPromocao() {
+    window.requestAnimationFrame(() => {
+      referenciaFormularioPromocao.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      referenciaNomePromocao.current?.focus({ preventScroll: true });
+    });
+  }
+
+  function limparBuscasFormulario() {
+    setBuscaProdutos("");
+    setBuscaCategorias("");
+    setBuscaMarcas("");
+    setBuscaRegioes("");
+    setBuscaFretesServicos("");
+    setProdutosEncontrados([]);
+    setCategoriasEncontradas([]);
+    setMarcasEncontradas([]);
+    setRegioesEncontradas([]);
+    setFretesServicosEncontrados([]);
+  }
+
+  function abrirFormularioPromocao(proximoFormulario: FormularioPromocaoAdmin) {
+    setFormulario({
+      ...proximoFormulario,
+      produtos: [...proximoFormulario.produtos],
+      categorias: [...proximoFormulario.categorias],
+      marcas: [...proximoFormulario.marcas],
+    });
+    limparBuscasFormulario();
+    focarFormularioPromocao();
   }
 
   function selecionarProduto(produto: ProdutoPromocaoAdmin) {
@@ -652,7 +688,7 @@ export function PaginaPromocoesAdmin({
             </Button>
             <Button
               type="button"
-              onClick={() => setFormulario(formularioInicial)}
+              onClick={() => abrirFormularioPromocao(formularioInicial)}
               className="w-full bg-white text-slate-950 hover:bg-slate-100 sm:w-auto"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -799,7 +835,7 @@ export function PaginaPromocoesAdmin({
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              setFormulario(
+                              abrirFormularioPromocao(
                                 criarFormularioPorPromocao(promocao),
                               )
                             }
@@ -918,7 +954,9 @@ export function PaginaPromocoesAdmin({
                         variant="outline"
                         className="flex-1"
                         onClick={() =>
-                          setFormulario(criarFormularioPorPromocao(promocao))
+                          abrirFormularioPromocao(
+                            criarFormularioPorPromocao(promocao),
+                          )
                         }
                       >
                         Editar
@@ -968,7 +1006,10 @@ export function PaginaPromocoesAdmin({
           </div>
         </div>
 
-        <Card className="h-fit xl:sticky xl:top-6">
+        <Card
+          ref={referenciaFormularioPromocao}
+          className="h-fit scroll-mt-4 xl:sticky xl:top-6"
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-blue-600" />
@@ -980,6 +1021,7 @@ export function PaginaPromocoesAdmin({
               <div className="space-y-2">
                 <Label>Nome</Label>
                 <Input
+                  ref={referenciaNomePromocao}
                   value={formulario.nome}
                   onChange={(event) =>
                     atualizarFormulario("nome", event.target.value)

@@ -186,7 +186,7 @@ function Stars({ rating, size = "sm" }: { rating: number; size?: "sm" | "lg" }) 
 // =====================================================================
 // COMPONENTE PRINCIPAL
 // =====================================================================
-export function ProductDetail() {
+function ProductDetail() {
   // Estados
   const [imgAtiva, setImgAtiva]               = useState(0);
   const [corSel, setCorSel]                   = useState<Cor>("preto");
@@ -963,3 +963,5 @@ export function ProductDetail() {
     </div>
   );
 }
+
+export default ProductDetail;

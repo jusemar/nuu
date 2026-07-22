@@ -1,5 +1,5 @@
 import type { ModalidadePrecoProduto } from "../types/alteracao-em-massa.types";
-import { normalizarModalidadePrecoCanonica } from "@/features/precificacao";
+import { normalizarModalidadePrecoCanonica } from "@/features/precificacao/client";
 
 export const MODALIDADES_PRECO_PRODUTO: ReadonlyArray<{
   id: ModalidadePrecoProduto;

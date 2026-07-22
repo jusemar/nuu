@@ -1,5 +1,5 @@
 import type { ItemCarrinho } from "@/features/carrinho";
-import type { ParcelamentoCartaoCalculado } from "@/features/precificacao";
+import type { ParcelamentoCartaoCalculado } from "@/features/precificacao/client";
 
 export type DadosIdentificacaoCheckout = {
   nome: string;

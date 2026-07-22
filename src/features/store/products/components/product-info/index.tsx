@@ -17,7 +17,7 @@
 "use client";
 
 import { Stars } from "@/components/ui/stars";
-import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
 
 import type {
   AtributoProdutoLoja,

@@ -5,7 +5,7 @@ import { productTable } from "@/db/schema";
 import {
   adaptarPrecosVitrine,
   type PrecosVitrineNormalizados,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 import { inArray, sql } from "drizzle-orm";
 
 export type CategoriaPrincipalBusca = {

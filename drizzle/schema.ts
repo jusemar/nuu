@@ -36,7 +36,7 @@ export const product = pgTable(
       .defaultNow()
       .notNull(),
     brand: text(),
-    sku: text().default(gen_random_uuid()).notNull(),
+    sku: text().default(sql`gen_random_uuid()`).notNull(),
     productType: text("product_type"),
     productCode: text("product_code"),
     ncmCode: text("ncm_code"),

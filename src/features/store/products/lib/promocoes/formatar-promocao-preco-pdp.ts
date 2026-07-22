@@ -1,4 +1,4 @@
-import type { PrecoProdutoCalculado } from "@/features/precificacao";
+import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 
 export type PromocaoVisualPdp = {
   ativa: boolean;

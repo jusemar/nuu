@@ -6,7 +6,7 @@ import {
   modalidadesPrecoSaoEquivalentes,
   normalizarModalidadePrecoCanonica,
   type ConfiguracaoPagamentoCalculavel,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 
 type PrecoProdutoCheckout = {
   type: string;

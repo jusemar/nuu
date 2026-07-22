@@ -10,7 +10,7 @@
 import type {
   ParcelamentoCartaoCalculado,
   PrecoProdutoCalculado,
-} from "@/features/precificacao";
+} from "@/features/precificacao/client";
 
 // ==========================================
 // INTERFACE DAS PROPS (o que o componente recebe)

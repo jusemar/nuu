@@ -17,7 +17,7 @@ import { CategoryProductCard } from "@/features/store/category/components/Catego
 import {
   adaptarPrecosVitrine,
   type PrecosVitrineNormalizados,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 
 // Services
 import { getSubcategoryTabs } from "@/features/store/category/services/categoryTabsService";

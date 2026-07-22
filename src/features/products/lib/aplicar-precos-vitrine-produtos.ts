@@ -4,7 +4,7 @@ import {
   type PrecoPrincipalCompatibilidadeVitrine,
   type PrecoVitrineNormalizado,
   type VarianteVitrineEntrada,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 
 type PrecoPrincipalProdutoLegado = {
   price: number | null;

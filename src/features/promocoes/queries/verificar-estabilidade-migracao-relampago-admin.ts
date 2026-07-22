@@ -7,7 +7,7 @@ import { productPricingTable, productTable } from "../../../db/schema";
 import {
   adaptarPrecosVitrine,
   criarChavePrecoVitrine,
-} from "../../precificacao";
+} from "../../precificacao/server";
 import { avaliarEstabilidadeMigracaoRelampago } from "../lib/avaliar-estabilidade-migracao-relampago";
 import type {
   ItemEstabilidadeMigracaoRelampagoAdmin,

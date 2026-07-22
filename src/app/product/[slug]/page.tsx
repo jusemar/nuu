@@ -14,7 +14,7 @@ import { ProductDetail } from "@/features/store/products/components/ProductDetai
 import {
   calcularPrecosProduto,
   normalizarModalidadePrecoCanonica,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
 import type {

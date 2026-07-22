@@ -5,7 +5,7 @@ import { ProductCard } from "@/features/product-card/components/ProductCard";
 import { getProductsByFlag } from "@/features/products/actions/get-products-by-flag";
 import { useEffect, useState } from "react";
 import DealsCarousel from "@/features/deals/components/DealsCarousel";
-import { FeaturedProductCard } from "./FeaturedProductCard/page";
+import FeaturedProductCard from "./FeaturedProductCard/page";
 
 export default function TestPage() {
   const [testProducts, setTestProducts] = useState<any[]>([]);

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { adaptarPromocoesLegadasParaEngine } from "../../../promocoes/adaptadores";
 import { calcularPromocoes } from "../../../promocoes/services";
 import type {

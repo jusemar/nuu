@@ -1,4 +1,4 @@
-import type { PrecoProdutoCalculado } from "@/features/precificacao";
+import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 import type { ResultadoVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 
 import type {

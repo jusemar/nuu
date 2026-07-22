@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PrecoProdutoCalculado } from "@/features/precificacao";
+import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 
 import { resolverDisponibilidadeCompraPdp } from "./resolver-disponibilidade-compra-pdp";
 

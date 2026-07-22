@@ -32,7 +32,7 @@ import { useProductPricing } from "../hooks/useProductPricing";
 import { useCarrinho } from "@/features/carrinho";
 import type { NovoItemCarrinho } from "@/features/carrinho";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
-import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
 import { stripProductRichText } from "../utils/rich-text";
 import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
 import { resolverDisponibilidadeCompraPdp } from "../lib/resolver-disponibilidade-compra-pdp";

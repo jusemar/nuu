@@ -11,7 +11,7 @@ import {
   adaptarPrecosVitrine,
   criarPrecoPrincipalCompatibilidadeVitrine,
   type PrecosVitrineNormalizados,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
 export type TipoPromocaoOferta = "normal" | "flash";

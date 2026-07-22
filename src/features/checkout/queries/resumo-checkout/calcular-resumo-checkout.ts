@@ -11,7 +11,7 @@ import {
   calcularPrecoProduto,
   formatarPrecoEmReais,
   normalizarModalidadePrecoCanonica,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 
 import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
 import {

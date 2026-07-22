@@ -6,7 +6,10 @@ import { ConfigRetiradaLocalPage } from "@/features/admin/logistica/components/r
 import { NavegacaoLogisticaOperacional } from "@/features/admin/logistica/components/operacao/navegacao-logistica-operacional";
 
 export default async function RetiradaLocalRoute() {
-  const modelos = await buscarModelosRetirada();
+  const modelos = (await buscarModelosRetirada()).map((modelo) => ({
+    ...modelo,
+    ativo: Boolean(modelo.ativo),
+  }));
 
   return (
     <div className="space-y-6">

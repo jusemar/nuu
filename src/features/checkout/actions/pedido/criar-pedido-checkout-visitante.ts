@@ -18,7 +18,7 @@ import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/
 import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
-} from "@/features/precificacao";
+} from "@/features/precificacao/server";
 import { extrairCodigosFretePromocionalDeSnapshot } from "@/features/promocoes/lib/codigos-frete-promocional";
 
 import { calcularPreviaTotaisPedido } from "../../queries/previa-totais/calcular-previa-totais-pedido";

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import type { PrecosProdutoPorModalidade } from "@/features/precificacao";
+import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
 
 import type { Modalidade, PrecoModalidade } from "../types/product.types";
 

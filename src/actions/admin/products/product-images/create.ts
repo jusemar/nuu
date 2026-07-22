@@ -15,7 +15,13 @@ export async function createProductImage(data: {
   
   const [image] = await db
     .insert(productImageTable)
-    .values(data)
+    .values({
+      productVariantId: data.productVariantId,
+      imageUrl: data.imageUrl,
+      externalImageId: data.cloudinaryPublicId,
+      altText: data.altText,
+      sortOrder: data.sortOrder ?? 0,
+    })
     .returning()
   
   revalidatePath(`/admin/products/[id]`)

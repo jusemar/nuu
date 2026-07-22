@@ -13,7 +13,7 @@ import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
 import { montarFreteFrenetSelecionado } from "../../lib/frete/montar-frete-frenet-selecionado";
 import type { PromocaoVisualPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade } from "../../types/product.types";
-import type { PrecoProdutoCalculado } from "@/features/precificacao";
+import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 import type { DisponibilidadeCompraPdp } from "../../lib/resolver-disponibilidade-compra-pdp";
 import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
 import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";

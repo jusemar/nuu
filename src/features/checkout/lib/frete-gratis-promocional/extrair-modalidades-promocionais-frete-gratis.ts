@@ -6,8 +6,29 @@ export function extrairModalidadesPromocionaisFreteGratis(
   return [
     ...new Set(
       itens
-        .flatMap((item) => [item.modalidadeTipo, item.freteEscolhido?.id])
+        .map((item) => item.modalidadeTipo)
         .filter((modalidade): modalidade is string => Boolean(modalidade)),
+    ),
+  ];
+}
+
+export function extrairFormasEntregaPromocionaisFreteGratis(
+  itens: ItemCarrinho[],
+) {
+  return [
+    ...new Set(
+      itens
+        .map((item) => item.freteEscolhido?.id)
+        .map((formaEntrega) => {
+          if (formaEntrega === "frenet") return "frete-externo";
+          return formaEntrega;
+        })
+        .filter(
+          (
+            formaEntrega,
+          ): formaEntrega is "entrega-propria" | "frete-externo" | "retirada" =>
+            Boolean(formaEntrega),
+        ),
     ),
   ];
 }

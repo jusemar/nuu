@@ -260,6 +260,13 @@
       "when": 1784795597774,
       "tag": "0055_add_whatsapp_admin_user",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1784822400000,
+      "tag": "0056_separar_forma_entrega_frete_gratis_promocional",
+      "breakpoints": true
     }
   ]
 }

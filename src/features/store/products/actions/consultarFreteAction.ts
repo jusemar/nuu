@@ -5,7 +5,9 @@ import {
   cotarFreteFluxoAtual,
 } from "@/features/logistica";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
+
 import { adaptarCotacaoDisponivelParaConsultaFrete } from "../lib/frete/adaptar-cotacao-disponivel-para-consulta-frete";
+import { aplicarFreteGratisPromocionalConsultaFrete } from "../lib/frete/aplicar-frete-gratis-promocional-consulta-frete";
 import { buscarDadosCotacaoFreteLoja } from "../queries/frete/buscar-dados-cotacao-frete-loja";
 import type { ConsultaFreteResult } from "../types/consulta-frete.types";
 
@@ -19,13 +21,14 @@ async function buscarEntradaCotacaoFreteLoja(
   produtoId: string,
   cep: string,
   varianteId?: string | null,
+  quantidade = 1,
 ) {
   const dadosCotacao = await buscarDadosCotacaoFreteLoja(produtoId, varianteId);
 
   return dadosCotacao
     ? {
         ...dadosCotacao,
-        quantidade: 1,
+        quantidade,
         cep,
       }
     : null;
@@ -67,12 +70,15 @@ async function consultarFreteOficial(
   produtoId: string,
   cep: string,
   varianteId?: string | null,
+  quantidade = 1,
+  modalidadeComercial?: string | null,
 ): Promise<ConsultaFreteResult> {
   try {
     const entrada = await buscarEntradaCotacaoFreteLoja(
       produtoId,
       cep,
       varianteId,
+      quantidade,
     );
 
     if (!entrada) {
@@ -96,10 +102,21 @@ async function consultarFreteOficial(
       categoriaId: entrada.categoriaId,
     });
 
-    return adaptarCotacaoDisponivelParaConsultaFrete(
+    const resultadoConsultaFrete = adaptarCotacaoDisponivelParaConsultaFrete(
       resultado,
       disponibilidade,
     );
+
+    return aplicarFreteGratisPromocionalConsultaFrete({
+      resultado: resultadoConsultaFrete,
+      categoriaId: entrada.categoriaId,
+      subtotalEmCentavos: Math.max(
+        (entrada.valorDeclaradoEmCentavos ?? 0) * quantidade,
+        0,
+      ),
+      cep,
+      modalidadeComercial,
+    });
   } catch {
     return {
       found: false,
@@ -112,6 +129,14 @@ export async function consultarFreteAction(
   productId: string,
   cep: string,
   varianteId?: string | null,
+  quantidade = 1,
+  modalidadeComercial?: string | null,
 ): Promise<ConsultaFreteResult> {
-  return consultarFreteOficial(productId, cep, varianteId);
+  return consultarFreteOficial(
+    productId,
+    cep,
+    varianteId,
+    quantidade,
+    modalidadeComercial,
+  );
 }

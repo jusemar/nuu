@@ -10,6 +10,7 @@ import {
   regrasPromocaoTable,
   usosCuponsPromocaoTable,
 } from "../../../db/schema";
+import { normalizarFormaEntregaPromocional } from "../lib/normalizar-forma-entrega-promocional";
 import type {
   CupomPromocaoCalculavel,
   RegraFreteGratisPromocaoCalculavel,
@@ -157,6 +158,9 @@ function mapearFreteGratisPromocao(
     regraPromocaoId: freteGratisPromocao.regraPromocaoId,
     subtotalMinimo: freteGratisPromocao.subtotalMinimo,
     modalidade: freteGratisPromocao.modalidade,
+    formaEntrega: normalizarFormaEntregaPromocional(
+      freteGratisPromocao.formaEntrega,
+    ),
     categoriasIds: categoriasRegra.map((categoria) => categoria.categoriaId),
     mensagemProgressiva: freteGratisPromocao.mensagemProgressiva,
     regiaoCodigo: freteGratisPromocao.regiaoCodigo,

@@ -3,6 +3,9 @@ import type { PromessaEntregaPropria } from "@/features/logistica/lib/entrega-pr
 export interface ConsultaFreteSucesso {
   found: true;
   shippingPrice: number;
+  shippingPriceOriginal?: number;
+  freteGratisPromocionalAplicado?: boolean;
+  regraFreteGratisAplicadaId?: string | null;
   deliveryDeadline?: string | null;
   promessaEntrega?: PromessaEntregaPropria | null;
   level: "cep-especifico" | "regiao" | "bairro-avulso";
@@ -38,5 +41,8 @@ export type OpcaoEntregaCotada = {
   nome: string;
   prazo: string | null;
   valorEmCentavos: number;
+  valorOriginalEmCentavos?: number;
+  freteGratisPromocionalAplicado?: boolean;
+  regraFreteGratisAplicadaId?: string | null;
   transportadora?: string | null;
 };

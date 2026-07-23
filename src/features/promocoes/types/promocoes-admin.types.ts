@@ -1,7 +1,8 @@
 import type {
+  FormaEntregaPromocional,
   StatusPromocao,
-  TipoCampanhaPromocao,
   TipoBeneficioPromocao,
+  TipoCampanhaPromocao,
   TipoDescontoPromocao,
 } from "./promocoes.types";
 
@@ -41,6 +42,7 @@ export type FreteServicoPromocaoAdmin = {
   nome: string;
   tipo: "transportadora" | "servico";
   descricao: string | null;
+  transportadoraCodigo: string | null;
 };
 
 export type SubtotalPromocaoAdmin = {
@@ -53,8 +55,11 @@ export type FreteGratisPromocaoAdmin = {
   id: string;
   subtotalMinimo: number;
   modalidade: string | null;
+  formaEntrega: FormaEntregaPromocional | null;
   mensagemProgressiva: string | null;
   regiaoCodigo: string | null;
+  regiaoNome?: string | null;
+  regioesCodigos?: string[];
   transportadoraCodigo: string | null;
   servicoCodigo: string | null;
 };
@@ -200,6 +205,8 @@ export type PedidoAuditoriaFreteGratisAdmin = {
   regraPromocaoId: string | null;
   modalidadeAplicada: string | null;
   modalidadesElegiveis: string | null;
+  formaEntregaAplicada: string | null;
+  formasEntregaElegiveis: string | null;
   regiaoAplicada: string | null;
   regioesElegiveis: string | null;
   transportadoraAplicada: string | null;

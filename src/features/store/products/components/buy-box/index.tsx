@@ -7,16 +7,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatCEP, isValidCEP } from "../../utils/formatters";
-import { consultarFreteAction } from "../../actions/consultarFreteAction";
+
+import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
+import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
+import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
+
 import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
+import { consultarFreteAction } from "../../actions/consultarFreteAction";
+import { calcularProgressoFreteGratisPdp } from "../../lib/calcular-progresso-frete-gratis-pdp";
 import { montarFreteFrenetSelecionado } from "../../lib/frete/montar-frete-frenet-selecionado";
 import type { PromocaoVisualPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
-import type { Modalidade } from "../../types/product.types";
-import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 import type { DisponibilidadeCompraPdp } from "../../lib/resolver-disponibilidade-compra-pdp";
-import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
-import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
+import type { Modalidade } from "../../types/product.types";
+import { formatCEP, isValidCEP } from "../../utils/formatters";
 
 // ==========================================
 // INTERFACE
@@ -114,6 +117,37 @@ function PrevisaoEntregaPropriaPdp({
   );
 }
 
+function PrecoFretePromocionalPdp({
+  valorEmCentavos,
+  valorOriginalEmCentavos,
+  freteGratisPromocionalAplicado,
+  rotuloGratis = "GRÁTIS",
+}: {
+  valorEmCentavos: number;
+  valorOriginalEmCentavos?: number | null;
+  freteGratisPromocionalAplicado?: boolean | null;
+  rotuloGratis?: string;
+}) {
+  if (freteGratisPromocionalAplicado) {
+    return (
+      <div className="text-right text-xs font-bold">
+        {valorOriginalEmCentavos ? (
+          <div className="text-text-hint text-[10px] line-through">
+            R$ {(valorOriginalEmCentavos / 100).toFixed(2).replace(".", ",")}
+          </div>
+        ) : null}
+        <div className="text-success">{rotuloGratis}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-text-primary text-right text-xs font-bold">
+      R$ {(valorEmCentavos / 100).toFixed(2).replace(".", ",")}
+    </div>
+  );
+}
+
 // ==========================================
 // COMPONENTE
 // ==========================================
@@ -166,14 +200,17 @@ export function BuyBox({
   const cepEditadoManualmenteRef = useRef(false);
   const consultaAutomaticaRef = useRef("");
 
-  // CÁLCULOS
-  const precoNumerico = parseFloat(
-    precoPix.replace("R$ ", "").replace(",", "."),
-  );
-  const valorCarrinho = precoNumerico * quantidade;
-  const temFreteGratis = valorCarrinho >= freteGratisMin;
-  const faltaParaFreteGratis = Math.max(freteGratisMin - valorCarrinho, 0);
-  const progressoFrete = Math.min((valorCarrinho / freteGratisMin) * 100, 100);
+  // A barra usa somente o valor numérico calculado no servidor, nunca a string formatada.
+  const precoPixEmCentavos = precoCalculado?.pix.valorEmCentavos;
+  const progressoFreteGratis = calcularProgressoFreteGratisPdp({
+    valorUnitarioEmCentavos: precoPixEmCentavos,
+    quantidade,
+    subtotalMinimoEmReais: freteGratisMin,
+  });
+  const precoNumerico =
+    precoPixEmCentavos !== undefined && precoPixEmCentavos !== null
+      ? precoPixEmCentavos / 100
+      : null;
   const cepAtualLimpo = cep.replace(/\D/g, "");
   const resultadoDoCepAtual =
     cepConsultadoLimpo === cepAtualLimpo ? entregaPropriaResult : null;
@@ -237,6 +274,8 @@ export function BuyBox({
           productId,
           cepParaConsulta,
           varianteIdSelecionada,
+          quantidade,
+          modalidadeAtiva?.type ?? null,
         );
         if (consultaFreteIdRef.current !== consultaId) return;
         // O CEP foi efetivamente consultado. Cada card ainda valida produto,
@@ -420,7 +459,7 @@ export function BuyBox({
           </div>
 
           <div className="text-text-primary text-2xl font-extrabold tracking-tight">
-            {pixPrincipal && cupomAplicado
+            {pixPrincipal && cupomAplicado && precoNumerico !== null
               ? `R$ ${(precoNumerico * (1 - cupomAplicado.desconto / 100)).toFixed(2).replace(".", ",")}`
               : pixPrincipal
                 ? precoCalculado?.pix.valor || precoPix
@@ -507,18 +546,21 @@ export function BuyBox({
 
       {/* FRETE GRÁTIS */}
       <div
-        className={`rounded-xl border p-3 ${temFreteGratis ? "bg-success-light border-[#99F6E4]" : "bg-primary-light border-surface-border"}`}
+        className={`rounded-xl border p-3 ${progressoFreteGratis.atingido ? "bg-success-light border-[#99F6E4]" : "bg-primary-light border-surface-border"}`}
       >
-        {temFreteGratis ? (
+        {progressoFreteGratis.atingido ? (
           <div className="text-success text-xs font-bold">
             🚚 Parabéns! Você ganhou <strong>frete grátis</strong>!
           </div>
-        ) : (
+        ) : progressoFreteGratis.disponivel ? (
           <>
             <div className="text-text-primary text-xs">
               🚚 Falta{" "}
               <strong className="text-primary">
-                R$ {faltaParaFreteGratis.toFixed(2).replace(".", ",")}
+                R${" "}
+                {(progressoFreteGratis.faltanteEmCentavos! / 100)
+                  .toFixed(2)
+                  .replace(".", ",")}
               </strong>{" "}
               para ganhar frete grátis
             </div>
@@ -526,15 +568,26 @@ export function BuyBox({
             <div className="bg-surface-border mt-2 h-1.5 overflow-hidden rounded-full">
               <div
                 className="bg-success h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressoFrete}%` }}
+                style={{ width: `${progressoFreteGratis.percentual}%` }}
               />
             </div>
 
             <div className="text-text-hint mt-1 text-[10px]">
-              Carrinho: R$ {valorCarrinho.toFixed(2).replace(".", ",")} / mín.
-              R$ {freteGratisMin},00
+              Carrinho: R${" "}
+              {(progressoFreteGratis.subtotalEmCentavos! / 100)
+                .toFixed(2)
+                .replace(".", ",")}{" "}
+              / mín. R${" "}
+              {(progressoFreteGratis.subtotalMinimoEmCentavos! / 100)
+                .toFixed(2)
+                .replace(".", ",")}
             </div>
           </>
+        ) : (
+          <div className="text-text-hint text-xs">
+            Consulte o valor do produto para calcular o progresso do frete
+            grátis.
+          </div>
         )}
       </div>
 
@@ -632,12 +685,16 @@ export function BuyBox({
                         fallback={prazoEntregaPropria}
                       />
                       {resultadoDoCepAtual?.found && (
-                        <div className="text-text-primary text-xs font-bold">
-                          R${" "}
-                          {(resultadoDoCepAtual.shippingPrice / 100)
-                            .toFixed(2)
-                            .replace(".", ",")}
-                        </div>
+                        <PrecoFretePromocionalPdp
+                          valorEmCentavos={resultadoDoCepAtual.shippingPrice}
+                          valorOriginalEmCentavos={
+                            resultadoDoCepAtual.shippingPriceOriginal
+                          }
+                          freteGratisPromocionalAplicado={
+                            resultadoDoCepAtual.freteGratisPromocionalAplicado
+                          }
+                          rotuloGratis="Entrega Própria — GRÁTIS"
+                        />
                       )}
                       <button
                         onClick={() => setTransportadoraSelecionada(null)}
@@ -654,12 +711,15 @@ export function BuyBox({
                       <div className="text-text-hint text-[11px]">
                         {opcaoFrenetSelecionada.prazo || "Consulte prazo"}
                       </div>
-                      <div className="text-text-primary text-xs font-bold">
-                        R${" "}
-                        {(opcaoFrenetSelecionada.valorEmCentavos / 100)
-                          .toFixed(2)
-                          .replace(".", ",")}
-                      </div>
+                      <PrecoFretePromocionalPdp
+                        valorEmCentavos={opcaoFrenetSelecionada.valorEmCentavos}
+                        valorOriginalEmCentavos={
+                          opcaoFrenetSelecionada.valorOriginalEmCentavos
+                        }
+                        freteGratisPromocionalAplicado={
+                          opcaoFrenetSelecionada.freteGratisPromocionalAplicado
+                        }
+                      />
                       <button
                         onClick={() => setTransportadoraSelecionada(null)}
                         className="border-surface-border text-text-hint hover:text-danger hover:border-danger absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-white text-[10px] transition-colors"
@@ -733,12 +793,16 @@ export function BuyBox({
                           resultado={resultadoDoCepAtual}
                           fallback={prazoEntregaPropria}
                         />
-                        <div className="text-text-primary text-xs font-bold">
-                          R${" "}
-                          {(resultadoDoCepAtual.shippingPrice / 100)
-                            .toFixed(2)
-                            .replace(".", ",")}
-                        </div>
+                        <PrecoFretePromocionalPdp
+                          valorEmCentavos={resultadoDoCepAtual.shippingPrice}
+                          valorOriginalEmCentavos={
+                            resultadoDoCepAtual.shippingPriceOriginal
+                          }
+                          freteGratisPromocionalAplicado={
+                            resultadoDoCepAtual.freteGratisPromocionalAplicado
+                          }
+                          rotuloGratis="Entrega Própria — GRÁTIS"
+                        />
                       </label>
                     ) : (
                       <div className="flex items-center gap-2 rounded-lg border-[1.5px] border-red-200 bg-red-50 p-2.5">
@@ -771,12 +835,15 @@ export function BuyBox({
                         <div className="text-text-hint text-[11px]">
                           {opcao.prazo || "Consulte prazo"}
                         </div>
-                        <div className="text-text-primary text-xs font-bold">
-                          R${" "}
-                          {(opcao.valorEmCentavos / 100)
-                            .toFixed(2)
-                            .replace(".", ",")}
-                        </div>
+                        <PrecoFretePromocionalPdp
+                          valorEmCentavos={opcao.valorEmCentavos}
+                          valorOriginalEmCentavos={
+                            opcao.valorOriginalEmCentavos
+                          }
+                          freteGratisPromocionalAplicado={
+                            opcao.freteGratisPromocionalAplicado
+                          }
+                        />
                       </label>
                     ))}
                 </>

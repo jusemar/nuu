@@ -109,12 +109,13 @@ describe("calcularFreteGratisProgressivo", () => {
     );
   });
 
-  it("aplica regra por entrega propria quando modalidade de frete e categoria sao elegiveis", async () => {
+  it("aplica regra por entrega propria sem misturar com modalidade comercial", async () => {
     const categoriaDiscoRigido = "77777777-7777-4777-8777-777777777777";
     const resultado = await calcularFreteGratisProgressivo(
       criarEntrada({
         subtotalEmCentavos: 10000,
-        modalidades: ["stock", "entrega-propria"],
+        modalidades: ["stock"],
+        formasEntrega: ["entrega-propria"],
         categoriasIds: [categoriaDiscoRigido],
         regioesEntregaCodigos: ["regiao_entrega:5"],
         regrasFreteGratis: [
@@ -122,7 +123,8 @@ describe("calcularFreteGratisProgressivo", () => {
             id: "11111111-1111-4111-8111-111111111111",
             regraPromocaoId: "22222222-2222-4222-8222-222222222222",
             subtotalMinimo: 10000,
-            modalidade: "entrega-propria",
+            modalidade: "stock",
+            formaEntrega: "entrega-propria",
             categoriasIds: [categoriaDiscoRigido],
             mensagemProgressiva: null,
             regiaoCodigo: "regiao_entrega:5",
@@ -135,17 +137,19 @@ describe("calcularFreteGratisProgressivo", () => {
 
     assert.equal(resultado.ativo, true);
     assert.equal(resultado.freteGratisAtingido, true);
-    assert.equal(resultado.modalidade, "entrega-propria");
+    assert.equal(resultado.modalidade, "stock");
+    assert.equal(resultado.formaEntrega, "entrega-propria");
     assert.equal(resultado.regiaoCodigo, "regiao_entrega:5");
   });
 
-  it("ignora regra por entrega propria quando categoria ou modalidade divergem", async () => {
+  it("ignora regra por entrega propria quando categoria ou forma de entrega divergem", async () => {
     const categoriaDiscoRigido = "77777777-7777-4777-8777-777777777777";
     const regraFreteGratis = {
       id: "11111111-1111-4111-8111-111111111111",
       regraPromocaoId: "22222222-2222-4222-8222-222222222222",
       subtotalMinimo: 10000,
-      modalidade: "entrega-propria",
+      modalidade: "stock",
+      formaEntrega: "entrega-propria" as const,
       categoriasIds: [categoriaDiscoRigido],
       mensagemProgressiva: null,
       regiaoCodigo: "regiao_entrega:5",
@@ -155,7 +159,8 @@ describe("calcularFreteGratisProgressivo", () => {
     const resultadoCategoriaDivergente = await calcularFreteGratisProgressivo(
       criarEntrada({
         subtotalEmCentavos: 10000,
-        modalidades: ["entrega-propria"],
+        modalidades: ["stock"],
+        formasEntrega: ["entrega-propria"],
         categoriasIds: ["88888888-8888-4888-8888-888888888888"],
         regioesEntregaCodigos: ["regiao_entrega:5"],
         regrasFreteGratis: [regraFreteGratis],
@@ -164,7 +169,8 @@ describe("calcularFreteGratisProgressivo", () => {
     const resultadoModalidadeDivergente = await calcularFreteGratisProgressivo(
       criarEntrada({
         subtotalEmCentavos: 10000,
-        modalidades: ["frenet"],
+        modalidades: ["stock"],
+        formasEntrega: ["frete-externo"],
         categoriasIds: [categoriaDiscoRigido],
         regioesEntregaCodigos: ["regiao_entrega:5"],
         regrasFreteGratis: [regraFreteGratis],
@@ -173,6 +179,40 @@ describe("calcularFreteGratisProgressivo", () => {
 
     assert.equal(resultadoCategoriaDivergente.ativo, false);
     assert.equal(resultadoModalidadeDivergente.ativo, false);
+  });
+
+  it("mantem frete externo e retirada fora de uma regra exclusiva de entrega propria", async () => {
+    const regraEntregaPropria = {
+      id: "11111111-1111-4111-8111-111111111111",
+      regraPromocaoId: "22222222-2222-4222-8222-222222222222",
+      subtotalMinimo: 10000,
+      modalidade: null,
+      formaEntrega: "entrega-propria" as const,
+      mensagemProgressiva: null,
+      regiaoCodigo: null,
+      transportadoraCodigo: null,
+      servicoCodigo: null,
+    };
+
+    const [freteExterno, retirada] = await Promise.all([
+      calcularFreteGratisProgressivo(
+        criarEntrada({
+          subtotalEmCentavos: 10000,
+          formasEntrega: ["frete-externo"],
+          regrasFreteGratis: [regraEntregaPropria],
+        }),
+      ),
+      calcularFreteGratisProgressivo(
+        criarEntrada({
+          subtotalEmCentavos: 10000,
+          formasEntrega: ["retirada"],
+          regrasFreteGratis: [regraEntregaPropria],
+        }),
+      ),
+    ]);
+
+    assert.equal(freteExterno.ativo, false);
+    assert.equal(retirada.ativo, false);
   });
 
   it("aplica regra regional quando a entrega possui regiao elegivel", async () => {
@@ -202,6 +242,44 @@ describe("calcularFreteGratisProgressivo", () => {
       resultado.regraFreteGratisAplicada?.regiaoCodigo,
       "macrorregiao:sudeste",
     );
+  });
+
+  it("aplica qualquer regiao selecionada quando a promocao possui multiplos escopos regionais", async () => {
+    const resultado = await calcularFreteGratisProgressivo(
+      criarEntrada({
+        subtotalEmCentavos: 10000,
+        regioesEntregaCodigos: ["brasil", "uf:MG", "regiao_entrega:5"],
+        regrasFreteGratis: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            regraPromocaoId: "22222222-2222-4222-8222-222222222222",
+            subtotalMinimo: 10000,
+            modalidade: null,
+            formaEntrega: "entrega-propria",
+            mensagemProgressiva: null,
+            regiaoCodigo: "regiao_entrega:12",
+            transportadoraCodigo: null,
+            servicoCodigo: null,
+          },
+          {
+            id: "33333333-3333-4333-8333-333333333333",
+            regraPromocaoId: "22222222-2222-4222-8222-222222222222",
+            subtotalMinimo: 10000,
+            modalidade: null,
+            formaEntrega: "entrega-propria",
+            mensagemProgressiva: null,
+            regiaoCodigo: "regiao_entrega:5",
+            transportadoraCodigo: null,
+            servicoCodigo: null,
+          },
+        ],
+        formasEntrega: ["entrega-propria"],
+      }),
+    );
+
+    assert.equal(resultado.ativo, true);
+    assert.equal(resultado.freteGratisAtingido, true);
+    assert.equal(resultado.regiaoCodigo, "regiao_entrega:5");
   });
 
   it("ignora regra regional quando a entrega nao possui regiao elegivel", async () => {

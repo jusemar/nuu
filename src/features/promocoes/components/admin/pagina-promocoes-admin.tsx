@@ -61,6 +61,10 @@ import {
   duplicarPromocaoAdmin,
   salvarPromocaoAdmin,
 } from "../../actions";
+import {
+  converterValorMonetarioParaCentavos,
+  formatarCentavosComoValorMonetario,
+} from "../../lib/valores-monetarios-promocao";
 import type {
   CategoriaPromocaoAdmin,
   FreteServicoPromocaoAdmin,
@@ -101,11 +105,17 @@ type FormularioPromocaoAdmin = {
   marcas: MarcaPromocaoAdmin[];
   subtotalMinimo: number | "";
   subtotalMaximo: number | "";
-  freteGratisSubtotalMinimo: number | "";
+  freteGratisSubtotalMinimo: string;
   freteGratisModalidade: string;
+  freteGratisFormaEntrega:
+    | "todas"
+    | "entrega-propria"
+    | "frete-externo"
+    | "retirada";
   freteGratisRegiaoCodigo: string;
-  freteGratisFreteServicoCodigo: string;
-  freteGratisFreteServicoTipo: "todos" | "transportadora" | "servico";
+  freteGratisRegioes: RegiaoPromocaoAdmin[];
+  freteGratisTransportadoraCodigo: string;
+  freteGratisServicoCodigo: string;
   freteGratisMensagemProgressiva: string;
 };
 
@@ -139,9 +149,11 @@ const formularioInicial: FormularioPromocaoAdmin = {
   subtotalMaximo: "",
   freteGratisSubtotalMinimo: "",
   freteGratisModalidade: "todas",
+  freteGratisFormaEntrega: "todas",
   freteGratisRegiaoCodigo: "todas",
-  freteGratisFreteServicoCodigo: "todos",
-  freteGratisFreteServicoTipo: "todos",
+  freteGratisRegioes: [],
+  freteGratisTransportadoraCodigo: "todas",
+  freteGratisServicoCodigo: "todas",
   freteGratisMensagemProgressiva: "",
 };
 
@@ -190,9 +202,71 @@ function gerarSlug(texto: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function criarRegiaoPromocaoPorCodigo(
+  codigo: string,
+  nome?: string | null,
+): RegiaoPromocaoAdmin {
+  if (codigo === "brasil") {
+    return {
+      codigo,
+      nome: "Brasil",
+      tipo: "pais",
+      descricao: "Regra promocional nacional.",
+    };
+  }
+
+  if (codigo.startsWith("macrorregiao:")) {
+    return {
+      codigo,
+      nome: codigo.replace("macrorregiao:", "Macrorregião "),
+      tipo: "macrorregiao",
+      descricao: "Macrorregião promocional.",
+    };
+  }
+
+  if (codigo.startsWith("uf:")) {
+    return {
+      codigo,
+      nome: `Estado ${codigo.replace("uf:", "")}`,
+      tipo: "estado",
+      descricao: "Estado de entrega promocional.",
+    };
+  }
+
+  if (codigo.startsWith("cidade:")) {
+    return {
+      codigo,
+      nome: nome ?? "Cidade promocional",
+      tipo: "cidade",
+      descricao: "Cidade ativa na estrutura logística existente.",
+    };
+  }
+
+  return {
+    codigo,
+    nome: nome ?? "Região selecionada",
+    tipo: "regiao_entrega",
+    descricao: "Região de entrega existente usada como escopo promocional.",
+  };
+}
+
 function criarFormularioPorPromocao(
   promocao: PromocaoAdmin,
 ): FormularioPromocaoAdmin {
+  const regioesFreteGratis = [
+    ...new Map(
+      promocao.fretesGratis
+        .filter((freteGratis) => Boolean(freteGratis.regiaoCodigo))
+        .map((freteGratis) => [
+          freteGratis.regiaoCodigo!,
+          criarRegiaoPromocaoPorCodigo(
+            freteGratis.regiaoCodigo!,
+            freteGratis.regiaoNome,
+          ),
+        ]),
+    ).values(),
+  ];
+
   return {
     id: promocao.id,
     nome: promocao.nome,
@@ -215,18 +289,20 @@ function criarFormularioPorPromocao(
     marcas: promocao.marcas,
     subtotalMinimo: promocao.subtotais[0]?.subtotalMinimo ?? "",
     subtotalMaximo: promocao.subtotais[0]?.subtotalMaximo ?? "",
-    freteGratisSubtotalMinimo: promocao.fretesGratis[0]?.subtotalMinimo ?? "",
+    freteGratisSubtotalMinimo:
+      promocao.fretesGratis[0]?.subtotalMinimo !== undefined
+        ? formatarCentavosComoValorMonetario(
+            promocao.fretesGratis[0].subtotalMinimo,
+          )
+        : "",
     freteGratisModalidade: promocao.fretesGratis[0]?.modalidade ?? "todas",
+    freteGratisFormaEntrega: promocao.fretesGratis[0]?.formaEntrega ?? "todas",
     freteGratisRegiaoCodigo: promocao.fretesGratis[0]?.regiaoCodigo ?? "todas",
-    freteGratisFreteServicoCodigo:
-      promocao.fretesGratis[0]?.servicoCodigo ??
-      promocao.fretesGratis[0]?.transportadoraCodigo ??
-      "todos",
-    freteGratisFreteServicoTipo: promocao.fretesGratis[0]?.servicoCodigo
-      ? "servico"
-      : promocao.fretesGratis[0]?.transportadoraCodigo
-        ? "transportadora"
-        : "todos",
+    freteGratisRegioes: regioesFreteGratis,
+    freteGratisTransportadoraCodigo:
+      promocao.fretesGratis[0]?.transportadoraCodigo ?? "todas",
+    freteGratisServicoCodigo:
+      promocao.fretesGratis[0]?.servicoCodigo ?? "todas",
     freteGratisMensagemProgressiva:
       promocao.fretesGratis[0]?.mensagemProgressiva ?? "",
   };
@@ -278,7 +354,8 @@ export function PaginaPromocoesAdmin({
   const [buscaCategorias, setBuscaCategorias] = useState("");
   const [buscaMarcas, setBuscaMarcas] = useState("");
   const [buscaRegioes, setBuscaRegioes] = useState("");
-  const [buscaFretesServicos, setBuscaFretesServicos] = useState("");
+  const [buscaTransportadoras, setBuscaTransportadoras] = useState("");
+  const [buscaServicos, setBuscaServicos] = useState("");
   const [produtosEncontrados, setProdutosEncontrados] = useState<
     ProdutoPromocaoAdmin[]
   >([]);
@@ -291,14 +368,18 @@ export function PaginaPromocoesAdmin({
   const [regioesEncontradas, setRegioesEncontradas] = useState<
     RegiaoPromocaoAdmin[]
   >([]);
-  const [fretesServicosEncontrados, setFretesServicosEncontrados] = useState<
+  const [transportadorasEncontradas, setTransportadorasEncontradas] = useState<
+    FreteServicoPromocaoAdmin[]
+  >([]);
+  const [servicosEncontrados, setServicosEncontrados] = useState<
     FreteServicoPromocaoAdmin[]
   >([]);
   const [buscandoProdutos, setBuscandoProdutos] = useState(false);
   const [buscandoCategorias, setBuscandoCategorias] = useState(false);
   const [buscandoMarcas, setBuscandoMarcas] = useState(false);
   const [buscandoRegioes, setBuscandoRegioes] = useState(false);
-  const [buscandoFretesServicos, setBuscandoFretesServicos] = useState(false);
+  const [buscandoTransportadoras, setBuscandoTransportadoras] = useState(false);
+  const [buscandoServicos, setBuscandoServicos] = useState(false);
   const [filtrosLocais, setFiltrosLocais] = useState(filtros);
 
   const produtosSelecionadosIds = useMemo(
@@ -312,6 +393,10 @@ export function PaginaPromocoesAdmin({
   const marcasSelecionadasIds = useMemo(
     () => new Set(formulario.marcas.map((marca) => marca.id)),
     [formulario.marcas],
+  );
+  const regioesFreteGratisSelecionadasCodigos = useMemo(
+    () => new Set(formulario.freteGratisRegioes.map((regiao) => regiao.codigo)),
+    [formulario.freteGratisRegioes],
   );
 
   useEffect(() => {
@@ -411,28 +496,66 @@ export function PaginaPromocoesAdmin({
   }, [buscaRegioes]);
 
   useEffect(() => {
-    if (buscaFretesServicos.trim().length < 2) {
-      setFretesServicosEncontrados([]);
+    if (
+      formulario.freteGratisFormaEntrega !== "frete-externo" ||
+      buscaTransportadoras.trim().length < 2
+    ) {
+      setTransportadorasEncontradas([]);
       return;
     }
 
     const timeout = window.setTimeout(async () => {
-      setBuscandoFretesServicos(true);
+      setBuscandoTransportadoras(true);
       try {
-        const fretesServicos = await buscarFretesServicosPromocaoAdmin({
-          busca: buscaFretesServicos,
+        const transportadoras = await buscarFretesServicosPromocaoAdmin({
+          busca: buscaTransportadoras,
+          tipo: "transportadora",
           limite: 8,
         });
-        setFretesServicosEncontrados(fretesServicos);
+        setTransportadorasEncontradas(transportadoras);
       } catch {
-        toast.error("Não foi possível buscar transportadoras/serviços.");
+        toast.error("Não foi possível buscar transportadoras.");
       } finally {
-        setBuscandoFretesServicos(false);
+        setBuscandoTransportadoras(false);
       }
     }, 350);
 
     return () => window.clearTimeout(timeout);
-  }, [buscaFretesServicos]);
+  }, [buscaTransportadoras, formulario.freteGratisFormaEntrega]);
+
+  useEffect(() => {
+    if (
+      formulario.freteGratisFormaEntrega !== "frete-externo" ||
+      formulario.freteGratisTransportadoraCodigo === "todas" ||
+      buscaServicos.trim().length < 2
+    ) {
+      setServicosEncontrados([]);
+      return;
+    }
+
+    const timeout = window.setTimeout(async () => {
+      setBuscandoServicos(true);
+      try {
+        const servicos = await buscarFretesServicosPromocaoAdmin({
+          busca: buscaServicos,
+          tipo: "servico",
+          transportadoraCodigo: formulario.freteGratisTransportadoraCodigo,
+          limite: 8,
+        });
+        setServicosEncontrados(servicos);
+      } catch {
+        toast.error("Não foi possível buscar serviços da transportadora.");
+      } finally {
+        setBuscandoServicos(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    buscaServicos,
+    formulario.freteGratisFormaEntrega,
+    formulario.freteGratisTransportadoraCodigo,
+  ]);
 
   function atualizarFiltro(campo: keyof FiltrosPromocoesAdmin, valor: string) {
     setFiltrosLocais((atual) => ({
@@ -492,12 +615,14 @@ export function PaginaPromocoesAdmin({
     setBuscaCategorias("");
     setBuscaMarcas("");
     setBuscaRegioes("");
-    setBuscaFretesServicos("");
+    setBuscaTransportadoras("");
+    setBuscaServicos("");
     setProdutosEncontrados([]);
     setCategoriasEncontradas([]);
     setMarcasEncontradas([]);
     setRegioesEncontradas([]);
-    setFretesServicosEncontrados([]);
+    setTransportadorasEncontradas([]);
+    setServicosEncontrados([]);
   }
 
   function abrirFormularioPromocao(proximoFormulario: FormularioPromocaoAdmin) {
@@ -506,6 +631,7 @@ export function PaginaPromocoesAdmin({
       produtos: [...proximoFormulario.produtos],
       categorias: [...proximoFormulario.categorias],
       marcas: [...proximoFormulario.marcas],
+      freteGratisRegioes: [...proximoFormulario.freteGratisRegioes],
     });
     setErrosFormulario({});
     limparBuscasFormulario();
@@ -568,18 +694,85 @@ export function PaginaPromocoesAdmin({
   }
 
   function selecionarRegiaoFreteGratis(regiao: RegiaoPromocaoAdmin) {
-    atualizarFormulario("freteGratisRegiaoCodigo", regiao.codigo);
-    setBuscaRegioes(regiao.nome);
+    if (regioesFreteGratisSelecionadasCodigos.has(regiao.codigo)) {
+      toast.info("Região já adicionada nesta promoção.");
+      return;
+    }
+
+    setFormulario((atual) => ({
+      ...atual,
+      freteGratisRegiaoCodigo: regiao.codigo,
+      freteGratisRegioes: [...atual.freteGratisRegioes, regiao],
+    }));
+    setBuscaRegioes("");
     setRegioesEncontradas([]);
   }
 
-  function selecionarFreteServicoFreteGratis(
-    freteServico: FreteServicoPromocaoAdmin,
+  function removerRegiaoFreteGratis(codigo: string) {
+    setFormulario((atual) => {
+      const regioesRestantes = atual.freteGratisRegioes.filter(
+        (regiao) => regiao.codigo !== codigo,
+      );
+
+      return {
+        ...atual,
+        freteGratisRegiaoCodigo:
+          regioesRestantes[0]?.codigo ??
+          formularioInicial.freteGratisRegiaoCodigo,
+        freteGratisRegioes: regioesRestantes,
+      };
+    });
+  }
+
+  function limparRegioesFreteGratis() {
+    setFormulario((atual) => ({
+      ...atual,
+      freteGratisRegiaoCodigo: "todas",
+      freteGratisRegioes: [],
+    }));
+    setBuscaRegioes("");
+    setRegioesEncontradas([]);
+  }
+
+  function selecionarTransportadoraFreteGratis(
+    transportadora: FreteServicoPromocaoAdmin,
   ) {
-    atualizarFormulario("freteGratisFreteServicoCodigo", freteServico.codigo);
-    atualizarFormulario("freteGratisFreteServicoTipo", freteServico.tipo);
-    setBuscaFretesServicos(freteServico.nome);
-    setFretesServicosEncontrados([]);
+    atualizarFormulario(
+      "freteGratisTransportadoraCodigo",
+      transportadora.codigo,
+    );
+    atualizarFormulario("freteGratisServicoCodigo", "todas");
+    setBuscaTransportadoras(transportadora.nome);
+    setBuscaServicos("");
+    setTransportadorasEncontradas([]);
+    setServicosEncontrados([]);
+  }
+
+  function selecionarServicoFreteGratis(servico: FreteServicoPromocaoAdmin) {
+    atualizarFormulario("freteGratisServicoCodigo", servico.codigo);
+    setBuscaServicos(servico.nome);
+    setServicosEncontrados([]);
+  }
+
+  function selecionarFormaEntregaFreteGratis(
+    formaEntrega: FormularioPromocaoAdmin["freteGratisFormaEntrega"],
+  ) {
+    setFormulario((atual) => ({
+      ...atual,
+      freteGratisFormaEntrega: formaEntrega,
+      freteGratisTransportadoraCodigo:
+        formaEntrega === "frete-externo"
+          ? atual.freteGratisTransportadoraCodigo
+          : "todas",
+      freteGratisServicoCodigo:
+        formaEntrega === "frete-externo"
+          ? atual.freteGratisServicoCodigo
+          : "todas",
+    }));
+    setBuscaTransportadoras("");
+    setBuscaServicos("");
+    setTransportadorasEncontradas([]);
+    setServicosEncontrados([]);
   }
 
   function removerProduto(produtoId: string) {
@@ -609,6 +802,31 @@ export function PaginaPromocoesAdmin({
     return valor === "" ? null : valor;
   }
 
+  function normalizarSubtotalFreteGratis() {
+    return converterValorMonetarioParaCentavos(
+      formulario.freteGratisSubtotalMinimo,
+    );
+  }
+
+  function formatarSubtotalFreteGratisAoPerderFoco() {
+    if (!formulario.freteGratisSubtotalMinimo) return;
+
+    const valorEmCentavos = normalizarSubtotalFreteGratis();
+    if (valorEmCentavos === null) {
+      setErrosFormulario((errosAtuais) => ({
+        ...errosAtuais,
+        freteGratisSubtotalMinimo:
+          "Informe um valor válido em reais, como 50,00.",
+      }));
+      return;
+    }
+
+    atualizarFormulario(
+      "freteGratisSubtotalMinimo",
+      formatarCentavosComoValorMonetario(valorEmCentavos),
+    );
+  }
+
   function obterMensagemErroPromocao(error: unknown) {
     if (!(error instanceof Error)) return "Não foi possível concluir a ação.";
 
@@ -630,10 +848,16 @@ export function PaginaPromocoesAdmin({
 
     if (
       formulario.tipoBeneficio === "frete_gratis" &&
-      formulario.freteGratisSubtotalMinimo === ""
+      formulario.freteGratisSubtotalMinimo.trim() === ""
     ) {
       proximosErros.freteGratisSubtotalMinimo =
         "Informe o subtotal mínimo para liberar o frete grátis.";
+    } else if (
+      formulario.tipoBeneficio === "frete_gratis" &&
+      normalizarSubtotalFreteGratis() === null
+    ) {
+      proximosErros.freteGratisSubtotalMinimo =
+        "Informe um valor válido em reais, como 50,00.";
     }
 
     setErrosFormulario(proximosErros);
@@ -689,24 +913,32 @@ export function PaginaPromocoesAdmin({
           marcasIds: formulario.marcas.map((marca) => marca.id),
           subtotalMinimo: normalizarValorOpcional(formulario.subtotalMinimo),
           subtotalMaximo: normalizarValorOpcional(formulario.subtotalMaximo),
-          freteGratisSubtotalMinimo: normalizarValorOpcional(
-            formulario.freteGratisSubtotalMinimo,
-          ),
+          freteGratisSubtotalMinimo: normalizarSubtotalFreteGratis(),
           freteGratisModalidade:
             formulario.freteGratisModalidade === "todas"
               ? null
               : formulario.freteGratisModalidade,
+          freteGratisFormaEntrega:
+            formulario.freteGratisFormaEntrega === "todas"
+              ? null
+              : formulario.freteGratisFormaEntrega,
           freteGratisRegiaoCodigo:
+            formulario.freteGratisRegioes.length === 0 ||
             formulario.freteGratisRegiaoCodigo === "todas"
               ? null
               : formulario.freteGratisRegiaoCodigo,
+          freteGratisRegioesCodigos: formulario.freteGratisRegioes.map(
+            (regiao) => regiao.codigo,
+          ),
           freteGratisTransportadoraCodigo:
-            formulario.freteGratisFreteServicoTipo === "transportadora"
-              ? formulario.freteGratisFreteServicoCodigo
+            formulario.freteGratisFormaEntrega === "frete-externo" &&
+            formulario.freteGratisTransportadoraCodigo !== "todas"
+              ? formulario.freteGratisTransportadoraCodigo
               : null,
           freteGratisServicoCodigo:
-            formulario.freteGratisFreteServicoTipo === "servico"
-              ? formulario.freteGratisFreteServicoCodigo
+            formulario.freteGratisFormaEntrega === "frete-externo" &&
+            formulario.freteGratisServicoCodigo !== "todas"
+              ? formulario.freteGratisServicoCodigo
               : null,
           freteGratisMensagemProgressiva:
             formulario.freteGratisMensagemProgressiva || null,
@@ -1706,43 +1938,47 @@ export function PaginaPromocoesAdmin({
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label className="text-xs">Subtotal mínimo</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={formulario.freteGratisSubtotalMinimo}
-                        onChange={(event) =>
-                          atualizarFormulario(
-                            "freteGratisSubtotalMinimo",
-                            event.target.value === ""
-                              ? ""
-                              : Number(event.target.value),
-                          )
-                        }
-                        onBlur={() => {
-                          if (
-                            formulario.tipoBeneficio === "frete_gratis" &&
-                            formulario.freteGratisSubtotalMinimo === ""
-                          ) {
-                            setErrosFormulario((errosAtuais) => ({
-                              ...errosAtuais,
-                              freteGratisSubtotalMinimo:
-                                "Informe o subtotal mínimo para liberar o frete grátis.",
-                            }));
+                      <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
+                          R$
+                        </span>
+                        <Input
+                          inputMode="decimal"
+                          value={formulario.freteGratisSubtotalMinimo}
+                          onChange={(event) =>
+                            atualizarFormulario(
+                              "freteGratisSubtotalMinimo",
+                              event.target.value.replace(/[^0-9,.]/g, ""),
+                            )
                           }
-                        }}
-                        placeholder="Ex: 29900"
-                        aria-invalid={Boolean(
-                          errosFormulario.freteGratisSubtotalMinimo,
-                        )}
-                        className="bg-white"
-                      />
+                          onBlur={() => {
+                            if (
+                              formulario.tipoBeneficio === "frete_gratis" &&
+                              formulario.freteGratisSubtotalMinimo.trim() === ""
+                            ) {
+                              setErrosFormulario((errosAtuais) => ({
+                                ...errosAtuais,
+                                freteGratisSubtotalMinimo:
+                                  "Informe o subtotal mínimo para liberar o frete grátis.",
+                              }));
+                              return;
+                            }
+                            formatarSubtotalFreteGratisAoPerderFoco();
+                          }}
+                          placeholder="299,00"
+                          aria-invalid={Boolean(
+                            errosFormulario.freteGratisSubtotalMinimo,
+                          )}
+                          className="bg-white pl-10"
+                        />
+                      </div>
                       {errosFormulario.freteGratisSubtotalMinimo ? (
                         <p className="text-xs font-medium text-red-600">
                           {errosFormulario.freteGratisSubtotalMinimo}
                         </p>
                       ) : (
                         <p className="text-xs text-emerald-700">
-                          Informe o valor em centavos. Ex: R$ 100,00 = 10000.
+                          Informe o valor em reais. Ex.: 50 ou 50,90.
                         </p>
                       )}
                     </div>
@@ -1761,9 +1997,6 @@ export function PaginaPromocoesAdmin({
                           <SelectItem value="todas">
                             Todas as modalidades
                           </SelectItem>
-                          <SelectItem value="entrega-propria">
-                            Entrega própria
-                          </SelectItem>
                           <SelectItem value="stock">Estoque próprio</SelectItem>
                           <SelectItem value="pre_sale">
                             Reserva/pré-venda
@@ -1772,17 +2005,43 @@ export function PaginaPromocoesAdmin({
                             Dropshipping
                           </SelectItem>
                           <SelectItem value="order_basis">
-                            Fabricante
+                            Sob encomenda
                           </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">
+                        Forma de entrega opcional
+                      </Label>
+                      <Select
+                        value={formulario.freteGratisFormaEntrega}
+                        onValueChange={selecionarFormaEntregaFreteGratis}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">Todas as formas</SelectItem>
+                          <SelectItem value="entrega-propria">
+                            Entrega própria
+                          </SelectItem>
+                          <SelectItem value="frete-externo">
+                            Frete externo
+                          </SelectItem>
+                          <SelectItem value="retirada">Retirada</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs">
-                      Região promocional opcional
+                      Regiões atendidas pela promoção
                     </Label>
                     <div className="rounded-2xl border border-emerald-200 bg-white p-3">
+                      <p className="mb-3 text-xs text-emerald-700">
+                        Pesquise e adicione uma ou mais regiões
+                      </p>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <Input
                           value={buscaRegioes}
@@ -1795,24 +2054,39 @@ export function PaginaPromocoesAdmin({
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => {
-                            atualizarFormulario(
-                              "freteGratisRegiaoCodigo",
-                              "todas",
-                            );
-                            setBuscaRegioes("");
-                            setRegioesEncontradas([]);
-                          }}
+                          onClick={limparRegioesFreteGratis}
                         >
                           Todas regiões
                         </Button>
                       </div>
-                      <div className="mt-2 flex items-center gap-2 text-xs text-emerald-800">
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-800">
                         <MapPin className="size-3.5" />
-                        {formulario.freteGratisRegiaoCodigo === "todas"
+                        {formulario.freteGratisRegioes.length === 0
                           ? "Regra global, válida para qualquer região."
-                          : `Escopo regional: ${formulario.freteGratisRegiaoCodigo}`}
+                          : `${formulario.freteGratisRegioes.length} região(ões) selecionada(s).`}
                       </div>
+                      {formulario.freteGratisRegioes.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {formulario.freteGratisRegioes.map((regiao) => (
+                            <span
+                              key={regiao.codigo}
+                              className="inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-950"
+                            >
+                              <span className="truncate">{regiao.nome}</span>
+                              <button
+                                type="button"
+                                className="rounded-full text-emerald-700 transition hover:text-red-600"
+                                onClick={() =>
+                                  removerRegiaoFreteGratis(regiao.codigo)
+                                }
+                                aria-label={`Remover ${regiao.nome}`}
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                       {buscandoRegioes ? (
                         <p className="mt-2 text-xs text-emerald-700">
                           Buscando regiões...
@@ -1833,7 +2107,7 @@ export function PaginaPromocoesAdmin({
                                 {regiao.nome}
                               </span>
                               <span className="mt-0.5 block text-xs text-emerald-700">
-                                {regiao.descricao} · {regiao.codigo}
+                                {regiao.descricao}
                               </span>
                             </button>
                           ))}
@@ -1841,73 +2115,113 @@ export function PaginaPromocoesAdmin({
                       ) : null}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">
-                      Transportadora/serviço opcional
-                    </Label>
-                    <div className="rounded-2xl border border-emerald-200 bg-white p-3">
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          value={buscaFretesServicos}
-                          onChange={(event) =>
-                            setBuscaFretesServicos(event.target.value)
-                          }
-                          placeholder="Buscar Correios, Jadlog, Sedex, PAC..."
-                          className="bg-white"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            atualizarFormulario(
-                              "freteGratisFreteServicoCodigo",
-                              "todos",
-                            );
-                            atualizarFormulario(
-                              "freteGratisFreteServicoTipo",
-                              "todos",
-                            );
-                            setBuscaFretesServicos("");
-                            setFretesServicosEncontrados([]);
-                          }}
-                        >
-                          Todos serviços
-                        </Button>
-                      </div>
-                      <div className="mt-2 text-xs text-emerald-800">
-                        {formulario.freteGratisFreteServicoTipo === "todos"
-                          ? "Regra global, válida para qualquer transportadora/serviço selecionado."
-                          : `Escopo: ${formulario.freteGratisFreteServicoCodigo}`}
-                      </div>
-                      {buscandoFretesServicos ? (
-                        <p className="mt-2 text-xs text-emerald-700">
-                          Buscando transportadoras/serviços...
-                        </p>
-                      ) : null}
-                      {fretesServicosEncontrados.length > 0 ? (
-                        <div className="mt-3 grid gap-2">
-                          {fretesServicosEncontrados.map((freteServico) => (
+                  {formulario.freteGratisFormaEntrega === "frete-externo" ? (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label className="text-xs">
+                          Transportadora opcional
+                        </Label>
+                        <div className="rounded-2xl border border-emerald-200 bg-white p-3">
+                          <Input
+                            value={buscaTransportadoras}
+                            onChange={(event) =>
+                              setBuscaTransportadoras(event.target.value)
+                            }
+                            placeholder="Buscar Correios, Jadlog, Loggi..."
+                            className="bg-white"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-2 w-full"
+                            onClick={() => {
+                              atualizarFormulario(
+                                "freteGratisTransportadoraCodigo",
+                                "todas",
+                              );
+                              atualizarFormulario(
+                                "freteGratisServicoCodigo",
+                                "todas",
+                              );
+                              setBuscaTransportadoras("");
+                              setBuscaServicos("");
+                              setTransportadorasEncontradas([]);
+                              setServicosEncontrados([]);
+                            }}
+                          >
+                            Todas as transportadoras
+                          </Button>
+                          {buscandoTransportadoras ? (
+                            <p className="mt-2 text-xs text-emerald-700">
+                              Buscando transportadoras...
+                            </p>
+                          ) : null}
+                          {transportadorasEncontradas.map((transportadora) => (
                             <button
-                              key={freteServico.codigo}
+                              key={transportadora.codigo}
                               type="button"
-                              className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left transition hover:border-emerald-300"
+                              className="mt-2 w-full rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left text-sm transition hover:border-emerald-300"
                               onClick={() =>
-                                selecionarFreteServicoFreteGratis(freteServico)
+                                selecionarTransportadoraFreteGratis(
+                                  transportadora,
+                                )
                               }
                             >
-                              <span className="block text-sm font-medium text-emerald-950">
-                                {freteServico.nome}
-                              </span>
-                              <span className="mt-0.5 block text-xs text-emerald-700">
-                                {freteServico.tipo} · {freteServico.descricao} ·{" "}
-                                {freteServico.codigo}
-                              </span>
+                              {transportadora.nome}
                             </button>
                           ))}
                         </div>
+                      </div>
+                      {formulario.freteGratisTransportadoraCodigo !==
+                      "todas" ? (
+                        <div className="space-y-2">
+                          <Label className="text-xs">Serviço opcional</Label>
+                          <div className="rounded-2xl border border-emerald-200 bg-white p-3">
+                            <Input
+                              value={buscaServicos}
+                              onChange={(event) =>
+                                setBuscaServicos(event.target.value)
+                              }
+                              placeholder="Buscar PAC, Sedex, Expresso..."
+                              className="bg-white"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="mt-2 w-full"
+                              onClick={() => {
+                                atualizarFormulario(
+                                  "freteGratisServicoCodigo",
+                                  "todas",
+                                );
+                                setBuscaServicos("");
+                                setServicosEncontrados([]);
+                              }}
+                            >
+                              Todos os serviços
+                            </Button>
+                            {buscandoServicos ? (
+                              <p className="mt-2 text-xs text-emerald-700">
+                                Buscando serviços...
+                              </p>
+                            ) : null}
+                            {servicosEncontrados.map((servico) => (
+                              <button
+                                key={servico.codigo}
+                                type="button"
+                                className="mt-2 w-full rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left text-sm transition hover:border-emerald-300"
+                                onClick={() =>
+                                  selecionarServicoFreteGratis(servico)
+                                }
+                              >
+                                {servico.nome}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ) : null}
                     </div>
-                  </div>
+                  ) : null}
                   <div className="space-y-2">
                     <Label className="text-xs">Mensagem progressiva</Label>
                     <Input

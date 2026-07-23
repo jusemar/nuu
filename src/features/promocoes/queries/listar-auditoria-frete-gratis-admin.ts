@@ -9,8 +9,8 @@ import {
   ilike,
   lte,
   or,
-  sql,
   type SQL,
+  sql,
 } from "drizzle-orm";
 
 import {
@@ -52,6 +52,8 @@ type LinhaAuditoriaFreteGratis = {
   regraPromocaoId: string | null;
   modalidadeAplicada: string | null;
   modalidadesElegiveis: string | null;
+  formaEntregaAplicada: string | null;
+  formasEntregaElegiveis: string | null;
   regiaoAplicada: string | null;
   regioesElegiveis: string | null;
   transportadoraAplicada: string | null;
@@ -82,6 +84,12 @@ const modalidadeAplicadaSnapshot = sql<
 const modalidadesElegiveisSnapshot = sql<
   string | null
 >`${checkoutPedidosTable.snapshotDescontos} #>> '{freteGratisPromocional,modalidadesElegiveis}'`;
+const formaEntregaAplicadaSnapshot = sql<
+  string | null
+>`coalesce(${checkoutPedidosTable.snapshotDescontos} #>> '{freteGratisPromocional,formaEntregaAplicada}', ${checkoutPedidosTable.snapshotDescontos} #>> '{freteGratisPromocional,regraFreteGratisAplicada,formaEntrega}')`;
+const formasEntregaElegiveisSnapshot = sql<
+  string | null
+>`${checkoutPedidosTable.snapshotDescontos} #>> '{freteGratisPromocional,formasEntregaElegiveis}'`;
 const regiaoAplicadaSnapshot = sql<
   string | null
 >`coalesce(${checkoutPedidosTable.snapshotDescontos} #>> '{freteGratisPromocional,regiaoAplicada}', ${checkoutPedidosTable.snapshotDescontos} #>> '{freteGratisPromocional,regraFreteGratisAplicada,regiaoCodigo}')`;
@@ -239,6 +247,8 @@ export async function listarAuditoriaFreteGratisAdmin(
           regraPromocaoId: regraPromocaoIdSnapshot,
           modalidadeAplicada: modalidadeAplicadaSnapshot,
           modalidadesElegiveis: modalidadesElegiveisSnapshot,
+          formaEntregaAplicada: formaEntregaAplicadaSnapshot,
+          formasEntregaElegiveis: formasEntregaElegiveisSnapshot,
           regiaoAplicada: regiaoAplicadaSnapshot,
           regioesElegiveis: regioesElegiveisSnapshot,
           transportadoraAplicada: transportadoraAplicadaSnapshot,

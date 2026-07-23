@@ -18,6 +18,25 @@ function revalidarPromocoesAdmin() {
   revalidatePath("/admin/marketing/promocoes");
 }
 
+function obterRegioesFreteGratisParaPersistencia({
+  freteGratisRegiaoCodigo,
+  freteGratisRegioesCodigos = [],
+}: {
+  freteGratisRegiaoCodigo?: string | null;
+  freteGratisRegioesCodigos?: string[];
+}) {
+  const regioes = freteGratisRegioesCodigos
+    .map((codigo) => codigo.trim())
+    .filter((codigo) => codigo && codigo !== "todas");
+
+  if (regioes.length === 0 && freteGratisRegiaoCodigo) {
+    const codigoLegado = freteGratisRegiaoCodigo.trim();
+    if (codigoLegado && codigoLegado !== "todas") regioes.push(codigoLegado);
+  }
+
+  return [...new Set(regioes)];
+}
+
 export async function salvarPromocaoAdmin(entrada: unknown) {
   const dados = salvarPromocaoAdminSchema.parse(entrada);
   const agora = new Date();
@@ -144,17 +163,27 @@ export async function salvarPromocaoAdmin(entrada: unknown) {
       dados.freteGratisSubtotalMinimo !== null &&
       dados.freteGratisSubtotalMinimo !== undefined
     ) {
-      await tx.insert(regrasPromocaoFretesGratisTable).values({
-        regraPromocaoId,
-        subtotalMinimo: dados.freteGratisSubtotalMinimo,
-        modalidade: dados.freteGratisModalidade ?? null,
-        mensagemProgressiva:
-          dados.freteGratisMensagemProgressiva?.trim() || null,
-        regiaoCodigo: dados.freteGratisRegiaoCodigo ?? null,
-        transportadoraCodigo: dados.freteGratisTransportadoraCodigo ?? null,
-        servicoCodigo: dados.freteGratisServicoCodigo ?? null,
-        criadoEm: agora,
+      const regioesCodigos = obterRegioesFreteGratisParaPersistencia({
+        freteGratisRegiaoCodigo: dados.freteGratisRegiaoCodigo,
+        freteGratisRegioesCodigos: dados.freteGratisRegioesCodigos,
       });
+      const regioesParaInserir =
+        regioesCodigos.length > 0 ? regioesCodigos : [null];
+
+      await tx.insert(regrasPromocaoFretesGratisTable).values(
+        regioesParaInserir.map((regiaoCodigo) => ({
+          regraPromocaoId,
+          subtotalMinimo: dados.freteGratisSubtotalMinimo!,
+          modalidade: dados.freteGratisModalidade ?? null,
+          formaEntrega: dados.freteGratisFormaEntrega ?? null,
+          mensagemProgressiva:
+            dados.freteGratisMensagemProgressiva?.trim() || null,
+          regiaoCodigo,
+          transportadoraCodigo: dados.freteGratisTransportadoraCodigo ?? null,
+          servicoCodigo: dados.freteGratisServicoCodigo ?? null,
+          criadoEm: agora,
+        })),
+      );
     }
   });
 

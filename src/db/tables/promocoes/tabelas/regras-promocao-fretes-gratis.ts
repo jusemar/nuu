@@ -18,6 +18,7 @@ export const regrasPromocaoFretesGratisTable = pgTable(
       .references(() => regrasPromocaoTable.id, { onDelete: "cascade" }),
     subtotalMinimo: integer("subtotal_minimo").notNull(),
     modalidade: text("modalidade"),
+    formaEntrega: text("forma_entrega"),
     mensagemProgressiva: text("mensagem_progressiva"),
     regiaoCodigo: text("regiao_codigo"),
     transportadoraCodigo: text("transportadora_codigo"),
@@ -32,6 +33,9 @@ export const regrasPromocaoFretesGratisTable = pgTable(
       table.subtotalMinimo,
     ),
     index("regras_promocao_fretes_gratis_modalidade_idx").on(table.modalidade),
+    index("regras_promocao_fretes_gratis_forma_entrega_idx").on(
+      table.formaEntrega,
+    ),
     index("regras_promocao_fretes_gratis_transportadora_codigo_idx").on(
       table.transportadoraCodigo,
     ),

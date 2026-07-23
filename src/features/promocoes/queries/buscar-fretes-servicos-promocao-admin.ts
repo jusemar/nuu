@@ -58,6 +58,7 @@ export async function buscarFretesServicosPromocaoAdmin(
         provedorIdentificador: provedoresFreteTable.identificador,
         provedorNome: provedoresFreteTable.nome,
         transportadoraNome: transportadorasFreteTable.nome,
+        transportadoraIdentificador: transportadorasFreteTable.identificador,
       })
       .from(servicosFreteTable)
       .innerJoin(
@@ -89,28 +90,49 @@ export async function buscarFretesServicosPromocaoAdmin(
   ]);
 
   return [
-    ...transportadoras.map((transportadora) => ({
-      codigo:
-        montarCodigoTransportadoraPromocional({
-          provedor: transportadora.provedorIdentificador,
-          transportadora: transportadora.identificador,
-        }) ?? "",
-      nome: transportadora.nome,
-      tipo: "transportadora" as const,
-      descricao: `${transportadora.provedorNome} · ${transportadora.identificador}`,
-    })),
-    ...servicos.map((servico) => ({
-      codigo:
-        montarCodigoServicoPromocional({
-          provedor: servico.provedorIdentificador,
-          servico: servico.identificador,
-        }) ?? "",
-      nome: servico.transportadoraNome
-        ? `${servico.transportadoraNome} · ${servico.nome}`
-        : servico.nome,
-      tipo: "servico" as const,
-      descricao: `${servico.provedorNome} · ${servico.identificador}`,
-    })),
+    ...(filtros.tipo === "servico"
+      ? []
+      : transportadoras.map((transportadora) => ({
+          codigo:
+            montarCodigoTransportadoraPromocional({
+              provedor: transportadora.provedorIdentificador,
+              transportadora: transportadora.identificador,
+            }) ?? "",
+          nome: transportadora.nome,
+          tipo: "transportadora" as const,
+          descricao: `${transportadora.provedorNome} · ${transportadora.identificador}`,
+          transportadoraCodigo:
+            montarCodigoTransportadoraPromocional({
+              provedor: transportadora.provedorIdentificador,
+              transportadora: transportadora.identificador,
+            }) ?? null,
+        }))),
+    ...(filtros.tipo === "transportadora"
+      ? []
+      : servicos
+          .map((servico) => ({
+            codigo:
+              montarCodigoServicoPromocional({
+                provedor: servico.provedorIdentificador,
+                servico: servico.identificador,
+              }) ?? "",
+            nome: servico.transportadoraNome
+              ? `${servico.transportadoraNome} · ${servico.nome}`
+              : servico.nome,
+            tipo: "servico" as const,
+            descricao: `${servico.provedorNome} · ${servico.identificador}`,
+            transportadoraCodigo: servico.transportadoraIdentificador
+              ? (montarCodigoTransportadoraPromocional({
+                  provedor: servico.provedorIdentificador,
+                  transportadora: servico.transportadoraIdentificador,
+                }) ?? null)
+              : null,
+          }))
+          .filter(
+            (servico) =>
+              !filtros.transportadoraCodigo ||
+              servico.transportadoraCodigo === filtros.transportadoraCodigo,
+          )),
   ]
     .filter((item) => item.codigo)
     .slice(0, filtros.limite);

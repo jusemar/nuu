@@ -175,7 +175,15 @@ export const salvarPromocaoAdminSchema = z
       .nullable()
       .optional(),
     freteGratisModalidade: z.string().trim().min(1).nullable().optional(),
+    freteGratisFormaEntrega: z
+      .enum(["entrega-propria", "frete-externo", "retirada"])
+      .nullable()
+      .optional(),
     freteGratisRegiaoCodigo: z.string().trim().min(1).nullable().optional(),
+    freteGratisRegioesCodigos: z
+      .array(z.string().trim().min(1))
+      .default([])
+      .optional(),
     freteGratisTransportadoraCodigo: z
       .string()
       .trim()
@@ -431,6 +439,8 @@ export const buscarRegioesPromocaoAdminSchema = z.object({
 
 export const buscarFretesServicosPromocaoAdminSchema = z.object({
   busca: z.string().trim().min(2),
+  tipo: z.enum(["transportadora", "servico"]).optional(),
+  transportadoraCodigo: z.string().trim().min(1).optional(),
   limite: z.coerce.number().int().min(1).max(30).default(10),
 });
 

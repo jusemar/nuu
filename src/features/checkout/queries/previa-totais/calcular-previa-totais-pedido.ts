@@ -1,7 +1,10 @@
 "use server";
 
 import type { ItemCarrinho } from "@/features/carrinho";
-import { extrairModalidadesPromocionaisFreteGratis } from "@/features/checkout/lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
+import {
+  extrairFormasEntregaPromocionaisFreteGratis,
+  extrairModalidadesPromocionaisFreteGratis,
+} from "@/features/checkout/lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
 import { extrairCodigosFretePromocionalDeItens } from "@/features/promocoes/lib/codigos-frete-promocional";
 import {
   calcularFreteGratisProgressivo,
@@ -40,6 +43,8 @@ export type ResultadoFreteGratisPromocionalPedido = {
   regraFreteGratisAplicada: ResultadoFreteGratisProgressivo["regraFreteGratisAplicada"];
   modalidadeAplicada: string | null;
   modalidadesElegiveis: string[];
+  formaEntregaAplicada: string | null;
+  formasEntregaElegiveis: string[];
   regiaoAplicada: string | null;
   regioesElegiveis: string[];
   transportadoraAplicada: string | null;
@@ -61,6 +66,8 @@ export type TotalPreviaFormaPagamento = TotaisCheckout & {
   regraFreteGratisAplicada: ResultadoFreteGratisProgressivo["regraFreteGratisAplicada"];
   modalidadeAplicada: string | null;
   modalidadesElegiveis: string[];
+  formaEntregaAplicada: string | null;
+  formasEntregaElegiveis: string[];
   regiaoAplicada: string | null;
   regioesElegiveis: string[];
   transportadoraAplicada: string | null;
@@ -84,6 +91,8 @@ export type ResultadoCalcularPreviaTotaisPedido = {
   valorFreteFinalEmCentavos: number;
   modalidadeFreteGratisAplicada: string | null;
   modalidadesFreteGratisElegiveis: string[];
+  formaEntregaFreteGratisAplicada: string | null;
+  formasEntregaFreteGratisElegiveis: string[];
   regiaoFreteGratisAplicada: string | null;
   regioesFreteGratisElegiveis: string[];
   transportadoraFreteGratisAplicada: string | null;
@@ -158,6 +167,8 @@ function aplicarCupomNaFormaPagamento({
     regraFreteGratisAplicada: freteGratisPromocional.regraFreteGratisAplicada,
     modalidadeAplicada: freteGratisPromocional.modalidadeAplicada,
     modalidadesElegiveis: freteGratisPromocional.modalidadesElegiveis,
+    formaEntregaAplicada: freteGratisPromocional.formaEntregaAplicada,
+    formasEntregaElegiveis: freteGratisPromocional.formasEntregaElegiveis,
     regiaoAplicada: freteGratisPromocional.regiaoAplicada,
     regioesElegiveis: freteGratisPromocional.regioesElegiveis,
     transportadoraAplicada: freteGratisPromocional.transportadoraAplicada,
@@ -246,6 +257,8 @@ export async function calcularFreteGratisPromocionalPedido({
     regraFreteGratisAplicada: freteGratisProgressivo.regraFreteGratisAplicada,
     modalidadeAplicada: freteGratisProgressivo.modalidade,
     modalidadesElegiveis: freteGratisProgressivo.modalidadesElegiveis,
+    formaEntregaAplicada: freteGratisProgressivo.formaEntrega,
+    formasEntregaElegiveis: freteGratisProgressivo.formasEntregaElegiveis,
     regiaoAplicada: freteGratisProgressivo.regiaoCodigo,
     regioesElegiveis: freteGratisProgressivo.regioesEntregaCodigos,
     transportadoraAplicada: freteGratisProgressivo.transportadoraCodigo,
@@ -321,6 +334,7 @@ export async function calcularPreviaTotaisPedido({
     resumo,
   });
   const modalidades = extrairModalidadesPromocionaisFreteGratis(itens);
+  const formasEntrega = extrairFormasEntregaPromocionaisFreteGratis(itens);
   const categoriasIds = [
     ...new Set(
       resumo.itens
@@ -351,6 +365,7 @@ export async function calcularPreviaTotaisPedido({
   const freteGratisProgressivo = await calcularFreteGratisProgressivo({
     subtotalEmCentavos: subtotalElegibilidadeFreteGratis,
     modalidades,
+    formasEntrega,
     categoriasIds,
     regioesEntregaCodigos: codigosRegiaoEntrega,
     fretesSelecionadosCodigos: codigosFreteSelecionado,
@@ -404,6 +419,10 @@ export async function calcularPreviaTotaisPedido({
       freteGratisPromocionalCartao.modalidadeAplicada,
     modalidadesFreteGratisElegiveis:
       freteGratisPromocionalCartao.modalidadesElegiveis,
+    formaEntregaFreteGratisAplicada:
+      freteGratisPromocionalCartao.formaEntregaAplicada,
+    formasEntregaFreteGratisElegiveis:
+      freteGratisPromocionalCartao.formasEntregaElegiveis,
     regiaoFreteGratisAplicada: freteGratisPromocionalCartao.regiaoAplicada,
     regioesFreteGratisElegiveis: freteGratisPromocionalCartao.regioesElegiveis,
     transportadoraFreteGratisAplicada:

@@ -15,7 +15,9 @@ import {
   regrasPromocaoProdutosTable,
   regrasPromocaoSubtotaisTable,
   regrasPromocaoTable,
+  shippingRegions,
 } from "../../../db/schema";
+import { normalizarFormaEntregaPromocional } from "../lib/normalizar-forma-entrega-promocional";
 import { filtrosPromocoesAdminSchema } from "../schemas";
 import type {
   CategoriaPromocaoAdmin,
@@ -24,8 +26,8 @@ import type {
   ProdutoPromocaoAdmin,
   PromocaoAdmin,
   ResultadoPromocoesAdmin,
-  SubtotalPromocaoAdmin,
   StatusPromocao,
+  SubtotalPromocaoAdmin,
 } from "../types";
 
 type FiltrosPromocoesAdmin = {
@@ -375,6 +377,7 @@ async function buscarFretesGratisPorPromocao(promocoesIds: string[]): Promise<{
       id: regrasPromocaoFretesGratisTable.id,
       subtotalMinimo: regrasPromocaoFretesGratisTable.subtotalMinimo,
       modalidade: regrasPromocaoFretesGratisTable.modalidade,
+      formaEntrega: regrasPromocaoFretesGratisTable.formaEntrega,
       mensagemProgressiva: regrasPromocaoFretesGratisTable.mensagemProgressiva,
       regiaoCodigo: regrasPromocaoFretesGratisTable.regiaoCodigo,
       transportadoraCodigo:
@@ -386,6 +389,36 @@ async function buscarFretesGratisPorPromocao(promocoesIds: string[]): Promise<{
       inArray(regrasPromocaoFretesGratisTable.regraPromocaoId, promocoesIds),
     );
 
+  const regioesEntregaIds = [
+    ...new Set(
+      linhas
+        .map((linha) => linha.regiaoCodigo)
+        .filter((codigo): codigo is string =>
+          Boolean(codigo?.startsWith("regiao_entrega:")),
+        )
+        .map((codigo) => Number(codigo.replace("regiao_entrega:", "")))
+        .filter((id) => Number.isInteger(id)),
+    ),
+  ];
+  const regioesEntrega =
+    regioesEntregaIds.length > 0
+      ? await db
+          .select({
+            id: shippingRegions.id,
+            nome: shippingRegions.name,
+            cidade: shippingRegions.city,
+            uf: shippingRegions.state,
+          })
+          .from(shippingRegions)
+          .where(inArray(shippingRegions.id, regioesEntregaIds))
+      : [];
+  const nomesRegioesEntrega = new Map(
+    regioesEntrega.map((regiao) => [
+      `regiao_entrega:${regiao.id}`,
+      `${regiao.nome} - ${regiao.cidade}/${regiao.uf}`,
+    ]),
+  );
+
   const fretesGratisPorPromocao = new Map<string, FreteGratisPromocaoAdmin[]>();
 
   linhas.forEach((linha) => {
@@ -395,8 +428,12 @@ async function buscarFretesGratisPorPromocao(promocoesIds: string[]): Promise<{
       id: linha.id,
       subtotalMinimo: linha.subtotalMinimo,
       modalidade: linha.modalidade,
+      formaEntrega: normalizarFormaEntregaPromocional(linha.formaEntrega),
       mensagemProgressiva: linha.mensagemProgressiva,
       regiaoCodigo: linha.regiaoCodigo,
+      regiaoNome: linha.regiaoCodigo
+        ? (nomesRegioesEntrega.get(linha.regiaoCodigo) ?? null)
+        : null,
       transportadoraCodigo: linha.transportadoraCodigo,
       servicoCodigo: linha.servicoCodigo,
     });

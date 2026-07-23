@@ -3,7 +3,10 @@ import { describe, it } from "node:test";
 
 import type { ResultadoFreteGratisProgressivo } from "@/features/promocoes/services";
 
-import { extrairModalidadesPromocionaisFreteGratis } from "../../lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
+import {
+  extrairFormasEntregaPromocionaisFreteGratis,
+  extrairModalidadesPromocionaisFreteGratis,
+} from "../../lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
 import type { TotaisCheckout } from "../../types/checkout.types";
 import {
   calcularFreteGratisPromocionalPedido,
@@ -29,6 +32,8 @@ const freteGratisAtingido: ResultadoFreteGratisProgressivo = {
   percentualProgresso: 100,
   modalidade: null,
   modalidadesElegiveis: ["dropshipping"],
+  formaEntrega: "frete-externo",
+  formasEntregaElegiveis: ["frete-externo"],
   mensagem: "Frete gratis desbloqueado.",
   regiaoCodigo: "macrorregiao:sudeste",
   regioesEntregaCodigos: ["brasil", "macrorregiao:sudeste", "uf:MG"],
@@ -46,6 +51,7 @@ const freteGratisAtingido: ResultadoFreteGratisProgressivo = {
     id: "11111111-1111-4111-8111-111111111111",
     regraPromocaoId: "22222222-2222-4222-8222-222222222222",
     modalidade: null,
+    formaEntrega: "frete-externo",
     regiaoCodigo: "macrorregiao:sudeste",
     transportadoraCodigo: "transportadora:frenet:correios",
     servicoCodigo: "servico:frenet:sedex",
@@ -64,7 +70,7 @@ const freteGratisNaoAtingido: ResultadoFreteGratisProgressivo = {
 };
 
 describe("calcularPreviaTotaisPedido helpers", () => {
-  it("inclui modalidade comercial e modalidade de frete para elegibilidade promocional", () => {
+  it("separa modalidade comercial da forma de entrega para elegibilidade promocional", () => {
     const modalidades = extrairModalidadesPromocionaisFreteGratis([
       {
         id: "item-1",
@@ -83,7 +89,27 @@ describe("calcularPreviaTotaisPedido helpers", () => {
       },
     ]);
 
-    assert.deepEqual(modalidades, ["stock", "entrega-propria"]);
+    assert.deepEqual(modalidades, ["stock"]);
+    assert.deepEqual(
+      extrairFormasEntregaPromocionaisFreteGratis([
+        {
+          id: "item-1",
+          produtoId: "11111111-1111-4111-8111-111111111111",
+          nome: "Produto",
+          modalidadeTipo: "stock",
+          freteEscolhido: {
+            id: "entrega-propria",
+            nome: "Entrega própria",
+            prazo: "Hoje",
+            valorEmCentavos: 1800,
+          },
+          imagemUrl: "/produto.webp",
+          precoEmCentavos: 10000,
+          quantidade: 1,
+        },
+      ]),
+      ["entrega-propria"],
+    );
   });
 
   it("aplica frete gratis promocional somente quando elegivel", async () => {
@@ -100,6 +126,8 @@ describe("calcularPreviaTotaisPedido helpers", () => {
     assert.equal(resultado.descontoFretePromocionalEmCentavos, 2500);
     assert.equal(resultado.modalidadeAplicada, null);
     assert.deepEqual(resultado.modalidadesElegiveis, ["dropshipping"]);
+    assert.equal(resultado.formaEntregaAplicada, "frete-externo");
+    assert.deepEqual(resultado.formasEntregaElegiveis, ["frete-externo"]);
     assert.equal(resultado.regiaoAplicada, "macrorregiao:sudeste");
     assert.deepEqual(resultado.regioesElegiveis, [
       "brasil",

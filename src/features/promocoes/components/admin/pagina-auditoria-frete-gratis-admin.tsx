@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Filter,
@@ -9,6 +7,8 @@ import {
   Search,
   Truck,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -378,6 +378,13 @@ export function PaginaAuditoriaFreteGratisAdmin({
                           <p className="text-muted-foreground truncate">
                             {pedido.modalidadesElegiveis ??
                               "Sem escopo por modalidade"}
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {pedido.formaEntregaAplicada ?? "Todas as formas"}
+                          </p>
+                          <p className="text-muted-foreground truncate">
+                            {pedido.formasEntregaElegiveis ??
+                              "Sem escopo por forma de entrega"}
                           </p>
                         </div>
                       </TableCell>

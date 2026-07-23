@@ -1,8 +1,7 @@
 "use server";
 
-import { eq, inArray, or, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
-import { dbTransacional } from "@/db/transaction";
 import {
   checkoutClientesTable,
   checkoutEnderecosTable,
@@ -13,6 +12,7 @@ import {
   checkoutPedidosTable,
   productTable,
 } from "@/db/schema";
+import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
 import {
@@ -21,12 +21,14 @@ import {
 } from "@/features/precificacao/server";
 import { extrairCodigosFretePromocionalDeSnapshot } from "@/features/promocoes/lib/codigos-frete-promocional";
 
-import { calcularPreviaTotaisPedido } from "../../queries/previa-totais/calcular-previa-totais-pedido";
+import { montarDescricaoPedidoCriado } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import {
   enviarEmailPedidoRecebido,
   enviarEmailPixPendente,
 } from "../../lib/emails/email-service";
-import { montarDescricaoPedidoCriado } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
+import { criarConsultaEntregaPropriaCheckout } from "../../lib/frete/criar-consulta-entrega-propria-checkout";
+import { montarRegistroSnapshotFretePedido } from "../../lib/frete/montar-registro-snapshot-frete-pedido";
+import { revalidarFreteCheckout } from "../../lib/frete/revalidar-frete-checkout";
 import { criarCobrancaPixEfi } from "../../lib/gateways/efi/pix-efi";
 import { criarCheckoutCartaoStripe } from "../../lib/gateways/stripe/checkout-stripe";
 import {
@@ -36,17 +38,15 @@ import {
   normalizarTelefoneCheckout,
   normalizarTextoOpcionalCheckout,
 } from "../../lib/pedidos/normalizar-checkout-visitante";
-import { criarConsultaEntregaPropriaCheckout } from "../../lib/frete/criar-consulta-entrega-propria-checkout";
-import { revalidarFreteCheckout } from "../../lib/frete/revalidar-frete-checkout";
-import { montarRegistroSnapshotFretePedido } from "../../lib/frete/montar-registro-snapshot-frete-pedido";
 import {
   isValidCPFOrCNPJ,
   isValidNome,
   isValidTelefone,
 } from "../../lib/validators";
+import { calcularPreviaTotaisPedido } from "../../queries/previa-totais/calcular-previa-totais-pedido";
 import {
-  checkoutVisitanteSchema,
   type CheckoutVisitanteSchema,
+  checkoutVisitanteSchema,
 } from "../../schemas/checkout.schema";
 
 type LinhaNumeroPedido = {
@@ -405,6 +405,10 @@ async function criarPedidoCheckoutVisitanteInterno({
           modalidadeAplicada: freteGratisPromocionalPedido.modalidadeAplicada,
           modalidadesElegiveis:
             freteGratisPromocionalPedido.modalidadesElegiveis,
+          formaEntregaAplicada:
+            freteGratisPromocionalPedido.formaEntregaAplicada,
+          formasEntregaElegiveis:
+            freteGratisPromocionalPedido.formasEntregaElegiveis,
           regiaoAplicada: freteGratisPromocionalPedido.regiaoAplicada,
           regioesElegiveis: freteGratisPromocionalPedido.regioesElegiveis,
           transportadoraAplicada:

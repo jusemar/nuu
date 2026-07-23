@@ -7,11 +7,17 @@ export const statusPromocao = [
 ] as const;
 export const tiposCampanhaPromocao = ["normal", "relampago"] as const;
 export const tiposBeneficioPromocao = ["desconto", "frete_gratis"] as const;
+export const formasEntregaPromocional = [
+  "entrega-propria",
+  "frete-externo",
+  "retirada",
+] as const;
 
 export type TipoDescontoPromocao = (typeof tiposDescontoPromocao)[number];
 export type StatusPromocao = (typeof statusPromocao)[number];
 export type TipoCampanhaPromocao = (typeof tiposCampanhaPromocao)[number];
 export type TipoBeneficioPromocao = (typeof tiposBeneficioPromocao)[number];
+export type FormaEntregaPromocional = (typeof formasEntregaPromocional)[number];
 
 export type ItemEntradaPromocao = {
   produtoId: string;
@@ -77,6 +83,7 @@ export type RegraFreteGratisPromocaoCalculavel = {
   regraPromocaoId: string;
   subtotalMinimo: number;
   modalidade: string | null;
+  formaEntrega?: FormaEntregaPromocional | null;
   categoriasIds?: string[];
   mensagemProgressiva: string | null;
   regiaoCodigo: string | null;

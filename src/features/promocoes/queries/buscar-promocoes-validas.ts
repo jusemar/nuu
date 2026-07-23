@@ -10,7 +10,6 @@ import {
   regrasPromocaoTable,
   usosCuponsPromocaoTable,
 } from "../../../db/schema";
-
 import type {
   CupomPromocaoCalculavel,
   RegraFreteGratisPromocaoCalculavel,
@@ -151,12 +150,14 @@ function mapearSubtotalPromocao(
 
 function mapearFreteGratisPromocao(
   freteGratisPromocao: FreteGratisPromocaoBanco,
+  categoriasRegra: CategoriaPromocaoBanco[] = [],
 ): RegraFreteGratisPromocaoCalculavel {
   return {
     id: freteGratisPromocao.id,
     regraPromocaoId: freteGratisPromocao.regraPromocaoId,
     subtotalMinimo: freteGratisPromocao.subtotalMinimo,
     modalidade: freteGratisPromocao.modalidade,
+    categoriasIds: categoriasRegra.map((categoria) => categoria.categoriaId),
     mensagemProgressiva: freteGratisPromocao.mensagemProgressiva,
     regiaoCodigo: freteGratisPromocao.regiaoCodigo,
     transportadoraCodigo: freteGratisPromocao.transportadoraCodigo,
@@ -312,7 +313,9 @@ export async function buscarPromocoesValidas(
     ),
     fretesGratisPromocao: removerDuplicidadePorId(
       regrasUtilizaveis.flatMap((regra) =>
-        (regra.fretesGratis ?? []).map(mapearFreteGratisPromocao),
+        (regra.fretesGratis ?? []).map((freteGratis) =>
+          mapearFreteGratisPromocao(freteGratis, regra.categorias ?? []),
+        ),
       ),
     ),
     cuponsPromocao: removerDuplicidadePorId(

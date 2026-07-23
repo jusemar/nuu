@@ -1,12 +1,21 @@
 // src/components/admin/header.tsx
 "use client";
 
-import { Bell, LogOut, Search, User } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Bell, LogOut, Search, User, UserRound } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
 type AdminHeaderProps = {
@@ -59,31 +68,48 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
             </Button>
           </div>
 
-          {/* Avatar do usuário (escondido em mobile muito pequeno) */}
-          <div className="hidden items-center gap-3 border-l pl-3 sm:flex">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 ring-1 ring-gray-200">
-              <User className="h-3.5 w-3.5 text-blue-600" />
-            </div>
-            <div className="hidden lg:block">
-              <p className="max-w-40 truncate text-sm font-semibold text-gray-900">
-                {usuario.name}
-              </p>
-              <p className="max-w-40 truncate text-xs text-gray-500">
-                {usuario.email}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={sair}
-              aria-label="Sair do painel"
-              title="Sair"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto gap-3 border-l py-1.5 pl-3"
+                aria-label="Abrir menu da minha conta"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 ring-1 ring-gray-200">
+                  <User className="h-3.5 w-3.5 text-blue-600" />
+                </span>
+                <span className="hidden min-w-0 text-left lg:block">
+                  <span className="block max-w-40 truncate text-sm font-semibold text-gray-900">
+                    {usuario.name}
+                  </span>
+                  <span className="block max-w-40 truncate text-xs text-gray-500">
+                    {usuario.email}
+                  </span>
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="space-y-0.5">
+                <p className="truncate text-sm font-medium">{usuario.name}</p>
+                <p className="text-muted-foreground truncate text-xs font-normal">
+                  {usuario.email}
+                </p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin/minha-conta">
+                  <UserRound aria-hidden="true" />
+                  Minha conta
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void sair()}>
+                <LogOut aria-hidden="true" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

@@ -81,6 +81,7 @@ export const regraFreteGratisPromocaoCalculavelSchema = z.object({
   regraPromocaoId: z.string().uuid(),
   subtotalMinimo: z.number().int().min(0),
   modalidade: z.string().trim().min(1).nullable(),
+  categoriasIds: z.array(z.string().uuid()).default([]).optional(),
   mensagemProgressiva: z.string().trim().nullable(),
   regiaoCodigo: z.string().trim().nullable(),
   transportadoraCodigo: z.string().trim().nullable(),

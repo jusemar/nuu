@@ -1,19 +1,20 @@
 "use server";
 
 import type { ItemCarrinho } from "@/features/carrinho";
+import { extrairModalidadesPromocionaisFreteGratis } from "@/features/checkout/lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
+import { extrairCodigosFretePromocionalDeItens } from "@/features/promocoes/lib/codigos-frete-promocional";
 import {
   calcularFreteGratisProgressivo,
-  validarCupomPromocao,
   type ResultadoFreteGratisProgressivo,
   type ResultadoValidarCupomPromocao,
+  validarCupomPromocao,
 } from "@/features/promocoes/services";
-import { extrairCodigosFretePromocionalDeItens } from "@/features/promocoes/lib/codigos-frete-promocional";
 
-import { calcularResumoCheckout } from "../resumo-checkout/calcular-resumo-checkout";
 import type {
   ResumoCheckoutCalculado,
   TotaisCheckout,
 } from "../../types/checkout.types";
+import { calcularResumoCheckout } from "../resumo-checkout/calcular-resumo-checkout";
 
 type FormaPagamentoPrevia = "pix" | "cartao";
 
@@ -319,9 +320,14 @@ export async function calcularPreviaTotaisPedido({
   const descontoPromocionalEmCentavos = calcularDescontoPromocionalPorResumo({
     resumo,
   });
-  const modalidades = [
-    ...new Set(itens.map((item) => item.modalidadeTipo).filter(Boolean)),
-  ] as string[];
+  const modalidades = extrairModalidadesPromocionaisFreteGratis(itens);
+  const categoriasIds = [
+    ...new Set(
+      resumo.itens
+        .map((item) => item.categoriaId)
+        .filter((categoriaId): categoriaId is string => Boolean(categoriaId)),
+    ),
+  ];
   const { resolverRegioesPromocionaisEntrega } = await import(
     "@/features/promocoes/queries/resolver-regioes-promocionais-entrega"
   );
@@ -345,6 +351,7 @@ export async function calcularPreviaTotaisPedido({
   const freteGratisProgressivo = await calcularFreteGratisProgressivo({
     subtotalEmCentavos: subtotalElegibilidadeFreteGratis,
     modalidades,
+    categoriasIds,
     regioesEntregaCodigos: codigosRegiaoEntrega,
     fretesSelecionadosCodigos: codigosFreteSelecionado,
   });

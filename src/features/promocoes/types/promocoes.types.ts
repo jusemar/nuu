@@ -77,6 +77,7 @@ export type RegraFreteGratisPromocaoCalculavel = {
   regraPromocaoId: string;
   subtotalMinimo: number;
   modalidade: string | null;
+  categoriasIds?: string[];
   mensagemProgressiva: string | null;
   regiaoCodigo: string | null;
   transportadoraCodigo: string | null;

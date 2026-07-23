@@ -11,6 +11,7 @@ export type TipoPrioridadeFreteGratisPromocional =
 export type EntradaCalcularFreteGratisProgressivo = {
   subtotalEmCentavos: number;
   modalidades?: string[];
+  categoriasIds?: string[];
   regioesEntregaCodigos?: string[];
   fretesSelecionadosCodigos?: string[];
   dataReferencia?: Date;
@@ -102,6 +103,22 @@ function regraCompativelComModalidades({
   return modalidades.includes(regra.modalidade);
 }
 
+function regraCompativelComCategorias({
+  regra,
+  categoriasIds,
+}: {
+  regra: RegraFreteGratisPromocaoCalculavel;
+  categoriasIds: string[];
+}) {
+  const categoriasRegra = regra.categoriasIds ?? [];
+
+  if (categoriasRegra.length === 0) return true;
+
+  return categoriasRegra.some((categoriaId) =>
+    categoriasIds.includes(categoriaId),
+  );
+}
+
 function regraCompativelComRegioes({
   regra,
   regioesEntregaCodigos,
@@ -182,18 +199,21 @@ function selecionarRegraFreteGratis({
   regras,
   subtotalEmCentavos,
   modalidades,
+  categoriasIds,
   regioesEntregaCodigos,
   fretesSelecionadosCodigos,
 }: {
   regras: RegraFreteGratisPromocaoCalculavel[];
   subtotalEmCentavos: number;
   modalidades: string[];
+  categoriasIds: string[];
   regioesEntregaCodigos: string[];
   fretesSelecionadosCodigos: string[];
 }) {
   const regrasCompativeis = regras
     .filter((regra) => regra.subtotalMinimo > 0)
     .filter((regra) => regraCompativelComModalidades({ regra, modalidades }))
+    .filter((regra) => regraCompativelComCategorias({ regra, categoriasIds }))
     .filter((regra) =>
       regraCompativelComRegioes({ regra, regioesEntregaCodigos }),
     )
@@ -243,6 +263,7 @@ function selecionarRegraFreteGratis({
 export async function calcularFreteGratisProgressivo({
   subtotalEmCentavos,
   modalidades = [],
+  categoriasIds = [],
   regioesEntregaCodigos = [],
   fretesSelecionadosCodigos = [],
   dataReferencia,
@@ -250,6 +271,7 @@ export async function calcularFreteGratisProgressivo({
 }: EntradaCalcularFreteGratisProgressivo): Promise<ResultadoFreteGratisProgressivo> {
   const subtotalSeguro = Math.max(subtotalEmCentavos, 0);
   const modalidadesNormalizadas = normalizarListaCodigos(modalidades);
+  const categoriasNormalizadas = normalizarListaCodigos(categoriasIds);
   const codigosRegiaoNormalizados = normalizarListaCodigos(
     regioesEntregaCodigos,
   );
@@ -267,6 +289,7 @@ export async function calcularFreteGratisProgressivo({
     regras,
     subtotalEmCentavos: subtotalSeguro,
     modalidades: modalidadesNormalizadas,
+    categoriasIds: categoriasNormalizadas,
     regioesEntregaCodigos: codigosRegiaoNormalizados,
     fretesSelecionadosCodigos: codigosFreteNormalizados,
   });

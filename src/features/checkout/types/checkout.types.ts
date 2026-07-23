@@ -37,6 +37,7 @@ export type TotaisCheckout = {
 export type ItemResumoCheckout = {
   id: string;
   produtoId: string;
+  categoriaId: string | null;
   produtoVarianteId?: string;
   nome: string;
   sku?: string | null;

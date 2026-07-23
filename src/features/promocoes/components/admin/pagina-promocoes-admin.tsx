@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   Activity,
+  Building2,
   CalendarDays,
   CheckCircle2,
   Copy,
-  Layers3,
   Edit3,
-  Building2,
+  Layers3,
   MapPin,
   PauseCircle,
   Plus,
@@ -20,11 +19,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -101,6 +108,10 @@ type FormularioPromocaoAdmin = {
   freteGratisFreteServicoTipo: "todos" | "transportadora" | "servico";
   freteGratisMensagemProgressiva: string;
 };
+
+type ErrosFormularioPromocaoAdmin = Partial<
+  Record<keyof FormularioPromocaoAdmin, string>
+>;
 
 type PaginaPromocoesAdminProps = {
   resultado: ResultadoPromocoesAdmin;
@@ -257,10 +268,12 @@ export function PaginaPromocoesAdmin({
 }: PaginaPromocoesAdminProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const referenciaFormularioPromocao = useRef<HTMLDivElement>(null);
   const referenciaNomePromocao = useRef<HTMLInputElement>(null);
+  const [modalPromocaoAberto, setModalPromocaoAberto] = useState(false);
   const [formulario, setFormulario] =
     useState<FormularioPromocaoAdmin>(formularioInicial);
+  const [errosFormulario, setErrosFormulario] =
+    useState<ErrosFormularioPromocaoAdmin>({});
   const [buscaProdutos, setBuscaProdutos] = useState("");
   const [buscaCategorias, setBuscaCategorias] = useState("");
   const [buscaMarcas, setBuscaMarcas] = useState("");
@@ -449,17 +462,30 @@ export function PaginaPromocoesAdmin({
         ? { slug: gerarSlug(String(valor)) }
         : {}),
     }));
-  }
 
-  function focarFormularioPromocao() {
-    window.requestAnimationFrame(() => {
-      referenciaFormularioPromocao.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-      referenciaNomePromocao.current?.focus({ preventScroll: true });
+    setErrosFormulario((errosAtuais) => {
+      if (campo === "tipoBeneficio" && valor !== "frete_gratis") {
+        const errosRestantes = { ...errosAtuais };
+        delete errosRestantes.freteGratisSubtotalMinimo;
+        return errosRestantes;
+      }
+
+      if (!errosAtuais[campo]) return errosAtuais;
+      const errosRestantes = { ...errosAtuais };
+      delete errosRestantes[campo];
+      return errosRestantes;
     });
   }
+
+  useEffect(() => {
+    if (!modalPromocaoAberto) return;
+
+    const foco = window.requestAnimationFrame(() => {
+      referenciaNomePromocao.current?.focus({ preventScroll: true });
+    });
+
+    return () => window.cancelAnimationFrame(foco);
+  }, [modalPromocaoAberto]);
 
   function limparBuscasFormulario() {
     setBuscaProdutos("");
@@ -481,8 +507,14 @@ export function PaginaPromocoesAdmin({
       categorias: [...proximoFormulario.categorias],
       marcas: [...proximoFormulario.marcas],
     });
+    setErrosFormulario({});
     limparBuscasFormulario();
-    focarFormularioPromocao();
+    setModalPromocaoAberto(true);
+  }
+
+  function fecharFormularioPromocao() {
+    if (isPending) return;
+    setModalPromocaoAberto(false);
   }
 
   function selecionarProduto(produto: ProdutoPromocaoAdmin) {
@@ -577,6 +609,37 @@ export function PaginaPromocoesAdmin({
     return valor === "" ? null : valor;
   }
 
+  function obterMensagemErroPromocao(error: unknown) {
+    if (!(error instanceof Error)) return "Não foi possível concluir a ação.";
+
+    try {
+      const mensagens = JSON.parse(error.message) as Array<{
+        message?: string;
+      }>;
+      const primeiraMensagem = mensagens.find((item) => item.message)?.message;
+      if (primeiraMensagem) return primeiraMensagem;
+    } catch {
+      // A action pode retornar uma mensagem simples; nesse caso usamos o texto original.
+    }
+
+    return error.message || "Não foi possível concluir a ação.";
+  }
+
+  function validarFormularioPromocao() {
+    const proximosErros: ErrosFormularioPromocaoAdmin = {};
+
+    if (
+      formulario.tipoBeneficio === "frete_gratis" &&
+      formulario.freteGratisSubtotalMinimo === ""
+    ) {
+      proximosErros.freteGratisSubtotalMinimo =
+        "Informe o subtotal mínimo para liberar o frete grátis.";
+    }
+
+    setErrosFormulario(proximosErros);
+    return Object.keys(proximosErros).length === 0;
+  }
+
   function executarAcao(
     acao: () => Promise<{ success: boolean }>,
     mensagemSucesso: string,
@@ -586,23 +649,18 @@ export function PaginaPromocoesAdmin({
         await acao();
         toast.success(mensagemSucesso);
         setFormulario(formularioInicial);
-        setBuscaProdutos("");
-        setBuscaCategorias("");
-        setBuscaMarcas("");
-        setBuscaRegioes("");
-        setBuscaFretesServicos("");
+        limparBuscasFormulario();
+        setModalPromocaoAberto(false);
         router.refresh();
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Não foi possível concluir a ação.",
-        );
+        toast.error(obterMensagemErroPromocao(error));
       }
     });
   }
 
   function salvarFormulario() {
+    if (!validarFormularioPromocao()) return;
+
     executarAcao(
       () =>
         salvarPromocaoAdmin({
@@ -698,7 +756,7 @@ export function PaginaPromocoesAdmin({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
+      <div className="space-y-4">
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 sm:p-5">
@@ -1006,733 +1064,874 @@ export function PaginaPromocoesAdmin({
           </div>
         </div>
 
-        <Card
-          ref={referenciaFormularioPromocao}
-          className="h-fit scroll-mt-4 xl:sticky xl:top-6"
+        <Dialog
+          open={modalPromocaoAberto}
+          onOpenChange={(aberto) => {
+            if (isPending) return;
+            setModalPromocaoAberto(aberto);
+          }}
         >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-600" />
-              {formulario.id ? "Editar promoção" : "Criar promoção"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <Label>Nome</Label>
-                <Input
-                  ref={referenciaNomePromocao}
-                  value={formulario.nome}
-                  onChange={(event) =>
-                    atualizarFormulario("nome", event.target.value)
-                  }
-                  placeholder="Semana do consumidor"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Slug</Label>
-                <Input
-                  value={formulario.slug}
-                  onChange={(event) =>
-                    atualizarFormulario("slug", gerarSlug(event.target.value))
-                  }
-                  placeholder="semana-do-consumidor"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={formulario.status}
-                    onValueChange={(valor: StatusPromocao) =>
-                      atualizarFormulario("status", valor)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(rotulosStatus).map(([valor, rotulo]) => (
-                        <SelectItem key={valor} value={valor}>
-                          {rotulo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <DialogContent
+            showCloseButton={false}
+            onEscapeKeyDown={(event) => {
+              if (isPending) event.preventDefault();
+            }}
+            onPointerDownOutside={(event) => {
+              if (isPending) event.preventDefault();
+            }}
+            className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] grid-rows-none flex-col gap-0 overflow-hidden rounded-3xl p-0 sm:max-h-[calc(100dvh-3rem)] sm:w-[90vw] sm:max-w-[1280px]"
+          >
+            <DialogHeader className="sticky top-0 z-10 border-b bg-white px-4 py-4 text-left sm:px-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <DialogTitle className="flex items-center gap-2 text-xl">
+                    <Sparkles className="h-5 w-5 text-blue-600" />
+                    {formulario.id ? "Editar promoção" : "Criar promoção"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Configure a campanha sem alterar o fluxo central do
+                    Promotion Engine.
+                  </DialogDescription>
                 </div>
-                <div className="space-y-2">
-                  <Label>Benefício</Label>
-                  <Select
-                    value={formulario.tipoBeneficio}
-                    onValueChange={(valor: TipoBeneficioPromocao) =>
-                      atualizarFormulario("tipoBeneficio", valor)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="desconto">Desconto</SelectItem>
-                      <SelectItem value="frete_gratis">Frete grátis</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={isPending}
+                  onClick={fecharFormularioPromocao}
+                  aria-label="Fechar formulário de promoção"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Campanha</Label>
-                  <Select
-                    value={formulario.tipoCampanha}
-                    onValueChange={(valor: TipoCampanhaPromocao) =>
-                      atualizarFormulario("tipoCampanha", valor)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="relampago">Relâmpago</SelectItem>
-                    </SelectContent>
-                  </Select>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-slate-50 px-4 py-5 sm:px-6 lg:px-8">
+              <section className="space-y-4 rounded-3xl border bg-white p-4 shadow-xs sm:p-5">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-950">
+                    Dados principais
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Identifique a promoção e mantenha o slug amigável para
+                    gestão interna.
+                  </p>
                 </div>
-              </div>
-              {formulario.tipoBeneficio === "desconto" ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Tipo desconto</Label>
-                    <Select
-                      value={formulario.tipoDesconto}
-                      onValueChange={(valor: TipoDescontoPromocao) =>
-                        atualizarFormulario("tipoDesconto", valor)
+                    <Label>Nome</Label>
+                    <Input
+                      ref={referenciaNomePromocao}
+                      value={formulario.nome}
+                      onChange={(event) =>
+                        atualizarFormulario("nome", event.target.value)
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentual">Percentual</SelectItem>
-                        <SelectItem value="valor_fixo">Valor fixo</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      placeholder="Semana do consumidor"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Valor desconto</Label>
+                    <Label>Slug</Label>
                     <Input
-                      type="number"
-                      min={1}
-                      value={formulario.valorDesconto}
+                      value={formulario.slug}
                       onChange={(event) =>
                         atualizarFormulario(
-                          "valorDesconto",
-                          Number(event.target.value),
+                          "slug",
+                          gerarSlug(event.target.value),
                         )
                       }
+                      placeholder="semana-do-consumidor"
+                    />
+                  </div>
+                  <div className="border-t pt-4 lg:col-span-2">
+                    <h3 className="text-base font-semibold text-slate-950">
+                      Status
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Controle quando a regra fica disponível para o motor de
+                      promoções.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-2">
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={formulario.status}
+                        onValueChange={(valor: StatusPromocao) =>
+                          atualizarFormulario("status", valor)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(rotulosStatus).map(
+                            ([valor, rotulo]) => (
+                              <SelectItem key={valor} value={valor}>
+                                {rotulo}
+                              </SelectItem>
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="border-t pt-4 lg:col-span-2">
+                    <h3 className="text-base font-semibold text-slate-950">
+                      Tipo de benefício
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Escolha entre desconto tradicional ou benefício
+                      promocional de frete grátis.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-2">
+                    <div className="space-y-2">
+                      <Label>Benefício</Label>
+                      <Select
+                        value={formulario.tipoBeneficio}
+                        onValueChange={(valor: TipoBeneficioPromocao) =>
+                          atualizarFormulario("tipoBeneficio", valor)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="desconto">Desconto</SelectItem>
+                          <SelectItem value="frete_gratis">
+                            Frete grátis
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Campanha</Label>
+                      <Select
+                        value={formulario.tipoCampanha}
+                        onValueChange={(valor: TipoCampanhaPromocao) =>
+                          atualizarFormulario("tipoCampanha", valor)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="relampago">Relâmpago</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {formulario.tipoBeneficio === "desconto" ? (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-2">
+                      <div className="space-y-2">
+                        <Label>Tipo desconto</Label>
+                        <Select
+                          value={formulario.tipoDesconto}
+                          onValueChange={(valor: TipoDescontoPromocao) =>
+                            atualizarFormulario("tipoDesconto", valor)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentual">
+                              Percentual
+                            </SelectItem>
+                            <SelectItem value="valor_fixo">
+                              Valor fixo
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Valor desconto</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={formulario.valorDesconto}
+                          onChange={(event) =>
+                            atualizarFormulario(
+                              "valorDesconto",
+                              Number(event.target.value),
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="border-t pt-4 lg:col-span-2">
+                    <h3 className="text-base font-semibold text-slate-950">
+                      Vigência e prioridade
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Defina prioridade, período e acúmulo sem alterar o cálculo
+                      central.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-2">
+                    <div className="space-y-2">
+                      <Label>Prioridade</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={formulario.prioridade}
+                        onChange={(event) =>
+                          atualizarFormulario(
+                            "prioridade",
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:col-span-2">
+                    <div className="space-y-2">
+                      <Label>Início</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formulario.dataInicio}
+                        onChange={(event) =>
+                          atualizarFormulario("dataInicio", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fim</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formulario.dataFim}
+                        onChange={(event) =>
+                          atualizarFormulario("dataFim", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                  {formulario.tipoCampanha === "relampago" && (
+                    <div className="rounded-3xl border border-orange-200 bg-orange-50 p-4 lg:col-span-2">
+                      <div className="mb-3">
+                        <Label>Configuração relâmpago</Label>
+                        <p className="mt-1 text-xs text-orange-800">
+                          Data final é obrigatória; o countdown oficial usa a
+                          data abaixo ou a data fim da promoção.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Badge oficial</Label>
+                          <Input
+                            value={formulario.badgePromocional}
+                            onChange={(event) =>
+                              atualizarFormulario(
+                                "badgePromocional",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Oferta relâmpago"
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Countdown até</Label>
+                          <Input
+                            type="datetime-local"
+                            value={formulario.countdownPromocionalDataFim}
+                            onChange={(event) =>
+                              atualizarFormulario(
+                                "countdownPromocionalDataFim",
+                                event.target.value,
+                              )
+                            }
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <label className="flex items-center justify-between rounded-2xl border p-4 lg:col-span-2">
+                    <span>
+                      <span className="block text-sm font-medium">
+                        Acumulativa
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        Preparado para regras futuras.
+                      </span>
+                    </span>
+                    <Switch
+                      checked={formulario.acumulativa}
+                      onCheckedChange={(valor) =>
+                        atualizarFormulario("acumulativa", valor)
+                      }
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section className="space-y-4 rounded-3xl border bg-white p-4 shadow-xs sm:p-5">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-950">
+                    Condições da promoção
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Defina escopos por produto, categoria, marca ou subtotal
+                    mantendo a lógica centralizada no engine.
+                  </p>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
+                    <div>
+                      <Label>Produtos vinculados</Label>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Busque por nome, slug ou SKU. Produtos duplicados são
+                        bloqueados.
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        value={buscaProdutos}
+                        onChange={(event) =>
+                          setBuscaProdutos(event.target.value)
+                        }
+                        placeholder="Buscar produto..."
+                        className="bg-white pl-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {buscandoProdutos && (
+                        <p className="text-sm text-slate-500">
+                          Buscando produtos...
+                        </p>
+                      )}
+                      {produtosEncontrados.map((produto) => (
+                        <button
+                          key={produto.id}
+                          type="button"
+                          onClick={() => selecionarProduto(produto)}
+                          className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <img
+                            src={produto.imagemUrl || "/produto-sem-foto.webp"}
+                            alt={produto.nome}
+                            className="h-12 w-12 rounded-xl object-cover"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">
+                              {produto.nome}
+                            </span>
+                            <span className="block truncate text-xs text-slate-500">
+                              SKU {produto.sku} ·{" "}
+                              {formatarPreco(produto.precoAtualEmCentavos)}
+                            </span>
+                          </span>
+                          <Tag className="h-4 w-4 text-blue-600" />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      {formulario.produtos.map((produto) => (
+                        <div
+                          key={produto.id}
+                          className="flex items-center gap-3 rounded-2xl border bg-white p-3"
+                        >
+                          <img
+                            src={produto.imagemUrl || "/produto-sem-foto.webp"}
+                            alt={produto.nome}
+                            className="h-11 w-11 rounded-xl object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">
+                              {produto.nome}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {produto.sku} ·{" "}
+                              {formatarPreco(produto.precoAtualEmCentavos)}
+                            </p>
+                            <div className="mt-2 max-w-56">
+                              <Select
+                                value={produto.modalidade ?? "todas"}
+                                onValueChange={(valor) =>
+                                  atualizarModalidadeProduto(produto.id, valor)
+                                }
+                              >
+                                <SelectTrigger className="h-8 bg-white text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="todas">
+                                    Todas as modalidades
+                                  </SelectItem>
+                                  {produto.modalidadesDisponiveis.map(
+                                    (modalidade) => (
+                                      <SelectItem
+                                        key={modalidade}
+                                        value={modalidade}
+                                      >
+                                        {modalidade}
+                                      </SelectItem>
+                                    ),
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removerProduto(produto.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
+                    <div>
+                      <Label>Categorias vinculadas</Label>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Aplica a regra para produtos da categoria informada.
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        value={buscaCategorias}
+                        onChange={(event) =>
+                          setBuscaCategorias(event.target.value)
+                        }
+                        placeholder="Buscar categoria..."
+                        className="bg-white pl-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {buscandoCategorias && (
+                        <p className="text-sm text-slate-500">
+                          Buscando categorias...
+                        </p>
+                      )}
+                      {categoriasEncontradas.map((categoria) => (
+                        <button
+                          key={categoria.id}
+                          type="button"
+                          onClick={() => selecionarCategoria(categoria)}
+                          className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                            <Layers3 className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">
+                              {categoria.nome}
+                            </span>
+                            <span className="block truncate text-xs text-slate-500">
+                              {categoria.slug}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      {formulario.categorias.map((categoria) => (
+                        <div
+                          key={categoria.id}
+                          className="flex items-center gap-3 rounded-2xl border bg-white p-3"
+                        >
+                          <Layers3 className="h-4 w-4 text-blue-600" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">
+                              {categoria.nome}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {categoria.slug}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removerCategoria(categoria.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
+                    <div>
+                      <Label>Marcas vinculadas</Label>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Aplica a regra para produtos da marca informada.
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        value={buscaMarcas}
+                        onChange={(event) => setBuscaMarcas(event.target.value)}
+                        placeholder="Buscar marca..."
+                        className="bg-white pl-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {buscandoMarcas && (
+                        <p className="text-sm text-slate-500">
+                          Buscando marcas...
+                        </p>
+                      )}
+                      {marcasEncontradas.map((marca) => (
+                        <button
+                          key={marca.id}
+                          type="button"
+                          onClick={() => selecionarMarca(marca)}
+                          className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-slate-700">
+                            {marca.logoUrl ? (
+                              <img
+                                src={marca.logoUrl}
+                                alt={marca.nome}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Building2 className="h-4 w-4" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">
+                              {marca.nome}
+                            </span>
+                            <span className="block truncate text-xs text-slate-500">
+                              {marca.slug}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      {formulario.marcas.map((marca) => (
+                        <div
+                          key={marca.id}
+                          className="flex items-center gap-3 rounded-2xl border bg-white p-3"
+                        >
+                          <Building2 className="h-4 w-4 text-blue-600" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">
+                              {marca.nome}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {marca.slug}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removerMarca(marca.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
+                    <div>
+                      <Label>Regra por subtotal</Label>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Faixa preparada para uso server-side futuro em carrinho
+                        e checkout, sem integrar visualmente nesta etapa.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-xs">
+                          <Receipt className="h-3.5 w-3.5" />
+                          Subtotal mínimo
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={formulario.subtotalMinimo}
+                          onChange={(event) =>
+                            atualizarFormulario(
+                              "subtotalMinimo",
+                              event.target.value === ""
+                                ? ""
+                                : Number(event.target.value),
+                            )
+                          }
+                          placeholder="Ex: 50000"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">
+                          Subtotal máximo opcional
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={formulario.subtotalMaximo}
+                          onChange={(event) =>
+                            atualizarFormulario(
+                              "subtotalMaximo",
+                              event.target.value === ""
+                                ? ""
+                                : Number(event.target.value),
+                            )
+                          }
+                          placeholder="Sem limite"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {formulario.tipoBeneficio === "frete_gratis" ? (
+                <div className="space-y-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div>
+                    <Label>Frete grátis progressivo</Label>
+                    <p className="mt-1 text-xs text-emerald-800">
+                      Benefício promocional calculado separadamente da
+                      logística. Não altera transportadoras, regras de entrega
+                      ou checkout logístico.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs">Subtotal mínimo</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={formulario.freteGratisSubtotalMinimo}
+                        onChange={(event) =>
+                          atualizarFormulario(
+                            "freteGratisSubtotalMinimo",
+                            event.target.value === ""
+                              ? ""
+                              : Number(event.target.value),
+                          )
+                        }
+                        onBlur={() => {
+                          if (
+                            formulario.tipoBeneficio === "frete_gratis" &&
+                            formulario.freteGratisSubtotalMinimo === ""
+                          ) {
+                            setErrosFormulario((errosAtuais) => ({
+                              ...errosAtuais,
+                              freteGratisSubtotalMinimo:
+                                "Informe o subtotal mínimo para liberar o frete grátis.",
+                            }));
+                          }
+                        }}
+                        placeholder="Ex: 29900"
+                        aria-invalid={Boolean(
+                          errosFormulario.freteGratisSubtotalMinimo,
+                        )}
+                        className="bg-white"
+                      />
+                      {errosFormulario.freteGratisSubtotalMinimo ? (
+                        <p className="text-xs font-medium text-red-600">
+                          {errosFormulario.freteGratisSubtotalMinimo}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-emerald-700">
+                          Informe o valor em centavos. Ex: R$ 100,00 = 10000.
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Modalidade opcional</Label>
+                      <Select
+                        value={formulario.freteGratisModalidade}
+                        onValueChange={(valor) =>
+                          atualizarFormulario("freteGratisModalidade", valor)
+                        }
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todas">
+                            Todas as modalidades
+                          </SelectItem>
+                          <SelectItem value="entrega-propria">
+                            Entrega própria
+                          </SelectItem>
+                          <SelectItem value="stock">Estoque próprio</SelectItem>
+                          <SelectItem value="pre_sale">
+                            Reserva/pré-venda
+                          </SelectItem>
+                          <SelectItem value="dropshipping">
+                            Dropshipping
+                          </SelectItem>
+                          <SelectItem value="order_basis">
+                            Fabricante
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      Região promocional opcional
+                    </Label>
+                    <div className="rounded-2xl border border-emerald-200 bg-white p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          value={buscaRegioes}
+                          onChange={(event) =>
+                            setBuscaRegioes(event.target.value)
+                          }
+                          placeholder="Buscar Brasil, Sudeste, MG, BH ou região de entrega"
+                          className="bg-white"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            atualizarFormulario(
+                              "freteGratisRegiaoCodigo",
+                              "todas",
+                            );
+                            setBuscaRegioes("");
+                            setRegioesEncontradas([]);
+                          }}
+                        >
+                          Todas regiões
+                        </Button>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-emerald-800">
+                        <MapPin className="size-3.5" />
+                        {formulario.freteGratisRegiaoCodigo === "todas"
+                          ? "Regra global, válida para qualquer região."
+                          : `Escopo regional: ${formulario.freteGratisRegiaoCodigo}`}
+                      </div>
+                      {buscandoRegioes ? (
+                        <p className="mt-2 text-xs text-emerald-700">
+                          Buscando regiões...
+                        </p>
+                      ) : null}
+                      {regioesEncontradas.length > 0 ? (
+                        <div className="mt-3 grid gap-2">
+                          {regioesEncontradas.map((regiao) => (
+                            <button
+                              key={regiao.codigo}
+                              type="button"
+                              className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left transition hover:border-emerald-300"
+                              onClick={() =>
+                                selecionarRegiaoFreteGratis(regiao)
+                              }
+                            >
+                              <span className="block text-sm font-medium text-emerald-950">
+                                {regiao.nome}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-emerald-700">
+                                {regiao.descricao} · {regiao.codigo}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      Transportadora/serviço opcional
+                    </Label>
+                    <div className="rounded-2xl border border-emerald-200 bg-white p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          value={buscaFretesServicos}
+                          onChange={(event) =>
+                            setBuscaFretesServicos(event.target.value)
+                          }
+                          placeholder="Buscar Correios, Jadlog, Sedex, PAC..."
+                          className="bg-white"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            atualizarFormulario(
+                              "freteGratisFreteServicoCodigo",
+                              "todos",
+                            );
+                            atualizarFormulario(
+                              "freteGratisFreteServicoTipo",
+                              "todos",
+                            );
+                            setBuscaFretesServicos("");
+                            setFretesServicosEncontrados([]);
+                          }}
+                        >
+                          Todos serviços
+                        </Button>
+                      </div>
+                      <div className="mt-2 text-xs text-emerald-800">
+                        {formulario.freteGratisFreteServicoTipo === "todos"
+                          ? "Regra global, válida para qualquer transportadora/serviço selecionado."
+                          : `Escopo: ${formulario.freteGratisFreteServicoCodigo}`}
+                      </div>
+                      {buscandoFretesServicos ? (
+                        <p className="mt-2 text-xs text-emerald-700">
+                          Buscando transportadoras/serviços...
+                        </p>
+                      ) : null}
+                      {fretesServicosEncontrados.length > 0 ? (
+                        <div className="mt-3 grid gap-2">
+                          {fretesServicosEncontrados.map((freteServico) => (
+                            <button
+                              key={freteServico.codigo}
+                              type="button"
+                              className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left transition hover:border-emerald-300"
+                              onClick={() =>
+                                selecionarFreteServicoFreteGratis(freteServico)
+                              }
+                            >
+                              <span className="block text-sm font-medium text-emerald-950">
+                                {freteServico.nome}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-emerald-700">
+                                {freteServico.tipo} · {freteServico.descricao} ·{" "}
+                                {freteServico.codigo}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Mensagem progressiva</Label>
+                    <Input
+                      value={formulario.freteGratisMensagemProgressiva}
+                      onChange={(event) =>
+                        atualizarFormulario(
+                          "freteGratisMensagemProgressiva",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Faltam pouco para ganhar frete grátis"
+                      className="bg-white"
                     />
                   </div>
                 </div>
               ) : null}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Prioridade</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formulario.prioridade}
-                    onChange={(event) =>
-                      atualizarFormulario(
-                        "prioridade",
-                        Number(event.target.value),
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Início</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formulario.dataInicio}
-                    onChange={(event) =>
-                      atualizarFormulario("dataInicio", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Fim</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formulario.dataFim}
-                    onChange={(event) =>
-                      atualizarFormulario("dataFim", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-              {formulario.tipoCampanha === "relampago" && (
-                <div className="rounded-3xl border border-orange-200 bg-orange-50 p-4">
-                  <div className="mb-3">
-                    <Label>Configuração relâmpago</Label>
-                    <p className="mt-1 text-xs text-orange-800">
-                      Data final é obrigatória; o countdown oficial usa a data
-                      abaixo ou a data fim da promoção.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label className="text-xs">Badge oficial</Label>
-                      <Input
-                        value={formulario.badgePromocional}
-                        onChange={(event) =>
-                          atualizarFormulario(
-                            "badgePromocional",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="Oferta relâmpago"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Countdown até</Label>
-                      <Input
-                        type="datetime-local"
-                        value={formulario.countdownPromocionalDataFim}
-                        onChange={(event) =>
-                          atualizarFormulario(
-                            "countdownPromocionalDataFim",
-                            event.target.value,
-                          )
-                        }
-                        className="bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-              <label className="flex items-center justify-between rounded-2xl border p-4">
-                <span>
-                  <span className="block text-sm font-medium">Acumulativa</span>
-                  <span className="text-xs text-slate-500">
-                    Preparado para regras futuras.
-                  </span>
-                </span>
-                <Switch
-                  checked={formulario.acumulativa}
-                  onCheckedChange={(valor) =>
-                    atualizarFormulario("acumulativa", valor)
-                  }
-                />
-              </label>
-            </div>
 
-            <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
-              <div>
-                <Label>Produtos vinculados</Label>
-                <p className="mt-1 text-xs text-slate-500">
-                  Busque por nome, slug ou SKU. Produtos duplicados são
-                  bloqueados.
-                </p>
-              </div>
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={buscaProdutos}
-                  onChange={(event) => setBuscaProdutos(event.target.value)}
-                  placeholder="Buscar produto..."
-                  className="bg-white pl-9"
-                />
-              </div>
-              <div className="space-y-2">
-                {buscandoProdutos && (
-                  <p className="text-sm text-slate-500">Buscando produtos...</p>
-                )}
-                {produtosEncontrados.map((produto) => (
-                  <button
-                    key={produto.id}
-                    type="button"
-                    onClick={() => selecionarProduto(produto)}
-                    className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <img
-                      src={produto.imagemUrl || "/produto-sem-foto.webp"}
-                      alt={produto.nome}
-                      className="h-12 w-12 rounded-xl object-cover"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
-                        {produto.nome}
-                      </span>
-                      <span className="block truncate text-xs text-slate-500">
-                        SKU {produto.sku} ·{" "}
-                        {formatarPreco(produto.precoAtualEmCentavos)}
-                      </span>
-                    </span>
-                    <Tag className="h-4 w-4 text-blue-600" />
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-2">
-                {formulario.produtos.map((produto) => (
-                  <div
-                    key={produto.id}
-                    className="flex items-center gap-3 rounded-2xl border bg-white p-3"
-                  >
-                    <img
-                      src={produto.imagemUrl || "/produto-sem-foto.webp"}
-                      alt={produto.nome}
-                      className="h-11 w-11 rounded-xl object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {produto.nome}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {produto.sku} ·{" "}
-                        {formatarPreco(produto.precoAtualEmCentavos)}
-                      </p>
-                      <div className="mt-2 max-w-56">
-                        <Select
-                          value={produto.modalidade ?? "todas"}
-                          onValueChange={(valor) =>
-                            atualizarModalidadeProduto(produto.id, valor)
-                          }
-                        >
-                          <SelectTrigger className="h-8 bg-white text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="todas">
-                              Todas as modalidades
-                            </SelectItem>
-                            {produto.modalidadesDisponiveis.map(
-                              (modalidade) => (
-                                <SelectItem key={modalidade} value={modalidade}>
-                                  {modalidade}
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removerProduto(produto.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+                <CalendarDays className="mb-2 h-4 w-4" />A promoção será
+                consumida pelo Promotion Engine central. Nenhuma integração
+                visual com loja, PDP, carrinho ou checkout foi feita nesta tela.
               </div>
             </div>
-
-            <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
-              <div>
-                <Label>Categorias vinculadas</Label>
-                <p className="mt-1 text-xs text-slate-500">
-                  Aplica a regra para produtos da categoria informada.
-                </p>
-              </div>
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={buscaCategorias}
-                  onChange={(event) => setBuscaCategorias(event.target.value)}
-                  placeholder="Buscar categoria..."
-                  className="bg-white pl-9"
-                />
-              </div>
-              <div className="space-y-2">
-                {buscandoCategorias && (
-                  <p className="text-sm text-slate-500">
-                    Buscando categorias...
-                  </p>
-                )}
-                {categoriasEncontradas.map((categoria) => (
-                  <button
-                    key={categoria.id}
-                    type="button"
-                    onClick={() => selecionarCategoria(categoria)}
-                    className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                      <Layers3 className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
-                        {categoria.nome}
-                      </span>
-                      <span className="block truncate text-xs text-slate-500">
-                        {categoria.slug}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-2">
-                {formulario.categorias.map((categoria) => (
-                  <div
-                    key={categoria.id}
-                    className="flex items-center gap-3 rounded-2xl border bg-white p-3"
-                  >
-                    <Layers3 className="h-4 w-4 text-blue-600" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {categoria.nome}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {categoria.slug}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removerCategoria(categoria.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
-              <div>
-                <Label>Marcas vinculadas</Label>
-                <p className="mt-1 text-xs text-slate-500">
-                  Aplica a regra para produtos da marca informada.
-                </p>
-              </div>
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={buscaMarcas}
-                  onChange={(event) => setBuscaMarcas(event.target.value)}
-                  placeholder="Buscar marca..."
-                  className="bg-white pl-9"
-                />
-              </div>
-              <div className="space-y-2">
-                {buscandoMarcas && (
-                  <p className="text-sm text-slate-500">Buscando marcas...</p>
-                )}
-                {marcasEncontradas.map((marca) => (
-                  <button
-                    key={marca.id}
-                    type="button"
-                    onClick={() => selecionarMarca(marca)}
-                    className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-slate-700">
-                      {marca.logoUrl ? (
-                        <img
-                          src={marca.logoUrl}
-                          alt={marca.nome}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Building2 className="h-4 w-4" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
-                        {marca.nome}
-                      </span>
-                      <span className="block truncate text-xs text-slate-500">
-                        {marca.slug}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-2">
-                {formulario.marcas.map((marca) => (
-                  <div
-                    key={marca.id}
-                    className="flex items-center gap-3 rounded-2xl border bg-white p-3"
-                  >
-                    <Building2 className="h-4 w-4 text-blue-600" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {marca.nome}
-                      </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {marca.slug}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removerMarca(marca.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-3xl border bg-slate-50 p-4">
-              <div>
-                <Label>Regra por subtotal</Label>
-                <p className="mt-1 text-xs text-slate-500">
-                  Faixa preparada para uso server-side futuro em carrinho e
-                  checkout, sem integrar visualmente nesta etapa.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-xs">
-                    <Receipt className="h-3.5 w-3.5" />
-                    Subtotal mínimo
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formulario.subtotalMinimo}
-                    onChange={(event) =>
-                      atualizarFormulario(
-                        "subtotalMinimo",
-                        event.target.value === ""
-                          ? ""
-                          : Number(event.target.value),
-                      )
-                    }
-                    placeholder="Ex: 50000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Subtotal máximo opcional</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formulario.subtotalMaximo}
-                    onChange={(event) =>
-                      atualizarFormulario(
-                        "subtotalMaximo",
-                        event.target.value === ""
-                          ? ""
-                          : Number(event.target.value),
-                      )
-                    }
-                    placeholder="Sem limite"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {formulario.tipoBeneficio === "frete_gratis" ? (
-              <div className="space-y-3 rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-                <div>
-                  <Label>Frete grátis progressivo</Label>
-                  <p className="mt-1 text-xs text-emerald-800">
-                    Benefício promocional calculado separadamente da logística.
-                    Não altera transportadoras, regras de entrega ou checkout
-                    logístico.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Subtotal mínimo</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={formulario.freteGratisSubtotalMinimo}
-                      onChange={(event) =>
-                        atualizarFormulario(
-                          "freteGratisSubtotalMinimo",
-                          event.target.value === ""
-                            ? ""
-                            : Number(event.target.value),
-                        )
-                      }
-                      placeholder="Ex: 29900"
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Modalidade opcional</Label>
-                    <Select
-                      value={formulario.freteGratisModalidade}
-                      onValueChange={(valor) =>
-                        atualizarFormulario("freteGratisModalidade", valor)
-                      }
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todas">
-                          Todas as modalidades
-                        </SelectItem>
-                        <SelectItem value="stock">Estoque próprio</SelectItem>
-                        <SelectItem value="pre_sale">
-                          Reserva/pré-venda
-                        </SelectItem>
-                        <SelectItem value="dropshipping">
-                          Dropshipping
-                        </SelectItem>
-                        <SelectItem value="order_basis">Fabricante</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Região promocional opcional</Label>
-                  <div className="rounded-2xl border border-emerald-200 bg-white p-3">
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        value={buscaRegioes}
-                        onChange={(event) =>
-                          setBuscaRegioes(event.target.value)
-                        }
-                        placeholder="Buscar Brasil, Sudeste, MG, BH ou região de entrega"
-                        className="bg-white"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          atualizarFormulario(
-                            "freteGratisRegiaoCodigo",
-                            "todas",
-                          );
-                          setBuscaRegioes("");
-                          setRegioesEncontradas([]);
-                        }}
-                      >
-                        Todas regiões
-                      </Button>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-emerald-800">
-                      <MapPin className="size-3.5" />
-                      {formulario.freteGratisRegiaoCodigo === "todas"
-                        ? "Regra global, válida para qualquer região."
-                        : `Escopo regional: ${formulario.freteGratisRegiaoCodigo}`}
-                    </div>
-                    {buscandoRegioes ? (
-                      <p className="mt-2 text-xs text-emerald-700">
-                        Buscando regiões...
-                      </p>
-                    ) : null}
-                    {regioesEncontradas.length > 0 ? (
-                      <div className="mt-3 grid gap-2">
-                        {regioesEncontradas.map((regiao) => (
-                          <button
-                            key={regiao.codigo}
-                            type="button"
-                            className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left transition hover:border-emerald-300"
-                            onClick={() => selecionarRegiaoFreteGratis(regiao)}
-                          >
-                            <span className="block text-sm font-medium text-emerald-950">
-                              {regiao.nome}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-emerald-700">
-                              {regiao.descricao} · {regiao.codigo}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">
-                    Transportadora/serviço opcional
-                  </Label>
-                  <div className="rounded-2xl border border-emerald-200 bg-white p-3">
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        value={buscaFretesServicos}
-                        onChange={(event) =>
-                          setBuscaFretesServicos(event.target.value)
-                        }
-                        placeholder="Buscar Correios, Jadlog, Sedex, PAC..."
-                        className="bg-white"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          atualizarFormulario(
-                            "freteGratisFreteServicoCodigo",
-                            "todos",
-                          );
-                          atualizarFormulario(
-                            "freteGratisFreteServicoTipo",
-                            "todos",
-                          );
-                          setBuscaFretesServicos("");
-                          setFretesServicosEncontrados([]);
-                        }}
-                      >
-                        Todos serviços
-                      </Button>
-                    </div>
-                    <div className="mt-2 text-xs text-emerald-800">
-                      {formulario.freteGratisFreteServicoTipo === "todos"
-                        ? "Regra global, válida para qualquer transportadora/serviço selecionado."
-                        : `Escopo: ${formulario.freteGratisFreteServicoCodigo}`}
-                    </div>
-                    {buscandoFretesServicos ? (
-                      <p className="mt-2 text-xs text-emerald-700">
-                        Buscando transportadoras/serviços...
-                      </p>
-                    ) : null}
-                    {fretesServicosEncontrados.length > 0 ? (
-                      <div className="mt-3 grid gap-2">
-                        {fretesServicosEncontrados.map((freteServico) => (
-                          <button
-                            key={freteServico.codigo}
-                            type="button"
-                            className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-left transition hover:border-emerald-300"
-                            onClick={() =>
-                              selecionarFreteServicoFreteGratis(freteServico)
-                            }
-                          >
-                            <span className="block text-sm font-medium text-emerald-950">
-                              {freteServico.nome}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-emerald-700">
-                              {freteServico.tipo} · {freteServico.descricao} ·{" "}
-                              {freteServico.codigo}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Mensagem progressiva</Label>
-                  <Input
-                    value={formulario.freteGratisMensagemProgressiva}
-                    onChange={(event) =>
-                      atualizarFormulario(
-                        "freteGratisMensagemProgressiva",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Faltam pouco para ganhar frete grátis"
-                    className="bg-white"
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-              <CalendarDays className="mb-2 h-4 w-4" />A promoção será consumida
-              pelo Promotion Engine central. Nenhuma integração visual com loja,
-              PDP, carrinho ou checkout foi feita nesta tela.
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t bg-white px-4 py-4 sm:flex-row sm:px-6">
               <Button
                 type="button"
                 className="flex-1"
@@ -1744,13 +1943,22 @@ export function PaginaPromocoesAdmin({
               <Button
                 type="button"
                 variant="outline"
+                disabled={isPending}
+                onClick={fecharFormularioPromocao}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isPending}
                 onClick={() => setFormulario(formularioInicial)}
               >
                 Limpar
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );

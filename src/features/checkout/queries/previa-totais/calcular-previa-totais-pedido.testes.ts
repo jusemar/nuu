@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import type { ResultadoFreteGratisProgressivo } from "@/features/promocoes/services";
+
+import { extrairModalidadesPromocionaisFreteGratis } from "../../lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
+import type { TotaisCheckout } from "../../types/checkout.types";
 import {
   calcularFreteGratisPromocionalPedido,
   calcularSubtotalElegibilidadeFreteGratisPromocional,
 } from "./calcular-previa-totais-pedido";
-import type { ResultadoFreteGratisProgressivo } from "@/features/promocoes/services";
-import type { TotaisCheckout } from "../../types/checkout.types";
 
 const totaisComFrete: TotaisCheckout = {
   subtotalEmCentavos: 35000,
@@ -62,6 +64,28 @@ const freteGratisNaoAtingido: ResultadoFreteGratisProgressivo = {
 };
 
 describe("calcularPreviaTotaisPedido helpers", () => {
+  it("inclui modalidade comercial e modalidade de frete para elegibilidade promocional", () => {
+    const modalidades = extrairModalidadesPromocionaisFreteGratis([
+      {
+        id: "item-1",
+        produtoId: "11111111-1111-4111-8111-111111111111",
+        nome: "Produto",
+        modalidadeTipo: "stock",
+        freteEscolhido: {
+          id: "entrega-propria",
+          nome: "Entrega própria",
+          prazo: "Hoje",
+          valorEmCentavos: 1800,
+        },
+        imagemUrl: "/produto.webp",
+        precoEmCentavos: 10000,
+        quantidade: 1,
+      },
+    ]);
+
+    assert.deepEqual(modalidades, ["stock", "entrega-propria"]);
+  });
+
   it("aplica frete gratis promocional somente quando elegivel", async () => {
     const resultado = await calcularFreteGratisPromocionalPedido({
       totais: totaisComFrete,

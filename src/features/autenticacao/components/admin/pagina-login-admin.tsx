@@ -30,7 +30,7 @@ import { authClient } from "@/lib/auth-client";
 import { validarAcessoAdmin } from "../../actions/validar-acesso-admin";
 
 const loginAdminSchema = z.object({
-  email: z.email("Informe um email válido."),
+  identificador: z.string().trim().min(3, "Informe seu e-mail ou WhatsApp."),
   senha: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
 });
 
@@ -53,7 +53,7 @@ export function PaginaLoginAdmin({
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const formulario = useForm<DadosLoginAdmin>({
     resolver: zodResolver(loginAdminSchema),
-    defaultValues: { email: "", senha: "" },
+    defaultValues: { identificador: "", senha: "" },
   });
 
   useEffect(() => {
@@ -61,18 +61,21 @@ export function PaginaLoginAdmin({
     void authClient.signOut();
   }, [encerrarSessaoAtual]);
 
-  async function entrarComEmail(dados: DadosLoginAdmin) {
+  async function entrar(dados: DadosLoginAdmin) {
     setEntrando(true);
     setErro(null);
 
     try {
-      const resultado = await authClient.signIn.email({
-        email: dados.email,
-        password: dados.senha,
+      const resultado = await authClient.$fetch("/login/admin/identificador", {
+        method: "POST",
+        body: {
+          identificador: dados.identificador,
+          senha: dados.senha,
+        },
       });
 
       if (resultado.error) {
-        setErro("Email ou senha inválidos.");
+        setErro("E-mail, WhatsApp ou senha inválidos.");
         return;
       }
 
@@ -81,8 +84,7 @@ export function PaginaLoginAdmin({
       if (!acesso.sucesso) {
         await authClient.signOut();
         setErro(
-          acesso.erro ??
-            "Esta conta não possui permissão para acessar o painel administrativo.",
+          acesso.erro ?? "Não foi possível validar o acesso administrativo.",
         );
         return;
       }
@@ -136,20 +138,21 @@ export function PaginaLoginAdmin({
 
             <Form {...formulario}>
               <form
-                onSubmit={formulario.handleSubmit(entrarComEmail)}
+                onSubmit={formulario.handleSubmit(entrar)}
                 className="space-y-4"
               >
                 <FormField
                   control={formulario.control}
-                  name="email"
+                  name="identificador"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>E-mail ou WhatsApp</FormLabel>
                       <FormControl>
                         <Input
-                          type="email"
-                          autoComplete="email"
-                          placeholder="seu@email.com"
+                          type="text"
+                          inputMode="email"
+                          autoComplete="username"
+                          placeholder="seu@email.com ou (31) 99999-9999"
                           disabled={processando}
                           {...field}
                         />

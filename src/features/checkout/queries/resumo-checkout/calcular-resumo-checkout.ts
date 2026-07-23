@@ -14,11 +14,11 @@ import {
 } from "@/features/precificacao/server";
 
 import { calcularTotalCheckout } from "../../lib/calcular-total-checkout";
+import { resolverItemVendavelCheckout } from "../../lib/pedidos/normalizar-checkout-visitante";
 import {
   calcularFreteItensCheckout,
   resolverFreteItemCheckout,
 } from "../../lib/resumo-checkout/calcular-frete-itens-checkout";
-import { resolverItemVendavelCheckout } from "../../lib/pedidos/normalizar-checkout-visitante";
 import type { ResumoCheckoutCalculado } from "../../types/checkout.types";
 
 type CalcularResumoCheckoutParams = {
@@ -152,6 +152,7 @@ export async function calcularResumoCheckout({
     return {
       id: item.id,
       produtoId: produto.id,
+      categoriaId: produto.categoryId,
       produtoVarianteId:
         itemVendavel.tipo === "variant"
           ? itemVendavel.variante.id

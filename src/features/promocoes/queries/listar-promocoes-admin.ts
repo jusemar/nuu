@@ -35,6 +35,70 @@ type FiltrosPromocoesAdmin = {
   limite?: number;
 };
 
+const TOTAL_TENTATIVAS_CONSULTA_ADMIN = 3;
+const ESPERA_RETRY_CONSULTA_ADMIN_MS = 250;
+
+function aguardarRetryConsultaAdmin(tentativa: number) {
+  return new Promise((resolve) =>
+    setTimeout(resolve, ESPERA_RETRY_CONSULTA_ADMIN_MS * tentativa),
+  );
+}
+
+function coletarMensagensErro(erro: unknown) {
+  const mensagens: string[] = [];
+  let erroAtual: unknown = erro;
+
+  for (let profundidade = 0; profundidade < 4; profundidade += 1) {
+    if (!(erroAtual instanceof Error)) break;
+
+    mensagens.push(`${erroAtual.name} ${erroAtual.message}`.toLowerCase());
+    erroAtual = (erroAtual as Error & { cause?: unknown }).cause;
+  }
+
+  return mensagens.join(" ");
+}
+
+function erroConsultaAdminEhTransitorio(erro: unknown) {
+  const mensagemErro = coletarMensagensErro(erro);
+
+  return (
+    mensagemErro.includes("fetch failed") ||
+    mensagemErro.includes("etimedout") ||
+    mensagemErro.includes("econnreset") ||
+    mensagemErro.includes("econnrefused") ||
+    mensagemErro.includes("networkerror")
+  );
+}
+
+async function executarConsultaLeituraAdminComRetry<T>(
+  consulta: () => Promise<T>,
+): Promise<T> {
+  let ultimoErro: unknown;
+
+  for (
+    let tentativa = 1;
+    tentativa <= TOTAL_TENTATIVAS_CONSULTA_ADMIN;
+    tentativa += 1
+  ) {
+    try {
+      return await consulta();
+    } catch (erro) {
+      ultimoErro = erro;
+
+      if (
+        tentativa >= TOTAL_TENTATIVAS_CONSULTA_ADMIN ||
+        !erroConsultaAdminEhTransitorio(erro)
+      ) {
+        throw erro;
+      }
+
+      await aguardarRetryConsultaAdmin(tentativa);
+    }
+  }
+
+  throw ultimoErro;
+}
+
 function criarCondicoesPromocoes(filtros: FiltrosPromocoesAdmin) {
   const condicoes = [];
 
@@ -381,7 +445,7 @@ function mapearPromocaoAdmin(
   };
 }
 
-export async function listarPromocoesAdmin(
+async function listarPromocoesAdminSemRetry(
   filtrosEntrada: FiltrosPromocoesAdmin = {},
 ): Promise<ResultadoPromocoesAdmin> {
   const filtros = filtrosPromocoesAdminSchema.parse(filtrosEntrada);
@@ -457,4 +521,12 @@ export async function listarPromocoesAdmin(
       Math.ceil((totalResultado[0]?.total ?? 0) / filtros.limite),
     ),
   };
+}
+
+export async function listarPromocoesAdmin(
+  filtrosEntrada: FiltrosPromocoesAdmin = {},
+): Promise<ResultadoPromocoesAdmin> {
+  return executarConsultaLeituraAdminComRetry(() =>
+    listarPromocoesAdminSemRetry(filtrosEntrada),
+  );
 }

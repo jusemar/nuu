@@ -109,6 +109,72 @@ describe("calcularFreteGratisProgressivo", () => {
     );
   });
 
+  it("aplica regra por entrega propria quando modalidade de frete e categoria sao elegiveis", async () => {
+    const categoriaDiscoRigido = "77777777-7777-4777-8777-777777777777";
+    const resultado = await calcularFreteGratisProgressivo(
+      criarEntrada({
+        subtotalEmCentavos: 10000,
+        modalidades: ["stock", "entrega-propria"],
+        categoriasIds: [categoriaDiscoRigido],
+        regioesEntregaCodigos: ["regiao_entrega:5"],
+        regrasFreteGratis: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            regraPromocaoId: "22222222-2222-4222-8222-222222222222",
+            subtotalMinimo: 10000,
+            modalidade: "entrega-propria",
+            categoriasIds: [categoriaDiscoRigido],
+            mensagemProgressiva: null,
+            regiaoCodigo: "regiao_entrega:5",
+            transportadoraCodigo: null,
+            servicoCodigo: null,
+          },
+        ],
+      }),
+    );
+
+    assert.equal(resultado.ativo, true);
+    assert.equal(resultado.freteGratisAtingido, true);
+    assert.equal(resultado.modalidade, "entrega-propria");
+    assert.equal(resultado.regiaoCodigo, "regiao_entrega:5");
+  });
+
+  it("ignora regra por entrega propria quando categoria ou modalidade divergem", async () => {
+    const categoriaDiscoRigido = "77777777-7777-4777-8777-777777777777";
+    const regraFreteGratis = {
+      id: "11111111-1111-4111-8111-111111111111",
+      regraPromocaoId: "22222222-2222-4222-8222-222222222222",
+      subtotalMinimo: 10000,
+      modalidade: "entrega-propria",
+      categoriasIds: [categoriaDiscoRigido],
+      mensagemProgressiva: null,
+      regiaoCodigo: "regiao_entrega:5",
+      transportadoraCodigo: null,
+      servicoCodigo: null,
+    };
+    const resultadoCategoriaDivergente = await calcularFreteGratisProgressivo(
+      criarEntrada({
+        subtotalEmCentavos: 10000,
+        modalidades: ["entrega-propria"],
+        categoriasIds: ["88888888-8888-4888-8888-888888888888"],
+        regioesEntregaCodigos: ["regiao_entrega:5"],
+        regrasFreteGratis: [regraFreteGratis],
+      }),
+    );
+    const resultadoModalidadeDivergente = await calcularFreteGratisProgressivo(
+      criarEntrada({
+        subtotalEmCentavos: 10000,
+        modalidades: ["frenet"],
+        categoriasIds: [categoriaDiscoRigido],
+        regioesEntregaCodigos: ["regiao_entrega:5"],
+        regrasFreteGratis: [regraFreteGratis],
+      }),
+    );
+
+    assert.equal(resultadoCategoriaDivergente.ativo, false);
+    assert.equal(resultadoModalidadeDivergente.ativo, false);
+  });
+
   it("aplica regra regional quando a entrega possui regiao elegivel", async () => {
     const resultado = await calcularFreteGratisProgressivo(
       criarEntrada({

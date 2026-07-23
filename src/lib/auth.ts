@@ -5,6 +5,7 @@ import { db } from "@/db/connection";
 import * as schema from "@/db/schema";
 import { enviarEmailRedefinicaoSenhaAdmin } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-admin";
 import { emailPossuiPermissaoAdmin } from "@/features/autenticacao/lib/permissoes-admin";
+import { pluginLoginIdentificadorAdmin } from "@/features/autenticacao/lib/plugin-login-identificador-admin";
 
 function lerVariavelAmbienteObrigatoria(nome: string) {
   const valor = process.env[nome]?.trim();
@@ -48,6 +49,10 @@ export const auth = betterAuth({
   rateLimit: {
     enabled: true,
     customRules: {
+      "/login/admin/identificador": {
+        window: 15 * 60,
+        max: 5,
+      },
       "/request-password-reset": {
         window: 15 * 60,
         max: 3,
@@ -66,6 +71,14 @@ export const auth = betterAuth({
   }),
   user: {
     modelName: "userTable",
+    additionalFields: {
+      whatsapp: {
+        type: "string",
+        required: false,
+        input: false,
+        unique: true,
+      },
+    },
   },
   session: {
     modelName: "sessionTable",
@@ -76,4 +89,5 @@ export const auth = betterAuth({
   verification: {
     modelName: "verificationTable",
   },
+  plugins: [pluginLoginIdentificadorAdmin()],
 });

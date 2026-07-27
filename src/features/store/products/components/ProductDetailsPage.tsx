@@ -41,6 +41,7 @@ import type {
 } from "../types/product.types";
 import { stripProductRichText } from "../utils/rich-text";
 import { BuyBox } from "./buy-box";
+import { LayoutProdutoAprovado } from "./layout-produto-aprovado";
 import { PaymentModal } from "./payment-modal";
 import { PaginaProdutoPrevisualizacao } from "./pre-visualizacao/pagina-produto-previsualizacao";
 import { PricingModalities } from "./PricingModalities";
@@ -500,7 +501,7 @@ export function ProductDetail({
             selectedVariantLabel={
               selectedVariant
                 ? selectedVariant.name ||
-                  Object.values(selectedVariant.attributes).join(" / ")
+                  Object.values(selectedVariant?.attributes || {}).join(" / ")
                 : null
             }
             retiradaLocal={retiradaLocal}
@@ -515,6 +516,7 @@ export function ProductDetail({
             modalidadeAtiva={modalidadeAtiva}
             onTrocarModalidade={selecionarModalidade}
             modoPreVisualizacao
+            mostrarFreteDemonstrativo
             seletorModalidades={
               product.productKind !== "variable" &&
               modalidadesDisponiveis.length > 0 ? (
@@ -546,6 +548,108 @@ export function ProductDetail({
     );
   }
 
+  return (
+    <LayoutProdutoAprovado
+      nomeProduto={product.name}
+      breadcrumbCategorias={breadcrumbCategorias}
+      galeria={
+        <ProductGallery
+          imagens={galleryImages}
+          nomeProduto={product.name}
+          isLancamento={true}
+          tipoBadge={tipoBadgeGaleria}
+          dataFimRelampago={dataFimPromocaoModalidadeAtiva}
+          modoPreVisualizacao={true}
+          mostrarMarcaPrevisualizacao={false}
+        />
+      }
+      informacoes={
+        <ProductInfo
+          nome={product.name}
+          marca={product.brand || ""}
+          sku={product.sku}
+          rating={ratingProduto}
+          totalAvaliacoes={totalAvaliacoesProduto}
+          vendedor={nomeComercialLoja || undefined}
+          vendedorRating={0}
+          descricao={productShortDescription}
+          modalidadesDisponiveis={modalidadesDisponiveis}
+          modalidadeAtiva={modalidadeAtiva}
+          onTrocarModalidade={selecionarModalidade}
+          precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+          productKind={product.productKind}
+          variantAttributes={product.attributes}
+          variants={publicVariants}
+          selectedVariant={selectedVariant}
+          onSelectVariant={setSelectedVariant}
+          modoPreVisualizacao={true}
+        />
+      }
+      caixaCompra={
+        <BuyBox
+          productId={product.id}
+          varianteIdSelecionada={selectedVariant?.id}
+          precoPix={precoVarianteSelecionada?.pix.valor || precoPixFormatado}
+          precoNormal={precoVarianteSelecionada?.cartao.valor || precoNormalFormatado}
+          precoParc={
+            parcelamentosVariante[0]
+              ? `${parcelamentosVariante[0].parcelas}x de ${parcelamentosVariante[0].valor}`
+              : precoParceladoFormatado
+          }
+          descontoPix={descontoPixVariante}
+          promocaoVisual={promocaoVisualCompra}
+          prazoEntrega={prazoEntrega}
+          disponibilidadeCompra={disponibilidadeCompra}
+          precoCalculado={precoCompraCalculado}
+          selectedVariantLabel={
+            selectedVariant
+              ? selectedVariant.name || Object.values(selectedVariant.attributes).join(" / ")
+              : null
+          }
+          retiradaLocal={retiradaLocal}
+          allowsOwnDelivery={!!product.allowsOwnDelivery}
+          cupomAplicado={cupomAplicado}
+          onAplicarCupom={aplicarCupom}
+          onRemoverCupom={removerCupom}
+          onAddToCart={adicionarProdutoAoCarrinho}
+          onComprarAgora={comprarProdutoAgora}
+          onShowPaymentOptions={() => setModalPgto(true)}
+          modalidades={modalidadesDisponiveis}
+          modalidadeAtiva={modalidadeAtiva}
+          onTrocarModalidade={selecionarModalidade}
+          modoPreVisualizacao={true}
+          mostrarFreteDemonstrativo={false}
+          seletorModalidades={
+            product.productKind !== "variable" && modalidadesDisponiveis.length > 0 ? (
+              <PricingModalities
+                modalidades={modalidadesDisponiveis}
+                modalidadeAtiva={modalidadeAtiva}
+                onSelecionarModalidade={selecionarModalidade}
+                precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+              />
+            ) : null
+          }
+        />
+      }
+      abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
+      conteudoAposProduto={conteudoComplementar}
+      modalPagamento={
+        <PaymentModal
+          isOpen={modalPgto}
+          onClose={() => setModalPgto(false)}
+          parcelamentos={
+            parcelamentosVariante.length > 0
+              ? parcelamentosVariante
+              : parcelamentosCartao
+          }
+          precoCalculado={precoCompraCalculado}
+        />
+      }
+    />
+  );
+
+  /* Composição anterior preservada temporariamente abaixo para facilitar a
+   * auditoria da restauração. Não é alcançada: a PDP usa o layout aprovado. */
   return (
     <div
       data-modo-pdp-preview={modoPreVisualizacao ? "true" : undefined}

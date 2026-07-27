@@ -2,10 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
-import { Footer } from "@/components/common/footer";
-import { Header } from "@/features/header";
-
+import { LayoutProdutoAprovado } from "../layout-produto-aprovado";
 import {
   BannerInstitucionalPrevisualizacao,
   SecaoCompreJuntoPrevisualizacao,
@@ -41,57 +38,30 @@ export function PaginaProdutoPrevisualizacao({
   conteudoRelacionados,
 }: Props) {
   return (
-    <div
-      data-modo-pdp-preview="true"
-      className="bg-background text-foreground min-h-screen overflow-x-hidden"
-    >
-      <Header />
-
-      <main className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-        <div className="py-4">
-          <CategoryBreadcrumb
-            categories={breadcrumbCategorias}
-            currentPage={nomeProduto}
-            className="text-xs"
-            currentPageClassName="text-primary font-semibold"
+    <LayoutProdutoAprovado
+      modoPreVisualizacao
+      nomeProduto={nomeProduto}
+      breadcrumbCategorias={breadcrumbCategorias}
+      galeria={galeria}
+      informacoes={informacoes}
+      caixaCompra={caixaCompra}
+      abas={abas}
+      modalPagamento={modalPagamento}
+      conteudoAposProduto={
+        <>
+          <SecaoCompreJuntoPrevisualizacao
+            nomeProduto={nomeProduto}
+            imagemProduto={imagemProduto}
           />
-        </div>
-
-        <section
-          data-secao-preview="produto-principal"
-          className="grid grid-cols-1 gap-6 min-[800px]:grid-cols-12 min-[800px]:gap-5 lg:gap-8"
-        >
-          <div className="flex min-w-0 flex-col gap-6 min-[800px]:col-span-5 min-[800px]:gap-7 lg:gap-8">
-            {galeria}
-            <div className="hidden min-[800px]:block">{abas}</div>
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-5 min-[800px]:col-span-7 lg:gap-6">
-            {informacoes}
-            {caixaCompra}
-          </div>
-        </section>
-
-        <section className="mt-8 min-[800px]:hidden">{abas}</section>
-
-        <SecaoCompreJuntoPrevisualizacao
-          nomeProduto={nomeProduto}
-          imagemProduto={imagemProduto}
-        />
-
-        <BannerInstitucionalPrevisualizacao />
-
-        {conteudoRelacionados ? (
-          <div className="[&>section]:mt-10 md:[&>section]:mt-14">
-            {conteudoRelacionados}
-          </div>
-        ) : null}
-
-        <SecoesDemonstrativasPrevisualizacao nomeProduto={nomeProduto} />
-      </main>
-
-      <Footer />
-      {modalPagamento}
-    </div>
+          <BannerInstitucionalPrevisualizacao />
+          {conteudoRelacionados ? (
+            <div className="[&>section]:mt-10 md:[&>section]:mt-14">
+              {conteudoRelacionados}
+            </div>
+          ) : null}
+          <SecoesDemonstrativasPrevisualizacao nomeProduto={nomeProduto} />
+        </>
+      }
+    />
   );
 }

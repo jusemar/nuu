@@ -114,6 +114,8 @@ interface BuyBoxProps {
   } | null;
   onTrocarModalidade?: (tipo: Modalidade) => void;
   modoPreVisualizacao?: boolean;
+  /** Autoriza os dados demonstrativos exclusivos do laboratório visual. */
+  mostrarFreteDemonstrativo?: boolean;
   seletorModalidades?: ReactNode;
 }
 
@@ -199,6 +201,7 @@ export function BuyBox({
   allowsOwnDelivery = false,
   modalidadeAtiva,
   modoPreVisualizacao = false,
+  mostrarFreteDemonstrativo = false,
   seletorModalidades,
 }: BuyBoxProps) {
   const { cep: cepContextoLogistico } = useContextoCepLogistica();
@@ -683,7 +686,7 @@ export function BuyBox({
             formatarPreco={formatarValorEmCentavos}
           />
         </div>
-      ) : modoPreVisualizacao ? (
+      ) : modoPreVisualizacao && mostrarFreteDemonstrativo ? (
         <ProgressoFretePrevisualizacao className="order-3 mx-5 mt-4 sm:col-span-2" />
       ) : null}
 
@@ -970,7 +973,7 @@ export function BuyBox({
         ) : null}
       </div>
 
-      {modoPreVisualizacao ? (
+      {modoPreVisualizacao && mostrarFreteDemonstrativo ? (
         <div className="order-5 mx-5 mt-4 sm:col-span-2">
           <BannerPromocionalPrevisualizacao />
         </div>

@@ -9,14 +9,17 @@
 // Fluxo: URL /product/tenis-nike → slug="tenis-nike" → busca no DB → passa dados
 
 import { notFound } from "next/navigation";
-import { getProductBySlug } from "@/features/store/products/service/productService";
-import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
+
+import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import {
   calcularPrecosProduto,
   normalizarModalidadePrecoCanonica,
 } from "@/features/precificacao/server";
-import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
+import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
+import { ProdutosRelacionadosPdp } from "@/features/store/products/components/produtos-relacionados-pdp";
+import { buscarProdutosRelacionadosPdp } from "@/features/store/products/queries/buscar-produtos-relacionados-pdp";
+import { getProductBySlug } from "@/features/store/products/service/productService";
 import type {
   Modalidade,
   PrecoModalidade,
@@ -101,10 +104,16 @@ export default async function ProductPage({ params }: PageProps) {
         precoBaseEmCentavos: variant.priceInCents,
       })),
   );
-  const breadcrumbCategorias = await buscarBreadcrumbCategoriaPorId(
-    product.categoryId,
-  );
-  const configuracaoLoja = await buscarConfiguracaoLoja();
+  const [breadcrumbCategorias, configuracaoLoja, produtosRelacionados] =
+    await Promise.all([
+      buscarBreadcrumbCategoriaPorId(product.categoryId),
+      buscarConfiguracaoLoja(),
+      buscarProdutosRelacionadosPdp({
+        produtoId: product.id,
+        categoriaId: product.categoryId,
+        marcaId: product.marcaId,
+      }),
+    ]);
 
   // 4. Passa os dados REAIS para o componente client renderizar
   return (
@@ -114,6 +123,9 @@ export default async function ProductPage({ params }: PageProps) {
       breadcrumbCategorias={breadcrumbCategorias}
       precosCalculadosPorModalidade={precosCalculadosPorModalidade}
       precosCalculadosPorVariante={precosCalculadosPorVariante}
+      conteudoComplementar={
+        <ProdutosRelacionadosPdp produtos={produtosRelacionados} />
+      }
     />
   );
 }

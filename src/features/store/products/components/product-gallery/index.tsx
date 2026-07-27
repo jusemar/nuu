@@ -18,6 +18,8 @@ interface ProductGalleryProps {
   tipoBadge?: "relampago" | "promocao" | null;
   dataFimRelampago?: Date | null;
   modoPreVisualizacao?: boolean;
+  /** Mantém o marcador de laboratório restrito à rota de pré-visualização. */
+  mostrarMarcaPrevisualizacao?: boolean;
 }
 
 export function ProductGallery({
@@ -27,6 +29,7 @@ export function ProductGallery({
   tipoBadge = null,
   dataFimRelampago = null,
   modoPreVisualizacao = false,
+  mostrarMarcaPrevisualizacao = true,
 }: ProductGalleryProps) {
   const [imgAtiva, setImgAtiva] = useState(0);
   const [ampliacaoAberta, setAmpliacaoAberta] = useState(false);
@@ -116,7 +119,11 @@ export function ProductGallery({
 
   return (
     <div
-      data-galeria-preview={modoPreVisualizacao ? "horizontal" : undefined}
+      data-galeria-preview={
+        modoPreVisualizacao && mostrarMarcaPrevisualizacao
+          ? "horizontal"
+          : undefined
+      }
       className={
         modoPreVisualizacao
           ? "grid grid-cols-1 gap-3 md:gap-4"

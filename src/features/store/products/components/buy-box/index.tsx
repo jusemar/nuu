@@ -276,6 +276,16 @@ export function BuyBox({
   const opcaoEntregaPropriaCotada = opcoesEntregaCotadas.find(
     (opcao) => opcao.provedor === "entrega-propria",
   );
+  const resultadoEntregaPropriaEncontrado = resultadoDoCepAtual?.found
+    ? resultadoDoCepAtual
+    : null;
+  // A resposta oficial de Entrega Própria pode trazer uma explicação além do
+  // prazo. Quando ela existe, o card usa a linha inteira para preservar a
+  // leitura, sem inferir o tamanho pelo número de caracteres.
+  const descricaoComplementarEntregaPropria =
+    resultadoEntregaPropriaEncontrado?.promessaEntrega?.observacaoPagamento?.trim() ||
+    resultadoDoCepAtual?.message?.trim() ||
+    null;
   const freteGratisProgressivoOficial =
     opcaoFrenetSelecionada?.freteGratisProgressivo ??
     opcaoEntregaPropriaCotada?.freteGratisProgressivo;
@@ -742,7 +752,7 @@ export function BuyBox({
             <div
               className={
                 modoPreVisualizacao
-                  ? "mt-3 grid animate-[fadeUp_0.3s_ease] grid-cols-1 gap-2 sm:grid-cols-2"
+                  ? "mt-3 grid animate-[fadeUp_0.3s_ease] grid-cols-1 gap-2 sm:grid-cols-2 sm:grid-flow-row-dense"
                   : "mt-2 flex animate-[fadeUp_0.3s_ease] flex-col gap-1"
               }
             >
@@ -854,7 +864,7 @@ export function BuyBox({
                 <>
                   {retiradaLocal && (
                     <label
-                      className="border-surface-border hover:border-primary-mid flex cursor-pointer items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
+                      className="border-surface-border hover:border-primary-mid grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
                       onClick={() => {
                         setTransportadoraSelecionada("retirada");
                         setErroFrete("");
@@ -863,15 +873,17 @@ export function BuyBox({
                       <input
                         type="radio"
                         name="entrega"
-                        className="accent-primary flex-shrink-0"
+                        className="accent-primary mt-0.5 flex-shrink-0"
                       />
-                      <div className="text-text-primary flex-1 text-xs font-medium">
-                        {retiradaLocal.nome}
+                      <div className="min-w-0">
+                        <p className="text-text-primary text-xs font-medium">
+                          {retiradaLocal.nome}
+                        </p>
+                        <p className="text-text-hint mt-0.5 text-[11px] leading-snug">
+                          {retiradaLocal.prazo}
+                        </p>
                       </div>
-                      <div className="text-text-hint text-[11px]">
-                        {retiradaLocal.prazo}
-                      </div>
-                      <div className="text-success text-xs font-bold">
+                      <div className="text-success self-start text-right text-xs font-bold whitespace-nowrap">
                         Grátis
                       </div>
                     </label>
@@ -879,14 +891,18 @@ export function BuyBox({
 
                   {allowsOwnDelivery &&
                     (consultandoFrete || !resultadoDoCepAtual ? (
-                      <div className="border-surface-border flex items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5">
+                      <div className="border-surface-border flex items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 sm:col-span-2">
                         <div className="flex-1 text-xs font-medium text-gray-500">
                           Consultando Entrega Própria...
                         </div>
                       </div>
                     ) : resultadoDoCepAtual?.found ? (
                       <label
-                        className="border-surface-border hover:border-primary-mid flex cursor-pointer items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
+                        className={`border-surface-border hover:border-primary-mid grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors ${
+                          descricaoComplementarEntregaPropria
+                            ? "sm:col-span-2"
+                            : ""
+                        }`}
                         onClick={() => {
                           setTransportadoraSelecionada("entrega-propria");
                           setErroFrete("");
@@ -895,28 +911,32 @@ export function BuyBox({
                         <input
                           type="radio"
                           name="entrega"
-                          className="accent-primary flex-shrink-0"
+                          className="accent-primary row-span-2 mt-0.5 flex-shrink-0"
                         />
-                        <div className="text-text-primary flex-1 text-xs font-medium">
-                          Entrega Própria
+                        <div className="text-text-primary min-w-0 text-xs font-medium">
+                          <p>Entrega Própria</p>
+                          <div className="text-text-hint mt-0.5 text-[11px] leading-snug">
+                            <PrevisaoEntregaPropriaPdp
+                              resultado={resultadoDoCepAtual}
+                              fallback={prazoEntregaPropria}
+                            />
+                          </div>
                         </div>
-                        <PrevisaoEntregaPropriaPdp
-                          resultado={resultadoDoCepAtual}
-                          fallback={prazoEntregaPropria}
-                        />
-                        <PrecoFretePromocionalPdp
-                          valorEmCentavos={resultadoDoCepAtual.shippingPrice}
-                          valorOriginalEmCentavos={
-                            resultadoDoCepAtual.shippingPriceOriginal
-                          }
-                          freteGratisPromocionalAplicado={
-                            resultadoDoCepAtual.freteGratisPromocionalAplicado
-                          }
-                          rotuloGratis="Entrega Própria — GRÁTIS"
-                        />
+                        <div className="self-start text-right">
+                          <PrecoFretePromocionalPdp
+                            valorEmCentavos={resultadoDoCepAtual.shippingPrice}
+                            valorOriginalEmCentavos={
+                              resultadoDoCepAtual.shippingPriceOriginal
+                            }
+                            freteGratisPromocionalAplicado={
+                              resultadoDoCepAtual.freteGratisPromocionalAplicado
+                            }
+                            rotuloGratis="Entrega Própria — GRÁTIS"
+                          />
+                        </div>
                       </label>
                     ) : (
-                      <div className="flex items-center gap-2 rounded-lg border-[1.5px] border-red-200 bg-red-50 p-2.5">
+                      <div className="flex items-center gap-2 rounded-lg border-[1.5px] border-red-200 bg-red-50 p-2.5 sm:col-span-2">
                         <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-left text-[10px] font-bold text-red-700">
                           {resultadoDoCepAtual?.message ||
                             "Consulte o vendedor"}
@@ -929,7 +949,7 @@ export function BuyBox({
                     .map((opcao) => (
                       <label
                         key={opcao.identificador}
-                        className="border-surface-border hover:border-primary-mid flex cursor-pointer items-center gap-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
+                        className="border-surface-border hover:border-primary-mid grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 rounded-lg border-[1.5px] bg-white p-2.5 transition-colors"
                         onClick={() => {
                           setTransportadoraSelecionada(opcao.identificador);
                           setErroFrete("");
@@ -938,23 +958,27 @@ export function BuyBox({
                         <input
                           type="radio"
                           name="entrega"
-                          className="accent-primary flex-shrink-0"
+                          className="accent-primary mt-0.5 flex-shrink-0"
                         />
-                        <div className="text-text-primary flex-1 text-xs font-medium">
-                          {opcao.nome}
+                        <div className="min-w-0">
+                          <p className="text-text-primary text-xs font-medium">
+                            {opcao.nome}
+                          </p>
+                          <p className="text-text-hint mt-0.5 text-[11px] leading-snug">
+                            {opcao.prazo || "Consulte prazo"}
+                          </p>
                         </div>
-                        <div className="text-text-hint text-[11px]">
-                          {opcao.prazo || "Consulte prazo"}
+                        <div className="self-start text-right">
+                          <PrecoFretePromocionalPdp
+                            valorEmCentavos={opcao.valorEmCentavos}
+                            valorOriginalEmCentavos={
+                              opcao.valorOriginalEmCentavos
+                            }
+                            freteGratisPromocionalAplicado={
+                              opcao.freteGratisPromocionalAplicado
+                            }
+                          />
                         </div>
-                        <PrecoFretePromocionalPdp
-                          valorEmCentavos={opcao.valorEmCentavos}
-                          valorOriginalEmCentavos={
-                            opcao.valorOriginalEmCentavos
-                          }
-                          freteGratisPromocionalAplicado={
-                            opcao.freteGratisPromocionalAplicado
-                          }
-                        />
                       </label>
                     ))}
                 </>

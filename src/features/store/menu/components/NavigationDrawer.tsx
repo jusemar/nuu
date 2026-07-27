@@ -1,268 +1,241 @@
-// src/features/store/menu/components/NavigationDrawer.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { ChevronRight, Folder, Tag } from 'lucide-react';
-import { useMenuCategories } from '../hooks/useMenuCategories';
-import { useHeader } from '@/features/header/hooks/useHeader';
-import { cn } from '@/lib/utils';
+import { ArrowLeft, ChevronRight, Folder, Tag } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-// Componentes do shadcn
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer';
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+
+import { useMenuCategories } from "../hooks/useMenuCategories";
+import type { MenuCategory } from "../services/menuService";
 
 interface NavigationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// =====================================================================
-// COMPONENTE RECURSIVO: CategoryTree
-// =====================================================================
-// Regras de navegação:
-// - Nível 0 (raiz)              → expande no sheet, NÃO redireciona
-// - Nível 1 (subcategoria)       → redireciona para PLP
-// - Nível 2 (filha do nível 1)   → redireciona para PLP
-// =====================================================================
-const CategoryTree = ({
+interface ListaCategoriasProps {
+  categories: MenuCategory[];
+  depth?: number;
+  onNavigate: () => void;
+}
+
+function ListaCategoriasDesktop({
   categories,
   depth = 0,
-  onItemClick,
-}: {
-  categories: any[];
-  depth?: number;
-  onItemClick?: () => void;
-}) => {
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  onNavigate,
+}: ListaCategoriasProps) {
+  const [itensExpandidos, setItensExpandidos] = useState<Set<string>>(
+    new Set(),
+  );
   const categoriasOrdenadas = [...categories].sort((a, b) =>
-    String(a.name ?? "").localeCompare(String(b.name ?? ""), "pt-BR", {
-      sensitivity: "base",
-    }),
+    a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
   );
 
-  const toggleExpand = (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
+  const alternarCategoria = (id: string) => {
+    setItensExpandidos((atuais) => {
+      const proximos = new Set(atuais);
+      if (proximos.has(id)) proximos.delete(id);
+      else proximos.add(id);
+      return proximos;
     });
   };
 
-  // Função que decide o que fazer ao clicar no item
-  const handleItemClick = (
-    e: React.MouseEvent,
-    category: any,
-    currentDepth: number
-  ) => {
-    // Nível 0 (raiz) com filhos → apenas expande, não redireciona
-    if (currentDepth === 0 && category.children?.length > 0) {
-      e.preventDefault();      // impede o Link de navegar
-      toggleExpand(category.id, e);
-      return;
-    }
-
-    // Para níveis 1, 2 ou qualquer item sem filhos → redireciona
-    // O onItemClick fecha o menu após a navegação (boa prática)
-    if (onItemClick) {
-      // Pequeno delay para dar tempo de ver o feedback visual
-      setTimeout(() => onItemClick(), 100);
-    }
-    // O Link do Next cuidará da navegação
-  };
-
   return (
-    <div className="space-y-1">
-      {categoriasOrdenadas.map((category) => {
-        const hasChildren = category.children && category.children.length > 0;
-        const isExpanded = expandedItems.has(category.id);
-        const isRootLevel = depth === 0;
-
-        // Define se o item deve ser um Link ou um botão de expansão
-        const shouldRenderAsLink =
-          !(isRootLevel && hasChildren); // apenas raiz com filhos não vira link
-
-        const content = (
-          <div
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg transition-all',
-              'hover:bg-gray-100 group cursor-pointer',
-              depth === 0 && 'font-medium',
-              // feedback visual para raiz que só expande
-              isRootLevel && hasChildren && 'cursor-default'
+    <ul className="space-y-1">
+      {categoriasOrdenadas.map((categoria) => {
+        const temFilhos = Boolean(categoria.children?.length);
+        const agrupadora = depth === 0 && temFilhos;
+        const expandida = itensExpandidos.has(categoria.id);
+        const classesItem = cn(
+          "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors",
+          "hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none",
+          depth === 0 && "font-medium",
+        );
+        const conteudo = (
+          <>
+            {temFilhos ? (
+              <Folder className="size-4 shrink-0 text-amber-500" />
+            ) : (
+              <Tag className="size-4 shrink-0 text-slate-400" />
             )}
-            style={{ marginLeft: `${depth * 20}px` }}
-          >
-            {/* Botão de expandir (só para raiz com filhos) */}
-            {hasChildren ? (
+            <span className="min-w-0 flex-1 truncate">{categoria.name}</span>
+            {temFilhos ? (
+              <ChevronRight
+                className={cn(
+                  "size-4 shrink-0 text-slate-400 transition-transform",
+                  expandida && "rotate-90",
+                )}
+              />
+            ) : null}
+          </>
+        );
+
+        return (
+          <li key={categoria.id}>
+            {agrupadora ? (
               <button
-                onClick={(e) => toggleExpand(category.id, e)}
-                className="p-1 hover:bg-gray-200 rounded-md transition-colors flex-shrink-0"
-                aria-label={isExpanded ? 'Recolher' : 'Expandir'}
+                type="button"
+                onClick={() => alternarCategoria(categoria.id)}
+                className={classesItem}
+                aria-expanded={expandida}
               >
-                <ChevronRight
-                  size={16}
-                  className={cn(
-                    'text-gray-500 transition-transform duration-200',
-                    isExpanded && 'rotate-90'
-                  )}
-                />
+                {conteudo}
               </button>
             ) : (
-              <div className="w-6 flex-shrink-0" />
+              <Link
+                href={`/category/${categoria.slug}`}
+                onClick={onNavigate}
+                className={classesItem}
+              >
+                {conteudo}
+              </Link>
             )}
 
-            {/* Ícone e nome da categoria */}
-            <div className="flex-1 flex items-center gap-2 text-gray-700">
-              {hasChildren ? (
-                <Folder size={16} className="text-amber-500 flex-shrink-0" />
-              ) : (
-                <Tag size={16} className="text-slate-400 flex-shrink-0" />
-              )}
-              <span className="text-sm truncate">{category.name}</span>
-              {hasChildren && (
-                <span className="ml-auto text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full">
-                  {category.children.length}
-                </span>
-              )}
-            </div>
-          </div>
-        );
-
-        // Se for para renderizar como Link (todos exceto raiz com filhos)
-        if (shouldRenderAsLink) {
-          return (
-            <div key={category.id}>
-              <Link
-                href={`/category/${category.slug}`}
-                onClick={(e) => handleItemClick(e, category, depth)}
-                className="block"
-              >
-                {content}
-              </Link>
-
-              {/* Subcategorias (se expandidas) */}
-              {hasChildren && isExpanded && (
-                <div className="mt-1">
-                  <CategoryTree
-                    categories={category.children}
-                    depth={depth + 1}
-                    onItemClick={onItemClick}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        }
-
-        // Caso contrário (raiz com filhos) → só expande, sem Link
-        return (
-          <div key={category.id}>
-            <div onClick={(e) => toggleExpand(category.id, e)}>{content}</div>
-
-            {/* Subcategorias (se expandidas) */}
-            {hasChildren && isExpanded && (
-              <div className="mt-1">
-                <CategoryTree
-                  categories={category.children}
+            {temFilhos && expandida ? (
+              <div className="mt-1 border-l border-slate-200 pl-3">
+                <ListaCategoriasDesktop
+                  categories={categoria.children ?? []}
                   depth={depth + 1}
-                  onItemClick={onItemClick}
+                  onNavigate={onNavigate}
                 />
               </div>
-            )}
-          </div>
+            ) : null}
+          </li>
         );
       })}
+    </ul>
+  );
+}
+
+function EsqueletoMenu() {
+  return (
+    <div className="space-y-3 p-4" aria-label="Carregando categorias">
+      {[1, 2, 3, 4, 5].map((item) => (
+        <div
+          key={item}
+          className="h-11 w-full animate-pulse rounded-lg bg-slate-100"
+        />
+      ))}
     </div>
   );
-};
+}
 
-// =====================================================================
-// COMPONENTE PRINCIPAL: NavigationDrawer
-// =====================================================================
 export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
-  const { isMobile } = useHeader();
   const { data: categories, isLoading, error } = useMenuCategories();
+  const [caminho, setCaminho] = useState<MenuCategory[]>([]);
+  const categoriaAtual = caminho.at(-1);
+  const categoriasVisiveis = categoriaAtual?.children ?? categories ?? [];
 
-  const MenuContent = () => {
-    if (isLoading) {
-      return (
-        <div className="space-y-3 p-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-            </div>
-          ))}
-        </div>
-      );
-    }
+  useEffect(() => {
+    if (!isOpen) setCaminho([]);
+  }, [isOpen]);
 
-    if (error) {
-      return (
-        <div className="p-4 text-center text-red-600">
-          Erro ao carregar categorias. Tente novamente.
-        </div>
-      );
-    }
-
-    if (!categories || categories.length === 0) {
-      return (
-        <div className="p-4 text-center text-gray-500">
-          Nenhuma categoria encontrada.
-        </div>
-      );
-    }
-
-    return (
-      <div className="overflow-y-auto h-full pb-8">
-        <CategoryTree categories={categories} depth={0} onItemClick={onClose} />
-      </div>
-    );
+  const aoAlterarAbertura = (aberto: boolean) => {
+    if (!aberto) onClose();
   };
 
-  if (isMobile) {
-    return (
-      <Drawer open={isOpen} onOpenChange={onClose}>
-        <DrawerContent className="h-[80vh]">
-          <DrawerHeader className="border-b border-gray-200">
-            <DrawerTitle className="font-bold text-lg text-gray-900">
-              Categorias
-            </DrawerTitle>
-          </DrawerHeader>
-          <div className="px-4 py-2 overflow-y-auto">
-            <MenuContent />
-          </div>
-        </DrawerContent>
-      </Drawer>
-    );
-  }
+  const conteudoVazioOuErro = error ? (
+    <p className="p-5 text-center text-sm text-red-600">
+      Erro ao carregar categorias. Tente novamente.
+    </p>
+  ) : !categories?.length ? (
+    <p className="p-5 text-center text-sm text-slate-500">
+      Nenhuma categoria encontrada.
+    </p>
+  ) : null;
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-64 sm:w-72 p-0">
-        <SheetHeader className="p-4 border-b border-gray-200">
-          <SheetTitle className="font-bold text-lg text-gray-900">
-            Categorias
-          </SheetTitle>
+    <Sheet open={isOpen} onOpenChange={aoAlterarAbertura}>
+      <SheetContent
+        id="menu-categorias-loja"
+        side="left"
+        className="w-[min(88vw,380px)] gap-0 overflow-hidden border-slate-200 p-0 sm:max-w-[380px]"
+      >
+        <SheetHeader className="min-h-16 justify-center border-b border-slate-200 px-4 py-3 pr-12 text-left">
+          <div className="flex min-w-0 items-center gap-2">
+            {categoriaAtual ? (
+              <button
+                type="button"
+                onClick={() => setCaminho((atual) => atual.slice(0, -1))}
+                className="flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#0C447C] focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none md:hidden"
+                aria-label="Voltar para o nível anterior"
+              >
+                <ArrowLeft className="size-5" />
+              </button>
+            ) : null}
+            <SheetTitle className="truncate text-base font-semibold text-slate-900">
+              {categoriaAtual?.name ?? "Categorias"}
+            </SheetTitle>
+          </div>
         </SheetHeader>
-        <div className="overflow-y-auto h-[calc(100vh-80px)]">
-          <MenuContent />
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+          {isLoading ? (
+            <EsqueletoMenu />
+          ) : conteudoVazioOuErro ? (
+            conteudoVazioOuErro
+          ) : (
+            <>
+              {/* Mobile usa navegação por telas: raiz agrupadora abre os filhos. */}
+              <ul className="space-y-1 md:hidden">
+                {[...categoriasVisiveis]
+                  .sort((a, b) =>
+                    a.name.localeCompare(b.name, "pt-BR", {
+                      sensitivity: "base",
+                    }),
+                  )
+                  .map((categoria) => {
+                    const temFilhos = Boolean(categoria.children?.length);
+                    const agrupadora = caminho.length === 0 && temFilhos;
+
+                    return (
+                      <li key={categoria.id}>
+                        {agrupadora ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCaminho((atual) => [...atual, categoria])
+                            }
+                            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                          >
+                            <Folder className="size-4 shrink-0 text-amber-500" />
+                            <span className="min-w-0 flex-1 truncate">
+                              {categoria.name}
+                            </span>
+                            <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                          </button>
+                        ) : (
+                          <Link
+                            href={`/category/${categoria.slug}`}
+                            onClick={onClose}
+                            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                          >
+                            <Tag className="size-4 shrink-0 text-slate-400" />
+                            <span className="min-w-0 flex-1 truncate">
+                              {categoria.name}
+                            </span>
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+              </ul>
+
+              <div className="hidden md:block">
+                <ListaCategoriasDesktop
+                  categories={categories ?? []}
+                  onNavigate={onClose}
+                />
+              </div>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>

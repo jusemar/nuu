@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -17,6 +17,7 @@ interface ProductGalleryProps {
   isLancamento?: boolean;
   tipoBadge?: "relampago" | "promocao" | null;
   dataFimRelampago?: Date | null;
+  modoPreVisualizacao?: boolean;
 }
 
 export function ProductGallery({
@@ -25,6 +26,7 @@ export function ProductGallery({
   isLancamento = true,
   tipoBadge = null,
   dataFimRelampago = null,
+  modoPreVisualizacao = false,
 }: ProductGalleryProps) {
   const [imgAtiva, setImgAtiva] = useState(0);
   const [ampliacaoAberta, setAmpliacaoAberta] = useState(false);
@@ -37,10 +39,11 @@ export function ProductGallery({
   const imagemPrincipalRef = useRef<HTMLButtonElement | null>(null);
   const rolagemMiniaturasRef = useRef<HTMLDivElement | null>(null);
   const miniaturasRef = useRef<Array<HTMLButtonElement | null>>([]);
+  const primeiraImagem = imagens[0];
 
   useEffect(() => {
     setImgAtiva(0);
-  }, [imagens[0]]);
+  }, [primeiraImagem]);
 
   useEffect(() => {
     miniaturasRef.current[imgAtiva]?.scrollIntoView({
@@ -112,23 +115,42 @@ export function ProductGallery({
   const textoAlternativo = `${nomeProduto} - imagem ${imgAtiva + 1}`;
 
   return (
-    <div className="sticky top-[70px] grid grid-cols-1 gap-3 md:grid-cols-[4rem_minmax(0,1fr)] md:grid-rows-[auto_auto]">
+    <div
+      data-galeria-preview={modoPreVisualizacao ? "horizontal" : undefined}
+      className={
+        modoPreVisualizacao
+          ? "grid grid-cols-1 gap-3 md:gap-4"
+          : "sticky top-[70px] grid grid-cols-1 gap-3 md:grid-cols-[4rem_minmax(0,1fr)] md:grid-rows-[auto_auto]"
+      }
+    >
       {/* Miniaturas */}
-      <div className="order-3 min-w-0 md:relative md:order-none md:col-start-1 md:row-start-1 md:min-h-0">
-        {rolagemMiniaturas.temOverflow && !rolagemMiniaturas.noInicio && (
-          <button
-            type="button"
-            onClick={() => rolarMiniaturas("cima")}
-            aria-label="Rolar miniaturas para cima"
-            className="bg-background/95 text-foreground border-border focus-visible:ring-primary absolute top-1 left-1/2 z-20 hidden h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur-sm hover:bg-white focus-visible:ring-2 focus-visible:outline-none md:flex"
-          >
-            <ChevronUp className="h-4 w-4" aria-hidden="true" />
-          </button>
-        )}
+      <div
+        className={
+          modoPreVisualizacao
+            ? "order-2 min-w-0"
+            : "order-3 min-w-0 md:relative md:order-none md:col-start-1 md:row-start-1 md:min-h-0"
+        }
+      >
+        {!modoPreVisualizacao &&
+          rolagemMiniaturas.temOverflow &&
+          !rolagemMiniaturas.noInicio && (
+            <button
+              type="button"
+              onClick={() => rolarMiniaturas("cima")}
+              aria-label="Rolar miniaturas para cima"
+              className="bg-background/95 text-foreground border-border focus-visible:ring-primary absolute top-1 left-1/2 z-20 hidden h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur-sm hover:bg-white focus-visible:ring-2 focus-visible:outline-none md:flex"
+            >
+              <ChevronUp className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
 
         <div
           ref={rolagemMiniaturasRef}
-          className="flex max-w-full flex-row gap-2 overflow-x-auto overscroll-contain [scrollbar-width:none] md:absolute md:inset-0 md:flex-col md:overflow-x-hidden md:overflow-y-auto md:py-9 [&::-webkit-scrollbar]:hidden"
+          className={
+            modoPreVisualizacao
+              ? "flex max-w-full flex-row gap-2 overflow-x-auto overscroll-contain pb-1 [scrollbar-width:none] md:gap-3 [&::-webkit-scrollbar]:hidden"
+              : "flex max-w-full flex-row gap-2 overflow-x-auto overscroll-contain [scrollbar-width:none] md:absolute md:inset-0 md:flex-col md:overflow-x-hidden md:overflow-y-auto md:py-9 [&::-webkit-scrollbar]:hidden"
+          }
         >
           {imagens.map((img, index) => (
             <button
@@ -140,10 +162,12 @@ export function ProductGallery({
               onClick={() => setImgAtiva(index)}
               aria-label={`Selecionar imagem ${index + 1} de ${imagens.length}`}
               aria-current={index === imgAtiva ? "true" : undefined}
-              className={`h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all md:h-16 md:w-16 ${
+              className={`bg-card h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border-2 transition-all md:h-16 md:w-16 ${
                 index === imgAtiva
-                  ? "border-primary opacity-100"
-                  : "border-transparent opacity-50 hover:opacity-80"
+                  ? "border-primary opacity-100 shadow-sm"
+                  : modoPreVisualizacao
+                    ? "border-border hover:border-primary/40 opacity-70 hover:opacity-100"
+                    : "border-transparent opacity-50 hover:opacity-80"
               } `}
             >
               <Image
@@ -157,20 +181,28 @@ export function ProductGallery({
           ))}
         </div>
 
-        {rolagemMiniaturas.temOverflow && !rolagemMiniaturas.noFim && (
-          <button
-            type="button"
-            onClick={() => rolarMiniaturas("baixo")}
-            aria-label="Rolar miniaturas para baixo"
-            className="bg-background/95 text-foreground border-border focus-visible:ring-primary absolute bottom-1 left-1/2 z-20 hidden h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur-sm hover:bg-white focus-visible:ring-2 focus-visible:outline-none md:flex"
-          >
-            <ChevronDown className="h-4 w-4" aria-hidden="true" />
-          </button>
-        )}
+        {!modoPreVisualizacao &&
+          rolagemMiniaturas.temOverflow &&
+          !rolagemMiniaturas.noFim && (
+            <button
+              type="button"
+              onClick={() => rolarMiniaturas("baixo")}
+              aria-label="Rolar miniaturas para baixo"
+              className="bg-background/95 text-foreground border-border focus-visible:ring-primary absolute bottom-1 left-1/2 z-20 hidden h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur-sm hover:bg-white focus-visible:ring-2 focus-visible:outline-none md:flex"
+            >
+              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
       </div>
 
       {/* Imagem Principal */}
-      <div className="group relative order-1 aspect-square overflow-hidden rounded-2xl bg-gray-100 md:col-start-2 md:row-start-1">
+      <div
+        className={`group bg-secondary relative order-1 aspect-square overflow-hidden ${
+          modoPreVisualizacao
+            ? "border-border rounded-2xl border shadow-sm md:rounded-3xl"
+            : "rounded-2xl md:col-start-2 md:row-start-1"
+        }`}
+      >
         <button
           ref={imagemPrincipalRef}
           type="button"
@@ -244,24 +276,6 @@ export function ProductGallery({
             />
           ))}
         </div>
-      </div>
-
-      {/* Banner Frete Grátis - ESTILO LIMPO SEM GRADIENTE */}
-      <div className="bg-primary relative order-2 flex min-h-[80px] items-center gap-3 rounded-xl p-6 pr-4 text-white md:col-start-2 md:row-start-2">
-        <div className="relative z-10 flex-shrink-0 text-2xl">🏃</div>
-        <div className="relative z-10 flex-1">
-          <div className="mb-0.5 text-[11px] font-extrabold tracking-wider">
-            FRETE GRÁTIS
-          </div>
-          <div className="text-[11px] leading-relaxed text-white/75">
-            Compras acima de R$ 299,00.
-          </div>
-        </div>
-        <button className="relative z-10 !mr-4 rounded-lg bg-white/20 px-3 py-1.5 text-[11px] font-bold whitespace-nowrap transition-colors hover:bg-white/30">
-          Ver condições
-        </button>
-
-        <div className="pointer-events-none absolute -top-5 -right-5 h-24 w-24 rounded-full bg-white/5" />
       </div>
 
       <Dialog open={ampliacaoAberta} onOpenChange={setAmpliacaoAberta}>

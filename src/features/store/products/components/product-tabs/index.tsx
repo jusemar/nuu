@@ -6,11 +6,13 @@
 "use client";
 
 import { useState } from "react";
+
 import { Stars } from "@/components/ui/stars"; // 🆕 IMPORT DO COMPONENTE GLOBAL
+
 import type { Avaliacao, Especificacao } from "../../types/product.types";
 import { sanitizeProductRichText } from "../../utils/rich-text";
 
-interface ModalidadeInfo {
+export interface ModalidadeInfo {
   icon: string;
   label: string;
   prazo: string;
@@ -27,6 +29,7 @@ interface ProductTabsProps {
   rating: number;
   totalAvaliacoes: number;
   modalidades: Record<string, ModalidadeInfo>;
+  className?: string;
 }
 
 export function ProductTabs({
@@ -38,12 +41,15 @@ export function ProductTabs({
   rating,
   totalAvaliacoes,
   modalidades,
+  className = "mt-16",
 }: ProductTabsProps) {
   const [abaAtiva, setAbaAtiva] = useState<
     "descricao" | "especificacoes" | "avaliacoes" | "entrega"
   >("descricao");
   const distribuicaoAvaliacoes = [5, 4, 3, 2, 1].map((estrela) => {
-    const totalPorNota = avaliacoes.filter((item) => item.estrelas === estrela).length;
+    const totalPorNota = avaliacoes.filter(
+      (item) => item.estrelas === estrela,
+    ).length;
     const percentual =
       totalAvaliacoes > 0
         ? Math.round((totalPorNota / totalAvaliacoes) * 100)
@@ -52,18 +58,20 @@ export function ProductTabs({
   });
 
   return (
-    <div className="mt-16">
+    <div className={className}>
       {/* Menu de abas */}
       <div className="border-surface-border mb-7 flex gap-7 overflow-x-auto border-b">
-        {[
-          { id: "descricao", label: "Descrição" },
-          { id: "especificacoes", label: "Especificações" },
-          { id: "avaliacoes", label: "Avaliações" },
-          { id: "entrega", label: "Entrega" },
-        ].map((tab) => (
+        {(
+          [
+            { id: "descricao", label: "Descrição" },
+            { id: "especificacoes", label: "Especificações" },
+            { id: "avaliacoes", label: "Avaliações" },
+            { id: "entrega", label: "Entrega" },
+          ] as const
+        ).map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setAbaAtiva(tab.id as any)}
+            onClick={() => setAbaAtiva(tab.id)}
             className={`border-b-2 pb-2.5 text-sm font-semibold whitespace-nowrap transition-all ${abaAtiva === tab.id ? "text-primary border-primary" : "text-text-hint hover:text-text-muted border-transparent"}`}
           >
             {tab.label}
@@ -99,7 +107,9 @@ export function ProductTabs({
                       key={`${esp.label}-${i}`}
                       className={`flex items-center justify-between px-4 py-3 ${i % 2 === 0 ? "bg-white" : "bg-[#F3F4F6]"} ${i !== medidasEPeso.length - 1 ? "border-b border-[#F3F4F6]" : ""}`}
                     >
-                      <span className="text-text-muted text-sm">{esp.label}</span>
+                      <span className="text-text-muted text-sm">
+                        {esp.label}
+                      </span>
                       <span className="text-text-primary text-sm font-semibold">
                         {esp.valor}
                       </span>
@@ -167,69 +177,69 @@ export function ProductTabs({
               </div>
             ) : (
               <>
-            {/* Resumo das avaliações */}
-            <div className="border-surface-border flex flex-wrap items-center gap-7 rounded-xl border bg-white p-5">
-              <div className="flex-shrink-0 text-center">
-                <div className="text-text-primary text-5xl leading-none font-extrabold">
-                  {rating}
-                </div>
-                <Stars rating={rating} size="lg" />{" "}
-                {/* 🆕 USA O COMPONENTE IMPORTADO */}
-                <div className="text-text-hint mt-1 text-xs">
-                  {totalAvaliacoes.toLocaleString("pt-BR")} avaliações
-                </div>
-              </div>
-              <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-                {distribuicaoAvaliacoes.map(({ estrela, percentual }) => (
-                  <div
-                    key={estrela}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    <span className="text-text-muted w-4">{estrela}</span>
-                    <span className="text-accent">★</span>
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F3F4F6]">
-                      <div
-                        className="bg-accent h-full rounded-full"
-                        style={{
-                          width: `${percentual}%`,
-                        }}
-                      />
+                {/* Resumo das avaliações */}
+                <div className="border-surface-border flex flex-wrap items-center gap-7 rounded-xl border bg-white p-5">
+                  <div className="flex-shrink-0 text-center">
+                    <div className="text-text-primary text-5xl leading-none font-extrabold">
+                      {rating}
                     </div>
-                    <span className="text-text-hint min-w-[30px] text-right">
-                      {percentual}%
-                    </span>
+                    <Stars rating={rating} size="lg" />{" "}
+                    {/* 🆕 USA O COMPONENTE IMPORTADO */}
+                    <div className="text-text-hint mt-1 text-xs">
+                      {totalAvaliacoes.toLocaleString("pt-BR")} avaliações
+                    </div>
+                  </div>
+                  <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
+                    {distribuicaoAvaliacoes.map(({ estrela, percentual }) => (
+                      <div
+                        key={estrela}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <span className="text-text-muted w-4">{estrela}</span>
+                        <span className="text-accent">★</span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F3F4F6]">
+                          <div
+                            className="bg-accent h-full rounded-full"
+                            style={{
+                              width: `${percentual}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-text-hint min-w-[30px] text-right">
+                          {percentual}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lista de avaliações */}
+                {avaliacoes.map((av, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-[#F3F4F6] bg-white p-4"
+                  >
+                    <div className="mb-2 flex items-center gap-2.5">
+                      <div
+                        className="text-primary flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                        style={{ background: av.cor }}
+                      >
+                        {av.iniciais}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-text-primary text-sm font-bold">
+                          {av.nome}
+                        </div>
+                        <div className="text-text-hint text-xs">{av.data}</div>
+                      </div>
+                      <Stars rating={av.estrelas} />{" "}
+                      {/* 🆕 USA O COMPONENTE IMPORTADO */}
+                    </div>
+                    <p className="text-text-muted text-sm leading-relaxed">
+                      {av.comentario}
+                    </p>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Lista de avaliações */}
-            {avaliacoes.map((av, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-[#F3F4F6] bg-white p-4"
-              >
-                <div className="mb-2 flex items-center gap-2.5">
-                  <div
-                    className="text-primary flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                    style={{ background: av.cor }}
-                  >
-                    {av.iniciais}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-text-primary text-sm font-bold">
-                      {av.nome}
-                    </div>
-                    <div className="text-text-hint text-xs">{av.data}</div>
-                  </div>
-                  <Stars rating={av.estrelas} />{" "}
-                  {/* 🆕 USA O COMPONENTE IMPORTADO */}
-                </div>
-                <p className="text-text-muted text-sm leading-relaxed">
-                  {av.comentario}
-                </p>
-              </div>
-            ))}
               </>
             )}
           </div>

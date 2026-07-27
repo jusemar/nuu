@@ -1,24 +1,23 @@
-import {
-  getProducts,
-  getNewProducts,
-} from "@/features/store/products/service/getProducts";
-import { getCategories } from "@/data/categories/get";
-import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home";
 import { BadgePercent, Truck } from "lucide-react";
 
+import { Footer } from "@/components/common/footer";
+import { InfoCards } from "@/components/common/info-cards";
+import SectionTitle from "@/components/common/section-title";
+import { Card } from "@/components/ui/card";
+import { Container } from "@/components/ui/container";
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
-import { Header } from "@/features/header";
+import { Secao } from "@/components/ui/secao";
+import { getCategories } from "@/data/categories/get";
 import {
   AreaBannersHome,
   buscarBannersHomeAtivos,
 } from "@/features/banners-home";
-import { DealsGrid } from "@/features/deals/components/DealsGrid";
 import { CategorySelector } from "@/features/category-selector/components/CategorySkeleton";
+import { DealsGrid } from "@/features/deals/components/DealsGrid";
+import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home";
 import FeaturedProductsCarousel from "@/features/featured-products-carousel/components/FeaturedProductsCarousel";
+import { Header } from "@/features/header";
 import { ProductGridWithLoadMore } from "@/features/product-grid-with-load-more/components/ProductGridWithLoadMore";
-import { InfoCards } from "@/components/common/info-cards";
-import SectionTitle from "@/components/common/section-title";
-import { Footer } from "@/components/common/footer";
 
 // Mini banners laterais seguem o header: azul como identidade e âmbar só comercial.
 const SIDE_BANNERS = [
@@ -45,61 +44,57 @@ const SIDE_BANNERS = [
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
-  const [products, newlyCreatedProducts, categories, ofertasHome, bannersHome] =
-    await Promise.all([
-      getProducts(),
-      getNewProducts(),
-      getCategories(),
-      buscarOfertasHome(),
-      buscarBannersHomeAtivos(),
-    ]);
+  const [categories, ofertasHome, bannersHome] = await Promise.all([
+    getCategories(),
+    buscarOfertasHome(),
+    buscarBannersHomeAtivos(),
+  ]);
 
   return (
     <>
       {/* ── 1. Marquee ── */}
-      <MarqueeBanner
-        text="&nbsp;🚚 Frete Grátis acima de R$ 299&nbsp;&nbsp;&nbsp;•&nbsp;🎁 10% off na primeira compra — use PRIMEIRA10&nbsp;&nbsp;&nbsp;•&nbsp;⭐ Garantia em todos os produtos&nbsp;&nbsp;&nbsp;•&nbsp;📦 Entregas para todo o Brasil&nbsp;&nbsp;&nbsp;•&nbsp;🔥 Ofertas com até 50% off"
-        speed={60}
-      />
+      <MarqueeBanner speed={60} />
 
       {/* ── 2. Header ── */}
       <Header />
 
       {/* ── 3. Conteúdo ── */}
-      <main className="mx-auto mb-14 w-full max-w-7xl space-y-10 px-4 pt-4 sm:px-6 sm:pt-5 md:space-y-12 lg:px-8">
+      <Container
+        as="main"
+        className="mb-14 space-y-10 pt-4 sm:pt-5 md:space-y-12"
+      >
+        <h1 className="sr-only">Do Rocha — sua loja virtual</h1>
+
         {/* Banner carousel */}
-        <section
+        <Card
+          role="region"
           aria-label="Banners promocionais"
-          className="border-border/80 bg-card shadow-elevation overflow-hidden rounded-xl border"
+          className="border-border/80 bg-card shadow-elevation gap-0 overflow-hidden rounded-xl border py-0"
         >
           <AreaBannersHome banners={bannersHome} />
-        </section>
+        </Card>
 
         {/* Info cards — confiança e conversão */}
         <InfoCards />
 
         {/* Deals / Flash sale */}
-        <section aria-label="Ofertas em destaque">
-          <div className="mb-5 md:mb-6">
-            <SectionTitle icon="flame">Ofertas Especiais</SectionTitle>
-          </div>
+        <Secao aria-label="Ofertas em destaque">
+          <SectionTitle icon="flame">Ofertas Especiais</SectionTitle>
           <DealsGrid
             produtosOfertaRelampago={ofertasHome.produtosOfertaRelampago}
             produtosPromocaoNormal={ofertasHome.produtosPromocaoNormal}
           />
-        </section>
+        </Secao>
 
         {/* Novidades — carousel + mini banners */}
-        <section aria-label="Novidades">
-          <div className="mb-5 md:mb-6">
-            <SectionTitle icon="star">Novidades</SectionTitle>
-          </div>
+        <Secao aria-label="Novidades">
+          <SectionTitle icon="star">Novidades</SectionTitle>
 
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3 lg:gap-5">
             {/* Carousel de destaque */}
-            <div className="border-border/80 bg-card shadow-elevation min-h-[320px] rounded-xl border lg:col-span-2">
+            <Card className="min-h-80 overflow-hidden py-0 lg:col-span-2">
               <FeaturedProductsCarousel />
-            </div>
+            </Card>
 
             {/* Mini banners — design system */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
@@ -132,7 +127,7 @@ const Home = async () => {
               ))}
             </div>
           </div>
-        </section>
+        </Secao>
 
         {/* Categorias */}
         <section aria-label="Categorias">
@@ -143,16 +138,14 @@ const Home = async () => {
         </section>
 
         {/* Descoberta de produtos gerais */}
-        <section id="confira-tambem" aria-label="Confira também">
-          <div className="mb-5 md:mb-6">
-            <SectionTitle icon="star">Confira também</SectionTitle>
-          </div>
+        <Secao id="confira-tambem" aria-label="Confira também">
+          <SectionTitle icon="star">Confira também</SectionTitle>
           <ProductGridWithLoadMore />
-        </section>
+        </Secao>
 
         {/* Footer */}
         <Footer />
-      </main>
+      </Container>
     </>
   );
 };

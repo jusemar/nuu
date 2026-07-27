@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import {
   CheckCircle2,
   Copy,
@@ -11,6 +10,7 @@ import {
   TicketPercent,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,13 @@ import {
   duplicarCupomPromocaoAdmin,
   salvarCupomPromocaoAdmin,
 } from "../../actions";
+import {
+  converterValorDescontoEntreTipos,
+  converterValorMonetarioParaCentavos,
+  formatarCentavosComoValorMonetario,
+  formatarValorMonetarioParaEdicao,
+  sanitizarEntradaValorMonetario,
+} from "../../lib/valores-monetarios-promocao";
 import type {
   CupomPromocaoAdmin,
   ResultadoCuponsPromocaoAdmin,
@@ -58,10 +65,10 @@ type FormularioCupomPromocaoAdmin = {
   nome: string;
   ativo: boolean;
   tipoDesconto: TipoDescontoPromocao;
-  valorDesconto: number;
+  valorDesconto: number | string;
   prioridade: number;
   acumulativo: boolean;
-  subtotalMinimo: number;
+  subtotalMinimo: string;
   limiteUsoTotal: number | "";
   limiteUsoPorCliente: number | "";
   dataInicio: string;
@@ -81,7 +88,7 @@ const formularioInicial: FormularioCupomPromocaoAdmin = {
   valorDesconto: 10,
   prioridade: 0,
   acumulativo: false,
-  subtotalMinimo: 0,
+  subtotalMinimo: "0,00",
   limiteUsoTotal: "",
   limiteUsoPorCliente: "",
   dataInicio: "",
@@ -136,10 +143,13 @@ function criarFormularioPorCupom(
     nome: cupom.nome,
     ativo: cupom.ativo,
     tipoDesconto: cupom.tipoDesconto,
-    valorDesconto: cupom.valorDesconto,
+    valorDesconto:
+      cupom.tipoDesconto === "valor_fixo"
+        ? formatarCentavosComoValorMonetario(cupom.valorDesconto)
+        : cupom.valorDesconto,
     prioridade: cupom.prioridade,
     acumulativo: cupom.acumulativo,
-    subtotalMinimo: cupom.subtotalMinimo,
+    subtotalMinimo: formatarCentavosComoValorMonetario(cupom.subtotalMinimo),
     limiteUsoTotal: cupom.limiteUsoTotal ?? "",
     limiteUsoPorCliente: cupom.limiteUsoPorCliente ?? "",
     dataInicio: converterDataParaInput(cupom.dataInicio),
@@ -204,6 +214,41 @@ export function PaginaCuponsPromocaoAdmin({
     setFormulario((atual) => ({ ...atual, [campo]: valor }));
   }
 
+  function atualizarTipoDesconto(tipoDesconto: TipoDescontoPromocao) {
+    setFormulario((atual) => {
+      if (atual.tipoDesconto === tipoDesconto) return atual;
+
+      const valorDesconto = converterValorDescontoEntreTipos(
+        atual.valorDesconto,
+        atual.tipoDesconto,
+        tipoDesconto,
+      );
+
+      return { ...atual, tipoDesconto, valorDesconto };
+    });
+  }
+
+  function normalizarValorDesconto() {
+    return formulario.tipoDesconto === "valor_fixo"
+      ? converterValorMonetarioParaCentavos(String(formulario.valorDesconto))
+      : Number(formulario.valorDesconto);
+  }
+
+  function formatarCampoMonetarioAoPerderFoco(
+    campo: "valorDesconto" | "subtotalMinimo",
+  ) {
+    const valor = String(formulario[campo]);
+    if (!valor) return;
+
+    const valorFormatado = formatarValorMonetarioParaEdicao(valor);
+    if (valorFormatado === null) {
+      toast.error("Informe um valor válido em reais, como 50,00.");
+      return;
+    }
+
+    atualizarFormulario(campo, valorFormatado);
+  }
+
   function executarAcao(
     acao: () => Promise<{ success: boolean }>,
     mensagemSucesso: string,
@@ -225,10 +270,22 @@ export function PaginaCuponsPromocaoAdmin({
   }
 
   function salvarFormulario() {
+    const valorDesconto = normalizarValorDesconto();
+    const subtotalMinimo = converterValorMonetarioParaCentavos(
+      formulario.subtotalMinimo,
+    );
+
+    if (valorDesconto === null || subtotalMinimo === null) {
+      toast.error("Informe os valores monetários em reais, como 20,00.");
+      return;
+    }
+
     executarAcao(
       () =>
         salvarCupomPromocaoAdmin({
           ...formulario,
+          valorDesconto,
+          subtotalMinimo,
           dataInicio: converterInputParaData(formulario.dataInicio),
           dataFim: converterInputParaData(formulario.dataFim),
           limiteUsoTotal: normalizarValorOpcional(formulario.limiteUsoTotal),
@@ -543,9 +600,7 @@ export function PaginaCuponsPromocaoAdmin({
                   <Label>Tipo</Label>
                   <Select
                     value={formulario.tipoDesconto}
-                    onValueChange={(valor: TipoDescontoPromocao) =>
-                      atualizarFormulario("tipoDesconto", valor)
-                    }
+                    onValueChange={atualizarTipoDesconto}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -557,35 +612,80 @@ export function PaginaCuponsPromocaoAdmin({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Valor desconto</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={formulario.valorDesconto}
-                    onChange={(event) =>
-                      atualizarFormulario(
-                        "valorDesconto",
-                        Number(event.target.value),
-                      )
-                    }
-                  />
+                  <Label>
+                    {formulario.tipoDesconto === "valor_fixo"
+                      ? "Valor do desconto"
+                      : "Valor do desconto (%)"}
+                  </Label>
+                  {formulario.tipoDesconto === "valor_fixo" ? (
+                    <div className="relative">
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
+                        R$
+                      </span>
+                      <Input
+                        inputMode="decimal"
+                        value={formulario.valorDesconto}
+                        onChange={(event) =>
+                          atualizarFormulario(
+                            "valorDesconto",
+                            sanitizarEntradaValorMonetario(event.target.value),
+                          )
+                        }
+                        onBlur={() =>
+                          formatarCampoMonetarioAoPerderFoco("valorDesconto")
+                        }
+                        placeholder="20,00"
+                        className="pl-10"
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={formulario.valorDesconto}
+                      onChange={(event) =>
+                        atualizarFormulario(
+                          "valorDesconto",
+                          Number(event.target.value),
+                        )
+                      }
+                    />
+                  )}
+                  {formulario.tipoDesconto === "valor_fixo" ? (
+                    <p className="text-xs text-slate-500">
+                      Informe o valor em reais. Ex.: 20 ou 20,50.
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Subtotal mínimo</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formulario.subtotalMinimo}
-                    onChange={(event) =>
-                      atualizarFormulario(
-                        "subtotalMinimo",
-                        Number(event.target.value),
-                      )
-                    }
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
+                      R$
+                    </span>
+                    <Input
+                      inputMode="decimal"
+                      value={formulario.subtotalMinimo}
+                      onChange={(event) =>
+                        atualizarFormulario(
+                          "subtotalMinimo",
+                          sanitizarEntradaValorMonetario(event.target.value),
+                        )
+                      }
+                      onBlur={() =>
+                        formatarCampoMonetarioAoPerderFoco("subtotalMinimo")
+                      }
+                      placeholder="0,00"
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Informe o valor em reais. Ex.: 50 ou 50,90.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Prioridade</Label>

@@ -1,16 +1,37 @@
 // src/features/product-grid-with-load-more/components/ProductGridWithLoadMore.tsx
 "use client";
 
+import { LoaderCircle } from "lucide-react";
 import { useEffect } from "react";
+
+import { Button } from "@/components/ui/button";
 import { FeaturedProductCard } from "@/features/featured-products-carousel/components/FeaturedProductCard";
-import { ProductGridSkeleton } from "./ProductGridSkeleton";
+
 import { useProductsInfinite } from "../hooks/useInfiniteProducts";
+import { ProductGridSkeleton } from "./ProductGridSkeleton";
+
+interface ProdutoDescoberta {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  cardShortText: string | null;
+  hasFreeShipping: boolean | null;
+  storeProductFlags: string[] | null;
+  mainImage: { imageUrl: string } | null;
+  mainPrice: {
+    price: number;
+    promoPrice?: number | null;
+    percentualOff?: number | null;
+    badgePromocional?: string | null;
+  } | null;
+}
 
 /**
  * Função que transforma os dados do banco para o formato que o FeaturedProductCard espera
  * O banco retorna dados em um formato, mas o componente de card precisa de outro formato
  */
-function formatProductForCard(product: any) {
+function formatProductForCard(product: ProdutoDescoberta) {
   // 💰 CONVERSÃO DE PREÇOS: Banco armazena em centavos
   const originalPriceInCents = product.mainPrice?.price;
   const promoPriceInCents = product.mainPrice?.promoPrice;
@@ -131,18 +152,19 @@ export function ProductGridWithLoadMore() {
       {/* 🔘 BOTÃO "VER MAIS PRODUTOS" */}
       {hasNextPage && (
         <div className="text-center">
-          <button
+          <Button
+            size="lg"
             onClick={() => fetchNextPage()} // 📥 Carrega mais produtos
             disabled={isFetchingNextPage} // 🚫 Desabilita enquanto carrega
-            className="bg-primary text-primary-foreground hover:bg-primary-hover rounded-lg px-8 py-3 text-sm font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            className="px-8"
           >
             <span className="flex items-center justify-center gap-2">
               {isFetchingNextPage && (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <LoaderCircle className="size-4 animate-spin" aria-hidden />
               )}
               Ver mais
             </span>
-          </button>
+          </Button>
         </div>
       )}
     </div>

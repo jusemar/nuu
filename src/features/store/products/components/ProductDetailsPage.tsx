@@ -17,34 +17,38 @@
 
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ProductGallery } from "./product-gallery";
-import { ProductInfo } from "./product-info";
-import { BuyBox } from "./buy-box";
-import { PaymentModal } from "./payment-modal";
-import { ProductTabs } from "./product-tabs";
-import { UpsellSection } from "./upsell-section";
-import { Header } from "@/features/header";
-import { Footer } from "@/components/common/footer";
+import { type ReactNode, useState } from "react";
+
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
-import { useProductPricing } from "../hooks/useProductPricing";
-import { useCarrinho } from "@/features/carrinho";
+import { Footer } from "@/components/common/footer";
 import type { NovoItemCarrinho } from "@/features/carrinho";
-import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
+import { useCarrinho } from "@/features/carrinho";
+import { Header } from "@/features/header";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
-import { stripProductRichText } from "../utils/rich-text";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
+import { BannerPromocaoProdutoPdp } from "@/features/promocoes/components/store/banner-promocao-produto-pdp";
+
+import { useProductPricing } from "../hooks/useProductPricing";
 import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
 import { resolverDisponibilidadeCompraPdp } from "../lib/resolver-disponibilidade-compra-pdp";
-
 import type {
   AtributoProdutoLoja,
   Avaliacao,
   Especificacao,
-  Modalidade,
   PrecoModalidade,
   VarianteProdutoLoja,
 } from "../types/product.types";
+import { stripProductRichText } from "../utils/rich-text";
+import { BuyBox } from "./buy-box";
+import { PaymentModal } from "./payment-modal";
+import { PaginaProdutoPrevisualizacao } from "./pre-visualizacao/pagina-produto-previsualizacao";
+import { PricingModalities } from "./PricingModalities";
+import { ProductGallery } from "./product-gallery";
+import { ProductInfo } from "./product-info";
+import type { ModalidadeInfo } from "./product-tabs";
+import { ProductTabs } from "./product-tabs";
+import { UpsellSection } from "./upsell-section";
 
 // ==========================================
 // INTERFACE DAS PROPS
@@ -89,6 +93,9 @@ interface ProductDetailProps {
   breadcrumbCategorias: Array<{ id: string; name: string; slug: string }>;
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
   precosCalculadosPorVariante: PrecosProdutoPorModalidade;
+  /** Mantém a PDP pública intacta enquanto a nova composição é validada. */
+  modoPreVisualizacao?: boolean;
+  conteudoComplementar?: ReactNode;
 }
 
 // ==========================================
@@ -100,6 +107,8 @@ export function ProductDetail({
   breadcrumbCategorias,
   precosCalculadosPorModalidade,
   precosCalculadosPorVariante,
+  modoPreVisualizacao = false,
+  conteudoComplementar,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
@@ -398,8 +407,150 @@ export function ProductDetail({
   // -----------------------------------------
   // RENDER: Composição dos componentes
   // -----------------------------------------
+  const abasProduto = (
+    <ProductTabs
+      className={modoPreVisualizacao ? "mt-8" : undefined}
+      descricao={productLongDescription}
+      especificacoes={especificacoesProduto}
+      medidasEPeso={medidasEPeso}
+      dadosFiscaisEComerciais={dadosFiscaisEComerciais}
+      avaliacoes={avaliacoesProduto}
+      rating={ratingProduto}
+      totalAvaliacoes={totalAvaliacoesProduto}
+      modalidades={modalidadesDisponiveis.reduce(
+        (acc, mod) => {
+          acc[mod.type] = {
+            icon:
+              mod.type === "stock"
+                ? "🏭"
+                : mod.type === "pre_sale"
+                  ? "⏳"
+                  : mod.type === "dropshipping"
+                    ? "📦"
+                    : "📋",
+            label: mod.pricingModalDescription || mod.type,
+            prazo: mod.deliveryDays || "Consulte prazo",
+            garantia: "12 meses",
+            envia: "Brasil",
+          };
+          return acc;
+        },
+        {} as Record<string, ModalidadeInfo>,
+      )}
+    />
+  );
+
+  if (modoPreVisualizacao) {
+    return (
+      <PaginaProdutoPrevisualizacao
+        nomeProduto={product.name}
+        imagemProduto={galleryImages[0]}
+        breadcrumbCategorias={breadcrumbCategorias}
+        galeria={
+          <ProductGallery
+            imagens={galleryImages}
+            nomeProduto={product.name}
+            isLancamento={true}
+            tipoBadge={tipoBadgeGaleria}
+            dataFimRelampago={dataFimPromocaoModalidadeAtiva}
+            modoPreVisualizacao
+          />
+        }
+        informacoes={
+          <ProductInfo
+            nome={product.name}
+            marca={product.brand || ""}
+            sku={product.sku}
+            rating={ratingProduto}
+            totalAvaliacoes={totalAvaliacoesProduto}
+            vendedor={nomeComercialLoja || undefined}
+            vendedorRating={0}
+            descricao={productShortDescription}
+            modalidadesDisponiveis={modalidadesDisponiveis}
+            modalidadeAtiva={modalidadeAtiva}
+            onTrocarModalidade={selecionarModalidade}
+            precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+            productKind={product.productKind}
+            variantAttributes={product.attributes}
+            variants={publicVariants}
+            selectedVariant={selectedVariant}
+            onSelectVariant={setSelectedVariant}
+            modoAssistenteVirtual
+            modoPreVisualizacao
+          />
+        }
+        caixaCompra={
+          <BuyBox
+            productId={product.id}
+            varianteIdSelecionada={selectedVariant?.id}
+            precoPix={precoVarianteSelecionada?.pix.valor || precoPixFormatado}
+            precoNormal={
+              precoVarianteSelecionada?.cartao.valor || precoNormalFormatado
+            }
+            precoParc={
+              parcelamentosVariante[0]
+                ? `${parcelamentosVariante[0].parcelas}x de ${parcelamentosVariante[0].valor}`
+                : precoParceladoFormatado
+            }
+            descontoPix={descontoPixVariante}
+            promocaoVisual={promocaoVisualCompra}
+            prazoEntrega={prazoEntrega}
+            disponibilidadeCompra={disponibilidadeCompra}
+            precoCalculado={precoCompraCalculado}
+            selectedVariantLabel={
+              selectedVariant
+                ? selectedVariant.name ||
+                  Object.values(selectedVariant.attributes).join(" / ")
+                : null
+            }
+            retiradaLocal={retiradaLocal}
+            allowsOwnDelivery={!!product.allowsOwnDelivery}
+            cupomAplicado={cupomAplicado}
+            onAplicarCupom={aplicarCupom}
+            onRemoverCupom={removerCupom}
+            onAddToCart={adicionarProdutoAoCarrinho}
+            onComprarAgora={comprarProdutoAgora}
+            onShowPaymentOptions={() => setModalPgto(true)}
+            modalidades={modalidadesDisponiveis}
+            modalidadeAtiva={modalidadeAtiva}
+            onTrocarModalidade={selecionarModalidade}
+            modoPreVisualizacao
+            seletorModalidades={
+              product.productKind !== "variable" &&
+              modalidadesDisponiveis.length > 0 ? (
+                <PricingModalities
+                  modalidades={modalidadesDisponiveis}
+                  modalidadeAtiva={modalidadeAtiva}
+                  onSelecionarModalidade={selecionarModalidade}
+                  precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+                />
+              ) : null
+            }
+          />
+        }
+        abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
+        conteudoRelacionados={conteudoComplementar}
+        modalPagamento={
+          <PaymentModal
+            isOpen={modalPgto}
+            onClose={() => setModalPgto(false)}
+            parcelamentos={
+              parcelamentosVariante.length > 0
+                ? parcelamentosVariante
+                : parcelamentosCartao
+            }
+            precoCalculado={precoCompraCalculado}
+          />
+        }
+      />
+    );
+  }
+
   return (
-    <div className="bg-surface-bg text-text-primary min-h-screen font-sans">
+    <div
+      data-modo-pdp-preview={modoPreVisualizacao ? "true" : undefined}
+      className="bg-surface-bg text-text-primary min-h-screen font-sans"
+    >
       {/* HEADER: Navegação principal do site */}
       <Header />
 
@@ -414,13 +565,45 @@ export function ProductDetail({
       </div>
 
       {/* CONTEÚDO PRINCIPAL: Grid de 3 colunas */}
-      <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
-        <div className="grid grid-cols-1 items-start gap-6 sm:px-6 md:grid-cols-[minmax(300px,45%)_1fr] xl:grid-cols-[minmax(300px,420px)_minmax(400px,2fr)_minmax(280px,320px)]">
+      <main
+        className={
+          modoPreVisualizacao
+            ? "mx-auto max-w-[1440px] px-4 pb-20 sm:px-6 lg:px-8"
+            : "mx-auto max-w-7xl px-4 pb-20 sm:px-6"
+        }
+      >
+        {modoPreVisualizacao ? (
+          <section className="border-primary/15 from-primary/10 mb-6 overflow-hidden rounded-3xl border bg-gradient-to-r via-white to-white px-5 py-5 sm:px-7">
+            <p className="text-primary text-xs font-bold tracking-[0.16em] uppercase">
+              Pré-visualização
+            </p>
+            <h2 className="text-text-primary mt-1 text-xl font-bold tracking-tight sm:text-2xl">
+              Nova experiência de compra
+            </h2>
+            <p className="text-text-muted mt-1 max-w-2xl text-sm">
+              Informações, escolha de modalidade e compra organizadas para uma
+              comparação mais direta.
+            </p>
+          </section>
+        ) : null}
+        <div
+          className={
+            modoPreVisualizacao
+              ? "grid grid-cols-1 items-start gap-5 md:grid-cols-[minmax(300px,45%)_1fr] xl:grid-cols-[minmax(320px,420px)_minmax(360px,1fr)_minmax(380px,460px)] xl:gap-7"
+              : "grid grid-cols-1 items-start gap-6 sm:px-6 md:grid-cols-[minmax(300px,45%)_1fr] xl:grid-cols-[minmax(300px,420px)_minmax(400px,2fr)_minmax(280px,320px)]"
+          }
+        >
           {/* ==========================================
               COLUNA 1: GALERIA DE IMAGENS
               Recebe: array de URLs (strings)
               ========================================== */}
-          <div className="order-1 xl:max-w-[420px]">
+          <div
+            className={
+              modoPreVisualizacao
+                ? "border-surface-border order-1 rounded-3xl border bg-white p-3 shadow-sm xl:max-w-[440px]"
+                : "order-1 xl:max-w-[420px]"
+            }
+          >
             <ProductGallery
               imagens={galleryImages}
               nomeProduto={product.name}
@@ -428,6 +611,11 @@ export function ProductDetail({
               tipoBadge={tipoBadgeGaleria}
               dataFimRelampago={dataFimPromocaoModalidadeAtiva}
             />
+            {!modoPreVisualizacao && promocaoVisualCompra ? (
+              <div className="mt-3">
+                <BannerPromocaoProdutoPdp promocao={promocaoVisualCompra} />
+              </div>
+            ) : null}
           </div>
 
           {/* ==========================================
@@ -436,7 +624,13 @@ export function ProductDetail({
               Antes: ProductInfo tinha estado interno (não comunicava com BuyBox)
               Agora: Compartilha o mesmo estado do BuyBox via props
               ========================================== */}
-          <div className="order-2">
+          <div
+            className={
+              modoPreVisualizacao
+                ? "border-surface-border order-2 rounded-3xl border bg-white p-5 shadow-sm sm:p-6"
+                : "order-2"
+            }
+          >
             <ProductInfo
               // Dados básicos do produto
               nome={product.name}
@@ -459,6 +653,7 @@ export function ProductDetail({
               variants={publicVariants}
               selectedVariant={selectedVariant}
               onSelectVariant={setSelectedVariant}
+              modoAssistenteVirtual={modoPreVisualizacao}
             />
           </div>
 
@@ -467,7 +662,13 @@ export function ProductDetail({
               Recebe: Mesmo estado global da coluna 2
               Resultado: Quando clica no ProductInfo, BuyBox atualiza automaticamente
               ========================================== */}
-          <div className="order-3">
+          <div
+            className={
+              modoPreVisualizacao
+                ? "border-primary/15 order-3 rounded-3xl border bg-white p-2 shadow-lg xl:sticky xl:top-24 xl:col-start-3 xl:row-span-2 xl:row-start-1"
+                : "order-3"
+            }
+          >
             {/* BuyBox: Caixa de compra com preço, frete, cupom, botões */}
             <BuyBox
               productId={product.id}
@@ -511,72 +712,22 @@ export function ProductDetail({
               onTrocarModalidade={selecionarModalidade}
             />
           </div>
+
+          {modoPreVisualizacao ? (
+            <div className="border-surface-border order-4 rounded-3xl border bg-white px-5 pb-6 shadow-sm sm:px-6 xl:col-span-2 xl:col-start-1 xl:row-start-2">
+              {abasProduto}
+            </div>
+          ) : null}
         </div>
 
         {/* ==========================================
             ABAS: Descrição, Especificações, Avaliações
             ========================================== */}
-        <ProductTabs
-          descricao={productLongDescription}
-          especificacoes={especificacoesProduto}
-          medidasEPeso={medidasEPeso}
-          dadosFiscaisEComerciais={dadosFiscaisEComerciais}
-          avaliacoes={avaliacoesProduto}
-          rating={ratingProduto}
-          totalAvaliacoes={totalAvaliacoesProduto}
-          // Passa modalidades reais para a aba de preços (se existir)
-          modalidades={modalidadesDisponiveis.reduce(
-            (acc, mod) => {
-              acc[mod.type] = {
-                icon:
-                  mod.type === "stock"
-                    ? "🏭"
-                    : mod.type === "pre_sale"
-                      ? "⏳"
-                      : mod.type === "dropshipping"
-                        ? "📦"
-                        : "📋",
-                label: mod.pricingModalDescription || mod.type,
-                badge:
-                  mod.type === "stock"
-                    ? "Estoque Próprio"
-                    : mod.type === "pre_sale"
-                      ? "Pré-venda"
-                      : mod.type === "dropshipping"
-                        ? "Dropshipping"
-                        : "Sob Encomenda",
-                badgeBg:
-                  mod.type === "stock"
-                    ? "#E8F5E9"
-                    : mod.type === "pre_sale"
-                      ? "#FFF3E0"
-                      : mod.type === "dropshipping"
-                        ? "#E3F2FD"
-                        : "#F3E5F5",
-                badgeColor:
-                  mod.type === "stock"
-                    ? "#2E7D32"
-                    : mod.type === "pre_sale"
-                      ? "#ED6C02"
-                      : mod.type === "dropshipping"
-                        ? "#0288D1"
-                        : "#7B1FA2",
-                precoPix:
-                  precosCalculadosPorModalidade[mod.type]?.pix.valor || "",
-                precoNormal:
-                  precosCalculadosPorModalidade[mod.type]?.cartao.valor || "",
-                prazo: mod.deliveryDays || "Consulte prazo",
-                garantia: "12 meses",
-                envia: "Brasil",
-              };
-              return acc;
-            },
-            {} as Record<string, any>,
-          )}
-        />
+        {!modoPreVisualizacao ? abasProduto : null}
 
         {/* COMPRE JUNTO: Produtos relacionados */}
-        <UpsellSection produtos={[]} />
+        {!modoPreVisualizacao ? <UpsellSection produtos={[]} /> : null}
+        {conteudoComplementar}
       </main>
 
       {/* FOOTER: Rodapé do site */}

@@ -62,8 +62,11 @@ import {
   salvarPromocaoAdmin,
 } from "../../actions";
 import {
+  converterValorDescontoEntreTipos,
   converterValorMonetarioParaCentavos,
   formatarCentavosComoValorMonetario,
+  formatarValorMonetarioParaEdicao,
+  sanitizarEntradaValorMonetario,
 } from "../../lib/valores-monetarios-promocao";
 import type {
   CategoriaPromocaoAdmin,
@@ -93,7 +96,7 @@ type FormularioPromocaoAdmin = {
   tipoBeneficio: TipoBeneficioPromocao;
   tipoCampanha: TipoCampanhaPromocao;
   tipoDesconto: TipoDescontoPromocao;
-  valorDesconto: number;
+  valorDesconto: number | string;
   prioridade: number;
   acumulativa: boolean;
   dataInicio: string;
@@ -103,8 +106,8 @@ type FormularioPromocaoAdmin = {
   produtos: ProdutoPromocaoAdmin[];
   categorias: CategoriaPromocaoAdmin[];
   marcas: MarcaPromocaoAdmin[];
-  subtotalMinimo: number | "";
-  subtotalMaximo: number | "";
+  subtotalMinimo: string;
+  subtotalMaximo: string;
   freteGratisSubtotalMinimo: string;
   freteGratisModalidade: string;
   freteGratisFormaEntrega:
@@ -275,7 +278,10 @@ function criarFormularioPorPromocao(
     tipoBeneficio: promocao.tipoBeneficio,
     tipoCampanha: promocao.tipoCampanha,
     tipoDesconto: promocao.tipoDesconto,
-    valorDesconto: promocao.valorDesconto,
+    valorDesconto:
+      promocao.tipoDesconto === "valor_fixo"
+        ? formatarCentavosComoValorMonetario(promocao.valorDesconto)
+        : promocao.valorDesconto,
     prioridade: promocao.prioridade,
     acumulativa: promocao.acumulativa,
     dataInicio: converterDataParaInput(promocao.dataInicio),
@@ -287,8 +293,19 @@ function criarFormularioPorPromocao(
     produtos: promocao.produtos,
     categorias: promocao.categorias,
     marcas: promocao.marcas,
-    subtotalMinimo: promocao.subtotais[0]?.subtotalMinimo ?? "",
-    subtotalMaximo: promocao.subtotais[0]?.subtotalMaximo ?? "",
+    subtotalMinimo:
+      promocao.subtotais[0]?.subtotalMinimo !== undefined
+        ? formatarCentavosComoValorMonetario(
+            promocao.subtotais[0].subtotalMinimo,
+          )
+        : "",
+    subtotalMaximo:
+      promocao.subtotais[0]?.subtotalMaximo !== null &&
+      promocao.subtotais[0]?.subtotalMaximo !== undefined
+        ? formatarCentavosComoValorMonetario(
+            promocao.subtotais[0].subtotalMaximo,
+          )
+        : "",
     freteGratisSubtotalMinimo:
       promocao.fretesGratis[0]?.subtotalMinimo !== undefined
         ? formatarCentavosComoValorMonetario(
@@ -798,8 +815,52 @@ export function PaginaPromocoesAdmin({
     }));
   }
 
-  function normalizarValorOpcional(valor: number | "") {
-    return valor === "" ? null : valor;
+  function normalizarValorMonetarioOpcional(valor: string) {
+    return valor.trim() === ""
+      ? null
+      : converterValorMonetarioParaCentavos(valor);
+  }
+
+  function normalizarValorDesconto() {
+    return formulario.tipoDesconto === "valor_fixo"
+      ? converterValorMonetarioParaCentavos(String(formulario.valorDesconto))
+      : Number(formulario.valorDesconto);
+  }
+
+  function atualizarTipoDesconto(tipoDesconto: TipoDescontoPromocao) {
+    setFormulario((atual) => {
+      if (atual.tipoDesconto === tipoDesconto) return atual;
+
+      const valorDesconto = converterValorDescontoEntreTipos(
+        atual.valorDesconto,
+        atual.tipoDesconto,
+        tipoDesconto,
+      );
+
+      return { ...atual, tipoDesconto, valorDesconto };
+    });
+  }
+
+  function formatarCampoMonetarioAoPerderFoco(
+    campo:
+      | "valorDesconto"
+      | "subtotalMinimo"
+      | "subtotalMaximo"
+      | "freteGratisSubtotalMinimo",
+  ) {
+    const valor = String(formulario[campo]);
+    if (!valor) return;
+
+    const valorFormatado = formatarValorMonetarioParaEdicao(valor);
+    if (valorFormatado === null) {
+      setErrosFormulario((errosAtuais) => ({
+        ...errosAtuais,
+        [campo]: "Informe um valor válido em reais, como 50,00.",
+      }));
+      return;
+    }
+
+    atualizarFormulario(campo, valorFormatado);
   }
 
   function normalizarSubtotalFreteGratis() {
@@ -809,22 +870,7 @@ export function PaginaPromocoesAdmin({
   }
 
   function formatarSubtotalFreteGratisAoPerderFoco() {
-    if (!formulario.freteGratisSubtotalMinimo) return;
-
-    const valorEmCentavos = normalizarSubtotalFreteGratis();
-    if (valorEmCentavos === null) {
-      setErrosFormulario((errosAtuais) => ({
-        ...errosAtuais,
-        freteGratisSubtotalMinimo:
-          "Informe um valor válido em reais, como 50,00.",
-      }));
-      return;
-    }
-
-    atualizarFormulario(
-      "freteGratisSubtotalMinimo",
-      formatarCentavosComoValorMonetario(valorEmCentavos),
-    );
+    formatarCampoMonetarioAoPerderFoco("freteGratisSubtotalMinimo");
   }
 
   function obterMensagemErroPromocao(error: unknown) {
@@ -857,6 +903,31 @@ export function PaginaPromocoesAdmin({
       normalizarSubtotalFreteGratis() === null
     ) {
       proximosErros.freteGratisSubtotalMinimo =
+        "Informe um valor válido em reais, como 50,00.";
+    }
+
+    if (
+      formulario.tipoBeneficio === "desconto" &&
+      formulario.tipoDesconto === "valor_fixo" &&
+      normalizarValorDesconto() === null
+    ) {
+      proximosErros.valorDesconto =
+        "Informe um valor válido em reais, como 20,00.";
+    }
+
+    if (
+      formulario.subtotalMinimo.trim() !== "" &&
+      normalizarValorMonetarioOpcional(formulario.subtotalMinimo) === null
+    ) {
+      proximosErros.subtotalMinimo =
+        "Informe um valor válido em reais, como 50,00.";
+    }
+
+    if (
+      formulario.subtotalMaximo.trim() !== "" &&
+      normalizarValorMonetarioOpcional(formulario.subtotalMaximo) === null
+    ) {
+      proximosErros.subtotalMaximo =
         "Informe um valor válido em reais, como 50,00.";
     }
 
@@ -895,7 +966,7 @@ export function PaginaPromocoesAdmin({
           tipoBeneficio: formulario.tipoBeneficio,
           tipoCampanha: formulario.tipoCampanha,
           tipoDesconto: formulario.tipoDesconto,
-          valorDesconto: formulario.valorDesconto,
+          valorDesconto: normalizarValorDesconto() ?? 0,
           prioridade: formulario.prioridade,
           acumulativa: formulario.acumulativa,
           dataInicio: converterInputParaData(formulario.dataInicio),
@@ -911,8 +982,12 @@ export function PaginaPromocoesAdmin({
           produtosIds: formulario.produtos.map((produto) => produto.id),
           categoriasIds: formulario.categorias.map((categoria) => categoria.id),
           marcasIds: formulario.marcas.map((marca) => marca.id),
-          subtotalMinimo: normalizarValorOpcional(formulario.subtotalMinimo),
-          subtotalMaximo: normalizarValorOpcional(formulario.subtotalMaximo),
+          subtotalMinimo: normalizarValorMonetarioOpcional(
+            formulario.subtotalMinimo,
+          ),
+          subtotalMaximo: normalizarValorMonetarioOpcional(
+            formulario.subtotalMaximo,
+          ),
           freteGratisSubtotalMinimo: normalizarSubtotalFreteGratis(),
           freteGratisModalidade:
             formulario.freteGratisModalidade === "todas"
@@ -1459,9 +1534,7 @@ export function PaginaPromocoesAdmin({
                         <Label>Tipo desconto</Label>
                         <Select
                           value={formulario.tipoDesconto}
-                          onValueChange={(valor: TipoDescontoPromocao) =>
-                            atualizarFormulario("tipoDesconto", valor)
-                          }
+                          onValueChange={atualizarTipoDesconto}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -1477,18 +1550,62 @@ export function PaginaPromocoesAdmin({
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Valor desconto</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={formulario.valorDesconto}
-                          onChange={(event) =>
-                            atualizarFormulario(
-                              "valorDesconto",
-                              Number(event.target.value),
-                            )
-                          }
-                        />
+                        <Label>
+                          {formulario.tipoDesconto === "valor_fixo"
+                            ? "Valor do desconto"
+                            : "Valor do desconto (%)"}
+                        </Label>
+                        {formulario.tipoDesconto === "valor_fixo" ? (
+                          <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
+                              R$
+                            </span>
+                            <Input
+                              inputMode="decimal"
+                              value={formulario.valorDesconto}
+                              onChange={(event) =>
+                                atualizarFormulario(
+                                  "valorDesconto",
+                                  sanitizarEntradaValorMonetario(
+                                    event.target.value,
+                                  ),
+                                )
+                              }
+                              onBlur={() =>
+                                formatarCampoMonetarioAoPerderFoco(
+                                  "valorDesconto",
+                                )
+                              }
+                              placeholder="20,00"
+                              aria-invalid={Boolean(
+                                errosFormulario.valorDesconto,
+                              )}
+                              className="pl-10"
+                            />
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={formulario.valorDesconto}
+                            onChange={(event) =>
+                              atualizarFormulario(
+                                "valorDesconto",
+                                Number(event.target.value),
+                              )
+                            }
+                          />
+                        )}
+                        {errosFormulario.valorDesconto ? (
+                          <p className="text-xs font-medium text-red-600">
+                            {errosFormulario.valorDesconto}
+                          </p>
+                        ) : formulario.tipoDesconto === "valor_fixo" ? (
+                          <p className="text-xs text-slate-500">
+                            Informe o valor em reais. Ex.: 20 ou 20,50.
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   ) : null}
@@ -1886,39 +2003,75 @@ export function PaginaPromocoesAdmin({
                           <Receipt className="h-3.5 w-3.5" />
                           Subtotal mínimo
                         </Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={formulario.subtotalMinimo}
-                          onChange={(event) =>
-                            atualizarFormulario(
-                              "subtotalMinimo",
-                              event.target.value === ""
-                                ? ""
-                                : Number(event.target.value),
-                            )
-                          }
-                          placeholder="Ex: 50000"
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
+                            R$
+                          </span>
+                          <Input
+                            inputMode="decimal"
+                            value={formulario.subtotalMinimo}
+                            onChange={(event) =>
+                              atualizarFormulario(
+                                "subtotalMinimo",
+                                sanitizarEntradaValorMonetario(
+                                  event.target.value,
+                                ),
+                              )
+                            }
+                            onBlur={() =>
+                              formatarCampoMonetarioAoPerderFoco(
+                                "subtotalMinimo",
+                              )
+                            }
+                            placeholder="Ex: 500,00"
+                            aria-invalid={Boolean(
+                              errosFormulario.subtotalMinimo,
+                            )}
+                            className="pl-10"
+                          />
+                        </div>
+                        {errosFormulario.subtotalMinimo ? (
+                          <p className="text-xs font-medium text-red-600">
+                            {errosFormulario.subtotalMinimo}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs">
                           Subtotal máximo opcional
                         </Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={formulario.subtotalMaximo}
-                          onChange={(event) =>
-                            atualizarFormulario(
-                              "subtotalMaximo",
-                              event.target.value === ""
-                                ? ""
-                                : Number(event.target.value),
-                            )
-                          }
-                          placeholder="Sem limite"
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-500">
+                            R$
+                          </span>
+                          <Input
+                            inputMode="decimal"
+                            value={formulario.subtotalMaximo}
+                            onChange={(event) =>
+                              atualizarFormulario(
+                                "subtotalMaximo",
+                                sanitizarEntradaValorMonetario(
+                                  event.target.value,
+                                ),
+                              )
+                            }
+                            onBlur={() =>
+                              formatarCampoMonetarioAoPerderFoco(
+                                "subtotalMaximo",
+                              )
+                            }
+                            placeholder="Sem limite"
+                            aria-invalid={Boolean(
+                              errosFormulario.subtotalMaximo,
+                            )}
+                            className="pl-10"
+                          />
+                        </div>
+                        {errosFormulario.subtotalMaximo ? (
+                          <p className="text-xs font-medium text-red-600">
+                            {errosFormulario.subtotalMaximo}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -1948,7 +2101,9 @@ export function PaginaPromocoesAdmin({
                           onChange={(event) =>
                             atualizarFormulario(
                               "freteGratisSubtotalMinimo",
-                              event.target.value.replace(/[^0-9,.]/g, ""),
+                              sanitizarEntradaValorMonetario(
+                                event.target.value,
+                              ),
                             )
                           }
                           onBlur={() => {

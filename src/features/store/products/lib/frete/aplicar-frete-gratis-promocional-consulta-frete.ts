@@ -62,7 +62,10 @@ async function aplicarFreteGratisNaOpcao({
   });
 
   if (!freteGratis.freteGratisAtingido || opcao.valorEmCentavos <= 0) {
-    return opcao;
+    return {
+      ...opcao,
+      freteGratisProgressivo: freteGratis.ativo ? freteGratis : undefined,
+    };
   }
 
   return {
@@ -71,6 +74,7 @@ async function aplicarFreteGratisNaOpcao({
     valorEmCentavos: 0,
     freteGratisPromocionalAplicado: true,
     regraFreteGratisAplicadaId: freteGratis.regraFreteGratisAplicada?.id,
+    freteGratisProgressivo: freteGratis,
   };
 }
 

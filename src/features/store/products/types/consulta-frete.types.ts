@@ -1,4 +1,5 @@
 import type { PromessaEntregaPropria } from "@/features/logistica/lib/entrega-propria/calcular-promessa-entrega-propria";
+import type { ResultadoFreteGratisProgressivo } from "@/features/promocoes/services";
 
 export interface ConsultaFreteSucesso {
   found: true;
@@ -44,5 +45,6 @@ export type OpcaoEntregaCotada = {
   valorOriginalEmCentavos?: number;
   freteGratisPromocionalAplicado?: boolean;
   regraFreteGratisAplicadaId?: string | null;
+  freteGratisProgressivo?: ResultadoFreteGratisProgressivo;
   transportadora?: string | null;
 };

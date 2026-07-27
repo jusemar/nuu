@@ -25,8 +25,9 @@ import type {
   PrecoModalidade,
   VarianteProdutoLoja,
 } from "../../types/product.types";
-import { PricingModalities } from "../PricingModalities";
+import { AssistenteVirtualProduto } from "../assistente-virtual-produto";
 import { ChatVendedor } from "../chat-vendedor";
+import { PricingModalities } from "../PricingModalities";
 import { ProductVariantSelector } from "../product-variant-selector";
 
 // ==========================================
@@ -55,6 +56,8 @@ interface ProductInfoProps {
   variants?: VarianteProdutoLoja[];
   selectedVariant?: VarianteProdutoLoja | null;
   onSelectVariant?: (variant: VarianteProdutoLoja) => void;
+  modoAssistenteVirtual?: boolean;
+  modoPreVisualizacao?: boolean;
 }
 
 // ==========================================
@@ -79,6 +82,8 @@ export function ProductInfo({
   variants = [],
   selectedVariant = null,
   onSelectVariant,
+  modoAssistenteVirtual = false,
+  modoPreVisualizacao = false,
 }: ProductInfoProps) {
   const hasRealVariants =
     productKind === "variable" &&
@@ -92,7 +97,11 @@ export function ProductInfo({
   // RENDER
   // -----------------------------------------
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className={
+        modoPreVisualizacao ? "flex flex-col gap-5" : "flex flex-col gap-4"
+      }
+    >
       {/* -----------------------------------------
           LINHA 1: MARCA + SKU
           ----------------------------------------- */}
@@ -109,7 +118,13 @@ export function ProductInfo({
       {/* -----------------------------------------
           LINHA 2: NOME DO PRODUTO
           ----------------------------------------- */}
-      <h1 className="text-text-primary text-[26px] leading-tight font-extrabold tracking-tight">
+      <h1
+        className={
+          modoPreVisualizacao
+            ? "text-text-primary text-2xl leading-tight font-extrabold tracking-tight text-balance sm:text-3xl lg:text-4xl"
+            : "text-text-primary text-[26px] leading-tight font-extrabold tracking-tight"
+        }
+      >
         {nome}
       </h1>
 
@@ -147,15 +162,27 @@ export function ProductInfo({
       ) : null}
 
       {/* DIVISOR */}
-      <div className="bg-surface-border h-px w-full" />
+      {!modoPreVisualizacao ? (
+        <div className="bg-surface-border h-px w-full" />
+      ) : null}
 
       {/* -----------------------------------------
           DESCRIÇÃO DO PRODUTO
           ----------------------------------------- */}
-      <p className="text-text-muted text-[13px] leading-relaxed">{descricao}</p>
+      {!modoPreVisualizacao ? (
+        <p className="text-text-muted text-[13px] leading-relaxed">
+          {descricao}
+        </p>
+      ) : (
+        <p className="text-muted-foreground max-w-2xl text-sm leading-6">
+          {descricao}
+        </p>
+      )}
 
       {/* DIVISOR */}
-      <div className="bg-surface-border h-px w-full" />
+      {!modoPreVisualizacao ? (
+        <div className="bg-surface-border h-px w-full" />
+      ) : null}
 
       {hasRealVariants ? (
         <ProductVariantSelector
@@ -171,7 +198,9 @@ export function ProductInfo({
       ) : null}
 
       {/* DIVISOR */}
-      <div className="bg-surface-border h-px w-full" />
+      {!modoPreVisualizacao ? (
+        <div className="bg-surface-border h-px w-full" />
+      ) : null}
 
       {/* -----------------------------------------
           MODALIDADE DE PREÇO (ATUALIZADO - ESTADO GLOBAL)
@@ -181,7 +210,9 @@ export function ProductInfo({
         AGORA: Usa PricingModalities com props do pai (estado global)
         RESULTADO: Clique aqui atualiza o BuyBox (coluna 3) automaticamente
       */}
-      {!isVariableProduct && modalidadesDisponiveis.length > 0 ? (
+      {!modoPreVisualizacao &&
+      !isVariableProduct &&
+      modalidadesDisponiveis.length > 0 ? (
         <PricingModalities
           modalidades={modalidadesDisponiveis}
           modalidadeAtiva={modalidadeAtiva}
@@ -191,19 +222,25 @@ export function ProductInfo({
       ) : null}
 
       {/* DIVISOR */}
-      <div className="bg-surface-border h-px w-full" />
+      {!modoPreVisualizacao ? (
+        <div className="bg-surface-border h-px w-full" />
+      ) : null}
 
       {/* -----------------------------------------
           CHAT COM VENDEDOR
           ----------------------------------------- */}
-      <ChatVendedor
-        vendedorNome={vendedor || "Atendimento da loja"}
-        status="online"
-        tempoResposta="Responde em minutos"
-        onClick={() => {
-          console.log("Abrir chat com:", vendedor);
-        }}
-      />
+      {!modoPreVisualizacao && modoAssistenteVirtual ? (
+        <AssistenteVirtualProduto nomeProduto={nome} />
+      ) : !modoPreVisualizacao ? (
+        <ChatVendedor
+          vendedorNome={vendedor || "Atendimento da loja"}
+          status="online"
+          tempoResposta="Responde em minutos"
+          onClick={() => {
+            console.log("Abrir chat com:", vendedor);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

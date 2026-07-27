@@ -3,6 +3,13 @@ const formatadorMonetarioBrasileiro = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 2,
 });
 
+type TipoDescontoMonetario = "percentual" | "valor_fixo";
+
+/** Mantém no campo apenas caracteres aceitos pela máscara monetária brasileira. */
+export function sanitizarEntradaValorMonetario(valor: string): string {
+  return valor.replace(/[^0-9,.]/g, "");
+}
+
 /** Converte centavos persistidos em uma representação editável em reais. */
 export function formatarCentavosComoValorMonetario(
   valorEmCentavos: number,
@@ -33,4 +40,28 @@ export function converterValorMonetarioParaCentavos(
   const resultado = inteiro * 100 + centavos;
 
   return Number.isSafeInteger(resultado) && resultado >= 0 ? resultado : null;
+}
+
+/** Normaliza uma entrada válida para duas casas decimais, preservando a UI em reais. */
+export function formatarValorMonetarioParaEdicao(valor: string): string | null {
+  const valorEmCentavos = converterValorMonetarioParaCentavos(valor);
+
+  return valorEmCentavos === null
+    ? null
+    : formatarCentavosComoValorMonetario(valorEmCentavos);
+}
+
+/** Preserva o valor equivalente ao alternar o tipo de desconto no formulário. */
+export function converterValorDescontoEntreTipos(
+  valor: number | string,
+  tipoOrigem: TipoDescontoMonetario,
+  tipoDestino: TipoDescontoMonetario,
+): number | string {
+  if (tipoOrigem === tipoDestino) return valor;
+
+  if (tipoDestino === "valor_fixo") {
+    return formatarCentavosComoValorMonetario(Number(valor));
+  }
+
+  return (converterValorMonetarioParaCentavos(String(valor)) ?? 0) / 100;
 }

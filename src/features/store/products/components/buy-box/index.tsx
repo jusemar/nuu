@@ -6,20 +6,38 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  CircleAlert,
+  CircleX,
+  LockKeyhole,
+  PackageCheck,
+  RotateCcw,
+  ShieldCheck,
+  Tag,
+} from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
 import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
+import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
 
 import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
 import { consultarFreteAction } from "../../actions/consultarFreteAction";
-import { calcularProgressoFreteGratisPdp } from "../../lib/calcular-progresso-frete-gratis-pdp";
 import { montarFreteFrenetSelecionado } from "../../lib/frete/montar-frete-frenet-selecionado";
 import type { PromocaoVisualPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { DisponibilidadeCompraPdp } from "../../lib/resolver-disponibilidade-compra-pdp";
 import type { Modalidade } from "../../types/product.types";
 import { formatCEP, isValidCEP } from "../../utils/formatters";
+import {
+  type BeneficioProdutoPdp,
+  BeneficiosProdutoPdp,
+  ItemBeneficioProdutoPdp,
+} from "../beneficios-produto-pdp";
+import {
+  BannerPromocionalPrevisualizacao,
+  ProgressoFretePrevisualizacao,
+} from "../pre-visualizacao/destaques-compra-previsualizacao";
 
 // ==========================================
 // INTERFACE
@@ -34,7 +52,6 @@ interface BuyBoxProps {
   promocaoVisual?: PromocaoVisualPdp | null;
   disponibilidadeCompra: DisponibilidadeCompraPdp;
   precoCalculado?: PrecoProdutoCalculado | null;
-  freteGratisMin?: number;
   prazoEntrega: string;
   selectedVariantLabel?: string | null;
 
@@ -96,6 +113,8 @@ interface BuyBoxProps {
     isActive: boolean;
   } | null;
   onTrocarModalidade?: (tipo: Modalidade) => void;
+  modoPreVisualizacao?: boolean;
+  seletorModalidades?: ReactNode;
 }
 
 function PrevisaoEntregaPropriaPdp({
@@ -148,6 +167,13 @@ function PrecoFretePromocionalPdp({
   );
 }
 
+function formatarValorEmCentavos(valorEmCentavos: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(valorEmCentavos / 100);
+}
+
 // ==========================================
 // COMPONENTE
 // ==========================================
@@ -161,7 +187,6 @@ export function BuyBox({
   promocaoVisual = null,
   disponibilidadeCompra,
   precoCalculado,
-  freteGratisMin = 299,
   prazoEntrega,
   selectedVariantLabel,
   onAddToCart,
@@ -172,13 +197,36 @@ export function BuyBox({
   onRemoverCupom,
   retiradaLocal = null,
   allowsOwnDelivery = false,
-  modalidades,
   modalidadeAtiva,
-  onTrocarModalidade,
+  modoPreVisualizacao = false,
+  seletorModalidades,
 }: BuyBoxProps) {
   const { cep: cepContextoLogistico } = useContextoCepLogistica();
   const compraDisponivel = disponibilidadeCompra.estado === "disponivel";
   const estoque = disponibilidadeCompra.estoqueMaximo;
+  const textoDisponibilidade =
+    disponibilidadeCompra.estado === "selecione_variante"
+      ? "Selecione as opções do produto para continuar."
+      : disponibilidadeCompra.estado === "indisponivel"
+        ? disponibilidadeCompra.motivo
+        : estoque === null
+          ? "Disponível para compra"
+          : estoque <= 10
+            ? `Apenas ${estoque} unidades!`
+            : `${estoque} unidades disponíveis`;
+  const beneficioDisponibilidade: BeneficioProdutoPdp =
+    disponibilidadeCompra.estado === "selecione_variante"
+      ? { icone: CircleAlert, texto: textoDisponibilidade, variante: "atencao" }
+      : disponibilidadeCompra.estado === "indisponivel"
+        ? { icone: CircleX, texto: textoDisponibilidade, variante: "atencao" }
+        : estoque !== null && estoque <= 10
+          ? { icone: CircleAlert, texto: textoDisponibilidade, variante: "atencao" }
+          : { icone: PackageCheck, texto: textoDisponibilidade, variante: "sucesso" };
+  const beneficiosConfianca: BeneficioProdutoPdp[] = [
+    { icone: RotateCcw, texto: "Devolução grátis em 30 dias" },
+    { icone: ShieldCheck, texto: "Garantia de 12 meses" },
+    { icone: LockKeyhole, texto: "Compra 100% segura" },
+  ];
   const pixPrincipal = precoCalculado?.pix.ativo !== false;
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
@@ -200,13 +248,7 @@ export function BuyBox({
   const cepEditadoManualmenteRef = useRef(false);
   const consultaAutomaticaRef = useRef("");
 
-  // A barra usa somente o valor numérico calculado no servidor, nunca a string formatada.
   const precoPixEmCentavos = precoCalculado?.pix.valorEmCentavos;
-  const progressoFreteGratis = calcularProgressoFreteGratisPdp({
-    valorUnitarioEmCentavos: precoPixEmCentavos,
-    quantidade,
-    subtotalMinimoEmReais: freteGratisMin,
-  });
   const precoNumerico =
     precoPixEmCentavos !== undefined && precoPixEmCentavos !== null
       ? precoPixEmCentavos / 100
@@ -228,6 +270,12 @@ export function BuyBox({
           (opcao) => opcao.identificador === transportadoraSelecionada,
         )
       : null;
+  const opcaoEntregaPropriaCotada = opcoesEntregaCotadas.find(
+    (opcao) => opcao.provedor === "entrega-propria",
+  );
+  const freteGratisProgressivoOficial =
+    opcaoFrenetSelecionada?.freteGratisProgressivo ??
+    opcaoEntregaPropriaCotada?.freteGratisProgressivo;
 
   // HANDLERS
   function aumentarQuantidade() {
@@ -413,21 +461,51 @@ export function BuyBox({
 
   // RENDER
   return (
-    <div className="border-surface-border sticky top-20 flex flex-col gap-4 rounded-2xl border bg-white p-5">
+    <div
+      className={
+        modoPreVisualizacao
+          ? "grid min-w-0 grid-cols-1 overflow-hidden rounded-3xl border border-border bg-card shadow-sm sm:grid-cols-[8.5rem_minmax(0,1fr)]"
+          : "border-surface-border sticky top-20 flex flex-col gap-4 rounded-2xl border bg-white p-5"
+      }
+    >
       {/* PREÇO */}
-      <div>
+      <div
+        className={
+          modoPreVisualizacao
+            ? "bg-primary-light order-1 border-b border-primary/20 px-5 pt-5 pb-4 sm:col-span-2"
+            : undefined
+        }
+      >
         {selectedVariantLabel ? (
           <div className="bg-primary-light text-primary mb-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold">
             {selectedVariantLabel}
           </div>
         ) : null}
         {promocaoVisual?.ativa ? (
-          <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+          <div
+            className={`mb-3 rounded-2xl border p-3 ${
+              modoPreVisualizacao
+                ? "border-accent-brand/30 bg-accent-brand-light"
+                : "border-emerald-200 bg-emerald-50"
+            }`}
+          >
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-extrabold tracking-wide text-white uppercase">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide uppercase ${
+                  modoPreVisualizacao
+                    ? "bg-accent-brand text-foreground"
+                    : "bg-emerald-600 text-white"
+                }`}
+              >
                 Promoção
               </span>
-              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
+                  modoPreVisualizacao
+                    ? "bg-card text-accent-brand-dark"
+                    : "bg-white text-emerald-700"
+                }`}
+              >
                 {promocaoVisual.percentualOff}% OFF
               </span>
             </div>
@@ -437,7 +515,11 @@ export function BuyBox({
                 {promocaoVisual.precoOriginalFormatado}
               </span>
             </div>
-            <div className="mt-0.5 text-[11px] font-semibold text-emerald-700">
+            <div
+              className={`mt-0.5 text-[11px] font-semibold ${
+                modoPreVisualizacao ? "text-accent-brand-dark" : "text-emerald-700"
+              }`}
+            >
               Economia de {promocaoVisual.economiaFormatada}
             </div>
           </div>
@@ -448,13 +530,13 @@ export function BuyBox({
         )}
 
         <div
-          className={`rounded-xl border p-3 ${pixPrincipal ? "bg-pix-bg border-pix-border" : "border-primary/25 bg-primary-light"}`}
+          className={`rounded-xl border ${modoPreVisualizacao ? "border-transparent bg-transparent py-1" : `p-3 ${pixPrincipal ? "bg-pix-bg border-pix-border" : "border-primary/25 bg-primary-light"}`}`}
         >
           <div
             className={`mb-1 text-[11px] font-bold tracking-wide uppercase ${pixPrincipal ? "text-success" : "text-primary"}`}
           >
             {pixPrincipal
-              ? `💸 PIX — ${descontoPix}% de desconto`
+              ? `PIX — ${descontoPix}% de desconto`
               : "Cartão de crédito"}
           </div>
 
@@ -466,11 +548,13 @@ export function BuyBox({
                 : precoCalculado?.cartao.valor || precoNormal}
           </div>
 
-          <div className="text-pix-text mt-1 text-xs">
-            {pixPrincipal
-              ? "Preço final ao pagar com PIX"
-              : "Condição principal disponível no cartão"}
-          </div>
+          {!modoPreVisualizacao ? (
+            <div className="text-pix-text mt-1 text-xs">
+              {pixPrincipal
+                ? "Preço final ao pagar com PIX"
+                : "Condição principal disponível no cartão"}
+            </div>
+          ) : null}
 
           {pixPrincipal && cupomAplicado && (
             <div className="text-pix-text mt-0.5 text-[11px] font-bold">
@@ -495,18 +579,56 @@ export function BuyBox({
         )}
       </div>
 
-      <div className="bg-surface-border h-px" />
+      {seletorModalidades ? (
+        <div
+          className={
+            modoPreVisualizacao
+              ? "order-2 border-b border-border px-5 py-4 sm:col-span-2 [&_.bg-white]:bg-card"
+              : "order-2"
+          }
+        >
+          {seletorModalidades}
+        </div>
+      ) : null}
+
+      <div
+        className={`bg-surface-border h-px ${modoPreVisualizacao ? "hidden" : ""}`}
+      />
 
       {/* QUANTIDADE */}
-      <div>
-        <div className="mb-2 flex items-center justify-between">
+      <div
+        className={
+          modoPreVisualizacao
+            ? "order-8 px-5 pt-3 sm:col-span-1 sm:pr-0"
+            : undefined
+        }
+      >
+        <div
+          className={
+            modoPreVisualizacao
+              ? "border-border bg-card flex h-12 items-center rounded-full border shadow-xs"
+              : "mb-2 flex items-center justify-between"
+          }
+        >
           <span className="text-text-primary text-xs font-semibold">
-            Quantidade
+            <span className={modoPreVisualizacao ? "sr-only" : undefined}>
+              Quantidade
+            </span>
           </span>
 
-          <div className="flex items-center gap-2">
+          <div
+            className={
+              modoPreVisualizacao
+                ? "flex items-center"
+                : "flex items-center gap-2"
+            }
+          >
             <button
-              className="border-surface-border hover:border-primary flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] bg-white text-lg transition-colors disabled:opacity-50"
+              className={
+                modoPreVisualizacao
+                  ? "text-muted-foreground hover:text-primary flex size-11 items-center justify-center rounded-full text-lg transition-colors disabled:opacity-40"
+                  : "border-surface-border hover:border-primary flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] bg-white text-lg transition-colors disabled:opacity-50"
+              }
               onClick={diminuirQuantidade}
               disabled={quantidade <= 1}
             >
@@ -518,7 +640,11 @@ export function BuyBox({
             </span>
 
             <button
-              className="border-surface-border hover:border-primary flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] bg-white text-lg transition-colors disabled:opacity-50"
+              className={
+                modoPreVisualizacao
+                  ? "text-muted-foreground hover:text-primary flex size-11 items-center justify-center rounded-full text-lg transition-colors disabled:opacity-40"
+                  : "border-surface-border hover:border-primary flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] bg-white text-lg transition-colors disabled:opacity-50"
+              }
               onClick={aumentarQuantidade}
               disabled={
                 !compraDisponivel || (estoque !== null && quantidade >= estoque)
@@ -529,72 +655,42 @@ export function BuyBox({
           </div>
         </div>
 
+        {!modoPreVisualizacao ? (
+          <div
+            className={`text-[11px] font-semibold ${compraDisponivel ? "text-success" : "text-danger"}`}
+          >
+            {disponibilidadeCompra.estado === "selecione_variante"
+              ? "Selecione as opções do produto para continuar."
+              : disponibilidadeCompra.estado === "indisponivel"
+                ? disponibilidadeCompra.motivo
+                : estoque === null
+                  ? "✓ Disponível para compra"
+                  : estoque <= 10
+                    ? `⚠️ Apenas ${estoque} unidades!`
+                    : `✓ ${estoque} unidades disponíveis`}
+          </div>
+        ) : null}
+      </div>
+
+      {freteGratisProgressivoOficial ? (
         <div
-          className={`text-[11px] font-semibold ${compraDisponivel ? "text-success" : "text-danger"}`}
+          className={
+            modoPreVisualizacao ? "order-3 px-5 pt-4 sm:col-span-2" : undefined
+          }
         >
-          {disponibilidadeCompra.estado === "selecione_variante"
-            ? "Selecione as opções do produto para continuar."
-            : disponibilidadeCompra.estado === "indisponivel"
-              ? disponibilidadeCompra.motivo
-              : estoque === null
-                ? "✓ Disponível para compra"
-                : estoque <= 10
-                  ? `⚠️ Apenas ${estoque} unidades!`
-                  : `✓ ${estoque} unidades disponíveis`}
+          <IndicadorFreteGratisProgressivo
+            resultado={freteGratisProgressivoOficial}
+            formatarPreco={formatarValorEmCentavos}
+          />
         </div>
-      </div>
-
-      {/* FRETE GRÁTIS */}
-      <div
-        className={`rounded-xl border p-3 ${progressoFreteGratis.atingido ? "bg-success-light border-[#99F6E4]" : "bg-primary-light border-surface-border"}`}
-      >
-        {progressoFreteGratis.atingido ? (
-          <div className="text-success text-xs font-bold">
-            🚚 Parabéns! Você ganhou <strong>frete grátis</strong>!
-          </div>
-        ) : progressoFreteGratis.disponivel ? (
-          <>
-            <div className="text-text-primary text-xs">
-              🚚 Falta{" "}
-              <strong className="text-primary">
-                R${" "}
-                {(progressoFreteGratis.faltanteEmCentavos! / 100)
-                  .toFixed(2)
-                  .replace(".", ",")}
-              </strong>{" "}
-              para ganhar frete grátis
-            </div>
-
-            <div className="bg-surface-border mt-2 h-1.5 overflow-hidden rounded-full">
-              <div
-                className="bg-success h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressoFreteGratis.percentual}%` }}
-              />
-            </div>
-
-            <div className="text-text-hint mt-1 text-[10px]">
-              Carrinho: R${" "}
-              {(progressoFreteGratis.subtotalEmCentavos! / 100)
-                .toFixed(2)
-                .replace(".", ",")}{" "}
-              / mín. R${" "}
-              {(progressoFreteGratis.subtotalMinimoEmCentavos! / 100)
-                .toFixed(2)
-                .replace(".", ",")}
-            </div>
-          </>
-        ) : (
-          <div className="text-text-hint text-xs">
-            Consulte o valor do produto para calcular o progresso do frete
-            grátis.
-          </div>
-        )}
-      </div>
+      ) : modoPreVisualizacao ? (
+        <ProgressoFretePrevisualizacao className="order-3 mx-5 mt-4 sm:col-span-2" />
+      ) : null}
 
       {/* CEP */}
       <div
         ref={freteRef}
-        className={`rounded-xl border bg-[#F9FAFB] p-3 transition-all ${
+        className={`rounded-xl border bg-[#F9FAFB] p-3 transition-all ${modoPreVisualizacao ? "border-transparent bg-transparent order-4 mx-5 mb-1 p-0 pt-4 shadow-none sm:col-span-2" : ""} ${
           erroFrete
             ? "border-danger bg-red-50 ring-2 ring-red-100"
             : "border-surface-border"
@@ -616,7 +712,7 @@ export function BuyBox({
           ) : null}
         </div>
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           <input
             type="text"
             placeholder="00000-000"
@@ -624,7 +720,7 @@ export function BuyBox({
             onChange={(e) => handleCepChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && consultarFrete()}
             maxLength={9}
-            className="border-surface-border focus:border-primary w-44 rounded-lg border-[1.5px] bg-white px-3 py-2 text-sm outline-none"
+            className={`border-surface-border focus:border-primary rounded-lg border-[1.5px] bg-white px-3 py-2 text-sm outline-none ${modoPreVisualizacao ? "min-w-0 flex-1" : "w-44"}`}
           />
           <button
             onClick={() => consultarFrete()}
@@ -640,9 +736,19 @@ export function BuyBox({
             allowsOwnDelivery ||
             consultandoFrete ||
             resultadoDoCepAtual) && (
-            <div className="mt-2 flex animate-[fadeUp_0.3s_ease] flex-col gap-1">
+            <div
+              className={
+                modoPreVisualizacao
+                  ? "mt-3 grid animate-[fadeUp_0.3s_ease] grid-cols-1 gap-2 sm:grid-cols-2"
+                  : "mt-2 flex animate-[fadeUp_0.3s_ease] flex-col gap-1"
+              }
+            >
               {enderecoConsultado ? (
-                <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-950">
+                <div
+                  className={`rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-950 ${
+                    modoPreVisualizacao ? "sm:col-span-2" : ""
+                  }`}
+                >
                   <span className="font-bold">Enviar para:</span>
                   <div className="mt-0.5">
                     {enderecoConsultado.uf} - {enderecoConsultado.cidade},{" "}
@@ -656,7 +762,9 @@ export function BuyBox({
 
               {transportadoraSelecionada !== null ? (
                 // Opção selecionada — mostra qual foi escolhida
-                <div>
+                <div
+                  className={modoPreVisualizacao ? "sm:col-span-2" : undefined}
+                >
                   {transportadoraSelecionada === "retirada" ? (
                     <div className="border-primary bg-primary-light relative flex items-center gap-2 rounded-lg border-[1.5px] p-2.5">
                       <div className="text-text-primary flex-1 text-xs font-semibold">
@@ -852,21 +960,48 @@ export function BuyBox({
           )}
 
         {erroFrete ? (
-          <div className="mt-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-700">
+          <div
+            className={`mt-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-700 ${
+              modoPreVisualizacao ? "sm:col-span-2" : ""
+            }`}
+          >
             {erroFrete}
           </div>
         ) : null}
       </div>
 
+      {modoPreVisualizacao ? (
+        <div className="order-5 mx-5 mt-4 sm:col-span-2">
+          <BannerPromocionalPrevisualizacao />
+        </div>
+      ) : null}
+
+      {modoPreVisualizacao ? (
+        <div className="order-6 flex items-center border-t border-border px-5 pt-4 sm:col-span-2">
+          <ItemBeneficioProdutoPdp {...beneficioDisponibilidade} />
+        </div>
+      ) : null}
+
       {/* CUPOM */}
       {!cupomAplicado ? (
-        <div>
+        <div
+          className={
+            modoPreVisualizacao
+              ? "order-7 px-5 pt-3 sm:col-span-2"
+              : undefined
+          }
+        >
           {!mostrarInputCupom ? (
             <button
               onClick={() => setMostrarInputCupom(true)}
-              className="text-primary text-xs underline hover:no-underline"
+              className={`text-primary text-xs underline hover:no-underline ${modoPreVisualizacao ? "inline-flex items-center gap-1.5" : ""}`}
             >
-              🏷️ Tenho um cupom de desconto
+              {modoPreVisualizacao ? (
+                <Tag aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
+              ) : (
+                "🏷️"
+              )}
+              Tenho um cupom de desconto
             </button>
           ) : (
             <div className="animate-[slideDown_0.2s_ease]">
@@ -897,7 +1032,9 @@ export function BuyBox({
           )}
         </div>
       ) : (
-        <div className="bg-success-light animate-[fadeUp_0.3s_ease] rounded-xl border-[1.5px] border-[#99F6E4] p-2.5">
+        <div
+          className={`bg-success-light animate-[fadeUp_0.3s_ease] rounded-xl border-[1.5px] border-[#99F6E4] p-2.5 ${modoPreVisualizacao ? "order-7 mx-5 mt-3 sm:col-span-2" : ""}`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <div className="text-success text-[11px] font-bold">
@@ -917,24 +1054,40 @@ export function BuyBox({
         </div>
       )}
 
-      <div className="bg-surface-border h-px" />
+      <div
+        className={`bg-surface-border h-px ${modoPreVisualizacao ? "hidden" : ""}`}
+      />
 
       {/* BOTÕES */}
-      <div className="flex flex-col gap-2">
+      <div
+        className={
+          modoPreVisualizacao
+            ? "order-8 mx-5 mt-3 flex flex-col gap-3 sm:col-span-1 sm:ml-0 sm:grid sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] sm:pr-5"
+            : "flex flex-col gap-2"
+        }
+      >
         {compraDisponivel ? (
           <>
             <button
-              className="bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
+              className={`bg-primary hover:bg-primary-mid disabled:bg-surface-border disabled:text-text-hint w-full rounded-xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${modoPreVisualizacao ? "min-h-12 px-6" : ""}`}
               onClick={comprarAgoraComFrete}
             >
               Comprar
             </button>
 
             <button
-              className="text-primary border-primary hover:bg-primary-light disabled:border-surface-border disabled:text-text-hint w-full rounded-xl border-[1.5px] bg-white py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
+              className={`text-primary border-primary hover:bg-primary-light disabled:border-surface-border disabled:text-text-hint w-full rounded-xl border-[1.5px] bg-white py-3 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${modoPreVisualizacao ? "min-h-12 px-6" : ""}`}
               onClick={adicionarAoCarrinhoComFrete}
             >
-              Adicionar ao carrinho
+              {modoPreVisualizacao ? (
+                <>
+                  Adicionar
+                  <span className="hidden lg:inline"> ao carrinho</span>
+                  <span className="sr-only lg:hidden"> ao carrinho</span>
+                </>
+              ) : (
+                "Adicionar ao carrinho"
+              )}
             </button>
           </>
         ) : (
@@ -949,24 +1102,32 @@ export function BuyBox({
         )}
       </div>
 
-      <div className="bg-surface-border h-px" />
+      <div
+        className={`bg-surface-border h-px ${modoPreVisualizacao ? "hidden" : ""}`}
+      />
 
-      {/* GARANTIAS */}
-      <div className="flex flex-col gap-1.5">
-        {[
-          { icon: "🔄", text: "Devolução grátis em 30 dias" },
-          { icon: "🛡️", text: "Garantia de 12 meses" },
-          { icon: "🔒", text: "Compra 100% segura" },
-        ].map((g) => (
-          <div
-            key={g.text}
-            className="text-text-muted flex items-center gap-2 text-xs"
-          >
-            <span className="text-sm">{g.icon}</span>
-            {g.text}
-          </div>
-        ))}
-      </div>
+      {modoPreVisualizacao ? (
+        <BeneficiosProdutoPdp
+          beneficios={beneficiosConfianca}
+          className="order-9 border-t border-border px-5 py-4 sm:col-span-2"
+        />
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {[
+            { icon: "🔄", text: "Devolução grátis em 30 dias" },
+            { icon: "🛡️", text: "Garantia de 12 meses" },
+            { icon: "🔒", text: "Compra 100% segura" },
+          ].map((g) => (
+            <div
+              key={g.text}
+              className="text-text-muted flex items-center gap-2 text-xs"
+            >
+              <span className="text-sm">{g.icon}</span>
+              {g.text}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

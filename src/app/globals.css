@@ -6,8 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -55,6 +55,22 @@
   --color-success: var(--success);
   --color-success-light: var(--success-light);
   --color-success-dark: var(--success-dark);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-light: var(--warning-light);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-light: var(--info-light);
+
+  /* Escalas oficiais de elevação e movimento. */
+  --shadow-elevation-1: var(--shadow-sm);
+  --shadow-elevation-2: var(--shadow-md);
+  --shadow-elevation-3: var(--shadow-lg);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+  --animate-duration-fast: 150ms;
+  --animate-duration-normal: 200ms;
+  --animate-duration-slow: 300ms;
 }
 
 :root {
@@ -82,6 +98,19 @@
   --success: oklch(0.704 0.123 182.5);
   --success-light: oklch(0.984 0.014 181.1);
   --success-dark: oklch(0.511 0.086 186.4);
+
+  /* Estados semânticos: nunca usar a cor visual diretamente na interface. */
+  --warning: oklch(0.764 0.154 70.8);
+  --warning-foreground: oklch(0.278 0.03 70.8);
+  --warning-light: oklch(0.987 0.021 95.3);
+  --info: oklch(0.56 0.14 247);
+  --info-foreground: oklch(1 0 0);
+  --info-light: oklch(0.97 0.02 247);
+
+  /* Elevação oficial para superfícies, overlays e elementos flutuantes. */
+  --shadow-sm: 0 1px 2px oklch(0.2 0.02 256 / 6%);
+  --shadow-md: 0 4px 20px -2px oklch(0.2 0.02 256 / 10%);
+  --shadow-lg: 0 12px 36px -8px oklch(0.2 0.02 256 / 18%);
 
   /* Fundo: #F8F8F6 — cinza levemente quente */
   --background: oklch(0.979 0.003 107.2);
@@ -165,6 +194,16 @@
   --success: oklch(0.704 0.123 182.5);
   --success-light: oklch(0.22 0.04 182.5);
   --success-dark: oklch(0.8 0.1 182.5);
+  --warning: oklch(0.82 0.14 80);
+  --warning-foreground: oklch(0.2 0.03 70.8);
+  --warning-light: oklch(0.25 0.04 70.8);
+  --info: oklch(0.7 0.12 247);
+  --info-foreground: oklch(0.14 0.015 256.9);
+  --info-light: oklch(0.23 0.04 247);
+
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 24%);
+  --shadow-md: 0 6px 24px -4px oklch(0 0 0 / 32%);
+  --shadow-lg: 0 16px 44px -8px oklch(0 0 0 / 44%);
 
   --secondary: oklch(0.22 0.01 256.9);
   --secondary-foreground: oklch(0.97 0 0);
@@ -271,11 +310,11 @@
 @layer utilities {
   /* Sombras */
   .shadow-elevation {
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-md);
   }
 
   .shadow-elevation-lg {
-    box-shadow: 0 10px 40px -4px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-lg);
   }
 
   /* Gradientes — usam a paleta do design system */
@@ -368,6 +407,17 @@
       transform: translateY(0);
       opacity: 1;
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

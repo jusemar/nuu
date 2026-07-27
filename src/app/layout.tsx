@@ -5,9 +5,9 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
-import ReactQueryProvider from "@/providers/react-query";
-import { CategoriesProvider } from "@/providers/categories-provider";
 import { ContextoCepLogisticaProvider } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
+import { CategoriesProvider } from "@/providers/categories-provider";
+import ReactQueryProvider from "@/providers/react-query";
 
 // ─── Fontes ───────────────────────────────────────────────────────────────────
 const geistSans = Geist({
@@ -72,10 +72,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body
-        className={` ${geistSans.variable} ${geistMono.variable} bg-background text-foreground flex min-h-screen flex-col antialiased`}
-      >
+    <html
+      lang="pt-BR"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="bg-background text-foreground flex min-h-screen flex-col antialiased">
         <CategoriesProvider>
           <ReactQueryProvider>
             <ContextoCepLogisticaProvider>
@@ -87,10 +89,10 @@ export default function RootLayout({
               position="bottom-right"
               toastOptions={{
                 classNames: {
-                  success: "bg-[#14B8A6] text-white border-none", // teal — sucesso
-                  error: "bg-[#DC2626] text-white border-none", // vermelho — erro
-                  warning: "bg-[#EF9F27] text-white border-none", // âmbar — atenção
-                  info: "bg-[#0C447C] text-white border-none", // azul — info
+                  success: "border-none bg-success text-white",
+                  error: "border-none bg-destructive text-white",
+                  warning: "border-none bg-warning text-warning-foreground",
+                  info: "border-none bg-info text-info-foreground",
                 },
               }}
             />

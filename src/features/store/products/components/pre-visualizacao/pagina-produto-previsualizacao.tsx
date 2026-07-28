@@ -2,11 +2,16 @@
 
 import type { ReactNode } from "react";
 
-import { LayoutProdutoAprovado } from "../layout-produto-aprovado";
+import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
+import { Footer } from "@/components/common/footer";
+import { Header } from "@/features/header";
+
+import type { ProdutoRelacionadoPdp } from "../../queries/buscar-produtos-relacionados-pdp";
+import { ProdutosRelacionadosPrevisualizacao } from "./produtos-relacionados-previsualizacao";
 import {
   BannerInstitucionalPrevisualizacao,
+  CardAssistenteVirtualPrevisualizacao,
   SecaoCompreJuntoPrevisualizacao,
-  SecoesDemonstrativasPrevisualizacao,
 } from "./secoes-demonstrativas-previsualizacao";
 
 type Props = {
@@ -14,11 +19,13 @@ type Props = {
   imagemProduto?: string;
   breadcrumbCategorias: Array<{ id: string; name: string; slug: string }>;
   galeria: ReactNode;
+  demaisInformacoesCompra: ReactNode;
+  descricaoCurta: ReactNode;
   informacoes: ReactNode;
   caixaCompra: ReactNode;
   abas: ReactNode;
   modalPagamento: ReactNode;
-  conteudoRelacionados?: ReactNode;
+  produtosRelacionados?: ProdutoRelacionadoPdp[];
 };
 
 /**
@@ -31,37 +38,60 @@ export function PaginaProdutoPrevisualizacao({
   imagemProduto,
   breadcrumbCategorias,
   galeria,
+  demaisInformacoesCompra,
+  descricaoCurta,
   informacoes,
   caixaCompra,
   abas,
   modalPagamento,
-  conteudoRelacionados,
+  produtosRelacionados = [],
 }: Props) {
   return (
-    <LayoutProdutoAprovado
-      modoPreVisualizacao
-      nomeProduto={nomeProduto}
-      breadcrumbCategorias={breadcrumbCategorias}
-      galeria={galeria}
-      informacoes={informacoes}
-      caixaCompra={caixaCompra}
-      abas={abas}
-      modalPagamento={modalPagamento}
-      conteudoAposProduto={
-        <>
+    <div
+      data-modo-pdp-preview="true"
+      className="bg-background text-foreground min-h-screen overflow-x-hidden"
+    >
+      <Header />
+
+      <main className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
+        <div className="py-4">
+          <CategoryBreadcrumb
+            categories={breadcrumbCategorias}
+            currentPage={nomeProduto}
+            className="text-xs"
+            currentPageClassName="text-primary font-semibold"
+          />
+        </div>
+
+        <section className="grid grid-cols-1 gap-6 min-[800px]:grid-cols-12 min-[800px]:gap-5 lg:gap-8">
+          <div className="flex min-w-0 flex-col gap-5 min-[800px]:col-span-5">
+            {galeria}
+            <CardAssistenteVirtualPrevisualizacao nomeProduto={nomeProduto} />
+            {demaisInformacoesCompra}
+            {descricaoCurta}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-5 min-[800px]:col-span-7 lg:gap-6">
+            {informacoes}
+            {caixaCompra}
+          </div>
+        </section>
+
+        <div className="mt-10 md:mt-14">
           <SecaoCompreJuntoPrevisualizacao
             nomeProduto={nomeProduto}
             imagemProduto={imagemProduto}
           />
           <BannerInstitucionalPrevisualizacao />
-          {conteudoRelacionados ? (
-            <div className="[&>section]:mt-10 md:[&>section]:mt-14">
-              {conteudoRelacionados}
-            </div>
-          ) : null}
-          <SecoesDemonstrativasPrevisualizacao nomeProduto={nomeProduto} />
-        </>
-      }
-    />
+          <ProdutosRelacionadosPrevisualizacao produtos={produtosRelacionados} />
+          <section className="mt-10 [&>div>div:first-child]:gap-x-3 sm:[&>div>div:first-child]:gap-x-7 md:mt-14">
+            {abas}
+          </section>
+        </div>
+      </main>
+
+      <Footer />
+      {modalPagamento}
+    </div>
   );
 }

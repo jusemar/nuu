@@ -1,6 +1,6 @@
 "use client";
 
-import { Equal, Gift, MessageCircle, Plus } from "lucide-react";
+import { Equal, Flame, Gift, Headset, Plus } from "lucide-react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -13,19 +13,53 @@ type Props = {
  * Blocos demonstrativos isolados da pré-visualização. Não calculam preços,
  * persistem dados ou disparam ações do carrinho.
  */
-export function SecoesDemonstrativasPrevisualizacao({ nomeProduto }: Props) {
+export function CardAssistenteVirtualPrevisualizacao({ nomeProduto }: Props) {
   return (
-    <button
-      type="button"
-      aria-label={`Abrir assistente virtual sobre ${nomeProduto}`}
-      className="bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:ring-ring fixed right-4 bottom-5 z-40 inline-flex size-12 items-center justify-center rounded-full text-sm font-semibold shadow-lg transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none min-[1100px]:h-12 min-[1100px]:w-auto min-[1100px]:gap-2 min-[1100px]:px-4 md:right-6 md:bottom-6"
-      onClick={() => {
-        // Elemento apenas visual até existir um canal real de atendimento.
-      }}
+    <section
+      aria-labelledby="titulo-assistente-virtual-pdp"
+      className="border-border border-l-primary bg-card rounded-xl border border-l-4 p-4 shadow-sm"
     >
-      <MessageCircle className="size-5" aria-hidden="true" />
-      <span className="hidden min-[1100px]:inline">Assistente virtual</span>
-    </button>
+      <div className="flex items-start gap-3">
+        <span className="bg-primary-light text-primary border-primary/15 flex size-11 shrink-0 items-center justify-center rounded-xl border shadow-xs">
+          <Headset className="size-5" aria-hidden="true" strokeWidth={1.8} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h2
+              id="titulo-assistente-virtual-pdp"
+              className="text-foreground text-sm font-bold"
+            >
+              Assistente Do Rocha
+            </h2>
+            <span className="text-primary inline-flex items-center gap-1 text-[11px] font-semibold">
+              <span className="bg-primary size-1.5 rounded-full" aria-hidden="true" />
+              IA disponível agora
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs leading-5">
+            IA consultiva da loja para ajudar você a escolher a opção ideal
+            para sua compra.
+          </p>
+        </div>
+      </div>
+
+      {/* Prova social mock temporária, restrita ao laboratório de pré-visualização. */}
+      <p className="border-accent-brand/30 bg-accent-brand-light text-accent-brand-dark mt-3 flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-[11px] font-medium">
+        <Flame className="text-accent-brand size-3.5" aria-hidden="true" />
+        247 pessoas compraram com minha ajuda.
+      </p>
+
+      <Button
+        type="button"
+        className="mt-3 min-h-11 w-full"
+        aria-label={`Conversar com o assistente virtual sobre ${nomeProduto}`}
+        onClick={() => {
+          // Mantém o fluxo visual já existente até a integração real do assistente.
+        }}
+      >
+        Conversar com o assistente
+      </Button>
+    </section>
   );
 }
 

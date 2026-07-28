@@ -9,10 +9,7 @@
 import {
   CircleAlert,
   CircleX,
-  LockKeyhole,
   PackageCheck,
-  RotateCcw,
-  ShieldCheck,
   Tag,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -31,6 +28,7 @@ import type { Modalidade } from "../../types/product.types";
 import { formatCEP, isValidCEP } from "../../utils/formatters";
 import {
   type BeneficioProdutoPdp,
+  beneficiosConfiancaCompraPdp,
   BeneficiosProdutoPdp,
   ItemBeneficioProdutoPdp,
 } from "../beneficios-produto-pdp";
@@ -116,6 +114,7 @@ interface BuyBoxProps {
   modoPreVisualizacao?: boolean;
   /** Autoriza os dados demonstrativos exclusivos do laboratório visual. */
   mostrarFreteDemonstrativo?: boolean;
+  mostrarBeneficiosConfianca?: boolean;
   seletorModalidades?: ReactNode;
 }
 
@@ -202,6 +201,7 @@ export function BuyBox({
   modalidadeAtiva,
   modoPreVisualizacao = false,
   mostrarFreteDemonstrativo = false,
+  mostrarBeneficiosConfianca = true,
   seletorModalidades,
 }: BuyBoxProps) {
   const { cep: cepContextoLogistico } = useContextoCepLogistica();
@@ -225,11 +225,6 @@ export function BuyBox({
         : estoque !== null && estoque <= 10
           ? { icone: CircleAlert, texto: textoDisponibilidade, variante: "atencao" }
           : { icone: PackageCheck, texto: textoDisponibilidade, variante: "sucesso" };
-  const beneficiosConfianca: BeneficioProdutoPdp[] = [
-    { icone: RotateCcw, texto: "Devolução grátis em 30 dias" },
-    { icone: ShieldCheck, texto: "Garantia de 12 meses" },
-    { icone: LockKeyhole, texto: "Compra 100% segura" },
-  ];
   const pixPrincipal = precoCalculado?.pix.ativo !== false;
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
@@ -1089,7 +1084,7 @@ export function BuyBox({
       <div
         className={
           modoPreVisualizacao
-            ? "order-8 mx-5 mt-3 flex flex-col gap-3 sm:col-span-1 sm:ml-0 sm:grid sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] sm:pr-5"
+            ? "order-8 mx-5 mt-3 flex flex-col gap-3 pb-5 sm:col-span-1 sm:ml-0 sm:grid sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] sm:pr-5"
             : "flex flex-col gap-2"
         }
       >
@@ -1134,10 +1129,12 @@ export function BuyBox({
       />
 
       {modoPreVisualizacao ? (
-        <BeneficiosProdutoPdp
-          beneficios={beneficiosConfianca}
-          className="order-9 border-t border-border px-5 py-4 sm:col-span-2"
-        />
+        mostrarBeneficiosConfianca ? (
+          <BeneficiosProdutoPdp
+            beneficios={beneficiosConfiancaCompraPdp}
+            className="order-9 border-t border-border px-5 py-4 sm:col-span-2"
+          />
+        ) : null
       ) : (
         <div className="flex flex-col gap-1.5">
           {[

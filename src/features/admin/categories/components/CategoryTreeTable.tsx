@@ -1,30 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { Switch } from "@/components/ui/switch";
-import { useUpdateCategory } from "../hooks/useUpdateCategory";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ChevronRight,
   ChevronDown,
+  ChevronRight,
+  Filter,
   Folder,
+  FolderTree,
   Package,
+  Plus,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
   Tag,
   Trash2,
-  RotateCcw,
-  FolderTree,
-  Search,
-  Plus,
-  Filter,
   X,
-  SlidersHorizontal,
 } from "lucide-react";
+import Link from "next/link";
+import React, { useState } from "react";
+
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,20 +32,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { DeleteCategoryModal } from "./DeleteCategoryModal";
-import Link from "next/link";
+
+import { useCategoryList } from "../hooks/useCategoryList";
 import { useDeleteCategory } from "../hooks/useDeleteCategory";
 import { useRestoreCategory } from "../hooks/useRestoreCategory";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCategoryList } from "../hooks/useCategoryList";
+import { useUpdateCategory } from "../hooks/useUpdateCategory";
 import { getProdutosVinculadosDaCategoria } from "../services/categoryService";
+import type { Category } from "../types";
+import { DeleteCategoryModal } from "./DeleteCategoryModal";
 
 // Tipo usado na árvore de categorias
 type TreeCategory = {
@@ -104,22 +107,6 @@ const filterCategoriesByStatus = (
       if (filter === "inactive") return cat.status === "inactive";
       return true;
     });
-};
-
-// Componente de badge de status
-const StatusBadge = ({ status }: { status: "active" | "inactive" }) => {
-  return (
-    <span
-      className={cn(
-        "rounded-full border px-2 py-0.5 text-xs font-medium",
-        status === "active"
-          ? "border-emerald-200 bg-emerald-100 text-emerald-700"
-          : "border-red-200 bg-red-100 text-red-700",
-      )}
-    >
-      {status === "active" ? "Ativa" : "Inativa"}
-    </span>
-  );
 };
 
 // Componente recursivo para renderizar cada linha
@@ -508,7 +495,7 @@ export function CategoryTreeTable() {
   };
 
   // ✅ Função para converter dados do hook para TreeCategory
-  const convertToTreeCategory = (data: any[]): TreeCategory[] => {
+  const convertToTreeCategory = (data: Category[]): TreeCategory[] => {
     const map = new Map<string, TreeCategory>();
 
     data.forEach((item) => {
@@ -517,8 +504,8 @@ export function CategoryTreeTable() {
         name: item.name,
         parentId: item.parentId ?? null,
         level: 0,
-        createdAt: item.createdAt ?? "",
-        updatedAt: item.updatedAt ?? item.createdAt ?? "",
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
         deleted_at: null,
         status: item.isActive ? "active" : "inactive",
         productCount: Number(item.productCount || 0),
@@ -589,7 +576,7 @@ export function CategoryTreeTable() {
           setCategoryToDelete(null);
           queryClient.invalidateQueries({ queryKey: ["categories"] });
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
           console.error("[CategoryTreeTable] Erro ao deletar:", error);
         },
       },
@@ -621,7 +608,7 @@ export function CategoryTreeTable() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["categories"] });
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         console.error("[CategoryTreeTable] Erro ao restaurar:", error);
       },
     });
@@ -647,15 +634,6 @@ export function CategoryTreeTable() {
     filteredByStatus,
     searchTerm,
   );
-
-  // Contar totais
-  const totalCategories = sourceCategories.length;
-  const activeCount = sourceCategories.filter(
-    (c) => c.status === "active",
-  ).length;
-  const inactiveCount = sourceCategories.filter(
-    (c) => c.status === "inactive",
-  ).length;
 
   // Lógica de paginação
   const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
@@ -699,17 +677,17 @@ export function CategoryTreeTable() {
   }
 
   return (
-    <div className="space-y-4 px-4 sm:px-6 lg:px-8">
+    <div className="min-w-0 space-y-4 sm:px-6 lg:px-8">
       {/* Header com título e botão Nova Categoria */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-800">Categorias</h1>
           <p className="text-sm text-slate-500">
             Gerencie as categorias e subcategorias da sua loja
           </p>
         </div>
-        <Link href="/admin/categories/new">
-          <Button className="h-9 bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700">
+        <Link href="/admin/categories/new" className="w-full sm:w-auto">
+          <Button className="h-10 w-full bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 sm:h-9 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nova Categoria
           </Button>
@@ -745,7 +723,7 @@ export function CategoryTreeTable() {
           </div>
 
           {/* Filtros em linha */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Select de Status */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-9 w-[130px]">
@@ -788,7 +766,7 @@ export function CategoryTreeTable() {
         {/* Filtros Avançados (expandível) */}
         {showFilters && (
           <div className="mt-3 border-t border-slate-200 pt-3">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
               <div className="text-xs text-slate-500">Filtros adicionais:</div>
               <div className="flex items-center gap-2">
                 <span className="rounded bg-slate-100 px-2 py-1 text-xs">
@@ -833,10 +811,10 @@ export function CategoryTreeTable() {
       {/* Tabela */}
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[20rem]">
             <TableHeader>
               <TableRow className="border-b border-slate-200 bg-slate-50 hover:bg-slate-50">
-                <TableHead className="min-w-[300px] py-3 text-xs font-semibold text-slate-700 sm:min-w-[350px]">
+                <TableHead className="min-w-[220px] py-3 text-xs font-semibold text-slate-700 sm:min-w-[350px]">
                   Categoria
                 </TableHead>
                 <TableHead className="hidden py-3 text-xs font-semibold text-slate-700 sm:table-cell">
@@ -899,7 +877,7 @@ export function CategoryTreeTable() {
         </div>
 
         {/* Footer com Paginação */}
-        <div className="border-t border-slate-200 bg-white px-4 py-4">
+        <div className="border-t border-slate-200 bg-white px-3 py-4 sm:px-4">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             {/* Info de itens por página */}
             <div className="flex items-center gap-3">

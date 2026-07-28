@@ -7,7 +7,6 @@ import {
 } from "@/features/precificacao/server";
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
-import { ProdutosRelacionadosPdp } from "@/features/store/products/components/produtos-relacionados-pdp";
 import { buscarProdutosRelacionadosPdp } from "@/features/store/products/queries/buscar-produtos-relacionados-pdp";
 import { getProductBySlug } from "@/features/store/products/service/productService";
 import type {
@@ -111,9 +110,7 @@ export default async function PaginaPreVisualizacaoProduto({
         precosCalculadosPorModalidade={precosPorModalidade}
         precosCalculadosPorVariante={precosPorVariante}
         modoPreVisualizacao
-        conteudoComplementar={
-          <ProdutosRelacionadosPdp produtos={produtosRelacionados} />
-        }
+        produtosRelacionadosPrevisualizacao={produtosRelacionados}
       />
     </div>
   );

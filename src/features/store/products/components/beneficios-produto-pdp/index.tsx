@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import { LockKeyhole, type LucideIcon,RotateCcw, ShieldCheck } from "lucide-react";
 
 type VarianteBeneficioProduto = "neutro" | "sucesso" | "atencao";
 
@@ -7,6 +7,13 @@ export type BeneficioProdutoPdp = {
   texto: string;
   variante?: VarianteBeneficioProduto;
 };
+
+/** Sinais institucionais exibidos na PDP sem qualquer regra comercial. */
+export const beneficiosConfiancaCompraPdp: BeneficioProdutoPdp[] = [
+  { icone: RotateCcw, texto: "Devolução grátis em 30 dias" },
+  { icone: ShieldCheck, texto: "Garantia de 12 meses" },
+  { icone: LockKeyhole, texto: "Compra 100% segura" },
+];
 
 type ItemBeneficioProdutoPdpProps = BeneficioProdutoPdp;
 

@@ -32,6 +32,7 @@ import { BannerPromocaoProdutoPdp } from "@/features/promocoes/components/store/
 import { useProductPricing } from "../hooks/useProductPricing";
 import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
 import { resolverDisponibilidadeCompraPdp } from "../lib/resolver-disponibilidade-compra-pdp";
+import type { ProdutoRelacionadoPdp } from "../queries/buscar-produtos-relacionados-pdp";
 import type {
   AtributoProdutoLoja,
   Avaliacao,
@@ -40,13 +41,17 @@ import type {
   VarianteProdutoLoja,
 } from "../types/product.types";
 import { stripProductRichText } from "../utils/rich-text";
+import {
+  beneficiosConfiancaCompraPdp,
+  BeneficiosProdutoPdp,
+} from "./beneficios-produto-pdp";
 import { BuyBox } from "./buy-box";
 import { LayoutProdutoAprovado } from "./layout-produto-aprovado";
 import { PaymentModal } from "./payment-modal";
 import { PaginaProdutoPrevisualizacao } from "./pre-visualizacao/pagina-produto-previsualizacao";
 import { PricingModalities } from "./PricingModalities";
 import { ProductGallery } from "./product-gallery";
-import { ProductInfo } from "./product-info";
+import { DescricaoCurtaProdutoPdp, ProductInfo } from "./product-info";
 import type { ModalidadeInfo } from "./product-tabs";
 import { ProductTabs } from "./product-tabs";
 import { UpsellSection } from "./upsell-section";
@@ -97,6 +102,7 @@ interface ProductDetailProps {
   /** Mantém a PDP pública intacta enquanto a nova composição é validada. */
   modoPreVisualizacao?: boolean;
   conteudoComplementar?: ReactNode;
+  produtosRelacionadosPrevisualizacao?: ProdutoRelacionadoPdp[];
 }
 
 // ==========================================
@@ -110,6 +116,7 @@ export function ProductDetail({
   precosCalculadosPorVariante,
   modoPreVisualizacao = false,
   conteudoComplementar,
+  produtosRelacionadosPrevisualizacao,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
@@ -457,6 +464,15 @@ export function ProductDetail({
             modoPreVisualizacao
           />
         }
+        demaisInformacoesCompra={
+          <BeneficiosProdutoPdp beneficios={beneficiosConfiancaCompraPdp} />
+        }
+        descricaoCurta={
+          <DescricaoCurtaProdutoPdp
+            descricao={productShortDescription}
+            modoPreVisualizacao
+          />
+        }
         informacoes={
           <ProductInfo
             nome={product.name}
@@ -478,6 +494,7 @@ export function ProductDetail({
             onSelectVariant={setSelectedVariant}
             modoAssistenteVirtual
             modoPreVisualizacao
+            mostrarDescricao={false}
           />
         }
         caixaCompra={
@@ -517,6 +534,7 @@ export function ProductDetail({
             onTrocarModalidade={selecionarModalidade}
             modoPreVisualizacao
             mostrarFreteDemonstrativo
+            mostrarBeneficiosConfianca={false}
             seletorModalidades={
               product.productKind !== "variable" &&
               modalidadesDisponiveis.length > 0 ? (
@@ -531,7 +549,7 @@ export function ProductDetail({
           />
         }
         abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
-        conteudoRelacionados={conteudoComplementar}
+        produtosRelacionados={produtosRelacionadosPrevisualizacao}
         modalPagamento={
           <PaymentModal
             isOpen={modalPgto}

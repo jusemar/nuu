@@ -1,8 +1,9 @@
 "use client";
 
+import { Building2, ChevronRight, MapPin, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Building2, ChevronRight, MapPin, Search } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import type { EntregaPropriaEstadoResumo } from "../../queries/admin-entrega-propria.queries";
 import { montarUrlCidadeEntregaPropria } from "./entrega-propria-formatters";
 
@@ -38,8 +40,8 @@ export function EstadosEntregaPropriaPage({
   }, [estados, searchTerm]);
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <div className="mb-8">
+    <div className="mx-auto max-w-6xl min-w-0 sm:p-6">
+      <div className="mb-6 sm:mb-8">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">
           Entrega Propria
         </h1>
@@ -49,7 +51,7 @@ export function EstadosEntregaPropriaPage({
         </p>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <div className="relative">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
@@ -61,15 +63,21 @@ export function EstadosEntregaPropriaPage({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <Table>
+      <div className="max-w-full overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <Table className="min-w-[20rem]">
           <TableHeader className="bg-gray-50">
             <TableRow>
               <TableHead className="w-24">UF</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead className="text-center">Cidades</TableHead>
-              <TableHead className="text-center">Regioes</TableHead>
-              <TableHead className="text-center">Status</TableHead>
+              <TableHead className="hidden text-center sm:table-cell">
+                Cidades
+              </TableHead>
+              <TableHead className="hidden text-center md:table-cell">
+                Regioes
+              </TableHead>
+              <TableHead className="hidden text-center sm:table-cell">
+                Status
+              </TableHead>
               <TableHead className="text-right">Acoes</TableHead>
             </TableRow>
           </TableHeader>
@@ -99,17 +107,17 @@ export function EstadosEntregaPropriaPage({
                       {estado.name}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden text-center sm:table-cell">
                     <span className="inline-flex items-center gap-1 text-sm text-gray-700">
                       <Building2 className="h-4 w-4 text-gray-400" />
                       {estado.cidadesCount}
                     </span>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden text-center md:table-cell">
                     {estado.regioesCount}{" "}
                     {estado.regioesCount === 1 ? "regiao" : "regioes"}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden text-center sm:table-cell">
                     <Badge variant={estado.isActive ? "default" : "secondary"}>
                       {estado.isActive ? "Ativo" : "Inativo"}
                     </Badge>
@@ -122,7 +130,7 @@ export function EstadosEntregaPropriaPage({
                       asChild
                     >
                       <Link href={montarUrlCidadeEntregaPropria(estado.uf)}>
-                        Cidades
+                        <span className="hidden sm:inline">Cidades</span>
                         <ChevronRight className="ml-1 h-4 w-4" />
                       </Link>
                     </Button>

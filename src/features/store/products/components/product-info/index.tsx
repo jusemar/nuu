@@ -58,6 +58,21 @@ interface ProductInfoProps {
   onSelectVariant?: (variant: VarianteProdutoLoja) => void;
   modoAssistenteVirtual?: boolean;
   modoPreVisualizacao?: boolean;
+  mostrarDescricao?: boolean;
+}
+
+export function DescricaoCurtaProdutoPdp({
+  descricao,
+  modoPreVisualizacao = false,
+}: {
+  descricao: string;
+  modoPreVisualizacao?: boolean;
+}) {
+  return modoPreVisualizacao ? (
+    <p className="text-muted-foreground max-w-2xl text-sm leading-6">{descricao}</p>
+  ) : (
+    <p className="text-text-muted text-[13px] leading-relaxed">{descricao}</p>
+  );
 }
 
 // ==========================================
@@ -84,6 +99,7 @@ export function ProductInfo({
   onSelectVariant,
   modoAssistenteVirtual = false,
   modoPreVisualizacao = false,
+  mostrarDescricao = true,
 }: ProductInfoProps) {
   const hasRealVariants =
     productKind === "variable" &&
@@ -169,15 +185,12 @@ export function ProductInfo({
       {/* -----------------------------------------
           DESCRIÇÃO DO PRODUTO
           ----------------------------------------- */}
-      {!modoPreVisualizacao ? (
-        <p className="text-text-muted text-[13px] leading-relaxed">
-          {descricao}
-        </p>
-      ) : (
-        <p className="text-muted-foreground max-w-2xl text-sm leading-6">
-          {descricao}
-        </p>
-      )}
+      {mostrarDescricao ? (
+        <DescricaoCurtaProdutoPdp
+          descricao={descricao}
+          modoPreVisualizacao={modoPreVisualizacao}
+        />
+      ) : null}
 
       {/* DIVISOR */}
       {!modoPreVisualizacao ? (

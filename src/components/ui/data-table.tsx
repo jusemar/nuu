@@ -1,20 +1,39 @@
 "use client";
 
-import * as React from "react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import {
+  arrayMove,
+  horizontalListSortingStrategy,
+  SortableContext,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   ColumnDef,
   ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  useReactTable,
   Header,
+  SortingState,
+  useReactTable,
+  VisibilityState,
 } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronDown, MoreHorizontal, Search } from "lucide-react";
+import type { CSSProperties } from "react";
+import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +42,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -36,26 +54,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-import {
-  DndContext,
-  useSensor,
-  useSensors,
-  MouseSensor,
-  TouchSensor,
-  KeyboardSensor,
-  closestCenter,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import {
-  arrayMove,
-  horizontalListSortingStrategy,
-  SortableContext,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import type { CSSProperties } from "react";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -87,7 +85,12 @@ export function DataTable<TData, TValue>({
 
   // columnOrder inicial a partir das colunas passadas
   const initialOrder = React.useMemo(() => {
-    return columns.map((c) => c.id ?? String((c as any).accessorKey ?? ""));
+    return columns.map((coluna) => {
+      const colunaComAcessor = coluna as ColumnDef<TData, TValue> & {
+        accessorKey?: string;
+      };
+      return coluna.id ?? String(colunaComAcessor.accessorKey ?? "");
+    });
   }, [columns]);
 
   const [columnOrder, setColumnOrder] = React.useState<string[]>(initialOrder);
@@ -159,10 +162,10 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-2 py-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 py-4">
         {/* Bulk Actions - Aparece só quando tem linhas selecionadas */}
         {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {/* BOTÃO EXCLUIR */}
             <Button
               variant="destructive"
@@ -205,7 +208,7 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Filtro */}
-        <div className="relative w-80">
+        <div className="relative min-w-0 flex-1 basis-56 sm:max-w-80">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Filtrar..."
@@ -220,7 +223,7 @@ export function DataTable<TData, TValue>({
         {/* Colunas - Mantém igual mas com ml-auto */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="sm:ml-auto">
               Colunas <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -246,7 +249,7 @@ export function DataTable<TData, TValue>({
         </DropdownMenu>
       </div>
 
-      <div className="rounded-md border">
+      <div className="max-w-full overflow-hidden rounded-md border">
         {/* DndContext MOVIDO PARA FORA da tabela */}
         <DndContext
           sensors={sensors}
@@ -342,14 +345,16 @@ export function DataTable<TData, TValue>({
         </DndContext>
       </div>
 
-      <div className="flex items-center justify-between px-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
+      <div className="flex flex-col gap-3 px-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-muted-foreground text-sm sm:flex-1">
           {table.getFilteredSelectedRowModel().rows.length} de{" "}
           {table.getFilteredRowModel().rows.length} linha(s) selecionada(s).
         </div>
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Linhas por página</p>
+        <div className="flex flex-wrap items-center gap-3 sm:justify-end lg:gap-6">
+          <div className="flex items-center gap-2">
+            <p className="hidden text-sm font-medium sm:block">
+              Linhas por página
+            </p>
             <select
               value={table.getState().pagination.pageSize}
               onChange={(e) => table.setPageSize(Number(e.target.value))}
@@ -362,11 +367,11 @@ export function DataTable<TData, TValue>({
               ))}
             </select>
           </div>
-          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+          <div className="flex items-center justify-center text-sm font-medium">
             Página {table.getState().pagination.pageIndex + 1} de{" "}
             {table.getPageCount()}
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="ml-auto flex items-center gap-2 sm:ml-0">
             <Button
               variant="outline"
               size="sm"
@@ -391,7 +396,11 @@ export function DataTable<TData, TValue>({
 }
 
 /* Draggable header component */
-const DraggableTableHeader = ({ header }: { header: Header<any, unknown> }) => {
+const DraggableTableHeader = <TData,>({
+  header,
+}: {
+  header: Header<TData, unknown>;
+}) => {
   const {
     attributes,
     listeners,

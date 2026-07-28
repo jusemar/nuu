@@ -11,37 +11,46 @@
 
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  Package,
-  FolderIcon,
-  ShoppingCart,
-  Users,
+  Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Menu,
-  ChevronDown,
   ChevronUp,
-  Truck,
-  MapPin,
-  Store,
-  Building2,
-  Navigation,
   DollarSign,
+  FileSpreadsheet,
+  FolderIcon,
+  Image,
+  LayoutDashboard,
+  MapPin,
+  Megaphone,
+  MoreHorizontal,
+  Navigation,
+  Package,
   PackageCheck,
   Percent,
+  Plug,
   Settings,
-  Image,
+  ShieldCheck,
+  ShoppingCart,
+  Store,
   Tag,
   TicketPercent,
-  Megaphone,
-  ShieldCheck,
-  FileSpreadsheet,
-  Plug,
+  Truck,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+
 import { useSidebar } from "../hooks/useSidebar";
 
 /**
@@ -71,10 +80,28 @@ const iconMap: Record<string, React.ElementType> = {
   Plug,
 };
 
+type ItemMenuAdmin = {
+  id: string;
+  type?: "item";
+  label: string;
+  href: string;
+  icon: string;
+};
+
+type GrupoMenuAdmin = {
+  id: string;
+  type: "group" | "subgroup";
+  label: string;
+  icon: string;
+  items: EntradaMenuAdmin[];
+};
+
+type EntradaMenuAdmin = ItemMenuAdmin | GrupoMenuAdmin;
+
 /**
  * Dados do menu - estrutura hierárquica completa
  */
-export const menuAdmin = [
+export const menuAdmin: EntradaMenuAdmin[] = [
   // Item solto: Dashboard
   {
     id: "dashboard",
@@ -324,7 +351,7 @@ export function AdminSidebar() {
   /**
    * Renderiza um item simples de menu
    */
-  const renderItem = (item: any, level: number = 0) => {
+  const renderItem = (item: ItemMenuAdmin, level: number = 0) => {
     const Icon = iconMap[item.icon];
     const active = isActive(item.href);
 
@@ -333,19 +360,15 @@ export function AdminSidebar() {
         key={item.id}
         href={item.href}
         onClick={closeMobile}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${isCollapsed && level === 0 ? "justify-center" : ""} ${level > 0 ? "ml-4 text-sm" : ""} ${
+        aria-current={active ? "page" : undefined}
+        className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isCollapsed && level === 0 ? "justify-center" : ""} ${level > 0 ? "ml-4 text-sm" : ""} ${
           active
-            ? "border-l-2 border-blue-600 bg-blue-50 text-blue-600"
-            : "border-l-2 border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+            ? "bg-sidebar-accent text-sidebar-primary"
+            : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         } `}
         title={isCollapsed && level === 0 ? item.label : ""}
       >
-        {Icon && (
-          <Icon
-            size={20}
-            className={`shrink-0 ${active ? "text-blue-600" : "text-gray-500"}`}
-          />
-        )}
+        {Icon && <Icon size={20} className="shrink-0" />}
         {(!isCollapsed || level > 0) && (
           <span className="truncate font-medium">{item.label}</span>
         )}
@@ -356,30 +379,27 @@ export function AdminSidebar() {
   /**
    * Renderiza um grupo expansível
    */
-  const renderGroup = (group: any, level: number = 0) => {
+  const renderGroup = (group: GrupoMenuAdmin, level: number = 0) => {
     const Icon = iconMap[group.icon];
     const expanded = isGroupExpanded(group.id);
-    const hasActiveChild = group.items.some((child: any) =>
-      child.href
+    const hasActiveChild = group.items.some((child) =>
+      "href" in child
         ? isActive(child.href)
-        : child.items?.some((sub: any) => isActive(sub.href)),
+        : child.items.some((sub) => "href" in sub && isActive(sub.href)),
     );
 
     return (
       <div key={group.id} className={level > 0 ? "ml-2" : ""}>
         {/* Cabeçalho do grupo */}
         <button
+          type="button"
           onClick={() => toggleGroup(group.id)}
-          className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-gray-600 transition-all duration-200 hover:bg-gray-50 ${hasActiveChild ? "bg-blue-50/50 text-blue-600" : ""} ${isCollapsed && level === 0 ? "justify-center" : ""} `}
+          aria-expanded={expanded}
+          className={`focus-visible:ring-ring flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${hasActiveChild ? "bg-sidebar-accent text-sidebar-primary" : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"} ${isCollapsed && level === 0 ? "justify-center" : ""} `}
           title={isCollapsed && level === 0 ? group.label : ""}
         >
           <div className="flex items-center gap-3">
-            {Icon && (
-              <Icon
-                size={20}
-                className={`shrink-0 ${hasActiveChild ? "text-blue-600" : "text-gray-500"}`}
-              />
-            )}
+            {Icon && <Icon size={20} className="shrink-0" />}
             {(!isCollapsed || level > 0) && (
               <span className="truncate font-medium">{group.label}</span>
             )}
@@ -389,12 +409,12 @@ export function AdminSidebar() {
         </button>
 
         {/* Itens do grupo */}
-        {expanded && (
+        {expanded && (!isCollapsed || level > 0) && (
           <div className="mt-1 space-y-1">
-            {group.items.map((child: any) =>
-              child.type === "subgroup"
-                ? renderGroup(child, level + 1)
-                : renderItem(child, level + 1),
+            {group.items.map((child) =>
+              "href" in child
+                ? renderItem(child, level + 1)
+                : renderGroup(child, level + 1),
             )}
           </div>
         )}
@@ -404,43 +424,24 @@ export function AdminSidebar() {
 
   return (
     <>
-      {/* Botão hamburger MOBILE */}
-      {!isMobileOpen && (
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={openMobile}
-          className="fixed top-4 left-3 z-50 h-9 w-10 shadow-md lg:hidden"
-          aria-label="Abrir menu"
-        >
-          <Menu className="h-4 w-4" />
-        </Button>
-      )}
-
-      {/* Overlay mobile */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeMobile}
-        />
-      )}
-
-      {/* SIDEBAR */}
+      {/* A sidebar completa permanece disponível no desktop. */}
       <aside
-        className={`fixed z-40 min-h-screen border-r border-gray-200 bg-white transition-all duration-300 lg:relative ${isMobileOpen ? "left-0" : "-left-full lg:left-0"} ${isCollapsed ? "w-16" : "w-64"} `}
+        className={`bg-sidebar text-sidebar-foreground sticky top-0 hidden h-dvh shrink-0 border-r transition-[width] duration-300 lg:flex lg:flex-col ${isCollapsed ? "w-16" : "w-64"}`}
       >
         {/* Cabeçalho */}
         <div
-          className={`flex h-16 items-center border-b border-gray-200 p-4 ${isCollapsed ? "justify-center" : "justify-between"} `}
+          className={`flex h-16 shrink-0 items-center border-b p-4 ${isCollapsed ? "justify-center" : "justify-between"} `}
         >
           {!isCollapsed && (
-            <h1 className="truncate text-xl font-bold text-gray-800">Admin</h1>
+            <h1 className="text-foreground truncate text-xl font-bold">
+              Admin
+            </h1>
           )}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="h-8 w-8 shrink-0 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            className="text-muted-foreground h-9 w-9 shrink-0"
             aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
           >
             {isCollapsed ? (
@@ -452,12 +453,75 @@ export function AdminSidebar() {
         </div>
 
         {/* Menu */}
-        <nav className="max-h-[calc(100vh-4rem)] space-y-1 overflow-y-auto p-3">
+        <nav
+          aria-label="Navegação principal"
+          className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3"
+        >
           {menuAdmin.map((item) =>
-            item.type === "item" ? renderItem(item) : renderGroup(item),
+            "href" in item ? renderItem(item) : renderGroup(item),
           )}
         </nav>
       </aside>
+
+      {/* No celular, o item Mais abre a árvore completa em um drawer acessível. */}
+      <Sheet
+        open={isMobileOpen}
+        onOpenChange={(aberto) => (aberto ? openMobile() : closeMobile())}
+      >
+        <SheetContent
+          side="left"
+          className="w-[min(88vw,22rem)] gap-0 p-0 lg:hidden"
+        >
+          <SheetHeader className="border-b px-5 py-4 text-left">
+            <SheetTitle>Menu administrativo</SheetTitle>
+            <SheetDescription>
+              Acesse todos os módulos da loja.
+            </SheetDescription>
+          </SheetHeader>
+          <nav
+            aria-label="Todos os módulos"
+            className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+          >
+            {menuAdmin.map((item) =>
+              "href" in item ? renderItem(item) : renderGroup(item),
+            )}
+          </nav>
+        </SheetContent>
+      </Sheet>
+
+      <nav
+        aria-label="Navegação rápida"
+        className="bg-background/95 fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      >
+        {[
+          { label: "Início", href: "/admin", icon: LayoutDashboard },
+          { label: "Pedidos", href: "/admin/orders", icon: ShoppingCart },
+          { label: "Produtos", href: "/admin/products", icon: Package },
+        ].map((item) => {
+          const ativo = isActive(item.href);
+          const Icone = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={ativo ? "page" : undefined}
+              className={`focus-visible:ring-ring flex min-h-12 flex-col items-center justify-center gap-1 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none ${ativo ? "text-primary" : "text-muted-foreground"}`}
+            >
+              <Icone className="size-5" aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={openMobile}
+          aria-expanded={isMobileOpen}
+          className="text-muted-foreground focus-visible:ring-ring flex min-h-12 flex-col items-center justify-center gap-1 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none"
+        >
+          <MoreHorizontal className="size-5" aria-hidden="true" />
+          Mais
+        </button>
+      </nav>
     </>
   );
 }

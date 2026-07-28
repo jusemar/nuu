@@ -3,7 +3,7 @@
 
 import { Bell, LogOut, Search, User, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,25 @@ type AdminHeaderProps = {
 
 export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
+
+  const titulosPorRota: Array<[string, string]> = [
+    ["/admin/products", "Produtos"],
+    ["/admin/orders", "Pedidos"],
+    ["/admin/categories", "Categorias"],
+    ["/admin/fornecedores", "Fornecedores"],
+    ["/admin/marketing", "Marketing"],
+    ["/admin/logistica", "Logística"],
+    ["/admin/logistics", "Logística"],
+    ["/admin/configuracoes", "Configurações"],
+    ["/admin/precificacao", "Precificação"],
+    ["/admin/marcas", "Marcas"],
+    ["/admin/minha-conta", "Minha conta"],
+  ];
+  const titulo =
+    titulosPorRota.find(([rota]) => pathname.startsWith(rota))?.[1] ??
+    "Visão geral";
 
   async function sair() {
     await authClient.signOut();
@@ -33,15 +51,21 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-white px-4 py-4 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        {/* Search Bar - ajusta para mobile */}
-        <div className="ml-14 max-w-2xl flex-1 lg:ml-0">
+    <header className="bg-background/95 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur md:px-6">
+      <div className="mx-auto flex max-w-[120rem] flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 lg:hidden">
+          <p className="text-muted-foreground text-xs font-medium">Admin</p>
+          <h1 className="truncate text-base font-semibold">{titulo}</h1>
+        </div>
+
+        {/* A busca ocupa uma linha própria no mobile para não comprimir ações. */}
+        <div className="order-3 w-full lg:order-none lg:max-w-2xl lg:flex-1">
           <div className="relative">
             <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Pesquisar..."
-              className="w-full py-2 pr-4 pl-10 text-sm"
+              placeholder="Pesquisar no admin"
+              aria-label="Pesquisar no admin"
+              className="h-10 w-full pr-10 pl-10 text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -60,9 +84,14 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
         </div>
 
         {/* User Menu */}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <div className="relative">
-            <Button variant="ghost" size="icon" className="relative h-9 w-9">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative size-11"
+              aria-label="Notificações"
+            >
               <Bell className="h-5 w-5" />
               <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white bg-red-500"></span>
             </Button>
@@ -73,7 +102,7 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-auto gap-3 border-l py-1.5 pl-3"
+                className="h-11 gap-3 border-l py-1.5 pl-3"
                 aria-label="Abrir menu da minha conta"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 ring-1 ring-gray-200">
@@ -112,9 +141,6 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
           </DropdownMenu>
         </div>
       </div>
-
-      {/* Placeholder para espaço do hamburger em mobile */}
-      <div className="h-0 lg:hidden"></div>
     </header>
   );
 };

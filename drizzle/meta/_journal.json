@@ -267,6 +267,13 @@
       "when": 1784822400000,
       "tag": "0056_separar_forma_entrega_frete_gratis_promocional",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1784908800000,
+      "tag": "0057_add_cidade_preco_entrega_propria_produto",
+      "breakpoints": true
     }
   ]
 }

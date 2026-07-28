@@ -1,23 +1,25 @@
 "use server";
 
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
-import { dbTransacional } from "@/db/transaction";
 import {
   bairrosAvulsos,
-  regioBairros,
   productOwnDeliveryPrices,
+  regioBairros,
   shippingPendingNeighborhoods,
   shippingRegionCepRanges,
-  shippingRegionSlots,
   shippingRegions,
+  shippingRegionSlots,
   shippingZipAddresses,
 } from "@/db/table/logistics/entrega-propria";
+import { dbTransacional } from "@/db/transaction";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
+
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import type { ProductOwnDeliveryPriceFormItem } from "../types/shipping";
 import { agendaEntregaPropriaSchema } from "../schemas/agenda-entrega-propria.schema";
+import type { ProductOwnDeliveryPriceFormItem } from "../types/shipping";
 
 function revalidarEntregaPropria() {
   revalidatePath("/admin/logistics/entrega-propria");
@@ -592,6 +594,9 @@ function montarDestinoPrecoProduto(
       item.destinationType === "bairro-avulso" ? item.destinationId : null,
     cepEspecificoId:
       item.destinationType === "cep-especifico" ? item.destinationId : null,
+    ...(item.destinationType === "cidade"
+      ? { cityId: item.destinationId }
+      : {}),
     shippingPrice: item.shippingPrice,
     deliveryDeadline: item.deliveryDeadline?.trim() || null,
     isActive: item.isActive ?? true,

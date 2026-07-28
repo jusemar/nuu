@@ -1,20 +1,22 @@
 "use server";
 
+import { and, eq, inArray, sql } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { cities } from "@/db/table/logistics/cities/cities";
 import {
   bairrosAvulsos,
-  regioBairros,
+  cepsEspecificos,
   productOwnDeliveryPrices,
+  regioBairros,
   shippingPendingNeighborhoods,
   shippingRegionCepRanges,
   shippingRegions,
   shippingZipAddresses,
-  cepsEspecificos,
 } from "@/db/table/logistics/entrega-propria";
 import { states } from "@/db/table/logistics/states/states";
+
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
-import { and, eq, inArray, sql } from "drizzle-orm";
 
 export type EntregaPropriaEstadoResumo = {
   uf: string;
@@ -99,7 +101,7 @@ export type EntregaPropriaRegiaoDetalhe = EntregaPropriaRegiaoResumo & {
 };
 
 export type EntregaPropriaDestinoProduto = {
-  type: "region" | "bairro-avulso" | "cep-especifico";
+  type: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
   id: number;
   label: string;
   city: string;
@@ -108,7 +110,7 @@ export type EntregaPropriaDestinoProduto = {
 
 export type EntregaPropriaPrecoProduto = {
   id: number;
-  destinationType: "region" | "bairro-avulso" | "cep-especifico";
+  destinationType: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
   destinationId: number;
   destinationLabel: string;
   city: string;
@@ -500,7 +502,11 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
 export async function listarDestinosEntregaPropriaProduto(): Promise<
   EntregaPropriaDestinoProduto[]
 > {
-  const [regioes, bairros, ceps] = await Promise.all([
+  const [cidades, regioes, bairros, ceps] = await Promise.all([
+    db.query.cities.findMany({
+      where: eq(cities.isActive, true),
+      orderBy: (cities, { asc }) => [asc(cities.stateUf), asc(cities.name)],
+    }),
     db.query.shippingRegions.findMany({
       orderBy: (shippingRegions, { asc }) => [
         asc(shippingRegions.state),
@@ -525,6 +531,13 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
   ]);
 
   return [
+    ...cidades.map((cidade) => ({
+      type: "cidade" as const,
+      id: cidade.id,
+      label: cidade.name,
+      city: cidade.name,
+      state: cidade.stateUf,
+    })),
     ...regioes.map((regiao) => ({
       type: "region" as const,
       id: regiao.id,
@@ -552,51 +565,100 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
 export async function listarPrecosEntregaPropriaProduto(
   productId: string,
 ): Promise<EntregaPropriaPrecoProduto[]> {
-  const precos = await db.query.productOwnDeliveryPrices.findMany({
-    where: eq(productOwnDeliveryPrices.productId, productId),
-    orderBy: (productOwnDeliveryPrices, { asc }) => [
-      asc(productOwnDeliveryPrices.destinationType),
-      asc(productOwnDeliveryPrices.id),
-    ],
-    with: {
-      region: true,
-      bairroAvulso: true,
-      cepEspecifico: true,
-    },
-  });
+  const resultadoColunaCidade = await db.execute<{ existe: boolean }>(sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'product_own_delivery_prices'
+        AND column_name = 'city_id'
+    ) AS existe
+  `);
+  const possuiColunaCidade = Boolean(resultadoColunaCidade.rows[0]?.existe);
+
+  // Durante uma implantação gradual, o admin continua lendo região, bairro e
+  // CEP mesmo antes da migration aditiva de cidade chegar ao banco.
+  const precos = possuiColunaCidade
+    ? await db.query.productOwnDeliveryPrices.findMany({
+        where: eq(productOwnDeliveryPrices.productId, productId),
+        orderBy: (productOwnDeliveryPrices, { asc }) => [
+          asc(productOwnDeliveryPrices.destinationType),
+          asc(productOwnDeliveryPrices.id),
+        ],
+        with: {
+          region: true,
+          bairroAvulso: true,
+          cepEspecifico: true,
+          cidade: true,
+        },
+      })
+    : (
+        await db.query.productOwnDeliveryPrices.findMany({
+          columns: { cityId: false },
+          where: eq(productOwnDeliveryPrices.productId, productId),
+          orderBy: (productOwnDeliveryPrices, { asc }) => [
+            asc(productOwnDeliveryPrices.destinationType),
+            asc(productOwnDeliveryPrices.id),
+          ],
+          with: {
+            region: true,
+            bairroAvulso: true,
+            cepEspecifico: true,
+          },
+        })
+      ).map((preco) => ({
+        ...preco,
+        cityId: null,
+        cidade: null,
+      }));
 
   return precos.map((preco) => {
+    const cidadeRelacionada = preco.cidade;
+    const cidadeId = preco.cityId;
     const destino =
       preco.destinationType === "region"
         ? preco.region
         : preco.destinationType === "bairro-avulso"
           ? preco.bairroAvulso
-          : preco.cepEspecifico;
+          : preco.destinationType === "cidade"
+            ? cidadeRelacionada
+            : preco.cepEspecifico;
 
     const destinationId =
       preco.destinationType === "region"
         ? preco.regionId
         : preco.destinationType === "bairro-avulso"
           ? preco.bairroAvulsoId
-          : preco.cepEspecificoId;
+          : preco.destinationType === "cidade"
+            ? cidadeId
+            : preco.cepEspecificoId;
 
     return {
       id: preco.id,
       destinationType: preco.destinationType as
         | "region"
         | "bairro-avulso"
-        | "cep-especifico",
+        | "cep-especifico"
+        | "cidade",
       destinationId: destinationId ?? 0,
       destinationLabel:
-        preco.destinationType === "cep-especifico" && preco.cepEspecifico
+        preco.destinationType === "cidade" && cidadeRelacionada
+          ? cidadeRelacionada.name
+          : preco.destinationType === "cep-especifico" && preco.cepEspecifico
           ? `${preco.cepEspecifico.cep.slice(0, 5)}-${preco.cepEspecifico.cep.slice(5)} - ${preco.cepEspecifico.neighborhood}`
           : (destino as { name?: string; neighborhood?: string } | null)
               ?.name ||
             (destino as { name?: string; neighborhood?: string } | null)
               ?.neighborhood ||
             "Destino removido",
-      city: (destino as { city?: string } | null)?.city || "",
-      state: (destino as { state?: string } | null)?.state || "",
+      city:
+        preco.destinationType === "cidade" && cidadeRelacionada
+          ? cidadeRelacionada.name
+          : (destino as { city?: string } | null)?.city || "",
+      state:
+        preco.destinationType === "cidade" && cidadeRelacionada
+          ? cidadeRelacionada.stateUf
+          : (destino as { state?: string } | null)?.state || "",
       shippingPrice: preco.shippingPrice,
       deliveryDeadline: preco.deliveryDeadline,
       isActive: preco.isActive,

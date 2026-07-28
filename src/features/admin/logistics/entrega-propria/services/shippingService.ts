@@ -12,34 +12,35 @@
  * A diretiva 'use server' garante execução no servidor.
  */
 
+import { and, eq, gte, ilike, inArray, lte, or } from "drizzle-orm";
+
 import { db } from "@/db/connection";
-import { states } from "@/db/table/logistics/states/states";
 import { cities } from "@/db/table/logistics/cities/cities";
-import {
-  shippingRegions,
-  regioBairros,
-  shippingRegionCepRanges,
-  bairrosAvulsos,
-  cepsEspecificos,
-  shippingRegionSlots,
-  shippingBairroAvulsoSlots,
-  productOwnDeliveryPrices,
-} from "@/db/table/logistics/entrega-propria";
-import { eq, and, or, inArray, lte, gte } from "drizzle-orm";
 import type {
-  ShippingRegion,
-  RegioBairro,
   BairroAvulso,
   CepEspecifico,
-  ShippingRegionSlot,
-  ShippingBairroAvulsoSlot,
-  NewShippingRegion,
-  NewRegioBairro,
   NewBairroAvulso,
   NewCepEspecifico,
-  NewShippingRegionSlot,
+  NewRegioBairro,
   NewShippingBairroAvulsoSlot,
+  NewShippingRegion,
+  NewShippingRegionSlot,
+  RegioBairro,
+  ShippingBairroAvulsoSlot,
+  ShippingRegion,
+  ShippingRegionSlot,
 } from "@/db/table/logistics/entrega-propria";
+import {
+  bairrosAvulsos,
+  cepsEspecificos,
+  productOwnDeliveryPrices,
+  regioBairros,
+  shippingBairroAvulsoSlots,
+  shippingRegionCepRanges,
+  shippingRegions,
+  shippingRegionSlots,
+} from "@/db/table/logistics/entrega-propria";
+import { states } from "@/db/table/logistics/states/states";
 import {
   calcularPromessaEntregaPropria,
   type PromessaEntregaPropria,
@@ -255,7 +256,7 @@ export async function getShippingPrice(
 
 async function buscarPrecoProdutoDestino(params: {
   productId: string;
-  destinationType: "region" | "bairro-avulso" | "cep-especifico";
+  destinationType: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
   destinationId: number;
 }) {
   const baseWhere = [
@@ -278,6 +279,10 @@ async function buscarPrecoProdutoDestino(params: {
     baseWhere.push(
       eq(productOwnDeliveryPrices.cepEspecificoId, params.destinationId),
     );
+  }
+
+  if (params.destinationType === "cidade") {
+    baseWhere.push(eq(productOwnDeliveryPrices.cityId, params.destinationId));
   }
 
   return db.query.productOwnDeliveryPrices.findFirst({
@@ -323,7 +328,7 @@ export async function getProductOwnDeliveryPrice(
     }),
     db.query.cities.findFirst({
       where: and(
-        eq(cities.name, city),
+        ilike(cities.name, city),
         eq(cities.stateUf, state),
         eq(cities.isActive, true),
       ),
@@ -345,6 +350,13 @@ export async function getProductOwnDeliveryPrice(
       pendingEligible: true,
     };
   }
+
+  const buscarPrecoCidade = () =>
+    buscarPrecoProdutoDestino({
+      productId,
+      destinationType: "cidade",
+      destinationId: cidadeAtiva.id,
+    });
 
   const faixaRegiao = await db.query.shippingRegionCepRanges.findFirst({
     where: and(
@@ -394,6 +406,42 @@ export async function getProductOwnDeliveryPrice(
     }
   }
 
+  // Bairro avulso é mais específico que a região e só é válido quando já
+  // existe cobertura ativa para aquele endereço.
+  const bairroAvulso = await db.query.bairrosAvulsos.findFirst({
+    where: and(
+      ilike(bairrosAvulsos.neighborhood, neighborhood),
+      ilike(bairrosAvulsos.city, city),
+      eq(bairrosAvulsos.state, state),
+      eq(bairrosAvulsos.isActive, true),
+    ),
+  });
+
+  if (bairroAvulso) {
+    const preco = await buscarPrecoProdutoDestino({
+      productId,
+      destinationType: "bairro-avulso",
+      destinationId: bairroAvulso.id,
+    });
+
+    if (preco) {
+      return {
+        found: true,
+        level: "bairro-avulso",
+        shippingPrice: preco.shippingPrice,
+        deliveryDeadline: preco.deliveryDeadline ?? null,
+        promessaEntrega: null,
+        message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
+        bairro: {
+          id: bairroAvulso.id,
+          neighborhood: bairroAvulso.neighborhood,
+          city: bairroAvulso.city,
+          state: bairroAvulso.state,
+        },
+      };
+    }
+  }
+
   if (faixaRegiaoCompativel) {
     const preco = await buscarPrecoProdutoDestino({
       productId,
@@ -421,6 +469,20 @@ export async function getProductOwnDeliveryPrice(
       };
     }
 
+    const precoCidade = await buscarPrecoCidade();
+    if (precoCidade) {
+      const promessa = await calcularPromessaDaRegiao(faixaRegiaoCompativel.region.id);
+      return {
+        found: true,
+        level: "cidade",
+        shippingPrice: precoCidade.shippingPrice,
+        deliveryDeadline: promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
+        promessaEntrega: promessa,
+        message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
+        city,
+        state,
+      };
+    }
     return { found: false, message: "Consulte o vendedor" };
   }
 
@@ -481,36 +543,36 @@ export async function getProductOwnDeliveryPrice(
   }
 
   if (regioesCompativeis.length > 0) {
+    const precoCidade = await buscarPrecoCidade();
+    if (precoCidade) {
+      const promessa = await calcularPromessaDaRegiao(regioesCompativeis[0].regiao.id);
+      return {
+        found: true,
+        level: "cidade",
+        shippingPrice: precoCidade.shippingPrice,
+        deliveryDeadline: promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
+        promessaEntrega: promessa,
+        message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
+        city,
+        state,
+      };
+    }
     return { found: false, message: "Consulte o vendedor" };
   }
 
-  const bairroAvulso = await db.query.bairrosAvulsos.findFirst({
-    where: and(
-      eq(bairrosAvulsos.neighborhood, neighborhood),
-      eq(bairrosAvulsos.city, city),
-      eq(bairrosAvulsos.state, state),
-      eq(bairrosAvulsos.isActive, true),
-    ),
-  });
-
   if (bairroAvulso) {
-    const preco = await buscarPrecoProdutoDestino({
-      productId,
-      destinationType: "bairro-avulso",
-      destinationId: bairroAvulso.id,
-    });
-
-    if (!preco) {
+    const precoCidade = await buscarPrecoCidade();
+    if (!precoCidade) {
       return { found: false, message: "Consulte o vendedor" };
     }
 
     return {
       found: true,
-      level: "bairro-avulso",
-      shippingPrice: preco.shippingPrice,
-      deliveryDeadline: preco.deliveryDeadline ?? null,
+      level: "cidade",
+      shippingPrice: precoCidade.shippingPrice,
+      deliveryDeadline: precoCidade.deliveryDeadline ?? null,
       promessaEntrega: null,
-      message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
+      message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
       bairro: {
         id: bairroAvulso.id,
         neighborhood: bairroAvulso.neighborhood,
@@ -620,6 +682,12 @@ export async function getProductsOwnDeliveryForecasts(
           eq(productOwnDeliveryPrices.bairroAvulsoId, bairroAvulso.id),
         )
       : undefined,
+    cepEspecifico || regionIds.length > 0 || bairroAvulso
+      ? and(
+          eq(productOwnDeliveryPrices.destinationType, "cidade"),
+          eq(productOwnDeliveryPrices.cityId, cidadeAtiva.id),
+        )
+      : undefined,
   ].filter((filtro) => filtro !== undefined);
 
   if (filtrosDestino.length === 0) return {};
@@ -683,13 +751,19 @@ export async function getProductsOwnDeliveryForecasts(
               preco.bairroAvulsoId === bairroAvulso.id,
           )
         : null;
+      const precoCidade = precos.find(
+        (preco) =>
+          preco.productId === productId &&
+          preco.destinationType === "cidade" &&
+          preco.cityId === cidadeAtiva.id,
+      );
 
       // Mantém a mesma prioridade do fluxo unitário. Faixa regional encontrada
       // sem preço não cai para bairro ou outra modalidade.
       const regiaoPromessaId = precoCep
         ? faixaCompativel?.region.id
-        : precoRegiao?.regionId;
-      const precoValido = precoCep ?? precoRegiao ?? precoBairro;
+        : precoRegiao?.regionId ?? (precoCidade ? regionIds[0] : undefined);
+      const precoValido = precoCep ?? precoBairro ?? precoRegiao ?? precoCidade;
       const promessa = regiaoPromessaId
         ? promessasPorRegiao.get(regiaoPromessaId)
         : null;
@@ -1116,7 +1190,7 @@ export async function deleteCepEspecifico(id: string) {
 export type ShippingPriceResult =
   | {
       found: true;
-      level: "cep-especifico" | "regiao" | "bairro-avulso";
+      level: "cep-especifico" | "regiao" | "bairro-avulso" | "cidade";
       shippingPrice: number;
       deliveryDeadline?: string | null;
       promessaEntrega?: PromessaEntregaPropria | null;

@@ -9,7 +9,9 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
 import { productTable } from "../../products/products";
+import { cities } from "../cities/cities";
 import {
   bairrosAvulsos,
   cepsEspecificos,
@@ -33,6 +35,10 @@ export const productOwnDeliveryPrices = pgTable("product_own_delivery_prices", {
     () => cepsEspecificos.id,
     { onDelete: "cascade" },
   ),
+  /** Regra de preço para uma cidade já coberta pela logística. */
+  cityId: integer("city_id").references(() => cities.id, {
+    onDelete: "cascade",
+  }),
   shippingPrice: integer("shipping_price").notNull(),
   deliveryDeadline: text("delivery_deadline"),
   isActive: boolean("is_active").default(true).notNull(),
@@ -58,6 +64,10 @@ export const productOwnDeliveryPricesRelations = relations(
     cepEspecifico: one(cepsEspecificos, {
       fields: [productOwnDeliveryPrices.cepEspecificoId],
       references: [cepsEspecificos.id],
+    }),
+    cidade: one(cities, {
+      fields: [productOwnDeliveryPrices.cityId],
+      references: [cities.id],
     }),
   }),
 );

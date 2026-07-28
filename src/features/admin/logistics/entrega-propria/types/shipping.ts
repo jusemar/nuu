@@ -5,21 +5,21 @@
  */
 
 import type {
-  ShippingRegion,
-  RegioBairro,
   BairroAvulso,
   CepEspecifico,
-  ShippingRegionSlot,
+  RegioBairro,
   ShippingBairroAvulsoSlot,
+  ShippingRegion,
+  ShippingRegionSlot,
 } from "@/db/table/logistics/entrega-propria";
 
 export type {
-  ShippingRegion,
-  RegioBairro,
   BairroAvulso,
   CepEspecifico,
-  ShippingRegionSlot,
+  RegioBairro,
   ShippingBairroAvulsoSlot,
+  ShippingRegion,
+  ShippingRegionSlot,
 };
 
 export type RegioFieldState =
@@ -84,7 +84,8 @@ export type ShippingTab =
 export type OwnDeliveryDestinationType =
   | "region"
   | "bairro-avulso"
-  | "cep-especifico";
+  | "cep-especifico"
+  | "cidade";
 
 export type ProductOwnDeliveryPriceFormItem = {
   destinationType: OwnDeliveryDestinationType;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Truck } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +23,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import {
+  type EntregaPropriaDestinoProduto,
   listarDestinosEntregaPropriaProduto,
   listarPrecosEntregaPropriaProduto,
-  type EntregaPropriaDestinoProduto,
 } from "../../queries/admin-entrega-propria.queries";
 import type {
   OwnDeliveryDestinationType,
@@ -43,6 +45,7 @@ function formatarTipo(type: OwnDeliveryDestinationType) {
     region: "Regiao",
     "bairro-avulso": "Bairro avulso",
     "cep-especifico": "CEP especifico",
+    cidade: "Cidade",
   };
 
   return labels[type];

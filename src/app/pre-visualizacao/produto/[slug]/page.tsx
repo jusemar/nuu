@@ -110,7 +110,7 @@ export default async function PaginaPreVisualizacaoProduto({
         precosCalculadosPorModalidade={precosPorModalidade}
         precosCalculadosPorVariante={precosPorVariante}
         modoPreVisualizacao
-        produtosRelacionadosPrevisualizacao={produtosRelacionados}
+        produtosRelacionados={produtosRelacionados}
       />
     </div>
   );

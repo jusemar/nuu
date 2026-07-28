@@ -13,7 +13,10 @@ type Props = {
  * Blocos demonstrativos isolados da pré-visualização. Não calculam preços,
  * persistem dados ou disparam ações do carrinho.
  */
-export function CardAssistenteVirtualPrevisualizacao({ nomeProduto }: Props) {
+export function CardAssistenteVirtualPrevisualizacao({
+  nomeProduto,
+  modoPreVisualizacao = true,
+}: Props & { modoPreVisualizacao?: boolean }) {
   return (
     <section
       aria-labelledby="titulo-assistente-virtual-pdp"
@@ -53,11 +56,9 @@ export function CardAssistenteVirtualPrevisualizacao({ nomeProduto }: Props) {
         type="button"
         className="mt-3 min-h-11 w-full"
         aria-label={`Conversar com o assistente virtual sobre ${nomeProduto}`}
-        onClick={() => {
-          // Mantém o fluxo visual já existente até a integração real do assistente.
-        }}
+        disabled={!modoPreVisualizacao}
       >
-        Conversar com o assistente
+        {modoPreVisualizacao ? "Conversar com o assistente" : "Falar com o assistente — em breve"}
       </Button>
     </section>
   );

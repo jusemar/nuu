@@ -46,9 +46,8 @@ import {
   BeneficiosProdutoPdp,
 } from "./beneficios-produto-pdp";
 import { BuyBox } from "./buy-box";
-import { LayoutProdutoAprovado } from "./layout-produto-aprovado";
+import { PaginaProdutoAprovada } from "./pagina-produto-aprovada";
 import { PaymentModal } from "./payment-modal";
-import { PaginaProdutoPrevisualizacao } from "./pre-visualizacao/pagina-produto-previsualizacao";
 import { PricingModalities } from "./PricingModalities";
 import { ProductGallery } from "./product-gallery";
 import { DescricaoCurtaProdutoPdp, ProductInfo } from "./product-info";
@@ -101,8 +100,9 @@ interface ProductDetailProps {
   precosCalculadosPorVariante: PrecosProdutoPorModalidade;
   /** Mantém a PDP pública intacta enquanto a nova composição é validada. */
   modoPreVisualizacao?: boolean;
+  /** Legado temporário da composição anterior, preservado sem uso no layout aprovado. */
   conteudoComplementar?: ReactNode;
-  produtosRelacionadosPrevisualizacao?: ProdutoRelacionadoPdp[];
+  produtosRelacionados?: ProdutoRelacionadoPdp[];
 }
 
 // ==========================================
@@ -116,7 +116,7 @@ export function ProductDetail({
   precosCalculadosPorVariante,
   modoPreVisualizacao = false,
   conteudoComplementar,
-  produtosRelacionadosPrevisualizacao,
+  produtosRelacionados,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
@@ -450,10 +450,11 @@ export function ProductDetail({
 
   if (modoPreVisualizacao) {
     return (
-      <PaginaProdutoPrevisualizacao
+      <PaginaProdutoAprovada
         nomeProduto={product.name}
         imagemProduto={galleryImages[0]}
         breadcrumbCategorias={breadcrumbCategorias}
+        modoPreVisualizacao
         galeria={
           <ProductGallery
             imagens={galleryImages}
@@ -549,7 +550,7 @@ export function ProductDetail({
           />
         }
         abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
-        produtosRelacionados={produtosRelacionadosPrevisualizacao}
+        produtosRelacionados={produtosRelacionados}
         modalPagamento={
           <PaymentModal
             isOpen={modalPgto}
@@ -567,9 +568,19 @@ export function ProductDetail({
   }
 
   return (
-    <LayoutProdutoAprovado
+    <PaginaProdutoAprovada
       nomeProduto={product.name}
+      imagemProduto={galleryImages[0]}
       breadcrumbCategorias={breadcrumbCategorias}
+      demaisInformacoesCompra={
+        <BeneficiosProdutoPdp beneficios={beneficiosConfiancaCompraPdp} />
+      }
+      descricaoCurta={
+        <DescricaoCurtaProdutoPdp
+          descricao={productShortDescription}
+          modoPreVisualizacao={true}
+        />
+      }
       galeria={
         <ProductGallery
           imagens={galleryImages}
@@ -601,6 +612,7 @@ export function ProductDetail({
           selectedVariant={selectedVariant}
           onSelectVariant={setSelectedVariant}
           modoPreVisualizacao={true}
+          mostrarDescricao={false}
         />
       }
       caixaCompra={
@@ -637,6 +649,7 @@ export function ProductDetail({
           onTrocarModalidade={selecionarModalidade}
           modoPreVisualizacao={true}
           mostrarFreteDemonstrativo={false}
+          mostrarBeneficiosConfianca={false}
           seletorModalidades={
             product.productKind !== "variable" && modalidadesDisponiveis.length > 0 ? (
               <PricingModalities
@@ -650,7 +663,7 @@ export function ProductDetail({
         />
       }
       abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
-      conteudoAposProduto={conteudoComplementar}
+      produtosRelacionados={produtosRelacionados}
       modalPagamento={
         <PaymentModal
           isOpen={modalPgto}

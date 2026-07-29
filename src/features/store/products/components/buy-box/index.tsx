@@ -115,6 +115,8 @@ interface BuyBoxProps {
   /** Autoriza os dados demonstrativos exclusivos do laboratório visual. */
   mostrarFreteDemonstrativo?: boolean;
   mostrarBeneficiosConfianca?: boolean;
+  /** Mantém o banner completo quando não existe uma comunicação promocional externa. */
+  mostrarBannerPromocaoNoPreco?: boolean;
   seletorModalidades?: ReactNode;
 }
 
@@ -148,7 +150,7 @@ function PrecoFretePromocionalPdp({
   freteGratisPromocionalAplicado?: boolean | null;
   rotuloGratis?: string;
 }) {
-  if (freteGratisPromocionalAplicado) {
+  if (freteGratisPromocionalAplicado || valorEmCentavos === 0) {
     return (
       <div className="text-right text-xs font-bold">
         {valorOriginalEmCentavos ? (
@@ -202,6 +204,7 @@ export function BuyBox({
   modoPreVisualizacao = false,
   mostrarFreteDemonstrativo = false,
   mostrarBeneficiosConfianca = true,
+  mostrarBannerPromocaoNoPreco = true,
   seletorModalidades,
 }: BuyBoxProps) {
   const { cep: cepContextoLogistico } = useContextoCepLogistica();
@@ -267,6 +270,11 @@ export function BuyBox({
       ? opcoesEntregaCotadas.find(
           (opcao) => opcao.identificador === transportadoraSelecionada,
         )
+      : null;
+  const opcaoProgramadaSelecionada =
+    opcaoFrenetSelecionada?.provedor === "entrega-propria" &&
+    opcaoFrenetSelecionada.servico === "entrega-programada"
+      ? opcaoFrenetSelecionada
       : null;
   const opcaoEntregaPropriaCotada = opcoesEntregaCotadas.find(
     (opcao) => opcao.provedor === "entrega-propria",
@@ -400,10 +408,22 @@ export function BuyBox({
     ) {
       return {
         id: "entrega-propria" as const,
-        nome: "Entrega Própria",
+        nome: "Entrega rápida",
         prazo: prazoEntregaPropria,
         valorEmCentavos: resultadoDoCepAtual.shippingPrice,
         cep,
+        servico: "entrega-propria-atual",
+      };
+    }
+
+    if (opcaoProgramadaSelecionada) {
+      return {
+        id: "entrega-propria" as const,
+        nome: opcaoProgramadaSelecionada.nome,
+        prazo: opcaoProgramadaSelecionada.prazo || "Consulte prazo",
+        valorEmCentavos: opcaoProgramadaSelecionada.valorEmCentavos,
+        cep,
+        servico: opcaoProgramadaSelecionada.servico,
       };
     }
 
@@ -489,7 +509,7 @@ export function BuyBox({
             {selectedVariantLabel}
           </div>
         ) : null}
-        {promocaoVisual?.ativa ? (
+        {promocaoVisual?.ativa && mostrarBannerPromocaoNoPreco ? (
           <div
             className={`mb-3 rounded-2xl border p-3 ${
               modoPreVisualizacao
@@ -530,6 +550,22 @@ export function BuyBox({
             >
               Economia de {promocaoVisual.economiaFormatada}
             </div>
+          </div>
+        ) : promocaoVisual?.ativa ? (
+          <div
+            data-resumo-financeiro-promocao="true"
+            className="text-text-hint mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs"
+          >
+            <span>
+              De{" "}
+              <span className="font-semibold line-through">
+                {promocaoVisual.precoOriginalFormatado}
+              </span>
+            </span>
+            <span className="text-accent-brand-dark font-semibold">
+              {promocaoVisual.rotuloDesconto} · economia de{" "}
+              {promocaoVisual.economiaFormatada}
+            </span>
           </div>
         ) : (
           <div className="text-text-hint mb-1.5 text-xs">
@@ -794,7 +830,7 @@ export function BuyBox({
                   ) : transportadoraSelecionada === "entrega-propria" ? (
                     <div className="border-primary bg-primary-light relative flex items-center gap-2 rounded-lg border-[1.5px] p-2.5">
                       <div className="text-text-primary flex-1 text-xs font-semibold">
-                        Entrega Própria
+                        Entrega rápida
                       </div>
                       <PrevisaoEntregaPropriaPdp
                         resultado={resultadoDoCepAtual}
@@ -809,7 +845,7 @@ export function BuyBox({
                           freteGratisPromocionalAplicado={
                             resultadoDoCepAtual.freteGratisPromocionalAplicado
                           }
-                          rotuloGratis="Entrega Própria — GRÁTIS"
+                          rotuloGratis="Entrega rápida — GRÁTIS"
                         />
                       )}
                       <button
@@ -909,7 +945,7 @@ export function BuyBox({
                           className="accent-primary row-span-2 mt-0.5 flex-shrink-0"
                         />
                         <div className="text-text-primary min-w-0 text-xs font-medium">
-                          <p>Entrega Própria</p>
+                          <p>Entrega rápida</p>
                           <div className="text-text-hint mt-0.5 text-[11px] leading-snug">
                             <PrevisaoEntregaPropriaPdp
                               resultado={resultadoDoCepAtual}
@@ -926,7 +962,7 @@ export function BuyBox({
                             freteGratisPromocionalAplicado={
                               resultadoDoCepAtual.freteGratisPromocionalAplicado
                             }
-                            rotuloGratis="Entrega Própria — GRÁTIS"
+                            rotuloGratis="Entrega rápida — GRÁTIS"
                           />
                         </div>
                       </label>
@@ -940,7 +976,11 @@ export function BuyBox({
                     ))}
 
                   {opcoesEntregaCotadas
-                    .filter((opcao) => opcao.provedor === "frenet")
+                    .filter(
+                      (opcao) =>
+                        opcao.provedor === "frenet" ||
+                        opcao.servico === "entrega-programada",
+                    )
                     .map((opcao) => (
                       <label
                         key={opcao.identificador}

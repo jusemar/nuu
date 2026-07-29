@@ -117,6 +117,9 @@ export type EntregaPropriaPrecoProduto = {
   state: string;
   shippingPrice: number;
   deliveryDeadline: string | null;
+  scheduledDeliveryActive: boolean;
+  scheduledDeliveryMinDays: number | null;
+  scheduledDeliveryPrice: number | null;
   isActive: boolean;
 };
 
@@ -661,6 +664,9 @@ export async function listarPrecosEntregaPropriaProduto(
           : (destino as { state?: string } | null)?.state || "",
       shippingPrice: preco.shippingPrice,
       deliveryDeadline: preco.deliveryDeadline,
+      scheduledDeliveryActive: preco.scheduledDeliveryActive,
+      scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,
+      scheduledDeliveryPrice: preco.scheduledDeliveryPrice,
       isActive: preco.isActive,
     };
   });

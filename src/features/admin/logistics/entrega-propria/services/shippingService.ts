@@ -42,6 +42,10 @@ import {
 } from "@/db/table/logistics/entrega-propria";
 import { states } from "@/db/table/logistics/states/states";
 import {
+  calcularPromessaEntregaProgramada,
+  type PromessaEntregaProgramada,
+} from "@/features/logistica/lib/entrega-propria/calcular-promessa-entrega-programada";
+import {
   calcularPromessaEntregaPropria,
   type PromessaEntregaPropria,
 } from "@/features/logistica/lib/entrega-propria/calcular-promessa-entrega-propria";
@@ -313,6 +317,43 @@ async function calcularPromessaDaRegiao(regiaoId: number) {
   });
 }
 
+async function calcularProgramadaDaRegra(
+  regra: typeof productOwnDeliveryPrices.$inferSelect,
+  regiaoId: number,
+) {
+  if (
+    !regra.scheduledDeliveryActive ||
+    regra.scheduledDeliveryMinDays === null ||
+    regra.scheduledDeliveryPrice === null
+  ) {
+    return null;
+  }
+
+  const regiao = await db.query.shippingRegions.findFirst({
+    where: eq(shippingRegions.id, regiaoId),
+    with: { slots: true },
+  });
+  if (!regiao) return null;
+
+  const promessa = calcularPromessaEntregaProgramada({
+    agenda: {
+      ativa: regiao.agendaAtiva,
+      diasDaSemana: regiao.slots
+        .filter((slot) => slot.isActive)
+        .map((slot) => slot.dayOfWeek),
+      horarioCorte: regiao.horarioCorte,
+    },
+    prazoMinimoEmDiasCorridos: regra.scheduledDeliveryMinDays,
+  });
+
+  return promessa
+    ? {
+        valorEmCentavos: regra.scheduledDeliveryPrice,
+        promessa,
+      }
+    : null;
+}
+
 export async function getProductOwnDeliveryPrice(
   productId: string,
   cep: string,
@@ -391,12 +432,19 @@ export async function getProductOwnDeliveryPrice(
       const promessa = faixaRegiaoCompativel
         ? await calcularPromessaDaRegiao(faixaRegiaoCompativel.region.id)
         : null;
+      const entregaProgramada = faixaRegiaoCompativel
+        ? await calcularProgramadaDaRegra(
+            preco,
+            faixaRegiaoCompativel.region.id,
+          )
+        : null;
       return {
         found: true,
         level: "cep-especifico",
         shippingPrice: preco.shippingPrice,
         deliveryDeadline: promessa?.texto ?? preco.deliveryDeadline ?? null,
         promessaEntrega: promessa,
+        entregaProgramada,
         message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
         cep: cepEspecifico.cep,
         neighborhood: cepEspecifico.neighborhood,
@@ -453,12 +501,17 @@ export async function getProductOwnDeliveryPrice(
       const promessa = await calcularPromessaDaRegiao(
         faixaRegiaoCompativel.region.id,
       );
+      const entregaProgramada = await calcularProgramadaDaRegra(
+        preco,
+        faixaRegiaoCompativel.region.id,
+      );
       return {
         found: true,
         level: "regiao",
         shippingPrice: preco.shippingPrice,
         deliveryDeadline: promessa?.texto ?? preco.deliveryDeadline ?? null,
         promessaEntrega: promessa,
+        entregaProgramada,
         message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
         region: {
           id: faixaRegiaoCompativel.region.id,
@@ -472,12 +525,17 @@ export async function getProductOwnDeliveryPrice(
     const precoCidade = await buscarPrecoCidade();
     if (precoCidade) {
       const promessa = await calcularPromessaDaRegiao(faixaRegiaoCompativel.region.id);
+      const entregaProgramada = await calcularProgramadaDaRegra(
+        precoCidade,
+        faixaRegiaoCompativel.region.id,
+      );
       return {
         found: true,
         level: "cidade",
         shippingPrice: precoCidade.shippingPrice,
         deliveryDeadline: promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
         promessaEntrega: promessa,
+        entregaProgramada,
         message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
         city,
         state,
@@ -524,12 +582,17 @@ export async function getProductOwnDeliveryPrice(
         const promessa = await calcularPromessaDaRegiao(
           regiaoComPreco.regiao.id,
         );
+        const entregaProgramada = await calcularProgramadaDaRegra(
+          preco,
+          regiaoComPreco.regiao.id,
+        );
         return {
           found: true,
           level: "regiao",
           shippingPrice: preco.shippingPrice,
           deliveryDeadline: promessa?.texto ?? preco.deliveryDeadline ?? null,
           promessaEntrega: promessa,
+          entregaProgramada,
           message: `Entrega própria: R$ ${(preco.shippingPrice / 100).toFixed(2)}`,
           region: {
             id: regiaoComPreco.regiao.id,
@@ -546,12 +609,17 @@ export async function getProductOwnDeliveryPrice(
     const precoCidade = await buscarPrecoCidade();
     if (precoCidade) {
       const promessa = await calcularPromessaDaRegiao(regioesCompativeis[0].regiao.id);
+      const entregaProgramada = await calcularProgramadaDaRegra(
+        precoCidade,
+        regioesCompativeis[0].regiao.id,
+      );
       return {
         found: true,
         level: "cidade",
         shippingPrice: precoCidade.shippingPrice,
         deliveryDeadline: promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
         promessaEntrega: promessa,
+        entregaProgramada,
         message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
         city,
         state,
@@ -1194,6 +1262,10 @@ export type ShippingPriceResult =
       shippingPrice: number;
       deliveryDeadline?: string | null;
       promessaEntrega?: PromessaEntregaPropria | null;
+      entregaProgramada?: {
+        valorEmCentavos: number;
+        promessa: PromessaEntregaProgramada;
+      } | null;
       message: string;
       cep?: string;
       neighborhood?: string;

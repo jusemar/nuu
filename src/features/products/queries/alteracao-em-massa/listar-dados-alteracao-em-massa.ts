@@ -7,6 +7,7 @@ import {
   categoryTable,
   marcaTable,
   modelosRetiradaTable,
+  productOwnDeliveryPrices,
   productPricingTable,
   productTable,
   productVariantTable,
@@ -193,7 +194,7 @@ export async function listarDadosAlteracaoEmMassa(
     }
 
     const idsProdutos = produtos.map((produto) => produto.id);
-    const [precos, variantes] = idsProdutos.length
+    const [precos, variantes, precosEntregaPropria] = idsProdutos.length
       ? await Promise.all([
           db
             .select({
@@ -228,8 +229,30 @@ export async function listarDadosAlteracaoEmMassa(
             })
             .from(productVariantTable)
             .where(inArray(productVariantTable.productId, idsProdutos)),
+          db
+            .select({
+              id: productOwnDeliveryPrices.id,
+              produtoId: productOwnDeliveryPrices.productId,
+              tipoDestino: productOwnDeliveryPrices.destinationType,
+              precoEmCentavos: productOwnDeliveryPrices.shippingPrice,
+              prazoEntregaRapida: productOwnDeliveryPrices.deliveryDeadline,
+              ativo: productOwnDeliveryPrices.isActive,
+              entregaProgramadaAtiva:
+                productOwnDeliveryPrices.scheduledDeliveryActive,
+              prazoMinimoProgramadaDias:
+                productOwnDeliveryPrices.scheduledDeliveryMinDays,
+              precoProgramadaEmCentavos:
+                productOwnDeliveryPrices.scheduledDeliveryPrice,
+              atualizadoEm: productOwnDeliveryPrices.updatedAt,
+              versaoConcorrencia:
+                sql<string>`${productOwnDeliveryPrices.updatedAt}::text`.as(
+                  "entrega_propria_versao_concorrencia",
+                ),
+            })
+            .from(productOwnDeliveryPrices)
+            .where(inArray(productOwnDeliveryPrices.productId, idsProdutos)),
         ])
-      : [[], []];
+      : [[], [], []];
 
     let vinculosLogisticos: Array<{
       produtoId: string;
@@ -261,6 +284,10 @@ export async function listarDadosAlteracaoEmMassa(
     const variantesPorProduto = Map.groupBy(
       variantes,
       (variante) => variante.produtoId,
+    );
+    const entregasPorProduto = Map.groupBy(
+      precosEntregaPropria,
+      (preco) => preco.produtoId,
     );
     const classificacoesPorProduto = Map.groupBy(
       vinculosLogisticos,
@@ -313,6 +340,32 @@ export async function listarDadosAlteracaoEmMassa(
                 return modalidade ? [{ ...preco, modalidade }] : [];
               },
             ),
+            precosEntregaPropria: (
+              entregasPorProduto.get(produto.id) ?? []
+            ).map((preco) => ({
+              id: preco.id,
+              tipoDestino: preco.tipoDestino as
+                | "region"
+                | "bairro-avulso"
+                | "cep-especifico"
+                | "cidade",
+              destino:
+                preco.tipoDestino === "region"
+                  ? `Região · regra #${preco.id}`
+                  : preco.tipoDestino === "bairro-avulso"
+                    ? `Bairro · regra #${preco.id}`
+                    : preco.tipoDestino === "cep-especifico"
+                      ? `CEP · regra #${preco.id}`
+                      : `Cidade · regra #${preco.id}`,
+              precoEmCentavos: preco.precoEmCentavos,
+              prazoEntregaRapida: preco.prazoEntregaRapida,
+              ativo: preco.ativo,
+              entregaProgramadaAtiva: preco.entregaProgramadaAtiva,
+              prazoMinimoProgramadaDias: preco.prazoMinimoProgramadaDias,
+              precoProgramadaEmCentavos: preco.precoProgramadaEmCentavos,
+              atualizadoEm: preco.atualizadoEm,
+              versaoConcorrencia: preco.versaoConcorrencia,
+            })),
             classificacoesLogisticasIds: (
               classificacoesPorProduto.get(produto.id) ?? []
             ).map((vinculo) => vinculo.tipoLogisticoId),

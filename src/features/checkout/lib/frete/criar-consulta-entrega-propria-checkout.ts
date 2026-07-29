@@ -37,6 +37,21 @@ export function criarConsultaEntregaPropriaCheckout() {
         cidade: entrega.cidade,
         uf: entrega.uf,
       },
+      opcoesAdicionais: entrega.entregaProgramada
+        ? [
+            {
+              servico: "entrega-programada",
+              nome: "Entrega programada",
+              valorEmCentavos: entrega.entregaProgramada.valorEmCentavos,
+              descricao: entrega.entregaProgramada.promessa.texto,
+              metadados: {
+                promessaEntregaProgramada:
+                  entrega.entregaProgramada.promessa,
+                regiaoEntregaPropria: entrega.regiaoResolvida ?? null,
+              },
+            },
+          ]
+        : [],
     };
   };
 }

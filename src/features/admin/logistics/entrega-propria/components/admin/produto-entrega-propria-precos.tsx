@@ -94,6 +94,9 @@ export function ProdutoEntregaPropriaPrecos({
             destinationId: preco.destinationId,
             shippingPrice: preco.shippingPrice,
             deliveryDeadline: preco.deliveryDeadline,
+            scheduledDeliveryActive: preco.scheduledDeliveryActive,
+            scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,
+            scheduledDeliveryPrice: preco.scheduledDeliveryPrice,
             isActive: preco.isActive,
           })),
         );
@@ -137,6 +140,9 @@ export function ProdutoEntregaPropriaPrecos({
         destinationId: destino.id,
         shippingPrice: priceInCents,
         deliveryDeadline: deliveryDeadline.trim() || null,
+        scheduledDeliveryActive: false,
+        scheduledDeliveryMinDays: null,
+        scheduledDeliveryPrice: null,
         isActive: true,
       },
     ]);
@@ -171,6 +177,17 @@ export function ProdutoEntregaPropriaPrecos({
               ),
             }
           : item,
+      ),
+    );
+  }
+
+  function handleProgramadaChange(
+    index: number,
+    updates: Partial<ProductOwnDeliveryPriceFormItem>,
+  ) {
+    onChange(
+      value.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...updates } : item,
       ),
     );
   }
@@ -258,6 +275,7 @@ export function ProdutoEntregaPropriaPrecos({
               <TableHead>Destino</TableHead>
               <TableHead className="w-40">Frete</TableHead>
               <TableHead>Prazo</TableHead>
+              <TableHead className="min-w-64">Entrega programada</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-right">Acoes</TableHead>
             </TableRow>
@@ -265,7 +283,7 @@ export function ProdutoEntregaPropriaPrecos({
           <TableBody>
             {value.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-28 text-center">
+                <TableCell colSpan={6} className="h-28 text-center">
                   <p className="font-medium text-gray-700">
                     Nenhum preco de entrega propria configurado
                   </p>
@@ -293,6 +311,68 @@ export function ProdutoEntregaPropriaPrecos({
                         {formatarTipo(item.destinationType)}
                         {destino ? ` - ${destino.city}/${destino.state}` : ""}
                       </p>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            aria-label={`Ativar entrega programada para ${destino?.label ?? "destino"}`}
+                            checked={item.scheduledDeliveryActive ?? false}
+                            onCheckedChange={(checked) =>
+                              handleProgramadaChange(index, {
+                                scheduledDeliveryActive: checked,
+                              })
+                            }
+                          />
+                          <span className="text-xs font-medium">
+                            {item.scheduledDeliveryActive
+                              ? "Ativa"
+                              : "Inativa"}
+                          </span>
+                        </div>
+                        {item.scheduledDeliveryActive ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">Dias corridos</Label>
+                              <Input
+                                aria-label="Prazo mínimo em dias corridos"
+                                type="number"
+                                min="0"
+                                value={item.scheduledDeliveryMinDays ?? 0}
+                                onChange={(event) =>
+                                  handleProgramadaChange(index, {
+                                    scheduledDeliveryMinDays: Math.max(
+                                      0,
+                                      Number(event.target.value) || 0,
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Valor (R$)</Label>
+                              <Input
+                                aria-label="Valor da entrega programada"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={
+                                  (item.scheduledDeliveryPrice ?? 0) / 100
+                                }
+                                onChange={(event) =>
+                                  handleProgramadaChange(index, {
+                                    scheduledDeliveryPrice: Math.round(
+                                      (Number(
+                                        event.target.value.replace(",", "."),
+                                      ) || 0) * 100,
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Input

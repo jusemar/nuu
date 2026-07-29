@@ -245,6 +245,26 @@ function criarOpcaoFrenet(valorEmCentavos = 2490) {
   };
 }
 
+function criarOpcaoProgramada(dataPrometida: string, texto: string) {
+  return {
+    identificador: `programada-${dataPrometida}`,
+    provedor: "entrega-propria",
+    servico: "entrega-programada",
+    nome: "Entrega programada",
+    tipo: "entrega" as const,
+    valorEmCentavos: 0,
+    descricao: texto,
+    metadados: {
+      promessaEntregaProgramada: {
+        dataPrometida,
+        texto,
+        prazoMinimoEmDiasCorridos: 3,
+        timezone: "America/Sao_Paulo",
+      },
+    },
+  };
+}
+
 descrever("revalidarFreteCheckout", () => {
   verificar("revalida entrega propria de produto simples", async () => {
     const resultado = await revalidarFreteCheckout({
@@ -289,6 +309,48 @@ descrever("revalidarFreteCheckout", () => {
           nome: "Região Centro",
         },
       });
+    }
+  });
+
+  verificar("consolida itens programados pela promessa mais distante", async () => {
+    const produtoMaisLento = {
+      ...produtoSimples,
+      id: "produto-mais-lento",
+      sku: "SKU-LENTO",
+    };
+    const resultado = await revalidarFreteCheckout({
+      itens: [
+        criarItem({
+          servico: "entrega-programada",
+          valorEmCentavos: 0,
+        }),
+        criarItem({
+          produtoId: produtoMaisLento.id,
+          servico: "entrega-programada",
+          valorEmCentavos: 0,
+        }),
+      ],
+      produtos: [produtoSimples, produtoMaisLento],
+      cepFinal: "30140071",
+      dependencias: criarDependencias(async (entrada) =>
+        criarResultadoCotacao(entrada, [
+          entrada.produtoAtual.identificadorProduto === produtoMaisLento.id
+            ? criarOpcaoProgramada("2026-08-07", "Receba 07/08")
+            : criarOpcaoProgramada("2026-08-05", "Receba quarta-feira"),
+        ]),
+      ),
+    });
+
+    afirmacoes.equal(resultado.sucesso, true);
+    if (resultado.sucesso) {
+      afirmacoes.equal(
+        resultado.snapshotFrete.promessaEntregaProgramada?.dataPrometida,
+        "2026-08-07",
+      );
+      afirmacoes.deepEqual(
+        resultado.snapshotFrete.itens.map((item) => item.prazo),
+        ["Receba 07/08", "Receba 07/08"],
+      );
     }
   });
 

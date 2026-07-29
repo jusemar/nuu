@@ -470,7 +470,7 @@ export function AdminSidebar() {
       >
         <SheetContent
           side="left"
-          className="w-[min(88vw,22rem)] gap-0 p-0 lg:hidden"
+          className="w-[min(78vw,18rem)] gap-0 p-0 lg:hidden"
         >
           <SheetHeader className="border-b px-5 py-4 text-left">
             <SheetTitle>Menu administrativo</SheetTitle>

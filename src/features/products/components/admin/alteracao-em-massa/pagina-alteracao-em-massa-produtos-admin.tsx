@@ -76,8 +76,8 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] space-y-5 pb-28">
-      <header className="bg-card rounded-xl border p-4 shadow-sm md:p-6">
+    <main className="mx-auto w-full max-w-[1600px] min-w-0 space-y-4 pb-28 sm:space-y-5">
+      <header className="bg-card rounded-xl border p-3 shadow-sm sm:p-4 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start">
+          <div className="max-w-full self-start overflow-x-auto">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="bg-muted inline-flex rounded-lg border p-1">
@@ -147,7 +147,7 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
           </div>
         </div>
 
-        <div className="mt-5 flex gap-2">
+        <div className="mt-4 flex min-w-0 gap-2 sm:mt-5">
           <div className="relative min-w-0 flex-1 sm:max-w-xl">
             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
@@ -199,7 +199,7 @@ export function PaginaAlteracaoEmMassaProdutosAdmin({
         </div>
       </header>
 
-      <div className="flex items-start gap-5">
+      <div className="flex min-w-0 items-start gap-5">
         <PainelFiltrosProdutos
           dados={resultadoAtual.dados}
           estado={estado}

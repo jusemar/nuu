@@ -7,6 +7,7 @@ import {
   PackageCheck,
   Ruler,
   Tag,
+  Truck,
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -39,8 +40,8 @@ import { cn } from "@/lib/utils";
 
 import { MODALIDADES_PRECO_PRODUTO } from "../../../constants/modalidades-preco";
 import {
-  operacaoAlteracaoEmMassaSchema,
   type OperacaoAlteracaoEmMassa,
+  operacaoAlteracaoEmMassaSchema,
 } from "../../../schemas/alteracao-em-massa/operacoes-alteracao-em-massa.schema";
 import type {
   CategoriaAlteracaoEmMassa,
@@ -59,9 +60,24 @@ type CampoEditor =
   | "peso"
   | "altura"
   | "largura"
-  | "comprimento";
+  | "comprimento"
+  | "entrega_rapida"
+  | "entrega_programada";
 
-type GrupoEditor = "dados" | "precos" | "estoque" | "fiscal" | "medidas";
+type GrupoEditor =
+  | "dados"
+  | "precos"
+  | "estoque"
+  | "fiscal"
+  | "medidas"
+  | "frete";
+
+type CampoFrete =
+  | "rapida_status"
+  | "rapida_preco"
+  | "programada_status"
+  | "programada_prazo"
+  | "programada_valor";
 
 function resumirMedidaAtual(
   produtos: ProdutoAlteracaoEmMassa[],
@@ -132,6 +148,13 @@ const GRUPOS: Array<{
     campos: ["peso", "altura", "largura", "comprimento"],
     icone: Ruler,
   },
+  {
+    id: "frete",
+    rotulo: "Frete",
+    descricao: "Entrega rápida e programada",
+    campos: ["entrega_rapida", "entrega_programada"],
+    icone: Truck,
+  },
 ];
 
 function ordenarCategorias(
@@ -166,6 +189,7 @@ export function ConfiguradorOperacoesProdutos({
   const [grupoAtivo, setGrupoAtivo] = useState<GrupoEditor>("dados");
   const [medidasAbertas, setMedidasAbertas] = useState(false);
   const [campos, setCampos] = useState<Set<CampoEditor>>(new Set());
+  const [camposFrete, setCamposFrete] = useState<Set<CampoFrete>>(new Set());
   const [valores, setValores] = useState<Record<string, string>>({
     status: "true",
     preco_operacao: "definir",
@@ -175,6 +199,8 @@ export function ConfiguradorOperacoesProdutos({
     altura_operacao: "definir",
     largura_operacao: "definir",
     comprimento_operacao: "definir",
+    entrega_rapida_status: "true",
+    entrega_programada_status: "true",
   });
 
   const operacoes = useMemo(() => {
@@ -219,11 +245,36 @@ export function ConfiguradorOperacoesProdutos({
               : numeroDigitado(valores[`${campo}_valor`]),
         });
     });
+    if (campos.has("entrega_rapida")) {
+      candidatas.push({
+        campo: "entrega_rapida",
+        ...(camposFrete.has("rapida_status") && {
+          ativo: valores.entrega_rapida_status === "true",
+        }),
+        ...(camposFrete.has("rapida_preco") && {
+          preco: numeroDigitado(valores.entrega_rapida_preco),
+        }),
+      });
+    }
+    if (campos.has("entrega_programada")) {
+      candidatas.push({
+        campo: "entrega_programada",
+        ...(camposFrete.has("programada_status") && {
+          ativa: valores.entrega_programada_status === "true",
+        }),
+        ...(camposFrete.has("programada_prazo") && {
+          prazoMinimoDias: numeroDigitado(valores.entrega_programada_prazo),
+        }),
+        ...(camposFrete.has("programada_valor") && {
+          valor: numeroDigitado(valores.entrega_programada_valor),
+        }),
+      });
+    }
     return candidatas.flatMap((item) => {
       const resultado = operacaoAlteracaoEmMassaSchema.safeParse(item);
       return resultado.success ? [resultado.data] : [];
     });
-  }, [campos, medidasAbertas, valores]);
+  }, [campos, camposFrete, medidasAbertas, valores]);
 
   useEffect(() => onOperacoesChange(operacoes), [onOperacoesChange, operacoes]);
   useEffect(
@@ -246,6 +297,15 @@ export function ConfiguradorOperacoesProdutos({
 
   function definir(chave: string, valor: string) {
     setValores((atuais) => ({ ...atuais, [chave]: valor }));
+  }
+
+  function alternarCampoFrete(campo: CampoFrete) {
+    setCamposFrete((atuais) => {
+      const proximos = new Set(atuais);
+      if (proximos.has(campo)) proximos.delete(campo);
+      else proximos.add(campo);
+      return proximos;
+    });
   }
 
   function definirMedida(
@@ -634,7 +694,197 @@ export function ConfiguradorOperacoesProdutos({
             produtosSelecionados={produtosSelecionados}
           />
         )}
+
+        {grupoAtivo === "frete" && (
+          <div className="space-y-3">
+            <CampoConfiguravel
+              campo="entrega_rapida"
+              rotulo="Alterar Entrega Rápida"
+              dica="Altera somente regras por destino já existentes. Agenda, dias atendidos, horário de corte, cobertura e prazo permanecem intactos."
+              ativo={campos.has("entrega_rapida")}
+              onAlternar={alternarCampo}
+              valido={operacoes.some(
+                (item) => item.campo === "entrega_rapida",
+              )}
+              valorAtual={valorAtual(
+                (produto) =>
+                  `${produto.precosEntregaPropria.length} destino(s) configurado(s)`,
+              )}
+            >
+              <AvisoFrete />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <CampoParcialFrete
+                  id="rapida-status"
+                  rotulo="Alterar status"
+                  marcado={camposFrete.has("rapida_status")}
+                  onAlternar={() => alternarCampoFrete("rapida_status")}
+                >
+                  <Select
+                    value={valores.entrega_rapida_status}
+                    onValueChange={(valor) =>
+                      definir("entrega_rapida_status", valor)
+                    }
+                  >
+                    <SelectTrigger aria-label="Novo status da Entrega Rápida">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Ativa</SelectItem>
+                      <SelectItem value="false">Inativa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CampoParcialFrete>
+                <CampoParcialFrete
+                  id="rapida-preco"
+                  rotulo="Alterar preço nos destinos existentes"
+                  marcado={camposFrete.has("rapida_preco")}
+                  onAlternar={() => alternarCampoFrete("rapida_preco")}
+                >
+                  <Input
+                    aria-label="Novo valor da Entrega Rápida"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={valores.entrega_rapida_preco ?? ""}
+                    onChange={(evento) =>
+                      definir("entrega_rapida_preco", evento.target.value)
+                    }
+                    placeholder="R$ 0,00"
+                  />
+                </CampoParcialFrete>
+              </div>
+            </CampoConfiguravel>
+
+            <CampoConfiguravel
+              campo="entrega_programada"
+              rotulo="Alterar Entrega Programada"
+              dica="Altera somente os campos marcados nas regras por destino existentes e mantém a hierarquia logística atual."
+              ativo={campos.has("entrega_programada")}
+              onAlternar={alternarCampo}
+              valido={operacoes.some(
+                (item) => item.campo === "entrega_programada",
+              )}
+              valorAtual={valorAtual(
+                (produto) =>
+                  `${produto.precosEntregaPropria.filter((preco) => preco.entregaProgramadaAtiva).length} destino(s) ativo(s)`,
+              )}
+            >
+              <AvisoFrete />
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <CampoParcialFrete
+                  id="programada-status"
+                  rotulo="Alterar status"
+                  marcado={camposFrete.has("programada_status")}
+                  onAlternar={() => alternarCampoFrete("programada_status")}
+                >
+                  <Select
+                    value={valores.entrega_programada_status}
+                    onValueChange={(valor) =>
+                      definir("entrega_programada_status", valor)
+                    }
+                  >
+                    <SelectTrigger aria-label="Novo status da Entrega Programada">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Ativa</SelectItem>
+                      <SelectItem value="false">Inativa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CampoParcialFrete>
+                <CampoParcialFrete
+                  id="programada-prazo"
+                  rotulo="Alterar prazo mínimo"
+                  marcado={camposFrete.has("programada_prazo")}
+                  onAlternar={() => alternarCampoFrete("programada_prazo")}
+                >
+                  <Input
+                    aria-label="Novo prazo mínimo em dias corridos"
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    step="1"
+                    value={valores.entrega_programada_prazo ?? ""}
+                    onChange={(evento) =>
+                      definir("entrega_programada_prazo", evento.target.value)
+                    }
+                    placeholder="Dias corridos"
+                  />
+                </CampoParcialFrete>
+                <CampoParcialFrete
+                  id="programada-valor"
+                  rotulo="Alterar valor"
+                  marcado={camposFrete.has("programada_valor")}
+                  onAlternar={() => alternarCampoFrete("programada_valor")}
+                >
+                  <Input
+                    aria-label="Novo valor da Entrega Programada"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    value={valores.entrega_programada_valor ?? ""}
+                    onChange={(evento) =>
+                      definir("entrega_programada_valor", evento.target.value)
+                    }
+                    placeholder="R$ 0,00"
+                  />
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    R$ 0,00 será exibido como Grátis na loja.
+                  </p>
+                </CampoParcialFrete>
+              </div>
+            </CampoConfiguravel>
+          </div>
+        )}
       </section>
+    </div>
+  );
+}
+
+function AvisoFrete() {
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+      Somente destinos já vinculados aos produtos serão atualizados. Cobertura,
+      agenda regional, dias atendidos e horário de corte não serão alterados.
+    </div>
+  );
+}
+
+function CampoParcialFrete({
+  id,
+  rotulo,
+  marcado,
+  onAlternar,
+  children,
+}: {
+  id: string;
+  rotulo: string;
+  marcado: boolean;
+  onAlternar: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border p-3",
+        marcado ? "border-blue-300 bg-blue-50/40" : "bg-muted/20",
+      )}
+    >
+      <div className="mb-3 flex items-center gap-2">
+        <Checkbox
+          id={`alterar-${id}`}
+          checked={marcado}
+          onCheckedChange={onAlternar}
+        />
+        <Label htmlFor={`alterar-${id}`} className="cursor-pointer text-sm">
+          {rotulo}
+        </Label>
+      </div>
+      <div className={cn(!marcado && "pointer-events-none opacity-50")}>
+        {children}
+      </div>
     </div>
   );
 }

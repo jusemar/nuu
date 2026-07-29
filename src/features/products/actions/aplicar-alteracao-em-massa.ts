@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 import {
+  productOwnDeliveryPrices,
   productPricingTable,
   productTable,
   productVariantTable,
@@ -15,8 +16,8 @@ import { validarAssinaturaPreview } from "../lib/alteracao-em-massa/assinatura-p
 import { calcularPlanoAlteracaoEmMassa } from "../lib/alteracao-em-massa/calcular-preview-alteracao-em-massa";
 import {
   compararVersaoEntidade,
-  localizarConflitoProduto,
   type ConflitoConcorrenciaAlteracaoEmMassa,
+  localizarConflitoProduto,
 } from "../lib/alteracao-em-massa/concorrencia-alteracao-em-massa";
 import { listarDadosAlteracaoEmMassa } from "../queries/alteracao-em-massa/listar-dados-alteracao-em-massa";
 import {
@@ -190,6 +191,8 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
         (linha) => linha.resultado === "conflito",
       );
       const conflitoEstoque = linhaConflito?.campo === "Estoque";
+      const conflitoEntregaPropria =
+        linhaConflito?.campo.startsWith("Entrega ") ?? false;
 
       return {
         produtoId: plano.produto.id,
@@ -199,12 +202,20 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
         mensagem:
           linhaConflito?.motivo ??
           "O produto não é elegível para esta alteração.",
-        entidade: conflitoEstoque ? ("estoque" as const) : ("preco" as const),
+        entidade: conflitoEstoque
+          ? ("estoque" as const)
+          : conflitoEntregaPropria
+            ? ("entrega_propria" as const)
+            : ("preco" as const),
         etapa: conflitoEstoque
           ? "validacao_da_variante_tecnica"
+          : conflitoEntregaPropria
+            ? "validacao_da_entrega_propria"
           : "validacao_da_modalidade",
         orientacao: conflitoEstoque
           ? "Corrija o registro técnico do produto simples antes de alterar seu estoque em massa."
+          : conflitoEntregaPropria
+            ? "Configure os destinos no produto individualmente antes de alterar a Entrega Própria em massa."
           : "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
       };
     }),
@@ -285,6 +296,49 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                 esperada: esperado?.versaoConcorrencia ?? "preço inexistente",
                 encontrada: encontrado?.versao ?? "preço não encontrado",
                 modalidade: alteracaoPreco.modalidade,
+              });
+              if (conflito) {
+                throw new ErroConcorrenciaAlteracaoEmMassa(
+                  plano.produto.id,
+                  conflito,
+                );
+              }
+            }
+          }
+
+          const idsEntregaPropria = plano.alteracoes.entregaPropria.map(
+            (entrega) => entrega.precoEntregaId,
+          );
+          if (idsEntregaPropria.length) {
+            const entregasBloqueadas = await tx
+              .select({
+                id: productOwnDeliveryPrices.id,
+                versao: sql<string>`${productOwnDeliveryPrices.updatedAt}::text`,
+              })
+              .from(productOwnDeliveryPrices)
+              .where(
+                and(
+                  eq(
+                    productOwnDeliveryPrices.productId,
+                    plano.produto.id,
+                  ),
+                  inArray(productOwnDeliveryPrices.id, idsEntregaPropria),
+                ),
+              )
+              .for("update");
+            for (const alteracaoEntrega of plano.alteracoes.entregaPropria) {
+              const esperado = plano.produto.precosEntregaPropria.find(
+                (entrega) => entrega.id === alteracaoEntrega.precoEntregaId,
+              );
+              const encontrado = entregasBloqueadas.find(
+                (entrega) => entrega.id === alteracaoEntrega.precoEntregaId,
+              );
+              const conflito = compararVersaoEntidade({
+                entidade: "entrega_propria",
+                esperada:
+                  esperado?.versaoConcorrencia ?? "regra inexistente",
+                encontrada:
+                  encontrado?.versao ?? "regra de entrega não encontrada",
               });
               if (conflito) {
                 throw new ErroConcorrenciaAlteracaoEmMassa(
@@ -381,6 +435,43 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                 updatedAt: agora,
               })
               .where(eq(productPricingTable.id, preco.precoId));
+          }
+
+          for (const entrega of plano.alteracoes.entregaPropria) {
+            await tx
+              .update(productOwnDeliveryPrices)
+              .set({
+                ...(entrega.ativo !== undefined && {
+                  isActive: entrega.ativo,
+                }),
+                ...(entrega.precoEmCentavos !== undefined && {
+                  shippingPrice: entrega.precoEmCentavos,
+                }),
+                ...(entrega.entregaProgramadaAtiva !== undefined && {
+                  scheduledDeliveryActive: entrega.entregaProgramadaAtiva,
+                }),
+                ...(entrega.prazoMinimoProgramadaDias !== undefined && {
+                  scheduledDeliveryMinDays:
+                    entrega.prazoMinimoProgramadaDias,
+                }),
+                ...(entrega.precoProgramadaEmCentavos !== undefined && {
+                  scheduledDeliveryPrice:
+                    entrega.precoProgramadaEmCentavos,
+                }),
+                updatedAt: agora,
+              })
+              .where(
+                and(
+                  eq(
+                    productOwnDeliveryPrices.id,
+                    entrega.precoEntregaId,
+                  ),
+                  eq(
+                    productOwnDeliveryPrices.productId,
+                    plano.produto.id,
+                  ),
+                ),
+              );
           }
 
           if (plano.alteracoes.estoque) {

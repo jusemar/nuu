@@ -117,6 +117,17 @@ export function ItemCarrinho({
                 SKU: {item.sku}
               </p>
             ) : null}
+            {item.freteEscolhido ? (
+              <p className="mt-2 text-[11px] leading-snug text-zinc-600 dark:text-zinc-300">
+                <span className="font-semibold">
+                  {item.freteEscolhido.nome}
+                </span>
+                {item.freteEscolhido.prazo
+                  ? ` · ${item.freteEscolhido.prazo}`
+                  : ""}
+                {item.freteEscolhido.valorEmCentavos === 0 ? " · Grátis" : ""}
+              </p>
+            ) : null}
           </div>
 
           <Button

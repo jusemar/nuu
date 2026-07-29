@@ -44,6 +44,14 @@ export type AlteracoesCalculadasProduto = {
     prazo?: string;
   }>;
   estoque?: { varianteId: string; quantidade: number };
+  entregaPropria: Array<{
+    precoEntregaId: number;
+    ativo?: boolean;
+    precoEmCentavos?: number;
+    entregaProgramadaAtiva?: boolean;
+    prazoMinimoProgramadaDias?: number;
+    precoProgramadaEmCentavos?: number;
+  }>;
 };
 
 export type PlanoProdutoAlteracaoEmMassa = {
@@ -114,6 +122,7 @@ export function calcularPlanoAlteracaoEmMassa(
     const alteracoes: AlteracoesCalculadasProduto = {
       produto: {},
       precos: [],
+      entregaPropria: [],
     };
 
     if (produto.tipoProduto !== "simple") {
@@ -347,6 +356,132 @@ export function calcularPlanoAlteracaoEmMassa(
             }
           }
           return [resultado];
+        }
+        case "entrega_rapida": {
+          if (produto.precosEntregaPropria.length === 0) {
+            return [
+              linha(
+                produto,
+                indice,
+                "Entrega rápida",
+                "Sem destino configurado",
+                "—",
+                "O produto não possui regra de Entrega Própria; nenhuma cobertura será criada.",
+              ),
+            ];
+          }
+
+          return produto.precosEntregaPropria.flatMap(
+            (precoEntrega, indiceDestino) => {
+              const alteracao = {
+                precoEntregaId: precoEntrega.id,
+              } as AlteracoesCalculadasProduto["entregaPropria"][number];
+              const linhasDestino: LinhaPreviewAlteracaoEmMassa[] = [];
+              if (operacao.ativo !== undefined) {
+                const resultadoStatus = linha(
+                  produto,
+                  indice * 100 + indiceDestino * 10,
+                  `Entrega rápida · ${precoEntrega.destino} · Status`,
+                  precoEntrega.ativo ? "Ativa" : "Inativa",
+                  operacao.ativo ? "Ativa" : "Inativa",
+                );
+                if (resultadoStatus.resultado === "alterado") {
+                  alteracao.ativo = operacao.ativo;
+                }
+                linhasDestino.push(resultadoStatus);
+              }
+              if (operacao.preco !== undefined) {
+                const novoPreco = Math.round(operacao.preco * 100);
+                const resultadoPreco = linha(
+                  produto,
+                  indice * 100 + indiceDestino * 10 + 1,
+                  `Entrega rápida · ${precoEntrega.destino} · Valor`,
+                  dinheiro(precoEntrega.precoEmCentavos),
+                  dinheiro(novoPreco),
+                );
+                if (resultadoPreco.resultado === "alterado") {
+                  alteracao.precoEmCentavos = novoPreco;
+                }
+                linhasDestino.push(resultadoPreco);
+              }
+              if (Object.keys(alteracao).length > 1) {
+                alteracoes.entregaPropria.push(alteracao);
+              }
+              return linhasDestino;
+            },
+          );
+        }
+        case "entrega_programada": {
+          if (produto.precosEntregaPropria.length === 0) {
+            return [
+              linha(
+                produto,
+                indice,
+                "Entrega programada",
+                "Sem destino configurado",
+                "—",
+                "O produto não possui regra de Entrega Própria; nenhuma cobertura será criada.",
+              ),
+            ];
+          }
+
+          return produto.precosEntregaPropria.flatMap(
+            (precoEntrega, indiceDestino) => {
+              const alteracao = {
+                precoEntregaId: precoEntrega.id,
+              } as AlteracoesCalculadasProduto["entregaPropria"][number];
+              const linhasDestino: LinhaPreviewAlteracaoEmMassa[] = [];
+              if (operacao.ativa !== undefined) {
+                const resultadoStatus = linha(
+                  produto,
+                  indice * 100 + indiceDestino * 10,
+                  `Entrega programada · ${precoEntrega.destino} · Status`,
+                  precoEntrega.entregaProgramadaAtiva ? "Ativa" : "Inativa",
+                  operacao.ativa ? "Ativa" : "Inativa",
+                );
+                if (resultadoStatus.resultado === "alterado") {
+                  alteracao.entregaProgramadaAtiva = operacao.ativa;
+                }
+                linhasDestino.push(resultadoStatus);
+              }
+              if (operacao.prazoMinimoDias !== undefined) {
+                const resultadoPrazo = linha(
+                  produto,
+                  indice * 100 + indiceDestino * 10 + 1,
+                  `Entrega programada · ${precoEntrega.destino} · Prazo mínimo`,
+                  precoEntrega.prazoMinimoProgramadaDias === null
+                    ? "Não informado"
+                    : `${precoEntrega.prazoMinimoProgramadaDias} dia(s) corrido(s)`,
+                  `${operacao.prazoMinimoDias} dia(s) corrido(s)`,
+                );
+                if (resultadoPrazo.resultado === "alterado") {
+                  alteracao.prazoMinimoProgramadaDias =
+                    operacao.prazoMinimoDias;
+                }
+                linhasDestino.push(resultadoPrazo);
+              }
+              if (operacao.valor !== undefined) {
+                const novoPreco = Math.round(operacao.valor * 100);
+                const resultadoValor = linha(
+                  produto,
+                  indice * 100 + indiceDestino * 10 + 2,
+                  `Entrega programada · ${precoEntrega.destino} · Valor`,
+                  precoEntrega.precoProgramadaEmCentavos === null
+                    ? "Não informado"
+                    : dinheiro(precoEntrega.precoProgramadaEmCentavos),
+                  dinheiro(novoPreco),
+                );
+                if (resultadoValor.resultado === "alterado") {
+                  alteracao.precoProgramadaEmCentavos = novoPreco;
+                }
+                linhasDestino.push(resultadoValor);
+              }
+              if (Object.keys(alteracao).length > 1) {
+                alteracoes.entregaPropria.push(alteracao);
+              }
+              return linhasDestino;
+            },
+          );
         }
       }
     });

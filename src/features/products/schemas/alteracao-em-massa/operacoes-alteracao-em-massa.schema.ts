@@ -67,6 +67,31 @@ export const operacaoAlteracaoEmMassaSchema = z.discriminatedUnion("campo", [
     operacao: z.enum(["definir", "limpar"]),
     valor: z.number().int().nonnegative(),
   }),
+  z
+    .object({
+      campo: z.literal("entrega_rapida"),
+      ativo: z.boolean().optional(),
+      preco: z.number().nonnegative().optional(),
+    })
+    .refine(
+      (operacao) =>
+        operacao.ativo !== undefined || operacao.preco !== undefined,
+      "Escolha ao menos um campo da Entrega Rápida.",
+    ),
+  z
+    .object({
+      campo: z.literal("entrega_programada"),
+      ativa: z.boolean().optional(),
+      prazoMinimoDias: z.number().int().nonnegative().optional(),
+      valor: z.number().nonnegative().optional(),
+    })
+    .refine(
+      (operacao) =>
+        operacao.ativa !== undefined ||
+        operacao.prazoMinimoDias !== undefined ||
+        operacao.valor !== undefined,
+      "Escolha ao menos um campo da Entrega Programada.",
+    ),
 ]);
 
 export const operacoesAlteracaoEmMassaSchema = z

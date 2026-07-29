@@ -1,3 +1,4 @@
+import { BadgePercent } from "lucide-react";
 import React from "react";
 
 type PromocaoPrecoProdutoPdp = {
@@ -6,6 +7,7 @@ type PromocaoPrecoProdutoPdp = {
   precoPromocionalFormatado: string;
   economiaFormatada: string;
   percentualOff: number;
+  rotuloDesconto: string;
 };
 
 type BannerPromocaoProdutoPdpProps = {
@@ -21,26 +23,30 @@ export function BannerPromocaoProdutoPdp({
   return (
     <section
       aria-label="Desconto promocional no produto"
-      className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"
+      data-pdp-promocao-real="true"
+      className="border-accent-brand/30 bg-accent-brand-light flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-sm"
     >
+      <span className="bg-accent-brand/15 text-accent-brand-dark flex size-9 shrink-0 items-center justify-center rounded-full">
+        <BadgePercent aria-hidden="true" className="size-4" strokeWidth={1.8} />
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-extrabold tracking-wider uppercase">
+        <p className="text-accent-brand-dark text-[11px] font-extrabold tracking-wider uppercase">
           Desconto promocional aplicado
         </p>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="text-xs text-emerald-800 line-through">
+          <span className="text-muted-foreground text-xs line-through">
             {promocao.precoOriginalFormatado}
           </span>
-          <span className="text-lg font-extrabold">
+          <span className="text-foreground text-lg font-extrabold">
             {promocao.precoPromocionalFormatado}
           </span>
-          {promocao.percentualOff > 0 ? (
-            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-extrabold text-white">
-              {promocao.percentualOff}% OFF
+          {promocao.rotuloDesconto ? (
+            <span className="bg-accent-brand text-foreground rounded-full px-2 py-0.5 text-[10px] font-extrabold">
+              {promocao.rotuloDesconto}
             </span>
           ) : null}
         </div>
-        <p className="mt-1 text-xs text-emerald-800">
+        <p className="text-muted-foreground mt-1 text-xs">
           Economia de {promocao.economiaFormatada}.
         </p>
       </div>

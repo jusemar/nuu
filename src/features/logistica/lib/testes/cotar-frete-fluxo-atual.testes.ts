@@ -136,6 +136,40 @@ descrever("cotarFreteFluxoAtual", () => {
     afirmacoes.equal(resultado.opcoes[0]?.provedor, "entrega-propria");
   });
 
+  verificar("expõe rápida e programada no mesmo provedor", async () => {
+    const resultado = await cotarFreteFluxoAtual({
+      produtoAtual: produtoSimples,
+      quantidade: 1,
+      cep: "30140071",
+      async consultarEntregaPropriaAtual() {
+        return {
+          disponivel: true,
+          valorEmCentavos: 2500,
+          opcoesAdicionais: [
+            {
+              servico: "entrega-programada",
+              nome: "Entrega programada",
+              valorEmCentavos: 0,
+              descricao: "Receba sexta-feira",
+            },
+          ],
+        };
+      },
+    });
+
+    afirmacoes.equal(resultado.sucesso, true);
+    afirmacoes.deepEqual(
+      resultado.opcoes.map((opcao) => [
+        opcao.servico,
+        opcao.valorEmCentavos,
+      ]),
+      [
+        ["entrega-propria-atual", 2500],
+        ["entrega-programada", 0],
+      ],
+    );
+  });
+
   verificar("retorna erro para CEP invalido", async () => {
     const resultado = await cotarFreteFluxoAtual({
       produtoAtual: produtoSimples,

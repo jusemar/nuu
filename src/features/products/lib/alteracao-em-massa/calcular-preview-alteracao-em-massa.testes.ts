@@ -48,6 +48,34 @@ const produto: ProdutoAlteracaoEmMassa = {
       versaoConcorrencia: "2026-01-01 00:00:00.000000",
     },
   ],
+  precosEntregaPropria: [
+    {
+      id: 10,
+      tipoDestino: "region",
+      destino: "Região · regra #10",
+      precoEmCentavos: 2_500,
+      prazoEntregaRapida: "Hoje",
+      ativo: true,
+      entregaProgramadaAtiva: false,
+      prazoMinimoProgramadaDias: 2,
+      precoProgramadaEmCentavos: 1_500,
+      atualizadoEm: agora,
+      versaoConcorrencia: "2026-01-01 00:00:00.000000",
+    },
+    {
+      id: 11,
+      tipoDestino: "cep-especifico",
+      destino: "CEP · regra #11",
+      precoEmCentavos: 3_000,
+      prazoEntregaRapida: null,
+      ativo: true,
+      entregaProgramadaAtiva: true,
+      prazoMinimoProgramadaDias: 4,
+      precoProgramadaEmCentavos: 2_000,
+      atualizadoEm: agora,
+      versaoConcorrencia: "2026-01-01 00:00:00.000000",
+    },
+  ],
   classificacoesLogisticasIds: [],
   permiteRetirada: false,
   permiteEntregaPropria: false,
@@ -117,6 +145,129 @@ function operacaoPreco(
 }
 
 describe("motor de alteração em massa", () => {
+  it("aceita valor programado zero e exige seleção explícita de campo", () => {
+    assert.equal(
+      solicitarPreviewAlteracaoEmMassaSchema.safeParse({
+        produtosIds: [produto.id],
+        operacoes: [
+          {
+            campo: "entrega_programada",
+            ativa: true,
+            prazoMinimoDias: 3,
+            valor: 0,
+          },
+        ],
+      }).success,
+      true,
+    );
+    assert.equal(
+      solicitarPreviewAlteracaoEmMassaSchema.safeParse({
+        produtosIds: [produto.id],
+        operacoes: [{ campo: "entrega_programada" }],
+      }).success,
+      false,
+    );
+  });
+
+  it("altera somente os campos marcados da entrega programada em todos os destinos existentes", () => {
+    const plano = calcular([
+      {
+        campo: "entrega_programada",
+        ativa: true,
+        prazoMinimoDias: 3,
+        valor: 0,
+      },
+    ]);
+
+    assert.equal(plano.alteracoes.entregaPropria.length, 2);
+    assert.deepEqual(plano.alteracoes.entregaPropria[0], {
+      precoEntregaId: 10,
+      entregaProgramadaAtiva: true,
+      prazoMinimoProgramadaDias: 3,
+      precoProgramadaEmCentavos: 0,
+    });
+    assert.equal(
+      plano.linhas.some(
+        (linha) =>
+          linha.campo.includes("Valor") && linha.novo === "R$ 0,00",
+      ),
+      true,
+    );
+  });
+
+  it("altera somente o prazo programado e preserva status e valores atuais", () => {
+    const plano = calcular([
+      { campo: "entrega_programada", prazoMinimoDias: 3 },
+    ]);
+
+    assert.deepEqual(plano.alteracoes.entregaPropria[0], {
+      precoEntregaId: 10,
+      prazoMinimoProgramadaDias: 3,
+    });
+    assert.equal(
+      plano.alteracoes.entregaPropria.every(
+        (alteracao) =>
+          alteracao.entregaProgramadaAtiva === undefined &&
+          alteracao.precoProgramadaEmCentavos === undefined,
+      ),
+      true,
+    );
+  });
+
+  it("desativa a programada sem alterar a entrega rápida", () => {
+    const plano = calcular([
+      { campo: "entrega_programada", ativa: false },
+    ]);
+
+    assert.equal(plano.alteracoes.entregaPropria.length, 1);
+    assert.equal(
+      plano.alteracoes.entregaPropria[0].entregaProgramadaAtiva,
+      false,
+    );
+    assert.equal(plano.alteracoes.entregaPropria[0].ativo, undefined);
+    assert.equal(
+      plano.alteracoes.entregaPropria[0].precoEmCentavos,
+      undefined,
+    );
+  });
+
+  it("altera status e preço rápido sem tocar agenda, prazo ou programada", () => {
+    const plano = calcular([
+      { campo: "entrega_rapida", ativo: false, preco: 25 },
+    ]);
+
+    assert.equal(plano.alteracoes.entregaPropria.length, 2);
+    assert.deepEqual(plano.alteracoes.entregaPropria[0], {
+      precoEntregaId: 10,
+      ativo: false,
+    });
+    assert.deepEqual(plano.alteracoes.entregaPropria[1], {
+      precoEntregaId: 11,
+      ativo: false,
+      precoEmCentavos: 2_500,
+    });
+    assert.equal(
+      plano.alteracoes.entregaPropria.every(
+        (alteracao) =>
+          alteracao.entregaProgramadaAtiva === undefined &&
+          alteracao.prazoMinimoProgramadaDias === undefined,
+      ),
+      true,
+    );
+  });
+
+  it("não cria cobertura quando o produto não possui destino", () => {
+    const semDestino = { ...produto, precosEntregaPropria: [] };
+    const plano = calcularPlanoAlteracaoEmMassa(
+      [semDestino],
+      [{ campo: "entrega_programada", ativa: true }],
+      { ...dados, produtos: [semDestino] },
+    )[0];
+
+    assert.equal(plano.linhas[0].resultado, "conflito");
+    assert.deepEqual(plano.alteracoes.entregaPropria, []);
+  });
+
   it("reconhece Estoque Próprio e calcula percentual em centavos", () => {
     assert.equal(normalizarModalidadePreco("stock"), "stock");
     const plano = calcular([
@@ -464,5 +615,23 @@ describe("motor de alteração em massa", () => {
     assert.match(fonte, /dbTransacional\.transaction/);
     assert.match(fonte, /for \(const preco of plano\.alteracoes\.precos\)/);
     assert.doesNotMatch(fonte, /promoPrice|promo_price_in_cents|hasPromo/);
+  });
+
+  it("atualiza regras de entrega existentes na transação sem inserir ou excluir cobertura", () => {
+    const fonte = readFileSync(
+      new URL("../../actions/aplicar-alteracao-em-massa.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      fonte,
+      /for \(const entrega of plano\.alteracoes\.entregaPropria\)/,
+    );
+    assert.match(fonte, /\.update\(productOwnDeliveryPrices\)/);
+    assert.match(
+      fonte,
+      /eq\(\s*productOwnDeliveryPrices\.productId,\s*plano\.produto\.id/,
+    );
+    assert.doesNotMatch(fonte, /\.insert\(productOwnDeliveryPrices\)/);
+    assert.doesNotMatch(fonte, /\.delete\(productOwnDeliveryPrices\)/);
   });
 });

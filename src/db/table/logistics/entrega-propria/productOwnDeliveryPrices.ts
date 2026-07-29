@@ -41,6 +41,12 @@ export const productOwnDeliveryPrices = pgTable("product_own_delivery_prices", {
   }),
   shippingPrice: integer("shipping_price").notNull(),
   deliveryDeadline: text("delivery_deadline"),
+  /** Configuração opcional da entrega consolidada no mesmo destino. */
+  scheduledDeliveryActive: boolean("scheduled_delivery_active")
+    .default(false)
+    .notNull(),
+  scheduledDeliveryMinDays: integer("scheduled_delivery_min_days"),
+  scheduledDeliveryPrice: integer("scheduled_delivery_price"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

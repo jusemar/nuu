@@ -19,6 +19,7 @@ type PropriedadesPaginaProdutoAprovada = {
   imagemProduto?: string;
   breadcrumbCategorias: Array<{ id: string; name: string; slug: string }>;
   galeria: ReactNode;
+  mensagemPromocional?: ReactNode;
   demaisInformacoesCompra: ReactNode;
   descricaoCurta: ReactNode;
   informacoes: ReactNode;
@@ -40,6 +41,7 @@ export function PaginaProdutoAprovada({
   imagemProduto,
   breadcrumbCategorias,
   galeria,
+  mensagemPromocional,
   demaisInformacoesCompra,
   descricaoCurta,
   informacoes,
@@ -69,6 +71,7 @@ export function PaginaProdutoAprovada({
         <section className="grid grid-cols-1 gap-6 min-[800px]:grid-cols-12 min-[800px]:gap-5 lg:gap-8">
           <div className="flex min-w-0 flex-col gap-5 min-[800px]:col-span-5">
             {galeria}
+            {mensagemPromocional}
             <CardAssistenteVirtualPrevisualizacao
               nomeProduto={nomeProduto}
               modoPreVisualizacao={modoPreVisualizacao}

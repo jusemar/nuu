@@ -13,6 +13,7 @@ import {
 } from "@/features/admin/logistics/entrega-propria/services/shippingService";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
 
+import type { PromessaEntregaProgramada } from "../lib/entrega-propria/calcular-promessa-entrega-programada";
 import type { PromessaEntregaPropria } from "../lib/entrega-propria/calcular-promessa-entrega-propria";
 
 export type EnderecoEntregaPropriaLoja = {
@@ -31,6 +32,10 @@ export type ResultadoConsultaEntregaPropriaLoja =
       descricao: string;
       prazoEntrega?: string | null;
       promessaEntrega?: PromessaEntregaPropria | null;
+      entregaProgramada?: {
+        valorEmCentavos: number;
+        promessa: PromessaEntregaProgramada;
+      } | null;
       regiaoResolvida?: {
         id: number;
         nome: string;
@@ -162,6 +167,7 @@ async function consultarProdutoNoEndereco({
     descricao: resultado.message,
     prazoEntrega: resultado.deliveryDeadline ?? null,
     promessaEntrega: resultado.promessaEntrega ?? null,
+    entregaProgramada: resultado.entregaProgramada ?? null,
     regiaoResolvida: resultado.region
       ? {
           id: resultado.region.id,

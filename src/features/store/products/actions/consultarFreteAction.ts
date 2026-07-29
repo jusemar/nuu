@@ -62,6 +62,26 @@ function criarConsultaEntregaPropriaLojaParaCotacao(
         uf: resultado.uf,
         endereco: resultado.endereco,
       },
+      opcoesAdicionais: resultado.entregaProgramada
+        ? [
+            {
+              servico: "entrega-programada",
+              nome: "Entrega programada",
+              valorEmCentavos: resultado.entregaProgramada.valorEmCentavos,
+              descricao: resultado.entregaProgramada.promessa.texto,
+              metadados: {
+                nivelEntregaPropriaAtual: resultado.nivel,
+                promessaEntregaProgramada:
+                  resultado.entregaProgramada.promessa,
+                regiaoEntregaPropria: resultado.regiaoResolvida ?? null,
+                bairro: resultado.bairro,
+                cidade: resultado.cidade,
+                uf: resultado.uf,
+                endereco: resultado.endereco,
+              },
+            },
+          ]
+        : [],
     };
   };
 }

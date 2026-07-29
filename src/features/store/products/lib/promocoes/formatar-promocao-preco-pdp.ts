@@ -7,6 +7,7 @@ export type PromocaoVisualPdp = {
   economiaFormatada: string;
   percentualOff: number;
   tipoDesconto: "percentual" | "valor_fixo" | null;
+  rotuloDesconto: string;
 };
 
 function formatarCentavos(valorEmCentavos: number) {
@@ -34,12 +35,20 @@ export function formatarPromocaoPrecoPdp(
         )
       : 0;
 
+  const economiaFormatada = formatarCentavos(
+    promocao.descontoAplicadoEmCentavos,
+  );
+
   return {
     ativa: true,
     precoOriginalFormatado: formatarCentavos(promocao.precoOriginalEmCentavos),
     precoPromocionalFormatado: formatarCentavos(promocao.precoFinalEmCentavos),
-    economiaFormatada: formatarCentavos(promocao.descontoAplicadoEmCentavos),
+    economiaFormatada,
     percentualOff,
     tipoDesconto: promocao.tipoDesconto,
+    rotuloDesconto:
+      promocao.tipoDesconto === "valor_fixo"
+        ? `${economiaFormatada} OFF`
+        : `${percentualOff}% OFF`,
   };
 }

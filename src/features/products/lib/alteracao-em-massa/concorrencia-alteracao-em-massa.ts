@@ -4,7 +4,11 @@ import type {
   ProdutoAlteracaoEmMassa,
 } from "../../types/alteracao-em-massa.types";
 
-export type EntidadeConcorrencia = "produto" | "preco" | "estoque";
+export type EntidadeConcorrencia =
+  | "produto"
+  | "preco"
+  | "estoque"
+  | "entrega_propria";
 
 export type VersoesProdutoAlteracaoEmMassa = {
   produto: string;
@@ -14,6 +18,7 @@ export type VersoesProdutoAlteracaoEmMassa = {
     modalidade: ModalidadePrecoProduto;
     versao: string;
   }>;
+  entregaPropria: Array<{ id: number; versao: string }>;
 };
 
 export type ConflitoConcorrenciaAlteracaoEmMassa = {
@@ -61,6 +66,9 @@ export function obterVersoesProdutoAlteracaoEmMassa(
         versao: preco.versaoConcorrencia,
       }))
       .toSorted((a, b) => a.id.localeCompare(b.id)),
+    entregaPropria: produto.precosEntregaPropria
+      .map((preco) => ({ id: preco.id, versao: preco.versaoConcorrencia }))
+      .toSorted((a, b) => a.id - b.id),
   };
 }
 
@@ -88,7 +96,9 @@ export function compararVersaoEntidade({
       ? "O produto foi alterado por outro processo após o preview."
       : entidade === "preco"
         ? `O preço da modalidade ${modalidade ? obterRotuloModalidadePreco(modalidade) : "selecionada"} mudou após a revisão.`
-        : "O estoque foi atualizado depois da geração do preview.";
+        : entidade === "entrega_propria"
+          ? "A configuração de Entrega Própria mudou após a revisão."
+          : "O estoque foi atualizado depois da geração do preview.";
 
   return {
     entidade,
@@ -142,6 +152,18 @@ export function localizarConflitoProduto(
         modalidade: precoEsperado.modalidade,
       });
       if (precoMudou) return precoMudou;
+    }
+    for (const entregaEsperada of esperadas.entregaPropria ?? []) {
+      const entregaAtual = atual.entregaPropria.find(
+        (entrega) => entrega.id === entregaEsperada.id,
+      );
+      const entregaMudou = compararVersaoEntidade({
+        entidade: "entrega_propria",
+        esperada: entregaEsperada.versao,
+        encontrada:
+          entregaAtual?.versao ?? "regra de entrega própria não encontrada",
+      });
+      if (entregaMudou) return entregaMudou;
     }
     return null;
   } catch {

@@ -31,7 +31,7 @@ export type ResultadoAplicacaoAlteracaoEmMassa = {
     sku: string;
     resultado: "alterado" | "ignorado" | "sem_alteracao" | "erro";
     mensagem?: string;
-    entidade?: "produto" | "preco" | "estoque" | "lote";
+    entidade?: "produto" | "preco" | "estoque" | "entrega_propria" | "lote";
     campoVersao?: "updatedAt";
     versaoEsperada?: string;
     versaoEncontrada?: string;

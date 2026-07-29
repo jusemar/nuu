@@ -24,6 +24,7 @@ describe("BannerPromocaoProdutoPdp", () => {
           precoPromocionalFormatado: "R$ 400,00",
           economiaFormatada: "R$ 100,00",
           percentualOff: 20,
+          rotuloDesconto: "20% OFF",
         }}
       />,
     );

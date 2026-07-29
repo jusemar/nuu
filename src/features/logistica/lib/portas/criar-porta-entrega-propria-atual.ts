@@ -16,6 +16,13 @@ export type ResultadoEntregaPropriaAtual =
       prazoMaximoEmDiasUteis?: number | null;
       descricao?: string | null;
       metadados?: Record<string, unknown> | null;
+      opcoesAdicionais?: Array<{
+        servico: string;
+        nome: string;
+        valorEmCentavos: number;
+        descricao?: string | null;
+        metadados?: Record<string, unknown> | null;
+      }>;
     }
   | {
       disponivel: false;
@@ -50,12 +57,11 @@ export function criarPortaEntregaPropriaAtual(
       return [];
     }
 
-    return [
-      {
+    const opcaoRapida: OpcaoFrete = {
         identificador: `entrega-propria:${item.produtoId}:${solicitacao.destino.cep}`,
         provedor: "entrega-propria",
         servico: "entrega-propria-atual",
-        nome: "Entrega Propria",
+        nome: "Entrega rápida",
         tipo: "entrega",
         valorEmCentavos: resultado.valorEmCentavos,
         prazoMinimoEmDiasUteis: resultado.prazoMinimoEmDiasUteis ?? null,
@@ -66,7 +72,23 @@ export function criarPortaEntregaPropriaAtual(
           produtoId: item.produtoId,
           ...resultado.metadados,
         },
+      };
+
+    const adicionais = (resultado.opcoesAdicionais ?? []).map((opcao) => ({
+      identificador: `entrega-propria:${opcao.servico}:${item.produtoId}:${solicitacao.destino.cep}`,
+      provedor: "entrega-propria",
+      servico: opcao.servico,
+      nome: opcao.nome,
+      tipo: "entrega" as const,
+      valorEmCentavos: opcao.valorEmCentavos,
+      descricao: opcao.descricao ?? null,
+      metadados: {
+        origem: "fluxo-atual",
+        produtoId: item.produtoId,
+        ...opcao.metadados,
       },
-    ];
+    }));
+
+    return [opcaoRapida, ...adicionais];
   };
 }

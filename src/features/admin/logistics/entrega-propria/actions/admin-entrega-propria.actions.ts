@@ -599,6 +599,13 @@ function montarDestinoPrecoProduto(
       : {}),
     shippingPrice: item.shippingPrice,
     deliveryDeadline: item.deliveryDeadline?.trim() || null,
+    scheduledDeliveryActive: item.scheduledDeliveryActive ?? false,
+    scheduledDeliveryMinDays: item.scheduledDeliveryActive
+      ? Math.max(0, Math.trunc(item.scheduledDeliveryMinDays ?? 0))
+      : null,
+    scheduledDeliveryPrice: item.scheduledDeliveryActive
+      ? Math.max(0, item.scheduledDeliveryPrice ?? 0)
+      : null,
     isActive: item.isActive ?? true,
     createdAt: new Date(),
     updatedAt: new Date(),

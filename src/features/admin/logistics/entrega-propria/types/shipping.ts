@@ -92,5 +92,8 @@ export type ProductOwnDeliveryPriceFormItem = {
   destinationId: number;
   shippingPrice: number;
   deliveryDeadline?: string | null;
+  scheduledDeliveryActive?: boolean;
+  scheduledDeliveryMinDays?: number | null;
+  scheduledDeliveryPrice?: number | null;
   isActive?: boolean;
 };

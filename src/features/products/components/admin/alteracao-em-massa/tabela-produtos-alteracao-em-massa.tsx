@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import type {
   CampoOrdenacaoProdutos,
   EstadoListagemAlteracaoEmMassa,
@@ -97,7 +98,102 @@ export function TabelaProdutosAlteracaoEmMassa({
 
   return (
     <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
-      <div className="overflow-x-auto">
+      {/* No celular, cada produto vira um cartão para evitar uma tabela de 1080px. */}
+      <div className="divide-y md:hidden">
+        <div className="bg-muted/50 flex items-center gap-2 p-3 text-sm font-medium">
+          <Checkbox
+            checked={
+              estado.paginaTodaSelecionada
+                ? true
+                : estado.paginaParcialmenteSelecionada
+                  ? "indeterminate"
+                  : false
+            }
+            onCheckedChange={estado.alternarSelecaoPagina}
+            aria-label="Selecionar produtos da página atual"
+          />
+          Selecionar página
+        </div>
+        {estado.produtosPagina.map((produto) => {
+          const selecionado = estado.selecionadosIds.has(produto.id);
+          return (
+            <article
+              key={produto.id}
+              data-state={selecionado ? "selected" : undefined}
+              className="data-[state=selected]:bg-muted/60 space-y-3 p-3"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <Checkbox
+                  checked={selecionado}
+                  onCheckedChange={() => estado.alternarProduto(produto.id)}
+                  aria-label={`Selecionar ${produto.nome}`}
+                  className="mt-0.5"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="line-clamp-2 text-sm font-semibold">
+                    {produto.nome}
+                  </p>
+                  <p className="text-muted-foreground mt-1 font-mono text-xs">
+                    SKU: {produto.sku}
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={
+                    produto.ativo
+                      ? "shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "shrink-0 border-slate-200 bg-slate-100 text-slate-600"
+                  }
+                >
+                  {produto.ativo ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
+
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Categoria</dt>
+                  <dd className="truncate font-medium">
+                    {produto.categoriaNome || "Sem categoria"}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Marca</dt>
+                  <dd className="truncate font-medium">
+                    {produto.marcaNome || "Sem marca"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Tipo</dt>
+                  <dd className="font-medium">
+                    {produto.tipoProduto === "variable"
+                      ? "Com variantes"
+                      : produto.tipoProduto === "simple"
+                        ? "Simples"
+                        : produto.tipoProduto}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Estoque</dt>
+                  <dd className="font-medium">
+                    {produto.tipoProduto === "simple"
+                      ? produto.estoqueVarianteTecnica !== null
+                        ? `${produto.estoqueVarianteTecnica} un.`
+                        : "—"
+                      : produto.resumoEstoqueVariantes || "—"}
+                  </dd>
+                </div>
+              </dl>
+
+              <div>
+                <p className="text-muted-foreground mb-1 text-xs">Preços</p>
+                <CelulaPrecosProduto precos={produto.precosModalidades} />
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <Table className="min-w-[1080px]">
           <TableHeader className="bg-muted/60">
             <TableRow>

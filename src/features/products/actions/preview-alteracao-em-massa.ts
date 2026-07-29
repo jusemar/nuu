@@ -4,8 +4,8 @@ import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-aces
 
 import { MODALIDADES_PRECO_PRODUTO } from "../constants/modalidades-preco";
 import {
-  criarAssinaturaPreview,
   type ConteudoAssinaturaPreview,
+  criarAssinaturaPreview,
 } from "../lib/alteracao-em-massa/assinatura-preview-alteracao-em-massa";
 import {
   calcularPlanoAlteracaoEmMassa,
@@ -27,6 +27,8 @@ const ROTULOS_CAMPOS = {
   altura: "Altura",
   largura: "Largura",
   comprimento: "Comprimento",
+  entrega_rapida: "Entrega rápida",
+  entrega_programada: "Entrega programada",
 };
 
 function resumir(

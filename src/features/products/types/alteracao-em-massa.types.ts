@@ -19,6 +19,20 @@ export type PrecoModalidadeProduto = {
   versaoConcorrencia: string;
 };
 
+export type PrecoEntregaPropriaProduto = {
+  id: number;
+  tipoDestino: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
+  destino: string;
+  precoEmCentavos: number;
+  prazoEntregaRapida: string | null;
+  ativo: boolean;
+  entregaProgramadaAtiva: boolean;
+  prazoMinimoProgramadaDias: number | null;
+  precoProgramadaEmCentavos: number | null;
+  atualizadoEm: Date;
+  versaoConcorrencia: string;
+};
+
 export type ProdutoAlteracaoEmMassa = {
   id: string;
   nome: string;
@@ -42,6 +56,7 @@ export type ProdutoAlteracaoEmMassa = {
   conflitoVarianteTecnica?: string | null;
   resumoEstoqueVariantes?: string | null;
   precosModalidades: PrecoModalidadeProduto[];
+  precosEntregaPropria: PrecoEntregaPropriaProduto[];
   classificacoesLogisticasIds: string[];
   permiteRetirada: boolean;
   permiteEntregaPropria: boolean;

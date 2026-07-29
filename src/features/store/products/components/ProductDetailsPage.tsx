@@ -592,6 +592,9 @@ export function ProductDetail({
           mostrarMarcaPrevisualizacao={false}
         />
       }
+      mensagemPromocional={
+        <BannerPromocaoProdutoPdp promocao={promocaoVisualCompra} />
+      }
       informacoes={
         <ProductInfo
           nome={product.name}
@@ -650,6 +653,7 @@ export function ProductDetail({
           modoPreVisualizacao={true}
           mostrarFreteDemonstrativo={false}
           mostrarBeneficiosConfianca={false}
+          mostrarBannerPromocaoNoPreco={false}
           seletorModalidades={
             product.productKind !== "variable" && modalidadesDisponiveis.length > 0 ? (
               <PricingModalities

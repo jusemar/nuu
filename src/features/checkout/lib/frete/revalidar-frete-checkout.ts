@@ -1,15 +1,15 @@
+import type { ItemCarrinho } from "@/features/carrinho";
 import {
   cotarFreteFluxoAtual,
-  filtrarResultadoCotacaoFreteDisponivel,
   type DisponibilidadeFreteProduto,
   type EntradaCotacaoFreteFluxoAtual,
+  filtrarResultadoCotacaoFreteDisponivel,
   type ItemLogistico,
   type OpcaoFrete,
   type PacoteEnvio,
   type ResultadoCotacaoFrete,
   type RetiradaAtualDisponivel,
 } from "@/features/logistica";
-import type { ItemCarrinho } from "@/features/carrinho";
 
 type ModalidadeFreteCarrinho = "retirada" | "entrega-propria" | "frenet";
 
@@ -52,6 +52,13 @@ export type ConsultaEntregaPropriaRevalidacaoCheckout =
       valorEmCentavos: number;
       descricao?: string | null;
       metadados?: Record<string, unknown> | null;
+      opcoesAdicionais?: Array<{
+        servico: string;
+        nome: string;
+        valorEmCentavos: number;
+        descricao?: string | null;
+        metadados?: Record<string, unknown> | null;
+      }>;
     }
   | {
       disponivel: false;
@@ -97,6 +104,7 @@ export type SnapshotFreteCheckout = {
   cep: string;
   valorTotalEmCentavos: number;
   fallbackAcionado: boolean;
+  promessaEntregaProgramada?: Record<string, unknown> | null;
   itens: SnapshotItemFreteCheckout[];
 };
 
@@ -236,7 +244,9 @@ function obterOpcaoCotada(
   if (modalidade.id === "entrega-propria") {
     return resultado.opcoes.find(
       (opcao) =>
-        opcao.tipo === "entrega" && opcao.provedor === "entrega-propria",
+        opcao.tipo === "entrega" &&
+        opcao.provedor === "entrega-propria" &&
+        (!modalidade.servico || opcao.servico === modalidade.servico),
     );
   }
 
@@ -277,6 +287,12 @@ function resumirMetadataFrete(metadados?: Record<string, unknown> | null) {
     typeof metadados.promessaEntregaPropria === "object"
   ) {
     resumo.promessaEntregaPropria = metadados.promessaEntregaPropria;
+  }
+  if (
+    metadados.promessaEntregaProgramada &&
+    typeof metadados.promessaEntregaProgramada === "object"
+  ) {
+    resumo.promessaEntregaProgramada = metadados.promessaEntregaProgramada;
   }
   if (
     metadados.regiaoEntregaPropria &&
@@ -321,6 +337,42 @@ function montarSnapshotItemFrete({
     metadataResumida: resumirMetadataFrete(opcao.metadados),
     fallbackAcionado,
   };
+}
+
+function consolidarPromessaEntregaProgramada(
+  snapshots: SnapshotItemFreteCheckout[],
+) {
+  const promessas = snapshots
+    .filter((item) => item.servico === "entrega-programada")
+    .map((item) => item.metadataResumida?.promessaEntregaProgramada)
+    .filter(
+      (promessa): promessa is Record<string, unknown> =>
+        Boolean(
+          promessa &&
+            typeof promessa === "object" &&
+            typeof (promessa as Record<string, unknown>).dataPrometida ===
+              "string",
+        ),
+    );
+
+  const promessaFinal = promessas.sort((a, b) =>
+    String(a.dataPrometida).localeCompare(String(b.dataPrometida)),
+  ).at(-1);
+
+  if (!promessaFinal) return null;
+
+  // Todos os itens programados viajam juntos na data do produto mais lento.
+  for (const item of snapshots) {
+    if (item.servico !== "entrega-programada") continue;
+    item.prazo =
+      typeof promessaFinal.texto === "string" ? promessaFinal.texto : item.prazo;
+    item.metadataResumida = {
+      ...(item.metadataResumida ?? {}),
+      promessaEntregaProgramada: promessaFinal,
+    };
+  }
+
+  return promessaFinal;
 }
 
 async function cotarItemComNovaLogistica({
@@ -507,6 +559,8 @@ export async function revalidarFreteCheckout({
       cep,
       valorTotalEmCentavos: freteEmCentavos,
       fallbackAcionado,
+      promessaEntregaProgramada:
+        consolidarPromessaEntregaProgramada(snapshotsItens),
       itens: snapshotsItens,
     },
   };

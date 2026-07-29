@@ -1,34 +1,45 @@
 "use client";
 
+import {
+  ArrowLeft,
+  BadgeDollarSign,
+  Boxes,
+  Eye,
+  FileText,
+  PackageCheck,
+  Save,
+  Search,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 import Link from "next/link";
-import { ArrowLeft, Save, Eye } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUpdateProduct } from "@/hooks/admin/mutations/products/useUpdateProduct";
-import { useProductId } from "@/hooks/admin/queries/products/use-Product-Id";
-import { useState, useEffect, useRef } from "react";
-import {
-  ProductFormData,
-  initialProductData,
-} from "../../new/data/product-form-data";
-import { useParams } from "next/navigation";
-
-// Import das abas
-import { BasicTab } from "../../new/components/tabs/BasicTab";
-import { PricingTab } from "../../new/components/tabs/PricingTab";
-import { ShippingTab } from "../../../../../features/admin/products/components/ShippingTab";
-import { EntregaTab } from "../../new/components/tabs/EntregaTab";
-import { WarrantyTab } from "../../new/components/tabs/WarrantyTab";
-import {
-  clearVariantsDraft,
-  VariantsTab,
-} from "../../new/components/tabs/VariantsTab";
-import { SellerTab } from "../../new/components/tabs/SellerTab";
-import { SeoTab } from "../../new/components/tabs/SeoTab";
 import {
   BotaoDuplicarProduto,
   BotaoPublicarProduto,
 } from "@/features/products";
+import { useUpdateProduct } from "@/hooks/admin/mutations/products/useUpdateProduct";
+import { useProductId } from "@/hooks/admin/queries/products/use-Product-Id";
+
+import { ShippingTab } from "../../../../../features/admin/products/components/ShippingTab";
+// Import das abas
+import { BasicTab } from "../../new/components/tabs/BasicTab";
+import { EntregaTab } from "../../new/components/tabs/EntregaTab";
+import { PricingTab } from "../../new/components/tabs/PricingTab";
+import { SeoTab } from "../../new/components/tabs/SeoTab";
+import {
+  clearVariantsDraft,
+  VariantsTab,
+} from "../../new/components/tabs/VariantsTab";
+import { WarrantyTab } from "../../new/components/tabs/WarrantyTab";
+import {
+  initialProductData,
+  ProductFormData,
+} from "../../new/data/product-form-data";
 
 export default function EditProductPage() {
   const params = useParams();
@@ -234,7 +245,8 @@ export default function EditProductPage() {
 
   const tabs = [
     {
-      name: "📝 Básico",
+      name: "Básico",
+      icon: FileText,
       value: "basic",
       component: (
         <BasicTab
@@ -246,7 +258,8 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "💲 Preços",
+      name: "Preços",
+      icon: BadgeDollarSign,
       value: "pricing",
       component: (
         <PricingTab
@@ -258,7 +271,8 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "🚚 Frete",
+      name: "Frete",
+      icon: Truck,
       value: "shipping",
       component: (
         <ShippingTab
@@ -270,7 +284,8 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "📦 Entrega",
+      name: "Entrega",
+      icon: PackageCheck,
       value: "entrega",
       component: (
         <EntregaTab
@@ -293,7 +308,8 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "🛡️ Garantia",
+      name: "Garantia",
+      icon: ShieldCheck,
       value: "warranty",
       component: (
         <WarrantyTab
@@ -305,7 +321,8 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "🎨 Variantes",
+      name: "Variantes",
+      icon: Boxes,
       value: "variants",
       component: (
         <VariantsTab
@@ -318,7 +335,8 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "🔍 SEO",
+      name: "SEO",
+      icon: Search,
       value: "seo",
       component: (
         <SeoTab
@@ -386,23 +404,26 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col">
+    <div className="flex min-h-screen min-w-0 flex-1 flex-col">
       {/* HEADER FIXO COM AÇÕES */}
-      <div className="bg-background sticky top-0 z-30 border-b">
-        <div className="flex items-center justify-between p-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" asChild>
+      <div className="bg-background sticky top-0 z-30 min-w-0 border-b">
+        <div className="flex min-w-0 flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between lg:p-6">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+            <Button variant="outline" size="icon" className="shrink-0" asChild>
               <Link href="/admin/products">
                 <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Voltar para produtos</span>
               </Link>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Editar Produto</h1>
-              <p className="text-muted-foreground">{productData.name}</p>
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold sm:text-2xl">Editar Produto</h1>
+              <p className="text-muted-foreground line-clamp-2 text-sm sm:text-base">
+                {productData.name}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="-mx-3 flex min-w-0 items-center gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
             <BotaoDuplicarProduto
               produtoId={productId}
               produtoNome={productData.name}
@@ -421,8 +442,8 @@ export default function EditProductPage() {
               }
             />
             <Button variant="outline" size="sm">
-              <Eye className="mr-2 h-4 w-4" />
-              Preview
+              <Eye className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Preview</span>
             </Button>
             <Button
               variant="secondary"
@@ -431,33 +452,38 @@ export default function EditProductPage() {
               disabled={updateProductMutation.isPending}
             >
               <Save className="mr-2 h-4 w-4" />
-              {updateProductMutation.isPending
-                ? "Atualizando..."
-                : "Atualizar Produto"}
+              {updateProductMutation.isPending ? "Atualizando..." : "Atualizar"}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* CONTEÚDO COM ABAS VERTICAIS COMPACTAS */}
-      <div className="flex-1 p-6">
-        <div className="w-full">
-          <Tabs defaultValue="basic" className="flex flex-row gap-4">
-            <TabsList className="bg-background h-full w-48 flex-col rounded-none border-l p-0">
+      {/* No celular as abas ficam horizontais e deixam o formulário usar toda a tela. */}
+      <div className="min-w-0 flex-1 p-0 sm:p-4 lg:p-6">
+        <div className="w-full min-w-0">
+          <Tabs defaultValue="basic" className="min-w-0 gap-4 lg:flex-row">
+            <div className="bg-background overflow-x-auto border-b px-3 py-2 sm:rounded-lg sm:border lg:overflow-visible lg:border-0 lg:p-0">
+              <TabsList className="bg-background inline-flex h-auto w-max min-w-max justify-start gap-1 p-0 lg:h-full lg:w-48 lg:min-w-48 lg:flex-col lg:justify-start lg:rounded-none lg:border-l">
+                {tabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="bg-background data-[state=active]:border-primary h-10 shrink-0 justify-start gap-2 border-0 border-b-2 border-transparent px-3 text-sm data-[state=active]:shadow-none lg:w-full lg:rounded-none lg:border-b-0 lg:border-l-2"
+                  >
+                    <tab.icon className="size-4" aria-hidden="true" />
+                    {tab.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            <div className="w-full min-w-0 flex-1 px-[1px] pb-6 sm:px-0">
               {tabs.map((tab) => (
-                <TabsTrigger
+                <TabsContent
                   key={tab.value}
                   value={tab.value}
-                  className="bg-background data-[state=active]:border-primary dark:data-[state=active]:border-primary h-10 w-full justify-start rounded-none border-0 border-l-2 border-transparent px-3 text-left text-sm data-[state=active]:shadow-none"
+                  className="mt-0 w-full min-w-0"
                 >
-                  {tab.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <div className="flex-1">
-              {tabs.map((tab) => (
-                <TabsContent key={tab.value} value={tab.value} className="mt-0">
                   {tab.component}
                 </TabsContent>
               ))}

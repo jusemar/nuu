@@ -3,31 +3,31 @@
 // Tab de Entrega - Novas opções de entrega
 // Combina: Retirada Local + Entrega Própria
 
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Package, Store, Truck } from "lucide-react";
+import { useEffect, useState } from "react";
+
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Store, Truck, Loader2, Package } from "lucide-react";
-
-import { SecaoRetiradaProduto } from "@/features/admin/logistica/components/retirada-local/SecaoRetiradaProduto";
-import { EntregaPropriaInfoCard } from "@/features/admin/logistics/entrega-propria/components/EntregaPropriaInfoCard";
-import { ProdutoEntregaPropriaPrecos } from "@/features/admin/logistics/entrega-propria/components/admin/produto-entrega-propria-precos";
-import { buscarModelosRetiradaAction } from "@/features/admin/logistica/actions/retirada/buscarModelos";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { buscarResumoLogisticaProduto } from "@/features/admin/logistica/actions/produto-logistica/buscar-resumo-logistica-produto";
 import { desvincularTipoLogisticoProduto } from "@/features/admin/logistica/actions/produto-logistica/desvincular-tipo-logistico-produto";
 import { vincularTipoLogisticoProduto } from "@/features/admin/logistica/actions/produto-logistica/vincular-tipo-logistico-produto";
+import { buscarModelosRetiradaAction } from "@/features/admin/logistica/actions/retirada/buscarModelos";
+import { DimensoesFreteExterno } from "@/features/admin/logistica/components/produto/DimensoesFreteExterno";
+import { ResumoLogisticaProduto } from "@/features/admin/logistica/components/produto/ResumoLogisticaProduto";
+import { SecaoRetiradaProduto } from "@/features/admin/logistica/components/retirada-local/SecaoRetiradaProduto";
 import type { ModeloRetirada } from "@/features/admin/logistica/types/logistica.types";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import { ProdutoEntregaPropriaPrecos } from "@/features/admin/logistics/entrega-propria/components/admin/produto-entrega-propria-precos";
+import { EntregaPropriaInfoCard } from "@/features/admin/logistics/entrega-propria/components/EntregaPropriaInfoCard";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
-import { ResumoLogisticaProduto } from "@/features/admin/logistica/components/produto/ResumoLogisticaProduto";
-import { DimensoesFreteExterno } from "@/features/admin/logistica/components/produto/DimensoesFreteExterno";
 
 type Props = {
   data: {
@@ -166,21 +166,23 @@ export function EntregaTab({
   }
 
   return (
-    <Tabs defaultValue="retirada" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="retirada" className="gap-2">
-          <Store className="h-4 w-4" />
-          Retirada Local
-        </TabsTrigger>
-        <TabsTrigger value="entrega-propria" className="gap-2">
-          <Truck className="h-4 w-4" />
-          Entrega Própria
-        </TabsTrigger>
-        <TabsTrigger value="regras-logisticas" className="gap-2">
-          <Package className="h-4 w-4" />
-          Frete Externo
-        </TabsTrigger>
-      </TabsList>
+    <Tabs defaultValue="retirada" className="min-w-0 space-y-4 sm:space-y-6">
+      <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+        <TabsList className="w-max min-w-max justify-start">
+          <TabsTrigger value="retirada" className="shrink-0 gap-2">
+            <Store className="h-4 w-4" />
+            Retirada Local
+          </TabsTrigger>
+          <TabsTrigger value="entrega-propria" className="shrink-0 gap-2">
+            <Truck className="h-4 w-4" />
+            Entrega Própria
+          </TabsTrigger>
+          <TabsTrigger value="regras-logisticas" className="shrink-0 gap-2">
+            <Package className="h-4 w-4" />
+            Frete Externo
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="retirada">
         <Card>

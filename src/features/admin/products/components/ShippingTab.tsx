@@ -15,15 +15,14 @@
 
 "use client";
 
-import { useState } from "react";
 import {
-  DndContext,
   closestCenter,
+  DndContext,
+  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -33,7 +32,30 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+// Ícones (lucide-react)
+import {
+  AlertCircle,
+  Building2,
+  DollarSign,
+  Eye,
+  Gift,
+  GripVertical,
+  HelpCircle,
+  MapPin,
+  Package,
+  Plus,
+  Ruler,
+  Save,
+  ShieldAlert,
+  Sparkles,
+  Trash2,
+  Truck,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 // Shadcn/ui components
 import {
   Card,
@@ -42,11 +64,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -54,29 +74,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from "sonner";
-
-// Ícones (lucide-react)
-import {
-  GripVertical,
-  Plus,
-  Trash2,
-  HelpCircle,
-  Eye,
-  Package,
-  Building2,
-  Truck,
-  MapPin,
-  AlertCircle,
-  DollarSign,
-  Gift,
-  Ruler,
-  Save,
-} from "lucide-react";
-import { summarizeVariantEditor } from "@/features/products";
-import type { ProductVariantFormInput } from "@/features/products";
 import { DimensoesFreteExterno } from "@/features/admin/logistica/components/produto/DimensoesFreteExterno";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import type { ProductVariantFormInput } from "@/features/products";
+import { summarizeVariantEditor } from "@/features/products";
 
 // ==========================================
 // TIPOS
@@ -682,18 +683,23 @@ export function ShippingTab({ data, onChange }: ShippingTabProps) {
         </div>
 
         {/* TABS */}
-        <Tabs defaultValue="methods" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-3">
-            <TabsTrigger value="methods">
-              📦 Métodos ({methods.filter((m) => m.isActive).length})
-            </TabsTrigger>
-            <TabsTrigger value="restrictions">
-              🚫 Restrições ({restrictions.length})
-            </TabsTrigger>
-            <TabsTrigger value="specials">
-              ⭐ Regras Especiais ({specials.length})
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="methods" className="min-w-0 space-y-6">
+          <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+            <TabsList className="w-max min-w-max justify-start">
+              <TabsTrigger value="methods" className="shrink-0 gap-2">
+                <Package className="size-4" />
+                Métodos ({methods.filter((m) => m.isActive).length})
+              </TabsTrigger>
+              <TabsTrigger value="restrictions" className="shrink-0 gap-2">
+                <ShieldAlert className="size-4" />
+                Restrições ({restrictions.length})
+              </TabsTrigger>
+              <TabsTrigger value="specials" className="shrink-0 gap-2">
+                <Sparkles className="size-4" />
+                Regras Especiais ({specials.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ==========================================
               ABA 1: MÉTODOS DE ENTREGA

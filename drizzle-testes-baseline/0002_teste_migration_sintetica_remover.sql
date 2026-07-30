@@ -1,0 +1,1 @@
+DROP TABLE "teste_migration_sintetica" CASCADE;

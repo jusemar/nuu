@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785450232541,
+      "tag": "0000_baseline_consolidada",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785450554183,
+      "tag": "0001_teste_migration_sintetica_criar",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785450679413,
+      "tag": "0002_teste_migration_sintetica_remover",
+      "breakpoints": true
+    }
+  ]
+}

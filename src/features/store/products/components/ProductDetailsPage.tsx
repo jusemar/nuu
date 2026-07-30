@@ -451,6 +451,8 @@ export function ProductDetail({
   if (modoPreVisualizacao) {
     return (
       <PaginaProdutoAprovada
+        produtoId={product.id}
+        produtoSlug={product.slug}
         nomeProduto={product.name}
         imagemProduto={galleryImages[0]}
         breadcrumbCategorias={breadcrumbCategorias}
@@ -569,6 +571,8 @@ export function ProductDetail({
 
   return (
     <PaginaProdutoAprovada
+      produtoId={product.id}
+      produtoSlug={product.slug}
       nomeProduto={product.name}
       imagemProduto={galleryImages[0]}
       breadcrumbCategorias={breadcrumbCategorias}
@@ -623,7 +627,9 @@ export function ProductDetail({
           productId={product.id}
           varianteIdSelecionada={selectedVariant?.id}
           precoPix={precoVarianteSelecionada?.pix.valor || precoPixFormatado}
-          precoNormal={precoVarianteSelecionada?.cartao.valor || precoNormalFormatado}
+          precoNormal={
+            precoVarianteSelecionada?.cartao.valor || precoNormalFormatado
+          }
           precoParc={
             parcelamentosVariante[0]
               ? `${parcelamentosVariante[0].parcelas}x de ${parcelamentosVariante[0].valor}`
@@ -636,7 +642,8 @@ export function ProductDetail({
           precoCalculado={precoCompraCalculado}
           selectedVariantLabel={
             selectedVariant
-              ? selectedVariant.name || Object.values(selectedVariant.attributes).join(" / ")
+              ? selectedVariant.name ||
+                Object.values(selectedVariant.attributes).join(" / ")
               : null
           }
           retiradaLocal={retiradaLocal}
@@ -655,7 +662,8 @@ export function ProductDetail({
           mostrarBeneficiosConfianca={false}
           mostrarBannerPromocaoNoPreco={false}
           seletorModalidades={
-            product.productKind !== "variable" && modalidadesDisponiveis.length > 0 ? (
+            product.productKind !== "variable" &&
+            modalidadesDisponiveis.length > 0 ? (
               <PricingModalities
                 modalidades={modalidadesDisponiveis}
                 modalidadeAtiva={modalidadeAtiva}

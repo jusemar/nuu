@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/container";
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 import { Secao } from "@/components/ui/secao";
 import { getCategories } from "@/data/categories/get";
+import { CampoMensagemAtendente } from "@/features/atendimento-ia";
 import {
   AreaBannersHome,
   buscarBannersHomeAtivos,
@@ -73,6 +74,13 @@ const Home = async () => {
         >
           <AreaBannersHome banners={bannersHome} />
         </Card>
+
+        <CampoMensagemAtendente
+          titulo="Olá! O que você procura hoje?"
+          placeholder="Digite o que procura ou faça uma pergunta"
+          apoio="Ex.: produto para meu carro, prazo de entrega ou recomendação"
+          contexto={{ tipo: "home" }}
+        />
 
         {/* Info cards — confiança e conversão */}
         <InfoCards />

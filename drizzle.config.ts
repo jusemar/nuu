@@ -3,6 +3,7 @@ import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
 
 const urlMigracoesSeguras =
+  process.env.DATABASE_URL_MIGRACOES ??
   process.env.DATABASE_URL_BASELINE_VAZIO ??
   process.env.DATABASE_URL_BASELINE_CLONE;
 

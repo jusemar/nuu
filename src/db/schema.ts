@@ -737,6 +737,9 @@ export {
   variantesTiposLogisticosTable,
 } from "./tables/logistica";
 
+// Persistência própria do Atendente IA.
+export * from "./tables/atendimento-ia";
+
 // Relations de Shipping
 export {
   shippingRegionsRelations,

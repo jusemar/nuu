@@ -77,7 +77,7 @@ O Atendente IA será construído como um **domínio modular dentro da aplicaçã
 
 A estrutura principal ficará no domínio:
 
-`src/features/ai-assistant`
+`src/features/atendimento-ia`
 
 O MVP será implementado como um **monólito modular preparado para separação futura**, sem criação inicial de um microserviço independente.
 
@@ -1356,7 +1356,7 @@ Permanecem fora do MVP:
 
 | Área                 | Decisão                                                        |
 | -------------------- | -------------------------------------------------------------- |
-| Arquitetura          | Domínio modular em `src/features/ai-assistant`                 |
+| Arquitetura          | Domínio modular em `src/features/atendimento-ia`               |
 | Estrutura inicial    | Monólito modular preparado para evolução                       |
 | Autoridade           | Servidor como única autoridade                                 |
 | OpenAI               | Responses API e SDK oficial para TypeScript                    |

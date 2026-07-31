@@ -8,6 +8,13 @@
       "when": 1785450232541,
       "tag": "0000_baseline_consolidada",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785453674660,
+      "tag": "0001_estruturas_atendimento_ia",
+      "breakpoints": true
     }
   ]
 }

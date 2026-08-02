@@ -3,6 +3,7 @@ import type {
   EstadoMensagemAtendimento,
   IdentidadeEntradaAtendimento,
 } from "./entrada-mensagem";
+import type { ResultadoRecuperacaoRag } from "./rag";
 
 export type MensagemContextoOrquestrador = {
   autor: "cliente" | "assistente_ia" | "atendente_humano" | "sistema";
@@ -31,6 +32,8 @@ export type ContextoPersistidoOrquestrador = {
       | "informacao_vencida"
       | "informacao_possivelmente_desatualizada";
     valorEstruturado: Record<string, unknown>;
+    assuntoNormalizado: string;
+    id: string;
   }>;
   mensagemAtual: MensagemContextoOrquestrador;
   mensagensAnteriores: MensagemContextoOrquestrador[];
@@ -38,7 +41,17 @@ export type ContextoPersistidoOrquestrador = {
     ateMensagemId: string | null;
     conteudo: string;
     resumoEstruturado: Record<string, unknown>;
+    criadoEm: Date;
+    hashConteudoConsiderado: string;
+    quantidadeMensagens: number;
+    versao: number;
   } | null;
+  resultadosFerramentas: Array<{
+    nome: string;
+    resultado: Record<string, unknown>;
+    versao: string;
+  }>;
+  fontesInstitucionais?: ResultadoRecuperacaoRag;
 };
 
 export type MetadadosExecucaoModelo = {
@@ -46,6 +59,7 @@ export type MetadadosExecucaoModelo = {
   modelo: "gpt-5.6-terra" | "gpt-5.6-sol";
   motivoEscalonamento: CriterioEscalonamentoModelo | null;
   respostaId: string;
+  requestId?: string | null;
   tokensEntrada: number;
   tokensSaida: number;
 };
@@ -68,7 +82,9 @@ export type ResultadoComponenteOrquestrado =
       tipo: "aguardar_ferramenta";
     }
   | {
+      explicacaoOferta: string;
       metadados: MetadadosExecucaoModelo;
+      motivo: import("./transferencia-humana").MotivoTransferenciaHumana;
       tipo: "aguardar_atendimento_humano";
     };
 
@@ -101,11 +117,14 @@ export type ResultadoOrquestracao =
       execucaoId: string;
       estado: "aguardando_ferramenta" | "gerando_resposta";
       mensagemRespostaId: string | null;
+      requestId: string | null;
       tipo: "encaminhada";
     }
   | {
       execucaoId: string;
       estado: "aguardando_atendimento_humano";
+      transferenciaId: string;
+      requestId: string | null;
       tipo: "aguardando_atendimento_humano";
     }
   | {
@@ -146,8 +165,10 @@ export type ReivindicacaoOrquestracao =
 
 export interface RepositorioOrquestrador {
   reivindicarProcessamento(dados: {
+    contextoExpiraAposDias?: number;
     identidade: IdentidadeEntradaAtendimento;
     memoriaAtiva: boolean;
+    memoriaExpiraAposDias?: number;
     mensagemId: string;
   }): Promise<ReivindicacaoOrquestracao>;
   concluirEncaminhamento(dados: {
@@ -158,7 +179,7 @@ export interface RepositorioOrquestrador {
       | "gerando_resposta"
       | "aguardando_atendimento_humano";
     resultado: ResultadoComponenteOrquestrado;
-  }): Promise<{ mensagemRespostaId: string | null }>;
+  }): Promise<{ mensagemRespostaId: string | null; transferenciaId?: string | null }>;
   registrarFalha(dados: {
     classificacao: "recuperavel" | "definitiva";
     execucaoId: string;

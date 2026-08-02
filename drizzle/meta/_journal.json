@@ -15,6 +15,41 @@
       "when": 1785453674660,
       "tag": "0001_estruturas_atendimento_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785619548255,
+      "tag": "0002_contexto_resumo_memoria_curto_prazo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785623931201,
+      "tag": "0003_base_institucional_rag",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785626862391,
+      "tag": "0004_ferramentas_protegidas_autenticacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785629571513,
+      "tag": "0005_transferencia_humana_whatsapp",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785632320220,
+      "tag": "0006_seguranca_auditoria_metricas",
+      "breakpoints": true
     }
   ]
 }

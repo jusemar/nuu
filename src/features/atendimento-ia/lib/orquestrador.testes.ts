@@ -156,6 +156,10 @@ class RepositorioOrquestradorMemoria implements RepositorioOrquestrador {
         dados.resultado.tipo === "encaminhar_geracao_resposta"
           ? randomUUID()
           : null,
+      transferenciaId:
+        dados.resultado.tipo === "aguardar_atendimento_humano"
+          ? randomUUID()
+          : null,
     };
   }
 
@@ -211,7 +215,9 @@ function criarCenario(
     },
     memoriaPermitida: [
       {
+        assuntoNormalizado: "preferencia",
         categoria: "preferencia",
+        id: randomUUID(),
         origem: "informada_cliente",
         valorEstruturado: { faixa: "declarada" },
       },
@@ -236,7 +242,12 @@ function criarCenario(
       ateMensagemId: randomUUID(),
       conteudo: "Resumo previamente persistido",
       resumoEstruturado: { fatoConfirmado: true },
+      criadoEm: new Date("2026-07-30T11:59:30Z"),
+      hashConteudoConsiderado: "hash-invalido-no-teste-legado",
+      quantidadeMensagens: 1,
+      versao: 1,
     },
+    resultadosFerramentas: [],
   };
   repositorio.mensagens.set(mensagemId, {
     contexto,

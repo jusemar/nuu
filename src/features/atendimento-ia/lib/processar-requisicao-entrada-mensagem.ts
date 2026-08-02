@@ -8,12 +8,15 @@ import type {
   IdentidadeEntradaAtendimento,
   RepositorioEntradaAtendimento,
 } from "../types/entrada-mensagem";
+import { detectarConteudoNaoConfiavel } from "./seguranca-observabilidade";
 
 type DependenciasRequisicaoEntrada = {
   atendenteAtivo: boolean;
   identidade: IdentidadeEntradaAtendimento;
   origemPermitida: string;
   repositorio: RepositorioEntradaAtendimento;
+  contextoExpiraAposDias?: number;
+  registrarTentativaManipulacao?: () => Promise<void>;
 };
 
 function respostaErro(status: number, codigo: string, mensagem: string) {
@@ -101,11 +104,21 @@ export async function processarRequisicaoEntradaMensagem(
     );
   }
 
+  if (detectarConteudoNaoConfiavel(validacao.data.mensagem)) {
+    try {
+      await dependencias.registrarTentativaManipulacao?.();
+    } catch {
+      return respostaErro(503, "AUDITORIA_INDISPONIVEL", "Não foi possível validar a solicitação no momento.");
+    }
+    return respostaErro(400, "SOLICITACAO_NAO_PERMITIDA", "Não posso executar essa solicitação, mas posso continuar ajudando dentro das funções disponíveis.");
+  }
+
   try {
     const resultado = await receberMensagemAtendimento(
       dependencias.repositorio,
       validacao.data,
       dependencias.identidade,
+      dependencias.contextoExpiraAposDias,
     );
 
     return Response.json({ dados: resultado, sucesso: true }, { status: 202 });

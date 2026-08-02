@@ -23,7 +23,21 @@ function mapearProximoEstado(
 export async function orquestrarMensagem(
   dependencias: {
     componente: ComponenteProcessamentoOrquestrado;
+    contextoExpiraAposDias?: (identidade: IdentidadeEntradaAtendimento) => number;
+    manterContexto?: (dados: {
+      contexto: Parameters<ComponenteProcessamentoOrquestrado["processar"]>[0]["contexto"];
+      execucaoId: string;
+    }) => Promise<Parameters<ComponenteProcessamentoOrquestrado["processar"]>[0]["contexto"]>;
     memoriaAtiva: boolean;
+    memoriaExpiraAposDias?: number;
+    recuperarFontesInstitucionais?: (dados: {
+      execucaoId: string;
+      pergunta: string;
+    }) => Promise<
+      NonNullable<
+        Parameters<ComponenteProcessamentoOrquestrado["processar"]>[0]["contexto"]["fontesInstitucionais"]
+      >
+    >;
     repositorio: RepositorioOrquestrador;
   },
   dados: {
@@ -33,8 +47,12 @@ export async function orquestrarMensagem(
 ): Promise<ResultadoOrquestracao> {
   const reivindicacao = await dependencias.repositorio.reivindicarProcessamento(
     {
+      contextoExpiraAposDias: dependencias.contextoExpiraAposDias?.(
+        dados.identidade,
+      ),
       identidade: dados.identidade,
       memoriaAtiva: dependencias.memoriaAtiva,
+      memoriaExpiraAposDias: dependencias.memoriaExpiraAposDias,
       mensagemId: dados.mensagemId,
     },
   );
@@ -42,8 +60,25 @@ export async function orquestrarMensagem(
   if (reivindicacao.tipo !== "adquirida") return reivindicacao;
 
   try {
+    let contexto = dependencias.manterContexto
+      ? await dependencias.manterContexto({
+          contexto: reivindicacao.contexto,
+          execucaoId: reivindicacao.execucaoId,
+        })
+      : reivindicacao.contexto;
+    if (dependencias.recuperarFontesInstitucionais) {
+      const fontesInstitucionais =
+        await dependencias.recuperarFontesInstitucionais({
+          execucaoId: reivindicacao.execucaoId,
+          pergunta: contexto.mensagemAtual.conteudo,
+        });
+      contexto = { ...contexto, fontesInstitucionais };
+      if (fontesInstitucionais.status === "conflito") {
+        throw new FalhaComponenteOrquestrado("definitiva", "conflito_fontes");
+      }
+    }
     const resultado = await dependencias.componente.processar({
-      contexto: reivindicacao.contexto,
+      contexto,
       execucaoId: reivindicacao.execucaoId,
     });
     const proximoEstado = mapearProximoEstado(resultado.tipo);
@@ -57,9 +92,14 @@ export async function orquestrarMensagem(
     });
 
     if (proximoEstado === "aguardando_atendimento_humano") {
+      if (!conclusao.transferenciaId) {
+        throw new FalhaComponenteOrquestrado("definitiva", "erro_interno");
+      }
       return {
         execucaoId: reivindicacao.execucaoId,
         estado: proximoEstado,
+        requestId: resultado.metadados.requestId ?? null,
+        transferenciaId: conclusao.transferenciaId,
         tipo: "aguardando_atendimento_humano",
       };
     }
@@ -68,6 +108,7 @@ export async function orquestrarMensagem(
       execucaoId: reivindicacao.execucaoId,
       estado: proximoEstado,
       mensagemRespostaId: conclusao.mensagemRespostaId,
+      requestId: resultado.metadados.requestId ?? null,
       tipo: "encaminhada",
     };
   } catch (erro) {

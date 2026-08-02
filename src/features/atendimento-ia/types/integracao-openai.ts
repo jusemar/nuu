@@ -1,5 +1,5 @@
+import type { ContextoControlado } from "./contexto";
 import type { DefinicaoFerramentaOpenAi } from "./ferramentas-publicas";
-import type { ContextoPersistidoOrquestrador } from "./orquestrador";
 
 export type RequisicaoResponsesOpenAi = {
   input:
@@ -20,7 +20,7 @@ export type RequisicaoResponsesOpenAi = {
   stream: false;
   text: {
     format: {
-      name: "decisao_atendente_ia";
+      name: string;
       schema: Record<string, unknown>;
       strict: true;
       type: "json_schema";
@@ -38,6 +38,7 @@ export type RespostaResponsesOpenAi = {
   model: string;
   output: Array<Record<string, unknown>>;
   output_text: string;
+  request_id?: string | null;
   status:
     | "completed"
     | "failed"
@@ -68,20 +69,10 @@ export type ConfiguracaoIntegracaoOpenAi = {
   maxOutputTokens: number;
   maxTentativas: number;
   timeoutEmMs: number;
+  maxContextTokens: number;
 };
 
-export type DadosPermitidosModelo = {
-  estado: ContextoPersistidoOrquestrador["estado"];
-  memoriaPermitida: ContextoPersistidoOrquestrador["memoriaPermitida"];
-  mensagemAtual: Omit<ContextoPersistidoOrquestrador["mensagemAtual"], "id">;
-  mensagensAnteriores: Array<
-    Omit<ContextoPersistidoOrquestrador["mensagensAnteriores"][number], "id">
-  >;
-  resumo: Omit<
-    NonNullable<ContextoPersistidoOrquestrador["resumo"]>,
-    "ateMensagemId"
-  > | null;
-};
+export type DadosPermitidosModelo = ContextoControlado["dados"];
 
 export class ErroClienteResponsesOpenAi extends Error {
   constructor(
@@ -89,6 +80,7 @@ export class ErroClienteResponsesOpenAi extends Error {
       | "autenticacao"
       | "cancelamento"
       | "indisponibilidade"
+      | "quota"
       | "rate_limit"
       | "requisicao_invalida"
       | "timeout",

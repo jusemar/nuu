@@ -4,6 +4,7 @@ export type IdentidadeEntradaAtendimento = {
 };
 
 export type DadosEntradaMensagem = {
+  avisoPrivacidadeVersao: "atendente-ia-contexto-v1";
   canal: "site";
   chaveIdempotencia: string;
   conversaId?: string;
@@ -16,6 +17,7 @@ export type ConversaEntradaAtendimento = {
   identificadorSessao: string;
   status: "ativa" | "aguardando_atendimento_humano" | "encerrada";
   usuarioId: string | null;
+  ultimaAtividadeEm?: Date;
 };
 
 export type MensagemEntradaAtendimento = {
@@ -83,6 +85,11 @@ export interface RepositorioEntradaAtendimento {
     estado: EstadoMensagemAtendimento,
   ): Promise<void>;
   atualizarAtividadeConversa(conversaId: string): Promise<void>;
+  registrarInicioVoluntarioContexto?(dados: {
+    conversaId: string;
+    tipoAtor: "cliente_autenticado" | "visitante";
+    versao: string;
+  }): Promise<void>;
   registrarAuditoriaEntrada(dados: {
     conversaId: string;
     mensagemId: string;

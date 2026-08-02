@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import type { ZodIssue } from "zod";
+
 import {
   MODELO_ESCALONAMENTO_ATENDENTE_IA,
   MODELO_PRINCIPAL_ATENDENTE_IA,
@@ -32,6 +34,10 @@ import {
   type MetadadosExecucaoModelo,
   type ResultadoComponenteOrquestrado,
 } from "../types/orquestrador";
+import {
+  estimarTokensSeguro,
+  montarContextoControlado,
+} from "./contexto-controlado";
 
 type ResultadoModeloValidado = {
   criterioEscalonamento: CriterioEscalonamentoModelo | null;
@@ -41,9 +47,69 @@ type ResultadoModeloValidado = {
     | "aguardar_atendimento_humano";
   resposta: string | null;
   respostaBruta: RespostaResponsesOpenAi;
+  transferencia: {
+    explicacao: string;
+    motivo: import("../types/transferencia-humana").MotivoTransferenciaHumana;
+  } | null;
 };
 
-class ErroValidacaoRespostaModelo extends Error {}
+type CategoriaValidacaoResposta =
+  | "json_invalido"
+  | "resposta_incompleta"
+  | "schema_incompativel"
+  | "saida_vazia";
+
+class ErroValidacaoRespostaModelo extends Error {
+  readonly schema = "decisao_atendente_ia";
+
+  constructor(
+    readonly categoria: CategoriaValidacaoResposta,
+    readonly campos: string[] = [],
+    readonly resposta?: RespostaResponsesOpenAi,
+  ) {
+    super("RESPOSTA_MODELO_INVALIDA");
+    this.name = "ErroValidacaoRespostaModelo";
+  }
+}
+
+function camposInvalidosSchema(problemas: ZodIssue[], valor: unknown) {
+  const caminhoPresente = (caminho: PropertyKey[]) => {
+    let atual = valor;
+    for (const parte of caminho) {
+      if (
+        !atual ||
+        typeof atual !== "object" ||
+        !Object.prototype.hasOwnProperty.call(atual, parte)
+      )
+        return false;
+      atual = (atual as Record<PropertyKey, unknown>)[parte];
+    }
+    return true;
+  };
+  const campos = problemas.flatMap((problema) => {
+    if (problema.code === "unrecognized_keys" && problema.keys?.length) {
+      return problema.keys.map((chave) => `inesperado:${chave}`);
+    }
+    const caminho = problema.path.length
+      ? problema.path.map(String).join(".")
+      : "raiz";
+    return [
+      `${problema.code === "invalid_type" && !caminhoPresente(problema.path) ? "ausente" : "invalido"}:${caminho}`,
+    ];
+  });
+  return [...new Set(campos)].sort().slice(0, 12);
+}
+
+function registrarFalhaValidacaoResposta(erro: ErroValidacaoRespostaModelo) {
+  console.error("[atendimento-ia:validacao-resposta]", {
+    campos: erro.campos,
+    categoria: erro.categoria,
+    etapa: "validacao_resposta_openai",
+    modelo: erro.resposta?.model ?? null,
+    requestId: erro.resposta?.request_id ?? null,
+    schema: erro.schema,
+  });
+}
 
 function extrairSolicitacoesFerramentas(
   resposta: RespostaResponsesOpenAi,
@@ -55,7 +121,11 @@ function extrairSolicitacoesFerramentas(
       typeof item.name !== "string" ||
       typeof item.arguments !== "string"
     ) {
-      throw new ErroValidacaoRespostaModelo();
+      throw new ErroValidacaoRespostaModelo(
+        "schema_incompativel",
+        ["invalido:output.function_call"],
+        resposta,
+      );
     }
     return [
       {
@@ -67,37 +137,36 @@ function extrairSolicitacoesFerramentas(
   });
 }
 
-function selecionarDadosPermitidos(
-  contexto: ContextoPersistidoOrquestrador,
-): DadosPermitidosModelo {
-  return {
-    estado: contexto.estado,
-    memoriaPermitida: contexto.memoriaPermitida,
-    mensagemAtual: {
-      autor: contexto.mensagemAtual.autor,
-      conteudo: contexto.mensagemAtual.conteudo,
-      criadoEm: contexto.mensagemAtual.criadoEm,
-      status: contexto.mensagemAtual.status,
-    },
-    mensagensAnteriores: contexto.mensagensAnteriores.map((mensagem) => ({
-      autor: mensagem.autor,
-      conteudo: mensagem.conteudo,
-      criadoEm: mensagem.criadoEm,
-      status: mensagem.status,
-    })),
-    resumo: contexto.resumo
-      ? {
-          conteudo: contexto.resumo.conteudo,
-          resumoEstruturado: contexto.resumo.resumoEstruturado,
-        }
-      : null,
-  };
-}
-
 function criarIdentificadorSeguranca(contexto: ContextoPersistidoOrquestrador) {
   const identificador =
     contexto.conversa.usuarioId ?? contexto.conversa.identificadorSessao;
   return createHash("sha256").update(identificador).digest("hex");
+}
+
+function criarHashSessao(contexto: ContextoPersistidoOrquestrador) {
+  return createHash("sha256")
+    .update(contexto.conversa.identificadorSessao, "utf8")
+    .digest("hex");
+}
+
+function estimarTokensEntradaModelo(input: RequisicaoResponsesOpenAi["input"]) {
+  const estimarItem = (item: Record<string, unknown>) => {
+    let custo = 0;
+    const estrutura = { ...item };
+    for (const campo of ["content", "output", "arguments"] as const) {
+      if (typeof estrutura[campo] === "string") {
+        custo += estimarTokensSeguro(estrutura[campo]);
+        estrutura[campo] = "";
+      }
+    }
+    return custo + estimarTokensSeguro(estrutura);
+  };
+  return (
+    estimarTokensSeguro(INSTRUCOES_SISTEMA_ATENDENTE_IA) +
+    (typeof input === "string"
+      ? estimarTokensSeguro(input)
+      : input.reduce((total, item) => total + estimarItem(item), 0))
+  );
 }
 
 function validarRespostaModelo(
@@ -108,25 +177,43 @@ function validarRespostaModelo(
     resposta.error ||
     resposta.incomplete_details
   ) {
-    throw new ErroValidacaoRespostaModelo();
+    throw new ErroValidacaoRespostaModelo(
+      "resposta_incompleta",
+      ["invalido:status"],
+      resposta,
+    );
   }
   const texto = resposta.output_text.trim();
-  if (!texto) throw new ErroValidacaoRespostaModelo();
+  if (!texto)
+    throw new ErroValidacaoRespostaModelo(
+      "saida_vazia",
+      ["ausente:output_text"],
+      resposta,
+    );
 
   let valor: unknown;
   try {
     valor = JSON.parse(texto);
   } catch {
-    throw new ErroValidacaoRespostaModelo();
+    throw new ErroValidacaoRespostaModelo("json_invalido", [], resposta);
   }
   const validacao = respostaEstruturadaOpenAiSchema.safeParse(valor);
-  if (!validacao.success) throw new ErroValidacaoRespostaModelo();
+  if (!validacao.success) {
+    throw new ErroValidacaoRespostaModelo(
+      "schema_incompativel",
+      camposInvalidosSchema(validacao.error.issues, valor),
+      resposta,
+    );
+  }
+
+  const decisao = validacao.data.decisao;
 
   return {
     criterioEscalonamento: validacao.data.criterio_escalonamento,
-    encaminhamento: validacao.data.encaminhamento,
-    resposta: validacao.data.resposta,
+    encaminhamento: decisao.encaminhamento,
+    resposta: decisao.resposta,
     respostaBruta: resposta,
+    transferencia: decisao.transferencia,
   };
 }
 
@@ -135,7 +222,13 @@ function mapearResultado(
   metadados: MetadadosExecucaoModelo,
 ): ResultadoComponenteOrquestrado {
   if (resultado.encaminhamento === "gerar_resposta") {
-    if (!resultado.resposta) throw new ErroValidacaoRespostaModelo();
+    if (!resultado.resposta) {
+      throw new ErroValidacaoRespostaModelo(
+        "schema_incompativel",
+        ["ausente:decisao.resposta"],
+        resultado.respostaBruta,
+      );
+    }
     return {
       conteudoResposta: resultado.resposta,
       metadados,
@@ -143,9 +236,33 @@ function mapearResultado(
     };
   }
   if (resultado.encaminhamento === "solicitar_ferramenta_futura") {
-    return { metadados, tipo: "aguardar_ferramenta" };
+    if (!resultado.resposta || !resultado.transferencia) {
+      throw new ErroValidacaoRespostaModelo(
+        "schema_incompativel",
+        ["ausente:decisao.resposta_ou_transferencia"],
+        resultado.respostaBruta,
+      );
+    }
+    return {
+      explicacaoOferta: resultado.transferencia.explicacao,
+      metadados,
+      motivo: resultado.transferencia.motivo,
+      tipo: "aguardar_atendimento_humano",
+    };
   }
-  return { metadados, tipo: "aguardar_atendimento_humano" };
+  if (!resultado.transferencia) {
+    throw new ErroValidacaoRespostaModelo(
+      "schema_incompativel",
+      ["ausente:decisao.transferencia"],
+      resultado.respostaBruta,
+    );
+  }
+  return {
+    explicacaoOferta: resultado.transferencia.explicacao,
+    metadados,
+    motivo: resultado.transferencia.motivo,
+    tipo: "aguardar_atendimento_humano",
+  };
 }
 
 export function criarComponenteProcessamentoOpenAi(dependencias: {
@@ -195,7 +312,9 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
         ultimaFalha = erro;
         if (
           !(erro instanceof ErroClienteResponsesOpenAi) ||
-          ["autenticacao", "requisicao_invalida"].includes(erro.categoria)
+          ["autenticacao", "quota", "requisicao_invalida"].includes(
+            erro.categoria,
+          )
         ) {
           break;
         }
@@ -227,10 +346,9 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
           criterioEscalonamento &&
           modeloFinal === MODELO_PRINCIPAL_ATENDENTE_IA
         ) {
-          if (!dependencias.configuracao.escalonamentoAtivo) {
-            throw new ErroValidacaoRespostaModelo();
+          if (dependencias.configuracao.escalonamentoAtivo) {
+            respostaFinal = await executarEscalonamento();
           }
-          respostaFinal = await executarEscalonamento();
         }
 
         return mapearResultado(respostaFinal, {
@@ -238,10 +356,15 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
           modelo: modeloFinal,
           motivoEscalonamento: criterioEscalonamento,
           respostaId: respostaFinal.respostaBruta.id,
+          requestId: respostaFinal.respostaBruta.request_id ?? null,
           tokensEntrada,
           tokensSaida,
         });
       } catch (erro) {
+        if (erro instanceof ErroValidacaoRespostaModelo) {
+          registrarFalhaValidacaoResposta(erro);
+        }
+        if (erro instanceof FalhaComponenteOrquestrado) throw erro;
         if (erro instanceof ErroClienteResponsesOpenAi) {
           if (
             erro.categoria === "autenticacao" ||
@@ -256,7 +379,7 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
           }
           throw new FalhaComponenteOrquestrado(
             "recuperavel",
-            erro.categoria === "rate_limit"
+            erro.categoria === "rate_limit" || erro.categoria === "quota"
               ? "limite_excedido"
               : "modelo_indisponivel",
           );
@@ -271,7 +394,11 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
           contexto,
         );
         if (validada.criterioEscalonamento) {
-          throw new ErroValidacaoRespostaModelo();
+          throw new ErroValidacaoRespostaModelo(
+            "schema_incompativel",
+            ["invalido:criterio_escalonamento"],
+            validada.respostaBruta,
+          );
         }
         return validada;
       }
@@ -280,16 +407,42 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
         modelo: "gpt-5.6-terra" | "gpt-5.6-sol",
         contextoAtual: ContextoPersistidoOrquestrador,
       ): Promise<ResultadoModeloValidado> {
-        const entradaOriginal = JSON.stringify(
-          selecionarDadosPermitidos(contextoAtual),
+        let entradaOriginal = JSON.stringify(
+          (() => {
+            const controlado = montarContextoControlado(contextoAtual, {
+              // Reserva o custo do envelope serializado da requisição.
+              limiteTokens: dependencias.configuracao.maxContextTokens - 512,
+            });
+            if (
+              controlado.tokensEstimados >
+              dependencias.configuracao.maxContextTokens - 512
+            ) {
+              throw new FalhaComponenteOrquestrado(
+                "definitiva",
+                "limite_excedido",
+              );
+            }
+            return controlado.dados satisfies DadosPermitidosModelo;
+          })(),
         );
         let input: RequisicaoResponsesOpenAi["input"] = entradaOriginal;
         const historico: Array<Record<string, unknown>> = [
           { content: entradaOriginal, role: "user" },
         ];
         let totalChamadas = 0;
+        let tokensEntradaProjetados: number | null = null;
 
         while (true) {
+          const custoInputEstimado = estimarTokensEntradaModelo(input);
+          if (
+            (tokensEntradaProjetados ?? custoInputEstimado) >
+            dependencias.configuracao.maxContextTokens
+          ) {
+            throw new FalhaComponenteOrquestrado(
+              "definitiva",
+              "limite_excedido",
+            );
+          }
           let resposta: RespostaResponsesOpenAi;
           try {
             resposta = await chamarModelo(modelo, contextoAtual, input);
@@ -303,7 +456,11 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
             resposta.error ||
             resposta.incomplete_details
           ) {
-            throw new ErroValidacaoRespostaModelo();
+            throw new ErroValidacaoRespostaModelo(
+              "resposta_incompleta",
+              ["invalido:status"],
+              resposta,
+            );
           }
 
           const solicitacoes = extrairSolicitacoesFerramentas(resposta);
@@ -327,13 +484,23 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
             totalChamadas > MAXIMO_CHAMADAS_FERRAMENTAS_POR_EXECUCAO ||
             resposta.output_text.trim()
           ) {
-            throw new ErroValidacaoRespostaModelo();
+            throw new ErroValidacaoRespostaModelo(
+              "schema_incompativel",
+              ["invalido:output.function_call"],
+              resposta,
+            );
           }
 
           const saidas = [];
           for (const solicitacao of solicitacoes) {
             const retorno = await dependencias.executorFerramentas.executar({
               ...solicitacao,
+              contextoSeguro: {
+                conversaId: contextoAtual.conversa.id,
+                execucaoId,
+                identificadorSessaoHash: criarHashSessao(contextoAtual),
+                usuarioIdEsperado: contextoAtual.conversa.usuarioId,
+              },
               execucaoId,
             });
             saidas.push({
@@ -342,8 +509,66 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
               type: "function_call_output" as const,
             });
           }
-          historico.push(...resposta.output, ...saidas);
+          const itensTecnicos = [
+            ...historico.slice(1),
+            ...resposta.output,
+            ...saidas,
+          ];
+          let proximoHistorico: Array<Record<string, unknown>> = [
+            { content: entradaOriginal, role: "user" },
+            ...itensTecnicos,
+          ];
+          // A estimativa local por bytes é deliberadamente conservadora. Após
+          // a primeira resposta, usamos a contagem real devolvida pela API para
+          // calibrar a projeção da continuação e evitar um falso estouro.
+          const proporcaoReal = resposta.usage?.input_tokens
+            ? Math.max(0.25, resposta.usage.input_tokens / custoInputEstimado)
+            : 1;
+          const projetarTokens = (valor: RequisicaoResponsesOpenAi["input"]) =>
+            Math.ceil(estimarTokensEntradaModelo(valor) * proporcaoReal);
+          let tokensProjetados = projetarTokens(proximoHistorico);
+
+          if (tokensProjetados > dependencias.configuracao.maxContextTokens) {
+            const margemEstrutural = 512;
+            const limiteContextoConversa = Math.floor(
+              dependencias.configuracao.maxContextTokens / proporcaoReal -
+                estimarTokensSeguro(itensTecnicos) -
+                margemEstrutural,
+            );
+            const contextoRecompactado = montarContextoControlado(
+              contextoAtual,
+              { limiteTokens: limiteContextoConversa },
+            );
+            if (
+              limiteContextoConversa > 0 &&
+              contextoRecompactado.tokensEstimados <= limiteContextoConversa
+            ) {
+              entradaOriginal = JSON.stringify(contextoRecompactado.dados);
+              proximoHistorico = [
+                { content: entradaOriginal, role: "user" },
+                ...itensTecnicos,
+              ];
+              tokensProjetados = projetarTokens(proximoHistorico);
+            }
+          }
+
+          if (tokensProjetados > dependencias.configuracao.maxContextTokens) {
+            console.error("[atendimento-ia:orcamento-contexto]", {
+              categoria: "orcamento_contexto_excedido",
+              chamadasFerramenta: totalChamadas,
+              etapa: "projecao_apos_ferramenta",
+              limiteTokens: dependencias.configuracao.maxContextTokens,
+              temporaria: false,
+            });
+            throw new FalhaComponenteOrquestrado(
+              "definitiva",
+              "limite_excedido",
+            );
+          }
+          historico.length = 0;
+          historico.push(...proximoHistorico);
           input = historico;
+          tokensEntradaProjetados = tokensProjetados;
         }
       }
     },

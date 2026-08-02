@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import {
   atendimentoIaAuditoriasTable,
@@ -46,6 +46,7 @@ export class RepositorioEntradaAtendimentoDrizzle
         id: atendimentoIaConversasTable.id,
         identificadorSessao: atendimentoIaConversasTable.identificadorSessao,
         status: atendimentoIaConversasTable.status,
+        ultimaAtividadeEm: atendimentoIaConversasTable.ultimaAtividadeEm,
         usuarioId: atendimentoIaConversasTable.usuarioId,
       })
       .from(atendimentoIaConversasTable)
@@ -59,8 +60,10 @@ export class RepositorioEntradaAtendimentoDrizzle
     const [conversa] = await this.banco
       .insert(atendimentoIaConversasTable)
       .values({
+        avisoPrivacidadeVersao: "atendente-ia-contexto-v1",
         canal,
         identificadorSessao: identidade.identificadorSessao,
+        inicioVoluntarioEm: new Date(),
         usuarioId: identidade.usuarioId,
       })
       .returning({
@@ -68,10 +71,20 @@ export class RepositorioEntradaAtendimentoDrizzle
         id: atendimentoIaConversasTable.id,
         identificadorSessao: atendimentoIaConversasTable.identificadorSessao,
         status: atendimentoIaConversasTable.status,
+        ultimaAtividadeEm: atendimentoIaConversasTable.ultimaAtividadeEm,
         usuarioId: atendimentoIaConversasTable.usuarioId,
       });
 
     if (!conversa) throw new Error("CONVERSA_NAO_CRIADA");
+    await this.banco.insert(atendimentoIaAuditoriasTable).values({
+      conversaId: conversa.id,
+      evento: "aviso_privacidade_registrado",
+      metadados: {
+        evento: "inicio_voluntario_conversa",
+        versao: "atendente-ia-contexto-v1",
+      },
+      tipoAtor: identidade.usuarioId ? "cliente_autenticado" : "visitante",
+    });
     return conversa;
   }
 
@@ -196,6 +209,34 @@ export class RepositorioEntradaAtendimentoDrizzle
       .update(atendimentoIaConversasTable)
       .set({ atualizadoEm: agora, ultimaAtividadeEm: agora })
       .where(eq(atendimentoIaConversasTable.id, conversaId));
+  }
+
+  async registrarInicioVoluntarioContexto(dados: {
+    conversaId: string;
+    tipoAtor: "cliente_autenticado" | "visitante";
+    versao: string;
+  }) {
+    const atualizadas = await this.banco
+      .update(atendimentoIaConversasTable)
+      .set({
+        avisoPrivacidadeVersao: dados.versao,
+        atualizadoEm: new Date(),
+        inicioVoluntarioEm: new Date(),
+      })
+      .where(
+        and(
+          eq(atendimentoIaConversasTable.id, dados.conversaId),
+          isNull(atendimentoIaConversasTable.inicioVoluntarioEm),
+        ),
+      )
+      .returning({ id: atendimentoIaConversasTable.id });
+    if (atualizadas.length === 0) return;
+    await this.banco.insert(atendimentoIaAuditoriasTable).values({
+      conversaId: dados.conversaId,
+      evento: "aviso_privacidade_registrado",
+      metadados: { evento: "inicio_voluntario_conversa", versao: dados.versao },
+      tipoAtor: dados.tipoAtor,
+    });
   }
 
   async registrarAuditoriaEntrada(dados: {

@@ -6,7 +6,7 @@ export type NomeFerramentaPublica = (typeof NOMES_FERRAMENTAS_PUBLICAS)[number];
 
 export type DefinicaoFerramentaOpenAi = {
   description: string;
-  name: NomeFerramentaPublica;
+  name: string;
   parameters: Record<string, unknown>;
   strict: true;
   type: "function";
@@ -46,7 +46,8 @@ export interface ExecutorFerramentasPublicas {
     chamadaId: string;
     execucaoId: string;
     nome: string;
-  }): Promise<ResultadoFerramentaPublica>;
+    contextoSeguro?: import("./ferramentas-protegidas").ContextoSeguroFerramenta;
+  }): Promise<ResultadoFerramentaPublica | import("./ferramentas-protegidas").ResultadoFerramentaProtegida>;
 }
 
 export interface RepositorioExecucoesFerramentas {
@@ -55,17 +56,18 @@ export interface RepositorioExecucoesFerramentas {
     chamadaId: string;
     chaveIdempotencia: string;
     execucaoId: string;
-    nome: NomeFerramentaPublica;
+    classificacao?: "consulta_publica" | "consulta_protegida";
+    nome: string;
     versao: string;
   }): Promise<
     | { tipo: "adquirida"; execucaoFerramentaId: string }
-    | { tipo: "concluida"; resultado: ResultadoFerramentaPublica }
+    | { tipo: "concluida"; resultado: ResultadoFerramentaPublica | import("./ferramentas-protegidas").ResultadoFerramentaProtegida }
     | { tipo: "em_processamento" }
   >;
   concluir(dados: {
     duracaoEmMs: number;
     execucaoFerramentaId: string;
-    resultado: ResultadoFerramentaPublica;
+    resultado: ResultadoFerramentaPublica | import("./ferramentas-protegidas").ResultadoFerramentaProtegida;
   }): Promise<void>;
   falhar(dados: {
     classificacao: "recuperavel" | "definitiva";

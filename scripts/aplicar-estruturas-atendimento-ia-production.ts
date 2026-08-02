@@ -30,6 +30,29 @@ const TABELAS_NOVAS_ESPERADAS = [
   "atendimento_ia_resumos",
   "atendimento_ia_transferencias",
 ].sort();
+const TABELAS_FINAIS_ESPERADAS = [
+  "atendimento_ia_auditorias",
+  "atendimento_ia_autorizacoes_memoria",
+  "atendimento_ia_avaliacoes",
+  "atendimento_ia_buscas_rag",
+  "atendimento_ia_confirmacoes_ferramentas",
+  "atendimento_ia_conversas",
+  "atendimento_ia_documento_versoes",
+  "atendimento_ia_documentos_institucionais",
+  "atendimento_ia_estados",
+  "atendimento_ia_execucoes",
+  "atendimento_ia_execucoes_ferramentas",
+  "atendimento_ia_fragmentos_institucionais",
+  "atendimento_ia_idempotencias",
+  "atendimento_ia_limites_uso",
+  "atendimento_ia_memorias",
+  "atendimento_ia_mensagens",
+  "atendimento_ia_ocorrencias",
+  "atendimento_ia_operacoes_protegidas",
+  "atendimento_ia_resultados_rag",
+  "atendimento_ia_resumos",
+  "atendimento_ia_transferencias",
+].sort();
 
 type LinhaCatalogo = Record<string, boolean | number | string | null>;
 
@@ -202,6 +225,14 @@ async function consultarEstado(url: string) {
     const orfa = await cliente.query<{ existe: boolean }>(`
       SELECT to_regclass('public.diagnosticos_cotacoes_frete_paralelas') IS NOT NULL AS existe
     `);
+    const registrosLegados = await cliente.query<{
+      memorias: string;
+      resumos: string;
+    }>(`
+      SELECT
+        (SELECT count(*)::text FROM atendimento_ia_memorias) AS memorias,
+        (SELECT count(*)::text FROM atendimento_ia_resumos) AS resumos
+    `);
     await cliente.query("COMMIT");
 
     return {
@@ -210,6 +241,7 @@ async function consultarEstado(url: string) {
       tabelasAtendimento: tabelasAtendimento.rows.map(({ tabela }) => tabela),
       rastreamento: rastreamento.rows,
       tabelaOrfaPresente: orfa.rows[0]?.existe ?? false,
+      registrosLegados: registrosLegados.rows[0] ?? { memorias: "0", resumos: "0" },
     };
   } catch (erro) {
     await cliente.query("ROLLBACK").catch(() => undefined);
@@ -222,8 +254,8 @@ async function consultarEstado(url: string) {
 function validarArquivosLocais() {
   const migrations = readMigrationFiles({ migrationsFolder: PASTA_MIGRACOES });
 
-  if (migrations.length !== 2) {
-    throw new Error("A sequência ativa deve conter baseline e migration 0001.");
+  if (migrations.length !== 7) {
+    throw new Error("A sequência ativa deve conter exatamente as migrations 0000 a 0006.");
   }
 
   const sqlMigration = readFileSync(
@@ -241,11 +273,119 @@ function validarArquivosLocais() {
   return migrations;
 }
 
+function rastreamentoCorresponde(
+  rastreamento: Array<{ created_at: string; hash: string }>,
+  migrations: ReturnType<typeof readMigrationFiles>,
+  quantidade: number,
+) {
+  return rastreamento.length === quantidade && rastreamento.every(
+    (registro, indice) =>
+      registro.hash === migrations[indice]?.hash &&
+      Number(registro.created_at) === migrations[indice]?.folderMillis,
+  );
+}
+
 async function executar() {
   const url = carregarUrlProduction();
   const migrations = validarArquivosLocais();
   const antes = await consultarEstado(url);
   const modo = process.argv[2] ?? "--aplicar";
+
+  if (modo === "--validar-no-op-pendentes") {
+    const estadoFinalValido =
+      antes.estrutura === FINGERPRINT_ESTRUTURAL_ANTERIOR &&
+      antes.tabelaOrfaPresente &&
+      JSON.stringify(antes.tabelasAtendimento) === JSON.stringify(TABELAS_FINAIS_ESPERADAS) &&
+      rastreamentoCorresponde(antes.rastreamento, migrations, 7);
+    if (!estadoFinalValido) {
+      throw new Error("Estado final divergente; validação no-op recusada.");
+    }
+
+    const poolNoOpPendentes = new Pool({ connectionString: url, max: 1 });
+    try {
+      await migrate(drizzle(poolNoOpPendentes), {
+        migrationsFolder: PASTA_MIGRACOES,
+        migrationsSchema: SCHEMA_MIGRACOES,
+        migrationsTable: TABELA_MIGRACOES,
+      });
+    } finally {
+      await poolNoOpPendentes.end();
+    }
+
+    const depoisNoOpPendentes = await consultarEstado(url);
+    if (JSON.stringify(antes) !== JSON.stringify(depoisNoOpPendentes)) {
+      throw new Error("O migrator pendente não apresentou comportamento no-op.");
+    }
+    console.log(JSON.stringify({
+      alvo: "production",
+      migratorNoOp: true,
+      migrationsRegistradas: depoisNoOpPendentes.rastreamento.length,
+      dadosPreservados: true,
+      tabelaOrfaPreservada: depoisNoOpPendentes.tabelaOrfaPresente,
+    }, null, 2));
+    return;
+  }
+
+  if (modo === "--inspecionar-pendentes" || modo === "--aplicar-pendentes") {
+    const estadoAnteriorValido =
+      antes.estrutura === FINGERPRINT_ESTRUTURAL_ANTERIOR &&
+      antes.tabelaOrfaPresente &&
+      JSON.stringify(antes.tabelasAtendimento) === JSON.stringify(TABELAS_NOVAS_ESPERADAS) &&
+      rastreamentoCorresponde(antes.rastreamento, migrations, 2) &&
+      antes.registrosLegados.memorias === "0" &&
+      antes.registrosLegados.resumos === "0";
+
+    if (!estadoAnteriorValido) {
+      throw new Error("Estado anterior das migrations pendentes divergente; operação recusada.");
+    }
+
+    if (modo === "--inspecionar-pendentes") {
+      console.log(JSON.stringify({
+        alvo: "production",
+        migrationsPendentes: migrations.length - antes.rastreamento.length,
+        migrationsRegistradas: antes.rastreamento.length,
+        registrosLegados: antes.registrosLegados,
+        tabelaOrfaPreservada: antes.tabelaOrfaPresente,
+        validacao: "apto_para_migrations_0002_a_0006",
+      }, null, 2));
+      return;
+    }
+
+    const poolPendentes = new Pool({ connectionString: url, max: 1 });
+    try {
+      await migrate(drizzle(poolPendentes), {
+        migrationsFolder: PASTA_MIGRACOES,
+        migrationsSchema: SCHEMA_MIGRACOES,
+        migrationsTable: TABELA_MIGRACOES,
+      });
+    } finally {
+      await poolPendentes.end();
+    }
+
+    const depoisPendentes = await consultarEstado(url);
+    if (
+      depoisPendentes.estrutura !== antes.estrutura ||
+      depoisPendentes.dados !== antes.dados ||
+      !depoisPendentes.tabelaOrfaPresente ||
+      JSON.stringify(depoisPendentes.tabelasAtendimento) !== JSON.stringify(TABELAS_FINAIS_ESPERADAS) ||
+      !rastreamentoCorresponde(depoisPendentes.rastreamento, migrations, 7) ||
+      depoisPendentes.registrosLegados.memorias !== "0" ||
+      depoisPendentes.registrosLegados.resumos !== "0"
+    ) {
+      throw new Error("Validação posterior às migrations pendentes falhou.");
+    }
+
+    console.log(JSON.stringify({
+      alvo: "production",
+      migrationsAplicadas: ["0002", "0003", "0004", "0005", "0006"],
+      migrationsRegistradas: depoisPendentes.rastreamento.length,
+      objetosAnterioresPreservados: antes.estrutura === depoisPendentes.estrutura,
+      dadosAnterioresPreservados: antes.dados === depoisPendentes.dados,
+      tabelaOrfaPreservada: depoisPendentes.tabelaOrfaPresente,
+      tabelaLimitadorDisponivel: depoisPendentes.tabelasAtendimento.includes("atendimento_ia_limites_uso"),
+    }, null, 2));
+    return;
+  }
 
   if (modo === "--validar-no-op") {
     if (

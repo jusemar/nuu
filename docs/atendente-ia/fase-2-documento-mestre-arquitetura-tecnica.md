@@ -1421,4 +1421,1066 @@ A Fase 3 deverá transformar esta arquitetura em implementação real, seguindo:
 * a liberação gradual;
 * a possibilidade de rollback.
 
+# ADENDO OFICIAL AO DOCUMENTO MESTRE DA FASE 2
 
+## Contexto, resumo e memória de curto prazo
+
+**Projeto:** Atendente IA da Loja Virtual
+**Documento vinculado:** Documento Mestre da Fase 2 — Arquitetura Técnica
+**Status do adendo:** Aprovado
+**Data de aprovação:** 1º de agosto de 2026
+
+## 1. Finalidade
+
+Este adendo complementa a Fase 2 exclusivamente com os parâmetros técnicos necessários para implementar contexto, resumo e memória de curto prazo na Fase 3.
+
+As demais decisões do Documento Mestre da Fase 2 permanecem inalteradas.
+
+## 2. Limite do contexto
+
+2.1. O limite máximo inicial será de **8.000 tokens de entrada por processamento**.
+
+2.2. O limite será configurável, permitindo ajustes futuros sem alteração de código.
+
+2.3. O sistema enviará somente o conteúdo necessário para cada processamento, sem preencher obrigatoriamente os 8.000 tokens.
+
+2.4. A mensagem atual terá prioridade e não poderá ser descartada para acomodar histórico, resumo ou memória.
+
+2.5. Instruções oficiais, contexto relevante e resultados necessários de ferramentas deverão ser considerados dentro do mesmo orçamento.
+
+## 3. Geração e atualização do resumo
+
+3.1. Conversas curtas não deverão gerar resumo.
+
+3.2. O primeiro resumo será gerado quando o contexto selecionado atingir **6.000 tokens**.
+
+3.3. Depois do primeiro resumo, ele será atualizado quando forem acumulados mais **4.000 tokens relevantes** ainda não abrangidos pela última versão válida.
+
+3.4. O resumo também deverá ser atualizado antes que o contexto necessário ultrapasse o limite máximo de 8.000 tokens.
+
+3.5. Não haverá geração ou atualização quando não existir conteúdo novo relevante.
+
+3.6. O resumo deverá:
+
+* representar somente informações efetivamente presentes na conversa;
+* diferenciar fatos, hipóteses, dúvidas e decisões;
+* preservar informações ainda relevantes;
+* não transformar suposições em fatos;
+* não conter raciocínio interno, credenciais ou informações técnicas desnecessárias;
+* permanecer vinculado exclusivamente à conversa de origem.
+
+## 4. Expiração
+
+4.1. O contexto temporário de visitante expirará após **7 dias sem interação**.
+
+4.2. O contexto temporário de cliente autenticado expirará após **30 dias sem interação**.
+
+4.3. A memória de curto prazo expirará após **30 dias da última utilização válida**.
+
+4.4. Uma utilização válida poderá renovar sua expiração por mais 30 dias.
+
+4.5. Informações ligadas somente a uma compra ou necessidade momentânea não terão renovação automática depois que o assunto for encerrado.
+
+4.6. O cliente poderá solicitar a remoção antes da expiração.
+
+4.7. Todos os prazos serão configuráveis sem alteração de código.
+
+## 5. Categorias autorizadas para memória
+
+5.1. Somente poderão ser persistidas informações confirmadas e úteis para a continuidade do atendimento comercial:
+
+* tipo de produto procurado;
+* medidas, tamanho ou características desejadas;
+* faixa de preço informada pelo cliente;
+* preferências de compra;
+* restrições de entrega relevantes;
+* produtos comparados ou considerados;
+* decisão de compra ainda pendente;
+* objeções comerciais declaradas;
+* preferência de atendimento expressamente informada;
+* etapa atual da intenção de compra.
+
+5.2. Não poderão ser armazenados como memória:
+
+* senhas, tokens, chaves ou códigos de autenticação;
+* dados completos de cartão ou pagamento;
+* dados bancários;
+* documentos pessoais desnecessários;
+* informações sensíveis sem necessidade comercial autorizada;
+* conteúdo administrativo da loja;
+* custos, margens ou fornecedores;
+* suposições ou interpretações produzidas pela IA;
+* raciocínio interno do modelo;
+* informações pertencentes a outro usuário ou conversa;
+* mensagens sem utilidade futura para o atendimento.
+
+5.3. Nenhuma mensagem será transformada automaticamente em memória apenas por ter sido enviada pelo cliente.
+
+## 6. Autorização e consentimento
+
+### 6.1. Contexto da conversa atual
+
+O uso das mensagens dentro da própria conversa será permitido quando:
+
+* o cliente tiver recebido o aviso de privacidade do chat; e
+* iniciar voluntariamente a conversa.
+
+O registro técnico deverá conter:
+
+* versão do aviso apresentado;
+* data e hora;
+* sessão ou usuário correspondente;
+* evento de início da conversa.
+
+### 6.2. Memória reutilizável
+
+A reutilização de memória em conversas futuras exigirá autorização explícita do cliente por opção clara e separada, equivalente a:
+
+> Permitir que o assistente lembre minhas preferências por 30 dias para continuar meu atendimento.
+
+O registro deverá conter:
+
+* evento de autorização;
+* versão do texto apresentado;
+* data e hora;
+* usuário autenticado;
+* origem da autorização;
+* situação ativa ou revogada.
+
+6.3. Visitantes anônimos não poderão ter suas memórias associadas automaticamente a uma conta após autenticação ou cadastro.
+
+6.4. Memória reutilizável ficará restrita a usuários autenticados com autorização válida.
+
+## 7. Duplicidade e contradição
+
+7.1. Cada memória terá uma chave lógica composta por **categoria e assunto normalizado**.
+
+7.2. Uma informação igual não criará nova memória. Será atualizada somente a data da utilização válida.
+
+7.3. Informações complementares poderão ser reunidas quando não houver conflito.
+
+7.4. Quando o cliente corrigir explicitamente uma informação, a declaração mais recente substituirá a anterior.
+
+7.5. A memória anterior será marcada como substituída, preservando a rastreabilidade permitida.
+
+7.6. Se não for possível determinar qual informação é correta:
+
+* nenhuma será assumida como verdadeira;
+* a contradição será registrada de forma controlada;
+* o atendente deverá solicitar confirmação direta ao cliente quando a informação for necessária.
+
+7.7. Informações de conversas diferentes somente poderão ser combinadas quando pertencerem comprovadamente ao mesmo usuário autenticado e houver autorização válida.
+
+## 8. Versionamento e validade dos resumos
+
+8.1. Cada resumo deverá registrar:
+
+* número sequencial da versão;
+* conversa de origem;
+* última mensagem incluída;
+* quantidade de mensagens consideradas;
+* hash técnico do conteúdo considerado;
+* data e hora da criação;
+* execução responsável;
+* situação: válido, substituído ou inválido;
+* referência à versão anterior, quando existente.
+
+8.2. Antes de utilizar um resumo, o sistema deverá validar:
+
+* pertencimento à conversa atual;
+* situação válida;
+* última mensagem abrangida;
+* compatibilidade dos vínculos e do hash;
+* mensagens posteriores que ainda precisam ser incluídas diretamente.
+
+8.3. O resumo mais recente somente substituirá o anterior depois de ser validado e persistido com sucesso.
+
+8.4. Se a atualização falhar, o último resumo válido será preservado.
+
+8.5. Resumos de conversas diferentes não poderão ser misturados, reaproveitados ou vinculados entre si.
+
+## 9. Segurança e isolamento
+
+9.1. Todo contexto, resumo e memória deverá permanecer isolado por usuário, sessão e conversa, conforme o tipo de informação.
+
+9.2. O sistema não deverá persistir:
+
+* chain of thought;
+* raciocínio interno;
+* credenciais;
+* conteúdo administrativo desnecessário;
+* informações proibidas ou restritas;
+* cópias integrais redundantes do contexto sem necessidade aprovada.
+
+9.3. Falhas de geração, validação ou persistência não poderão:
+
+* corromper o contexto;
+* apagar o último resumo válido;
+* misturar usuários ou conversas;
+* transformar informações incertas em fatos;
+* produzir respostas inventadas ao cliente.
+
+## 10. Diretriz econômica
+
+10.1. A implementação deverá reduzir consumo desnecessário da API:
+
+* sem resumo em conversas curtas;
+* sem atualização quando não houver conteúdo relevante;
+* utilizando somente o contexto necessário;
+* evitando memórias duplicadas;
+* sem chamada adicional ao modelo em todas as mensagens;
+* mantendo limites e prazos configuráveis.
+
+## 11. Encerramento
+
+Este adendo integra oficialmente a Fase 2 e fornece as decisões necessárias para a implementação do bloco de contexto, resumo e memória de curto prazo na Fase 3.
+
+Nenhum fundamento das Fases 0 e 1 ou das demais partes da Fase 2 é substituído por este adendo.
+
+# SEGUNDO ADENDO OFICIAL AO DOCUMENTO MESTRE DA FASE 2
+
+## Base institucional e RAG
+
+**Projeto:** Atendente IA da Loja Virtual
+**Documento vinculado:** Documento Mestre da Fase 2 — Arquitetura Técnica
+**Status do adendo:** Aprovado
+**Data de aprovação:** 1º de agosto de 2026
+
+## 1. Finalidade
+
+Este adendo complementa a Fase 2 com as decisões técnicas necessárias para implementar a base institucional e o mecanismo de RAG na Fase 3.
+
+As demais decisões aprovadas nas Fases 0, 1 e 2 permanecem inalteradas.
+
+## 2. Função do RAG
+
+2.1. O RAG será responsável por localizar conteúdo institucional revisado e fornecer ao Atendente IA fontes confiáveis para responder às dúvidas dos clientes.
+
+2.2. O RAG não substituirá as ferramentas responsáveis pela consulta de informações comerciais variáveis da loja.
+
+2.3. O Atendente IA não poderá tratar conhecimento geral do modelo como informação oficial da empresa.
+
+2.4. Quando não existir fonte institucional suficientemente relevante, o sistema deverá registrar ausência de informação confiável e impedir respostas inventadas ou apresentadas como regra oficial da loja.
+
+## 3. Armazenamento vetorial
+
+3.1. Os vetores serão armazenados no PostgreSQL utilizado pelo projeto, por meio da extensão `pgvector`.
+
+3.2. Não será contratado inicialmente um banco vetorial separado.
+
+3.3. A implementação deverá preservar isolamento, rastreabilidade, versionamento e possibilidade de substituição futura do mecanismo de armazenamento.
+
+## 4. Modelo de embeddings
+
+4.1. O modelo inicial será `text-embedding-3-small`.
+
+4.2. A dimensão inicial será de 1.536 dimensões.
+
+4.3. Modelo e dimensão deverão ser configuráveis.
+
+4.4. A implementação não poderá misturar vetores produzidos por modelos ou dimensões incompatíveis.
+
+4.5. Mudança de modelo ou dimensão exigirá nova indexação controlada do conteúdo correspondente.
+
+## 5. Fragmentação do conteúdo
+
+5.1. O tamanho inicial máximo de cada fragmento será de 600 tokens.
+
+5.2. A sobreposição inicial será de 100 tokens entre fragmentos consecutivos.
+
+5.3. Os valores deverão ser configuráveis.
+
+5.4. A fragmentação deverá respeitar, sempre que possível:
+
+* títulos;
+* subtítulos;
+* parágrafos;
+* listas;
+* perguntas e respostas;
+* divisões lógicas do documento.
+
+5.5. A fragmentação não deverá cortar uma regra de forma que altere ou prejudique seu significado.
+
+5.6. Cada fragmento deverá preservar vínculo rastreável com:
+
+* documento original;
+* versão do documento;
+* seção de origem;
+* posição no documento;
+* hash do conteúdo;
+* situação de publicação;
+* data da indexação;
+* modelo e dimensão do embedding utilizado.
+
+## 6. Busca híbrida
+
+6.1. A recuperação combinará:
+
+* busca semântica por vetores, com peso inicial de 70%;
+* busca textual do PostgreSQL, com peso inicial de 30%.
+
+6.2. Os pesos deverão ser configuráveis.
+
+6.3. A pontuação resultante será uma medida de relevância e não representa preço ou custo financeiro.
+
+6.4. A implementação deverá normalizar adequadamente as pontuações antes da combinação, evitando comparar escalas incompatíveis.
+
+6.5. A busca textual deverá favorecer termos exatos relevantes, como nomes oficiais de políticas, modalidades e serviços.
+
+6.6. A busca semântica deverá reconhecer perguntas equivalentes formuladas com palavras diferentes das utilizadas nos documentos.
+
+## 7. Quantidade de resultados e relevância
+
+7.1. A busca poderá recuperar inicialmente até cinco fragmentos candidatos.
+
+7.2. Somente os três melhores fragmentos suficientemente relevantes poderão ser enviados ao modelo em cada resposta.
+
+7.3. A relevância mínima inicial será de 0,70.
+
+7.4. O limite deverá ser configurável e validado posteriormente com perguntas reais.
+
+7.5. Fragmentos abaixo da relevância mínima não poderão fundamentar uma resposta institucional.
+
+7.6. O sistema deverá evitar fragmentos duplicados ou excessivamente semelhantes no mesmo contexto.
+
+7.7. A recuperação deverá respeitar o orçamento de contexto aprovado no primeiro adendo da Fase 2.
+
+## 8. Conteúdo permitido
+
+A base institucional poderá conter exclusivamente conteúdo real, revisado e aprovado da loja, incluindo:
+
+* informações institucionais da empresa;
+* canais e horários de atendimento;
+* políticas de troca e devolução;
+* políticas de garantia;
+* formas de pagamento;
+* regras institucionais de entrega e retirada;
+* orientações gerais de atendimento;
+* privacidade e segurança;
+* perguntas frequentes oficialmente revisadas;
+* outras informações institucionais estáveis formalmente aprovadas.
+
+## 9. Conteúdo excluído do RAG
+
+Não deverão ser utilizados como conhecimento institucional estático:
+
+* preços atuais;
+* estoque;
+* disponibilidade atual de produtos ou variantes;
+* prazo e valor calculado de frete;
+* promoções;
+* cupons;
+* carrinho;
+* pedidos;
+* reserva ou baixa de estoque;
+* dados de clientes;
+* dados administrativos internos;
+* custos;
+* margens;
+* fornecedores;
+* credenciais;
+* informações não revisadas;
+* suposições produzidas pela IA.
+
+Essas informações deverão ser obtidas pelas ferramentas autorizadas da loja, quando existentes.
+
+## 10. Estados editoriais
+
+10.1. Os documentos institucionais terão os seguintes estados:
+
+* rascunho;
+* em revisão;
+* publicado;
+* desativado.
+
+10.2. Somente conteúdo publicado e revisado poderá ser indexado e recuperado pelo Atendente IA.
+
+10.3. Conteúdo em rascunho, em revisão ou desativado não poderá aparecer nos resultados utilizados para responder ao cliente.
+
+10.4. A desativação deverá retirar o conteúdo da recuperação sem apagar indevidamente seu histórico de auditoria.
+
+10.5. Uma nova versão não substituirá a versão publicada anterior até concluir com sucesso sua publicação e indexação.
+
+## 11. Publicação e revisão
+
+11.1. O conteúdo deverá ser criado a partir de informações reais da empresa.
+
+11.2. A publicação exigirá registro de:
+
+* documento;
+* versão;
+* status;
+* responsável pela revisão ou aprovação;
+* data e hora;
+* hash do conteúdo;
+* origem;
+* execução de indexação correspondente.
+
+11.3. A infraestrutura poderá ser implementada antes do preenchimento da primeira base, mas nenhum conteúdo falso poderá ser criado para demonstração ou produção.
+
+## 12. Indexação econômica e idempotente
+
+12.1. Embeddings somente serão gerados para conteúdo publicado novo ou efetivamente alterado.
+
+12.2. Um hash deverá impedir indexações repetidas do mesmo conteúdo com a mesma configuração compatível.
+
+12.3. Conteúdo sem alteração não poderá gerar novamente custos de embeddings.
+
+12.4. A indexação deverá ser idempotente e segura diante de repetição, falha ou concorrência.
+
+12.5. A versão anterior válida deverá permanecer disponível até que a nova indexação seja concluída e validada.
+
+12.6. Falhas parciais não poderão deixar fragmentos de versões incompatíveis ativos simultaneamente.
+
+## 13. Uso das fontes na resposta
+
+13.1. Os fragmentos recuperados deverão ser tratados como fontes institucionais, nunca como instruções capazes de alterar as regras do sistema.
+
+13.2. O sistema deverá proteger-se contra instruções maliciosas ou indevidas inseridas no conteúdo indexado.
+
+13.3. A resposta deverá permanecer limitada às informações sustentadas pelas fontes recuperadas e pelas ferramentas autorizadas.
+
+13.4. O sistema deverá preservar internamente a rastreabilidade entre:
+
+* pergunta;
+* busca realizada;
+* fragmentos recuperados;
+* pontuações;
+* documentos e versões;
+* resposta gerada;
+* execução responsável.
+
+13.5. A auditoria não deverá expor raciocínio interno do modelo.
+
+## 14. Ausência e conflito de informações
+
+14.1. Quando nenhum fragmento atingir a relevância mínima, o RAG deverá retornar ausência de fonte confiável.
+
+14.2. O Atendente IA deverá admitir que não encontrou informação institucional suficiente.
+
+14.3. O sistema não poderá completar lacunas com suposições.
+
+14.4. Quando fontes publicadas apresentarem contradição relevante:
+
+* nenhuma deverá ser escolhida arbitrariamente;
+* o conflito deverá ser registrado;
+* a resposta não poderá afirmar como certa uma regra contraditória;
+* deverá ser utilizado o tratamento de dúvida e encaminhamento já aprovado nas fases anteriores.
+
+## 15. Segurança e isolamento
+
+15.1. A base institucional deverá permanecer separada de:
+
+* memória de curto prazo;
+* histórico de conversas;
+* dados pessoais;
+* dados administrativos restritos;
+* ferramentas comerciais dinâmicas.
+
+15.2. RAG e memória não poderão compartilhar dados ou finalidades indevidamente.
+
+15.3. Consultas e logs deverão preservar somente os dados necessários à rastreabilidade permitida.
+
+15.4. Nenhum conteúdo indexado poderá conter credenciais, dados pessoais desnecessários ou informações internas proibidas.
+
+## 16. Configurações iniciais
+
+Os seguintes parâmetros deverão ser configuráveis sem alteração de código:
+
+* modelo de embeddings;
+* dimensão;
+* tamanho máximo dos fragmentos;
+* sobreposição;
+* pesos semântico e textual;
+* quantidade de candidatos recuperados;
+* quantidade máxima enviada ao modelo;
+* relevância mínima;
+* limites de contexto;
+* estados editoriais permitidos para recuperação.
+
+## 17. Primeira base institucional
+
+17.1. A primeira indexação dependerá da existência de documentos reais, revisados e aprovados.
+
+17.2. A infraestrutura deverá permitir o cadastramento posterior desses documentos.
+
+17.3. Enquanto não houver documentos publicados, o RAG deverá funcionar corretamente como base vazia e retornar ausência de informação confiável.
+
+17.4. A falta de conteúdo inicial não deverá bloquear a implementação nem justificar a criação de informações fictícias.
+
+## 18. Diretriz de testes
+
+A implementação deverá ser validada com testes que comprovem, no mínimo:
+
+* fragmentação e sobreposição;
+* preservação das divisões lógicas;
+* geração e armazenamento de embeddings;
+* compatibilidade de modelo e dimensão;
+* busca semântica;
+* busca textual;
+* combinação dos resultados;
+* normalização das pontuações;
+* relevância mínima;
+* limite de candidatos e fragmentos enviados;
+* exclusão de conteúdo não publicado;
+* desativação;
+* atualização de versão;
+* hash e idempotência;
+* concorrência;
+* preservação da versão anterior diante de falha;
+* base vazia;
+* ausência de fonte confiável;
+* fontes contraditórias;
+* prevenção de conteúdo duplicado;
+* isolamento entre RAG, memória e dados de clientes;
+* proteção contra instruções maliciosas;
+* rastreabilidade;
+* ausência de chamadas pagas reais nos testes automatizados.
+
+## 19. Encerramento
+
+Este adendo integra oficialmente a Fase 2 e fornece as decisões necessárias para implementar a base institucional e o RAG na Fase 3.
+
+Nenhum fundamento ou decisão anterior é substituído por este adendo.
+# TERCEIRO ADENDO OFICIAL DA FASE 2 — FERRAMENTAS PROTEGIDAS E AUTENTICAÇÃO
+
+**Projeto:** Atendente IA da Loja Virtual
+**Fase:** 2 — Arquitetura Técnica
+**Data de aprovação:** 1º de agosto de 2026
+**Status:** Aprovado
+**Natureza:** Complemento oficial ao Documento Mestre da Fase 2
+
+## 1. Objetivo
+
+Este adendo define a arquitetura de segurança, autenticação, autorização, confirmação, execução e auditoria das ferramentas que poderão ser utilizadas pelo Atendente IA.
+
+As decisões aqui estabelecidas deverão orientar a implementação correspondente na Fase 3.
+
+Este adendo não substitui nem redefine decisões anteriores das Fases 0, 1 ou 2.
+
+## 2. Princípio central
+
+A autorização de uma operação nunca poderá depender exclusivamente da interpretação ou decisão do modelo de IA.
+
+Cada ferramenta deverá validar, diretamente no servidor:
+
+* identidade autenticada;
+* autorização;
+* propriedade do recurso;
+* estado atual do recurso;
+* regras comerciais aplicáveis;
+* confirmação exigida;
+* parâmetros autorizados;
+* proteção contra repetição;
+* limites de acesso aos dados.
+
+A IA será apenas a responsável pela comunicação e solicitação controlada das ferramentas. A decisão final de permitir ou bloquear uma operação pertencerá ao sistema determinístico da loja.
+
+## 3. Classificação oficial das ferramentas
+
+Todas as ferramentas disponibilizadas ao Atendente IA deverão pertencer explicitamente a um dos quatro níveis seguintes.
+
+### 3.1. Pública
+
+Ferramenta destinada à consulta de informações públicas, sem necessidade de autenticação.
+
+Exemplos:
+
+* buscar produtos;
+* consultar detalhes públicos;
+* consultar preços;
+* consultar disponibilidade pública;
+* consultar promoções públicas;
+* calcular opções públicas de entrega;
+* consultar retirada;
+* recuperar conteúdo institucional publicado.
+
+### 3.2. Autenticada
+
+Ferramenta destinada à consulta de informações particulares do cliente.
+
+Exige:
+
+* sessão válida;
+* cliente autenticado;
+* validação de propriedade do recurso;
+* acesso mínimo aos dados.
+
+Exemplos:
+
+* listar pedidos do cliente;
+* consultar detalhes de um pedido;
+* acompanhar a situação de um pedido;
+* consultar endereços mascarados;
+* consultar solicitações pertencentes ao cliente.
+
+### 3.3. Confirmada
+
+Ferramenta que altera dados, cria uma solicitação ou produz efeito real em nome do cliente.
+
+Exige:
+
+* autenticação válida;
+* propriedade do recurso;
+* elegibilidade da operação;
+* confirmação explícita;
+* revalidação no momento da execução;
+* proteção contra duplicidade;
+* auditoria.
+
+Exemplos condicionados à existência e validação do fluxo real da loja:
+
+* solicitar cancelamento de pedido elegível;
+* alterar dado permitido;
+* selecionar ou alterar endereço quando autorizado;
+* criar solicitação formal vinculada ao pedido.
+
+### 3.4. Proibida para a IA
+
+Ferramenta ou operação que não poderá ser disponibilizada ao Atendente IA.
+
+Inclui:
+
+* alterar preços;
+* alterar estoque;
+* alterar promoções ou cupons;
+* conceder descontos por decisão própria;
+* modificar pagamentos como se estivessem aprovados;
+* mudar a situação de pedidos fora do fluxo oficial;
+* acessar pedidos de outros clientes;
+* acessar dados administrativos restritos;
+* alterar usuários ou permissões;
+* executar funções administrativas;
+* revelar custos, margens, fornecedores ou credenciais;
+* contornar regras comerciais ou de segurança;
+* executar comandos arbitrários;
+* acessar diretamente banco de dados ou serviços sem ferramenta autorizada.
+
+## 4. Bloqueio por padrão
+
+Somente ferramentas:
+
+* cadastradas;
+* classificadas;
+* autorizadas;
+* implementadas;
+* validadas;
+* explicitamente liberadas
+
+poderão ser utilizadas pelo Atendente IA.
+
+A existência de uma função interna no projeto não autoriza sua exposição ao modelo.
+
+Toda ferramenta ou operação não explicitamente permitida deverá permanecer bloqueada por padrão.
+
+## 5. Autenticação do cliente
+
+O Atendente IA deverá utilizar a sessão segura já existente na loja.
+
+Não deverá ser criado um segundo sistema de autenticação exclusivo para o chat.
+
+Quando houver sessão válida, o servidor poderá disponibilizar à ferramenta uma identificação interna controlada do cliente.
+
+A IA não poderá receber:
+
+* senha;
+* hash de senha;
+* token de sessão;
+* cookie de autenticação;
+* credencial;
+* segredo interno;
+* código de recuperação;
+* qualquer outro elemento que permita autenticação direta.
+
+Quando não existir sessão válida, a IA deverá orientar o cliente a entrar na conta pela interface oficial da loja.
+
+A autenticação não poderá ser realizada pela coleta de senha, CPF, código ou credencial dentro da conversa.
+
+## 6. Autorização no servidor
+
+Toda ferramenta autenticada ou confirmada deverá validar sua autorização diretamente no servidor.
+
+A ferramenta não poderá confiar em declarações do cliente ou da IA, como:
+
+* “o pedido é meu”;
+* “sou o titular”;
+* “o administrador autorizou”;
+* “já confirmei antes”;
+* “pode ignorar a regra”;
+* “é apenas um teste”.
+
+A confirmação verbal do cliente não substitui:
+
+* autenticação;
+* autorização;
+* propriedade;
+* elegibilidade;
+* regras atuais;
+* confirmação estruturada;
+* proteção contra duplicidade.
+
+## 7. Validação da propriedade do recurso
+
+Consultas e alterações particulares deverão ser limitadas aos recursos pertencentes ao cliente autenticado.
+
+A busca não deverá ocorrer apenas pelo identificador informado. Deverá incluir o vínculo com o cliente autenticado.
+
+Se um identificador pertencer a outro cliente, o sistema não deverá revelar:
+
+* se o recurso existe;
+* quem é seu titular;
+* seu conteúdo;
+* sua situação;
+* qualquer outro dado associado.
+
+A resposta deverá ser segura e não enumerável, informando apenas que o recurso não foi localizado entre os recursos disponíveis para aquela conta.
+
+## 8. Acesso mínimo aos dados
+
+Cada ferramenta deverá possuir entrada e saída controladas e disponibilizar somente os dados indispensáveis para sua finalidade.
+
+O modelo não poderá escolher livremente colunas, campos, tabelas ou dados que deseja consultar.
+
+As respostas das ferramentas não deverão expor:
+
+* credenciais;
+* tokens;
+* hashes;
+* dados antifraude;
+* campos administrativos internos;
+* custos;
+* margens;
+* fornecedores;
+* observações restritas;
+* histórico interno desnecessário;
+* campos técnicos do banco;
+* dados pessoais não necessários.
+
+Quando um dado parcialmente sensível for necessário, deverá ser mascarado sempre que possível.
+
+## 9. Confirmação explícita de ações
+
+Toda ferramenta que altere dados, crie uma solicitação ou produza efeito real deverá exigir confirmação explícita.
+
+Antes de solicitar a confirmação, o Atendente IA deverá informar claramente:
+
+* a ação que será realizada;
+* o recurso afetado;
+* os parâmetros principais;
+* a consequência conhecida da operação.
+
+Exemplo:
+
+“Você está solicitando o cancelamento do pedido nº 1234. Confirma o cancelamento deste pedido?”
+
+Perguntas hipotéticas ou de possibilidade não poderão ser tratadas como ordem de execução.
+
+Exemplos que não representam confirmação:
+
+* “É possível cancelar?”
+* “O que acontece se eu cancelar?”
+* “Talvez eu queira cancelar.”
+* “Quero saber como funciona o cancelamento.”
+
+## 10. Características da confirmação
+
+Cada confirmação deverá ser:
+
+* explícita;
+* específica;
+* vinculada ao cliente autenticado;
+* vinculada à ferramenta;
+* vinculada à ação;
+* vinculada ao recurso afetado;
+* vinculada aos parâmetros principais;
+* vinculada à conversa e à execução;
+* temporária;
+* de uso único;
+* auditável.
+
+A validade deverá ser curta e configurável.
+
+A confirmação não poderá ser reutilizada:
+
+* em outra ferramenta;
+* em outro pedido;
+* em outro recurso;
+* com parâmetros alterados;
+* em outra conversa;
+* depois de utilizada;
+* depois de cancelada;
+* depois de expirada;
+* depois de mudança relevante no estado da operação.
+
+Uma resposta genérica como “sim” somente poderá confirmar a ação quando houver uma confirmação pendente, inequívoca e válida naquela conversa.
+
+## 11. Alteração dos parâmetros confirmados
+
+Se qualquer parâmetro relevante mudar depois da solicitação de confirmação, a confirmação anterior deverá ser invalidada.
+
+A nova operação deverá ser apresentada ao cliente e confirmada novamente.
+
+A confirmação de uma ação não poderá autorizar uma ação semelhante, mais ampla ou diferente.
+
+## 12. Revalidação no momento da execução
+
+Mesmo depois da autenticação e da confirmação, a ferramenta deverá revalidar, imediatamente antes da execução:
+
+* validade da sessão;
+* identidade do cliente;
+* propriedade do recurso;
+* nível de autorização;
+* estado atual do recurso;
+* elegibilidade da operação;
+* regras atuais da loja;
+* parâmetros confirmados;
+* validade e uso da confirmação;
+* eventual execução anterior equivalente.
+
+A confirmação do cliente não poderá contornar as regras reais da loja.
+
+Se a ação era permitida durante a conversa, mas deixou de ser permitida antes da execução, a ferramenta deverá bloqueá-la e informar que a situação mudou.
+
+## 13. Proteção contra execução duplicada
+
+Operações protegidas deverão ser idempotentes.
+
+Cada tentativa deverá possuir um identificador único de idempotência relacionado à operação e à execução.
+
+Repetições provocadas por:
+
+* timeout;
+* falha de comunicação;
+* repetição do modelo;
+* reenvio;
+* nova tentativa automática;
+* resposta perdida
+
+não poderão produzir o efeito real duas vezes.
+
+Quando a mesma operação já tiver sido concluída, o sistema deverá retornar o resultado anterior ou um estado estruturado equivalente, sem repetir a alteração.
+
+## 14. Resultados estruturados
+
+As ferramentas protegidas deverão retornar resultados claros e estruturados.
+
+Os estados deverão distinguir, quando aplicável:
+
+* concluída;
+* bloqueada;
+* não autorizada;
+* autenticação necessária;
+* confirmação necessária;
+* confirmação inválida;
+* confirmação expirada;
+* recurso não encontrado;
+* operação não elegível;
+* indisponível;
+* falha sem execução;
+* resultado incerto;
+* já executada anteriormente.
+
+A IA não poderá deduzir livremente se uma operação foi concluída.
+
+Quando o resultado for incerto, a IA deverá informar a incerteza e não afirmar que a alteração ocorreu ou deixou de ocorrer.
+
+## 15. Tratamento de falhas
+
+Uma falha confirmada sem execução deverá ser diferenciada de uma falha cujo resultado seja incerto.
+
+O sistema não deverá repetir automaticamente uma operação de resultado incerto como se ela certamente não tivesse sido executada.
+
+A ferramenta deverá preservar rastreabilidade suficiente para:
+
+* verificar o resultado;
+* evitar duplicidade;
+* permitir tratamento posterior;
+* aplicar o encaminhamento já aprovado quando necessário.
+
+## 16. Auditoria
+
+Todas as ferramentas autenticadas e confirmadas deverão produzir registros seguros de auditoria.
+
+A auditoria deverá registrar, quando aplicável:
+
+* ferramenta solicitada;
+* classificação de proteção;
+* cliente por identificador interno;
+* sessão por referência segura;
+* autenticação validada ou recusada;
+* confirmação solicitada;
+* confirmação utilizada;
+* recurso afetado;
+* parâmetros essenciais permitidos;
+* resultado;
+* data e hora;
+* conversa e execução correspondentes;
+* motivo de bloqueio ou falha;
+* identificador de idempotência;
+* eventual repetição detectada;
+* estado de resultado incerto.
+
+A auditoria não deverá armazenar:
+
+* senha;
+* token de sessão completo;
+* cookie;
+* credenciais;
+* segredos;
+* dados pessoais desnecessários;
+* raciocínio interno do modelo.
+
+## 17. Ferramentas públicas iniciais
+
+Poderão ser disponibilizadas progressivamente, desde que exista implementação real e validada:
+
+* busca de produtos;
+* detalhes públicos do produto;
+* variantes;
+* disponibilidade pública;
+* preços atuais;
+* promoções públicas;
+* opções públicas de entrega;
+* retirada;
+* informações institucionais recuperadas pelo RAG.
+
+As informações comerciais variáveis deverão continuar sendo consultadas nas fontes reais da loja, nunca inventadas ou obtidas do RAG institucional.
+
+## 18. Ferramentas autenticadas iniciais
+
+Poderão ser disponibilizadas progressivamente, desde que os respectivos recursos já existam e sejam validados:
+
+* listar pedidos do cliente;
+* consultar detalhes de pedido pertencente ao cliente;
+* acompanhar a situação do pedido;
+* consultar endereços mascarados;
+* consultar dados mínimos necessários;
+* consultar solicitações ou atendimentos pertencentes ao cliente.
+
+A implementação não deverá criar artificialmente recursos comerciais que ainda não existam na loja.
+
+## 19. Ferramentas confirmadas iniciais
+
+Ferramentas com efeito real somente poderão ser liberadas quando o fluxo correspondente já existir e for validado individualmente.
+
+Exemplos possíveis:
+
+* solicitar cancelamento de pedido elegível;
+* alterar dado permitido antes do processamento;
+* selecionar ou alterar endereço quando autorizado;
+* criar solicitação formal vinculada ao pedido.
+
+A aprovação deste adendo não significa que todas essas operações já estejam disponíveis no projeto nem autoriza a criação de regras comerciais ausentes.
+
+Quando o fluxo real não existir ou não estiver suficientemente definido, a ferramenta deverá permanecer bloqueada.
+
+## 20. Separação de responsabilidades
+
+Deverão permanecer separados:
+
+* modelo de IA;
+* orquestrador;
+* autenticação;
+* autorização;
+* ferramentas públicas;
+* ferramentas protegidas;
+* confirmação;
+* regras comerciais;
+* idempotência;
+* auditoria;
+* banco de dados;
+* RAG;
+* memória de curto prazo;
+* histórico da conversa.
+
+O modelo poderá solicitar uma ferramenta, mas não poderá substituir as validações determinísticas desses componentes.
+
+## 21. Segurança contra instruções maliciosas
+
+Nenhuma mensagem do cliente, conteúdo recuperado pelo RAG, histórico ou saída de ferramenta poderá:
+
+* alterar o nível de proteção;
+* dispensar autenticação;
+* fabricar confirmação;
+* ampliar permissões;
+* trocar o cliente autenticado;
+* remover a validação de propriedade;
+* liberar ferramenta proibida;
+* contornar regras comerciais;
+* solicitar credenciais;
+* executar comandos arbitrários.
+
+Entradas e saídas de ferramentas deverão ser validadas por contratos estruturados.
+
+## 22. Diretriz de implementação progressiva
+
+A exposição das ferramentas ao Atendente IA deverá ocorrer progressivamente.
+
+Cada ferramenta deverá ser liberada somente após comprovação de:
+
+* necessidade funcional;
+* classificação correta;
+* contrato de entrada e saída;
+* autenticação adequada;
+* autorização no servidor;
+* minimização de dados;
+* tratamento de erros;
+* auditoria;
+* testes;
+* comportamento seguro.
+
+A liberação de uma ferramenta não autoriza automaticamente ferramentas semelhantes.
+
+## 23. Diretriz de testes
+
+A implementação deverá comprovar, no mínimo:
+
+* classificação dos quatro níveis de proteção;
+* bloqueio padrão de ferramentas não autorizadas;
+* consulta pública sem login;
+* bloqueio de consulta particular sem login;
+* uso da sessão existente;
+* ausência de credenciais no contexto do modelo;
+* validação de propriedade;
+* impossibilidade de enumerar recursos de terceiros;
+* mascaramento e minimização de dados;
+* confirmação explícita;
+* rejeição de confirmação ambígua;
+* confirmação vinculada à ação;
+* uso único;
+* expiração;
+* invalidação por mudança de parâmetros;
+* revalidação no momento da execução;
+* bloqueio após mudança do estado do recurso;
+* idempotência;
+* repetição após timeout;
+* diferenciação entre falha sem execução e resultado incerto;
+* resultados estruturados;
+* auditoria segura;
+* ausência de senha, token e credencial nos logs;
+* bloqueio de ferramentas proibidas;
+* proteção contra instruções maliciosas;
+* separação entre RAG, memória e ferramentas;
+* ausência de chamadas reais indevidas;
+* preservação das regras atuais da loja.
+
+## 24. Fora do escopo deste adendo
+
+Não pertencem a este adendo:
+
+* criação de novas regras comerciais;
+* criação artificial de fluxos de cancelamento;
+* criação de operações inexistentes na loja;
+* painel administrativo completo de ferramentas;
+* interface pública final do chat;
+* transferência efetiva para atendente humano;
+* memória de longo prazo;
+* redefinição do RAG;
+* alteração dos fundamentos comportamentais;
+* execução de funções administrativas pela IA.
+
+## 25. Encerramento
+
+Este adendo integra oficialmente a Fase 2 e estabelece as decisões necessárias para implementar ferramentas protegidas e autenticação na Fase 3.
+
+Nenhum fundamento ou decisão anterior é substituído por este adendo.

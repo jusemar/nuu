@@ -9,6 +9,60 @@ import type {
 } from "../types/integracao-openai";
 import { ErroClienteResponsesOpenAi } from "../types/integracao-openai";
 
+const CODIGOS_QUOTA = new Set([
+  "credit_balance_exhausted",
+  "insufficient_quota",
+  "organization_spend_limit_exceeded",
+  "organization_usage_limit_exceeded",
+  "project_spend_limit_exceeded",
+]);
+
+function diagnosticarErroOpenAi(
+  erro: unknown,
+  modelo: string,
+) {
+  const api = erro instanceof OpenAI.APIError ? erro : null;
+  const codigo = typeof api?.code === "string" ? api.code : null;
+  const tipo = typeof api?.type === "string" ? api.type : null;
+  const quota = Boolean(
+    (codigo && CODIGOS_QUOTA.has(codigo)) || tipo === "insufficient_quota",
+  );
+  const categoria =
+    erro instanceof OpenAI.AuthenticationError
+      ? "autenticacao"
+      : erro instanceof OpenAI.RateLimitError
+        ? quota
+          ? "quota"
+          : "rate_limit"
+        : erro instanceof OpenAI.APIConnectionTimeoutError
+          ? "timeout"
+          : erro instanceof OpenAI.BadRequestError ||
+              erro instanceof OpenAI.PermissionDeniedError ||
+              erro instanceof OpenAI.NotFoundError ||
+              erro instanceof OpenAI.UnprocessableEntityError
+            ? "requisicao_invalida"
+            : erro instanceof OpenAI.APIUserAbortError
+              ? "cancelamento"
+              : "indisponibilidade";
+
+  // Somente metadados operacionais em lista permitida são registrados. A
+  // mensagem original pode conter detalhes do payload e nunca vai ao log.
+  console.error("[atendimento-ia:openai]", {
+    categoria,
+    codigo,
+    etapa: "responses_api",
+    mensagemSanitizada:
+      categoria === "quota"
+        ? "Quota ou saldo do projeto indisponível."
+        : "Falha categorizada na integração com a OpenAI.",
+    modelo,
+    requestId: api?.requestID ?? null,
+    statusHttp: api?.status ?? null,
+    tipo,
+  });
+  return categoria;
+}
+
 export class ClienteResponsesOpenAiOficial implements ClienteResponsesOpenAi {
   private readonly cliente: OpenAI;
 
@@ -25,6 +79,18 @@ export class ClienteResponsesOpenAiOficial implements ClienteResponsesOpenAi {
         requisicao as unknown as OpenAI.Responses.ResponseCreateParamsNonStreaming,
         opcoes,
       );
+      console.info("[atendimento-ia:openai]", {
+        categoria: "sucesso",
+        codigo: null,
+        etapa: "responses_api",
+        mensagemSanitizada: "Resposta recebida e encaminhada para validação.",
+        modelo: resposta.model,
+        requestId:
+          (resposta as typeof resposta & { _request_id?: string })._request_id ??
+          null,
+        statusHttp: 200,
+        tipo: "response",
+      });
       return {
         error: resposta.error,
         id: resposta.id,
@@ -32,6 +98,9 @@ export class ClienteResponsesOpenAiOficial implements ClienteResponsesOpenAi {
         model: resposta.model,
         output: resposta.output as unknown as Array<Record<string, unknown>>,
         output_text: resposta.output_text,
+        request_id:
+          (resposta as typeof resposta & { _request_id?: string })._request_id ??
+          null,
         status: resposta.status ?? "failed",
         usage: resposta.usage
           ? {
@@ -41,34 +110,9 @@ export class ClienteResponsesOpenAiOficial implements ClienteResponsesOpenAi {
           : undefined,
       };
     } catch (erro) {
-      if (erro instanceof OpenAI.AuthenticationError) {
-        throw new ErroClienteResponsesOpenAi("autenticacao");
-      }
-      if (
-        erro instanceof OpenAI.BadRequestError ||
-        erro instanceof OpenAI.PermissionDeniedError ||
-        erro instanceof OpenAI.NotFoundError ||
-        erro instanceof OpenAI.UnprocessableEntityError
-      ) {
-        throw new ErroClienteResponsesOpenAi("requisicao_invalida");
-      }
-      if (erro instanceof OpenAI.RateLimitError) {
-        throw new ErroClienteResponsesOpenAi("rate_limit");
-      }
-      if (erro instanceof OpenAI.APIConnectionTimeoutError) {
-        throw new ErroClienteResponsesOpenAi("timeout");
-      }
-      if (erro instanceof OpenAI.APIUserAbortError) {
-        throw new ErroClienteResponsesOpenAi("cancelamento");
-      }
-      if (
-        erro instanceof OpenAI.APIConnectionError ||
-        erro instanceof OpenAI.InternalServerError ||
-        erro instanceof OpenAI.ConflictError
-      ) {
-        throw new ErroClienteResponsesOpenAi("indisponibilidade");
-      }
-      throw new ErroClienteResponsesOpenAi("indisponibilidade");
+      throw new ErroClienteResponsesOpenAi(
+        diagnosticarErroOpenAi(erro, requisicao.model),
+      );
     }
   }
 }

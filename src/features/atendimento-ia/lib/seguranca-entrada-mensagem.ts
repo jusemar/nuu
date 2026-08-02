@@ -31,6 +31,7 @@ export function criarHashEntradaMensagem(
     .update(
       JSON.stringify({
         canal: dados.canal,
+        avisoPrivacidadeVersao: dados.avisoPrivacidadeVersao,
         chaveIdempotencia: dados.chaveIdempotencia,
         conversaId: dados.conversaId ?? null,
         mensagem: dados.mensagem,

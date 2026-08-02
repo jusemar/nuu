@@ -28,6 +28,7 @@ export async function receberMensagemAtendimento(
   repositorio: RepositorioEntradaAtendimento,
   dados: DadosEntradaMensagem,
   identidade: IdentidadeEntradaAtendimento,
+  contextoExpiraAposDias?: number,
 ): Promise<ResultadoEntradaMensagem> {
   const escopo = criarEscopoIdempotenciaEntrada(identidade);
   const hashRequisicao = criarHashEntradaMensagem(dados, identidade);
@@ -49,7 +50,11 @@ export async function receberMensagemAtendimento(
           idempotenciaExistente.mensagem.conversaId,
         );
 
-        if (!conversa || !conversaPertenceAIdentidade(conversa, identidade)) {
+        if (
+          !conversa ||
+          !conversaPertenceAIdentidade(conversa, identidade) ||
+          conversaExpirada(conversa, contextoExpiraAposDias)
+        ) {
           throw new ErroEntradaAtendimento("CONVERSA_INDISPONIVEL");
         }
 
@@ -69,7 +74,8 @@ export async function receberMensagemAtendimento(
         if (
           !conversa ||
           conversa.status !== "ativa" ||
-          !conversaPertenceAIdentidade(conversa, identidade)
+          !conversaPertenceAIdentidade(conversa, identidade) ||
+          conversaExpirada(conversa, contextoExpiraAposDias)
         ) {
           throw new ErroEntradaAtendimento("CONVERSA_INDISPONIVEL");
         }
@@ -81,6 +87,11 @@ export async function receberMensagemAtendimento(
       if (!conversa) {
         throw new ErroEntradaAtendimento("PERSISTENCIA_INDISPONIVEL");
       }
+      await transacao.registrarInicioVoluntarioContexto?.({
+        conversaId: conversa.id,
+        tipoAtor: identidade.usuarioId ? "cliente_autenticado" : "visitante",
+        versao: dados.avisoPrivacidadeVersao,
+      });
 
       // A mensagem nasce em "recebida" antes de qualquer etapa posterior.
       const mensagem = await transacao.criarMensagemRecebida({
@@ -133,4 +144,15 @@ export async function receberMensagemAtendimento(
     if (erro instanceof ErroEntradaAtendimento) throw erro;
     throw new ErroEntradaAtendimento("PERSISTENCIA_INDISPONIVEL");
   }
+}
+
+function conversaExpirada(
+  conversa: { ultimaAtividadeEm?: Date },
+  dias?: number,
+) {
+  return Boolean(
+    dias &&
+      conversa.ultimaAtividadeEm &&
+      conversa.ultimaAtividadeEm < new Date(Date.now() - dias * 86_400_000),
+  );
 }

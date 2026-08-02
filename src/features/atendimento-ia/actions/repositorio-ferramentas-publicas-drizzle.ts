@@ -12,6 +12,7 @@ import {
 import { dbTransacional } from "@/db/transaction";
 
 import { validarTransicaoFerramentaPublica } from "../lib/ferramentas-publicas/transicoes-ferramentas-publicas";
+import type { ResultadoFerramentaProtegida } from "../types/ferramentas-protegidas";
 import type {
   RepositorioExecucoesFerramentas,
   ResultadoFerramentaPublica,
@@ -59,7 +60,7 @@ export class RepositorioFerramentasPublicasDrizzle
         .values({
           argumentos: dados.argumentos,
           chaveIdempotencia: dados.chaveIdempotencia,
-          classificacao: "consulta_publica",
+          classificacao: dados.classificacao ?? "consulta_publica",
           execucaoId: dados.execucaoId,
           nomeFerramenta: dados.nome,
           versaoFerramenta: dados.versao,
@@ -83,7 +84,9 @@ export class RepositorioFerramentasPublicasDrizzle
           .limit(1);
         if (existente?.status === "concluida" && existente.resultado) {
           return {
-            resultado: existente.resultado as ResultadoFerramentaPublica,
+            resultado: existente.resultado as
+              | ResultadoFerramentaPublica
+              | ResultadoFerramentaProtegida,
             tipo: "concluida" as const,
           };
         }
@@ -119,13 +122,13 @@ export class RepositorioFerramentasPublicasDrizzle
       if (!executando) throw new Error("TRANSICAO_FERRAMENTA_CONCORRENTE");
       await transacao.insert(atendimentoIaAuditoriasTable).values({
         conversaId: vinculo.conversaId,
-        evento: "ferramenta_publica_iniciada",
+        evento: "ferramenta_autorizada_iniciada",
         execucaoFerramentaId: criada.id,
         execucaoId: dados.execucaoId,
         mensagemId: vinculo.mensagemId,
         metadados: {
           chamadaId: dados.chamadaId,
-          classificacao: "consulta_publica",
+          classificacao: dados.classificacao ?? "consulta_publica",
           nome: dados.nome,
           versao: dados.versao,
         },
@@ -202,12 +205,12 @@ export class RepositorioFerramentasPublicasDrizzle
       }
       await transacao.insert(atendimentoIaAuditoriasTable).values({
         conversaId: vinculo.conversaId,
-        evento: "ferramenta_publica_concluida",
+        evento: "ferramenta_autorizada_concluida",
         execucaoFerramentaId: dados.execucaoFerramentaId,
         execucaoId: vinculo.execucaoId,
         mensagemId: vinculo.mensagemId,
         metadados: {
-          fonte: dados.resultado.fonte,
+          fonte: "fonte" in dados.resultado ? dados.resultado.fonte : "dados_privados_minimizados",
           nome: vinculo.nome,
           statusResultado: dados.resultado.status,
         },
@@ -274,7 +277,7 @@ export class RepositorioFerramentasPublicasDrizzle
       }
       await transacao.insert(atendimentoIaOcorrenciasTable).values({
         conversaId: vinculo.conversaId,
-        descricaoSanitizada: "Falha segura em ferramenta pública de consulta.",
+        descricaoSanitizada: "Falha segura em ferramenta autorizada de consulta.",
         execucaoId: vinculo.execucaoId,
         mensagemId: vinculo.mensagemId,
         recuperacaoTentada: false,

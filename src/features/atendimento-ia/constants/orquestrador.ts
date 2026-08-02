@@ -1,5 +1,3 @@
-export const LIMITE_MENSAGENS_CONTEXTO_ORQUESTRADOR = 20;
-
 // A execução existe antes da integração com modelos. O valor deixa explícito
 // que nenhum modelo foi selecionado ou chamado neste bloco.
 export const MODELO_EXECUCAO_NAO_INICIADA = "nao_iniciado";

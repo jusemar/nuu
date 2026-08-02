@@ -1,24 +1,29 @@
 import "server-only";
 
-import { and, desc, eq, gt, isNull, lt, or } from "drizzle-orm";
+import { createHash } from "node:crypto";
+
+import { and, desc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 
 import {
   atendimentoIaAuditoriasTable,
+  atendimentoIaAutorizacoesMemoriaTable,
   atendimentoIaConversasTable,
   atendimentoIaEstadosTable,
+  atendimentoIaExecucoesFerramentasTable,
   atendimentoIaExecucoesTable,
   atendimentoIaIdempotenciasTable,
   atendimentoIaMemoriasTable,
   atendimentoIaMensagensTable,
   atendimentoIaOcorrenciasTable,
   atendimentoIaResumosTable,
+  atendimentoIaTransferenciasTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
+import { CATEGORIAS_MEMORIA_AUTORIZADAS } from "../constants/contexto";
 import {
   DURACAO_REIVINDICACAO_ORQUESTRADOR_EM_MS,
   ESCOPO_IDEMPOTENCIA_ORQUESTRADOR,
-  LIMITE_MENSAGENS_CONTEXTO_ORQUESTRADOR,
   MODELO_EXECUCAO_NAO_INICIADA,
 } from "../constants/orquestrador";
 import { conversaPertenceAIdentidade } from "../lib/seguranca-entrada-mensagem";
@@ -29,6 +34,7 @@ import type {
   RepositorioOrquestrador,
   ResultadoComponenteOrquestrado,
 } from "../types/orquestrador";
+import type { RepositorioResumoContexto } from "../types/resumo";
 
 export class ErroOrquestrador extends Error {
   constructor(
@@ -41,13 +47,17 @@ export class ErroOrquestrador extends Error {
   }
 }
 
-export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
+export class RepositorioOrquestradorDrizzle
+  implements RepositorioOrquestrador, RepositorioResumoContexto
+{
   async reivindicarProcessamento(dados: {
+    contextoExpiraAposDias?: number;
     identidade: {
       identificadorSessao: string;
       usuarioId: string | null;
     };
     memoriaAtiva: boolean;
+    memoriaExpiraAposDias?: number;
     mensagemId: string;
   }): Promise<ReivindicacaoOrquestracao> {
     try {
@@ -56,10 +66,15 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
           .select({
             conversa: {
               canal: atendimentoIaConversasTable.canal,
+              avisoPrivacidadeVersao:
+                atendimentoIaConversasTable.avisoPrivacidadeVersao,
               id: atendimentoIaConversasTable.id,
               identificadorSessao:
                 atendimentoIaConversasTable.identificadorSessao,
               status: atendimentoIaConversasTable.status,
+              inicioVoluntarioEm:
+                atendimentoIaConversasTable.inicioVoluntarioEm,
+              ultimaAtividadeEm: atendimentoIaConversasTable.ultimaAtividadeEm,
               usuarioId: atendimentoIaConversasTable.usuarioId,
             },
             mensagem: {
@@ -85,6 +100,20 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
         if (
           !registro ||
           !conversaPertenceAIdentidade(registro.conversa, dados.identidade)
+        ) {
+          throw new ErroOrquestrador("CONVERSA_INDISPONIVEL");
+        }
+        if (
+          registro.conversa.avisoPrivacidadeVersao !==
+            "atendente-ia-contexto-v1" ||
+          !registro.conversa.inicioVoluntarioEm
+        ) {
+          throw new ErroOrquestrador("CONVERSA_INDISPONIVEL");
+        }
+        if (
+          dados.contextoExpiraAposDias &&
+          registro.conversa.ultimaAtividadeEm <
+            new Date(Date.now() - dados.contextoExpiraAposDias * 86_400_000)
         ) {
           throw new ErroOrquestrador("CONVERSA_INDISPONIVEL");
         }
@@ -194,6 +223,8 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
           transacao,
           registro,
           dados.memoriaAtiva,
+          execucao.id,
+          dados.memoriaExpiraAposDias,
         );
 
         await transacao.insert(atendimentoIaAuditoriasTable).values([
@@ -247,9 +278,15 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
         const [vinculo] = await transacao
           .select({
             conversaId: atendimentoIaMensagensTable.conversaId,
+            identificadorSessao: atendimentoIaConversasTable.identificadorSessao,
             status: atendimentoIaMensagensTable.status,
+            usuarioId: atendimentoIaConversasTable.usuarioId,
           })
           .from(atendimentoIaMensagensTable)
+          .innerJoin(
+            atendimentoIaConversasTable,
+            eq(atendimentoIaConversasTable.id, atendimentoIaMensagensTable.conversaId),
+          )
           .innerJoin(
             atendimentoIaExecucoesTable,
             and(
@@ -304,6 +341,7 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
           .where(eq(atendimentoIaExecucoesTable.id, dados.execucaoId));
 
         let mensagemRespostaId: string | null = null;
+        let transferenciaId: string | null = null;
         if (dados.resultado.tipo === "encaminhar_geracao_resposta") {
           const [mensagemResposta] = await transacao
             .insert(atendimentoIaMensagensTable)
@@ -319,6 +357,35 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
             throw new ErroOrquestrador("PERSISTENCIA_INDISPONIVEL");
           }
           mensagemRespostaId = mensagemResposta.id;
+        }
+        if (dados.resultado.tipo === "aguardar_atendimento_humano") {
+          const [mensagemOferta] = await transacao.insert(atendimentoIaMensagensTable).values({
+            autor: "assistente_ia",
+            chaveIdempotencia: `oferta_transferencia:${dados.execucaoId}`,
+            conteudo: dados.resultado.explicacaoOferta,
+            conversaId: vinculo.conversaId,
+            status: "concluida",
+          }).onConflictDoNothing().returning({ id: atendimentoIaMensagensTable.id });
+          mensagemRespostaId = mensagemOferta?.id ?? null;
+          const [transferencia] = await transacao.insert(atendimentoIaTransferenciasTable).values({
+            canal: "whatsapp",
+            chaveIdempotencia: `oferta_transferencia:${dados.execucaoId}`,
+            conversaId: vinculo.conversaId,
+            execucaoSolicitacaoId: dados.execucaoId,
+            mensagemSolicitacaoId: dados.mensagemId,
+            motivo: dados.resultado.motivo,
+            referenciaSessaoHash: createHash("sha256").update(vinculo.identificadorSessao, "utf8").digest("hex"),
+            resumo: "",
+            status: "oferecido",
+            usuarioId: vinculo.usuarioId,
+          }).onConflictDoNothing().returning({ id: atendimentoIaTransferenciasTable.id });
+          if (!transferencia) {
+            const [existente] = await transacao.select({ id: atendimentoIaTransferenciasTable.id })
+              .from(atendimentoIaTransferenciasTable)
+              .where(eq(atendimentoIaTransferenciasTable.chaveIdempotencia, `oferta_transferencia:${dados.execucaoId}`)).limit(1);
+            transferenciaId = existente?.id ?? null;
+          } else transferenciaId = transferencia.id;
+          if (!transferenciaId) throw new ErroOrquestrador("PERSISTENCIA_INDISPONIVEL");
         }
 
         await transacao
@@ -355,11 +422,12 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
           metadados: {
             modelo: dados.resultado.metadados.modelo,
             respostaId: dados.resultado.metadados.respostaId,
+            requestId: dados.resultado.metadados.requestId,
           },
           tipoAtor: "sistema",
         });
 
-        return { mensagemRespostaId };
+        return { mensagemRespostaId, transferenciaId };
       });
     } catch (erro) {
       if (erro instanceof ErroOrquestrador) throw erro;
@@ -569,6 +637,122 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
     return retomada ?? null;
   }
 
+  async buscarResumoPorExecucao(execucaoId: string) {
+    const [resumo] = await dbTransacional
+      .select({
+        ateMensagemId: atendimentoIaResumosTable.ateMensagemId,
+        conteudo: atendimentoIaResumosTable.conteudo,
+        criadoEm: atendimentoIaResumosTable.criadoEm,
+        hashConteudoConsiderado:
+          atendimentoIaResumosTable.hashConteudoConsiderado,
+        quantidadeMensagens: atendimentoIaResumosTable.quantidadeMensagens,
+        resumoEstruturado: atendimentoIaResumosTable.resumoEstruturado,
+        versao: atendimentoIaResumosTable.versao,
+      })
+      .from(atendimentoIaResumosTable)
+      .where(
+        and(
+          eq(atendimentoIaResumosTable.execucaoGeradoraId, execucaoId),
+          eq(atendimentoIaResumosTable.situacao, "valido"),
+        ),
+      )
+      .limit(1);
+    return resumo ?? null;
+  }
+
+  async persistirResumo(dados: {
+    ateMensagemId: string;
+    conteudo: string;
+    conversaId: string;
+    execucaoId: string;
+    hashConteudoConsiderado: string;
+    quantidadeMensagens: number;
+    resumoEstruturado: Record<string, unknown>;
+    resumoAnteriorVersao: number | null;
+  }) {
+    return dbTransacional.transaction(async (transacao) => {
+      const [idempotente] = await transacao
+        .select()
+        .from(atendimentoIaResumosTable)
+        .where(eq(atendimentoIaResumosTable.execucaoGeradoraId, dados.execucaoId))
+        .limit(1);
+      if (idempotente) return idempotente;
+
+      const [anterior] = await transacao
+        .select({ id: atendimentoIaResumosTable.id, versao: atendimentoIaResumosTable.versao })
+        .from(atendimentoIaResumosTable)
+        .where(
+          and(
+            eq(atendimentoIaResumosTable.conversaId, dados.conversaId),
+            eq(atendimentoIaResumosTable.situacao, "valido"),
+          ),
+        )
+        .orderBy(desc(atendimentoIaResumosTable.versao))
+        .limit(1);
+      if ((anterior?.versao ?? null) !== dados.resumoAnteriorVersao) {
+        throw new ErroOrquestrador("CONTEXTO_INCONSISTENTE");
+      }
+      const [novo] = await transacao
+        .insert(atendimentoIaResumosTable)
+        .values({
+          ateMensagemId: dados.ateMensagemId,
+          conteudo: dados.conteudo,
+          conversaId: dados.conversaId,
+          execucaoGeradoraId: dados.execucaoId,
+          hashConteudoConsiderado: dados.hashConteudoConsiderado,
+          quantidadeMensagens: dados.quantidadeMensagens,
+          resumoAnteriorId: anterior?.id ?? null,
+          resumoEstruturado: dados.resumoEstruturado,
+          situacao: "valido",
+          versao: (anterior?.versao ?? 0) + 1,
+        })
+        .returning();
+      if (!novo) throw new ErroOrquestrador("PERSISTENCIA_INDISPONIVEL");
+      if (anterior) {
+        const substituidos = await transacao
+          .update(atendimentoIaResumosTable)
+          .set({ atualizadoEm: new Date(), situacao: "substituido" })
+          .where(
+            and(
+              eq(atendimentoIaResumosTable.id, anterior.id),
+              eq(atendimentoIaResumosTable.situacao, "valido"),
+            ),
+          )
+          .returning({ id: atendimentoIaResumosTable.id });
+        if (substituidos.length !== 1) {
+          throw new ErroOrquestrador("CONTEXTO_INCONSISTENTE");
+        }
+      }
+      return novo;
+    });
+  }
+
+  async registrarAuditoriaResumo(dados: {
+    conversaId: string;
+    duracaoEmMs: number;
+    execucaoId: string;
+    status: "concluida" | "falhou";
+    tokensEntrada: number;
+    tokensSaida: number;
+    versao: number | null;
+  }) {
+    await dbTransacional.insert(atendimentoIaAuditoriasTable).values({
+      conversaId: dados.conversaId,
+      evento: "manutencao_resumo",
+      execucaoId: dados.execucaoId,
+      metadados: {
+        duracaoEmMs: dados.duracaoEmMs,
+        operacao: "resumo_contexto",
+        origem: "responses_api",
+        status: dados.status,
+        tokensEntrada: dados.tokensEntrada,
+        tokensSaida: dados.tokensSaida,
+        versao: dados.versao,
+      },
+      tipoAtor: "sistema",
+    });
+  }
+
   private async carregarContexto(
     transacao: Parameters<Parameters<typeof dbTransacional.transaction>[0]>[0],
     registro: {
@@ -578,6 +762,8 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
       };
     },
     memoriaAtiva: boolean,
+    execucaoId: string,
+    memoriaExpiraAposDias?: number,
   ): Promise<ContextoPersistidoOrquestrador> {
     const [estado] = await transacao
       .select({
@@ -606,30 +792,57 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
           lt(atendimentoIaMensagensTable.criadoEm, registro.mensagem.criadoEm),
         ),
       )
-      .orderBy(desc(atendimentoIaMensagensTable.criadoEm))
-      .limit(LIMITE_MENSAGENS_CONTEXTO_ORQUESTRADOR);
+      .orderBy(desc(atendimentoIaMensagensTable.criadoEm));
 
     const [resumo] = await transacao
       .select({
         ateMensagemId: atendimentoIaResumosTable.ateMensagemId,
         conteudo: atendimentoIaResumosTable.conteudo,
         resumoEstruturado: atendimentoIaResumosTable.resumoEstruturado,
+        criadoEm: atendimentoIaResumosTable.criadoEm,
+        hashConteudoConsiderado:
+          atendimentoIaResumosTable.hashConteudoConsiderado,
+        quantidadeMensagens: atendimentoIaResumosTable.quantidadeMensagens,
+        versao: atendimentoIaResumosTable.versao,
       })
       .from(atendimentoIaResumosTable)
-      .where(eq(atendimentoIaResumosTable.conversaId, registro.conversa.id))
+      .where(
+        and(
+          eq(atendimentoIaResumosTable.conversaId, registro.conversa.id),
+          eq(atendimentoIaResumosTable.situacao, "valido"),
+        ),
+      )
       .orderBy(desc(atendimentoIaResumosTable.criadoEm))
       .limit(1);
 
     let memoriaPermitida: ContextoPersistidoOrquestrador["memoriaPermitida"] =
       [];
     if (memoriaAtiva && registro.conversa.usuarioId) {
-      memoriaPermitida = await transacao
+      const memoriasConsultadas = await transacao
         .select({
           categoria: atendimentoIaMemoriasTable.categoria,
+          assuntoNormalizado: atendimentoIaMemoriasTable.assuntoNormalizado,
+          id: atendimentoIaMemoriasTable.id,
+          necessidadeEncerrada:
+            atendimentoIaMemoriasTable.necessidadeEncerrada,
           origem: atendimentoIaMemoriasTable.origem,
           valorEstruturado: atendimentoIaMemoriasTable.valorEstruturado,
         })
         .from(atendimentoIaMemoriasTable)
+        .innerJoin(
+          atendimentoIaAutorizacoesMemoriaTable,
+          and(
+            eq(
+              atendimentoIaAutorizacoesMemoriaTable.id,
+              atendimentoIaMemoriasTable.autorizacaoId,
+            ),
+            eq(
+              atendimentoIaAutorizacoesMemoriaTable.usuarioId,
+              registro.conversa.usuarioId,
+            ),
+            eq(atendimentoIaAutorizacoesMemoriaTable.situacao, "ativa"),
+          ),
+        )
         .where(
           and(
             eq(
@@ -637,6 +850,16 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
               registro.conversa.usuarioId,
             ),
             eq(atendimentoIaMemoriasTable.restrita, false),
+            eq(atendimentoIaMemoriasTable.sensibilidade, "comercial"),
+            eq(atendimentoIaMemoriasTable.situacao, "ativa"),
+            inArray(
+              atendimentoIaMemoriasTable.categoria,
+              CATEGORIAS_MEMORIA_AUTORIZADAS,
+            ),
+            inArray(atendimentoIaMemoriasTable.origem, [
+              "informada_cliente",
+              "confirmada_sistema",
+            ]),
             isNull(atendimentoIaMemoriasTable.removidaEm),
             or(
               isNull(atendimentoIaMemoriasTable.expiraEm),
@@ -644,6 +867,46 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
             ),
           ),
         );
+      const renovaveis = memoriasConsultadas.filter(
+        (memoria) => !memoria.necessidadeEncerrada,
+      );
+      if (memoriaExpiraAposDias && renovaveis.length > 0) {
+        const agora = new Date();
+        await transacao
+          .update(atendimentoIaMemoriasTable)
+          .set({
+            atualizadoEm: agora,
+            expiraEm: new Date(
+              agora.getTime() + memoriaExpiraAposDias * 86_400_000,
+            ),
+            ultimaUtilizacaoValidaEm: agora,
+          })
+          .where(
+            inArray(
+              atendimentoIaMemoriasTable.id,
+              renovaveis.map((memoria) => memoria.id),
+            ),
+          );
+        await transacao.insert(atendimentoIaAuditoriasTable).values({
+          conversaId: registro.conversa.id,
+          evento: "memoria_curto_prazo_utilizada",
+          execucaoId,
+          mensagemId: registro.mensagem.id,
+          metadados: {
+            quantidade: renovaveis.length,
+            renovacaoDias: memoriaExpiraAposDias,
+            status: "concluida",
+          },
+          tipoAtor: "sistema",
+        });
+      }
+      memoriaPermitida = memoriasConsultadas.map((memoria) => ({
+        assuntoNormalizado: memoria.assuntoNormalizado,
+        categoria: memoria.categoria,
+        id: memoria.id,
+        origem: memoria.origem,
+        valorEstruturado: memoria.valorEstruturado,
+      }));
     }
 
     return {
@@ -659,6 +922,26 @@ export class RepositorioOrquestradorDrizzle implements RepositorioOrquestrador {
       },
       mensagensAnteriores: mensagensDesc.reverse(),
       resumo: resumo ?? null,
+      resultadosFerramentas: await transacao
+        .select({
+          nome: atendimentoIaExecucoesFerramentasTable.nomeFerramenta,
+          resultado: atendimentoIaExecucoesFerramentasTable.resultado,
+          versao: atendimentoIaExecucoesFerramentasTable.versaoFerramenta,
+        })
+        .from(atendimentoIaExecucoesFerramentasTable)
+        .where(
+          and(
+            eq(atendimentoIaExecucoesFerramentasTable.execucaoId, execucaoId),
+            eq(atendimentoIaExecucoesFerramentasTable.status, "concluida"),
+          ),
+        )
+        .then((resultados) =>
+          resultados.flatMap((item) =>
+            item.resultado
+              ? [{ nome: item.nome, resultado: item.resultado, versao: item.versao }]
+              : [],
+          ),
+        ),
     };
   }
 }

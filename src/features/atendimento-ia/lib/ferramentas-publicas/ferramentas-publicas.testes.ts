@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { FontesFerramentasPublicas } from "../../queries/fontes-ferramentas-publicas";
+import type { ResultadoFerramentaProtegida } from "../../types/ferramentas-protegidas";
 import type {
   RepositorioExecucoesFerramentas,
   ResultadoFerramentaPublica,
@@ -147,7 +148,7 @@ class RepositorioFerramentasMemoria implements RepositorioExecucoesFerramentas {
     string,
     {
       id: string;
-      resultado?: ResultadoFerramentaPublica;
+      resultado?: ResultadoFerramentaPublica | ResultadoFerramentaProtegida;
       status: "processando" | "concluida" | "falhou";
     }
   >();

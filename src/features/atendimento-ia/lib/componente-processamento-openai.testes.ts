@@ -22,6 +22,7 @@ import {
   FalhaComponenteOrquestrado,
 } from "../types/orquestrador";
 import { criarComponenteProcessamentoOpenAi } from "./componente-processamento-openai";
+import { calcularHashMensagens } from "./contexto-controlado";
 
 class ClienteResponsesTeste implements ClienteResponsesOpenAi {
   chamadas: RequisicaoResponsesOpenAi[] = [];
@@ -37,7 +38,7 @@ class ClienteResponsesTeste implements ClienteResponsesOpenAi {
 }
 
 function contextoTeste(): ContextoPersistidoOrquestrador {
-  return {
+  const contexto: ContextoPersistidoOrquestrador = {
     conversa: {
       canal: "site",
       id: "conversa-interna-nao-enviar",
@@ -53,7 +54,9 @@ function contextoTeste(): ContextoPersistidoOrquestrador {
     },
     memoriaPermitida: [
       {
+        assuntoNormalizado: "preferencia",
         categoria: "preferencia",
+        id: randomUUID(),
         origem: "informada_cliente",
         valorEstruturado: { limite: "declarado" },
       },
@@ -75,11 +78,20 @@ function contextoTeste(): ContextoPersistidoOrquestrador {
       },
     ],
     resumo: {
-      ateMensagemId: "id-resumo-nao-enviar",
+      ateMensagemId: "mensagem-anterior-nao-enviar",
       conteudo: "Resumo permitido.",
       resumoEstruturado: { pendencia: "confirmar" },
+      criadoEm: new Date("2026-07-30T11:59:30Z"),
+      hashConteudoConsiderado: "",
+      quantidadeMensagens: 1,
+      versao: 1,
     },
+    resultadosFerramentas: [],
   };
+  contexto.resumo!.hashConteudoConsiderado = calcularHashMensagens(
+    contexto.mensagensAnteriores,
+  );
+  return contexto;
 }
 
 function resposta(
@@ -103,10 +115,26 @@ function resposta(
     output: [],
     output_text: JSON.stringify({
       criterio_escalonamento: dados.criterio ?? null,
-      encaminhamento: dados.encaminhamento ?? "gerar_resposta",
-      resposta:
-        dados.resposta === undefined ? "Resposta segura." : dados.resposta,
+      decisao: {
+        encaminhamento: dados.encaminhamento ?? "gerar_resposta",
+        resposta:
+          dados.resposta === undefined ? "Resposta segura." : dados.resposta,
+        transferencia:
+          dados.encaminhamento === "aguardar_atendimento_humano"
+            ? {
+                explicacao: "Este caso exige atendimento humano.",
+                motivo: "decisao_ou_acao_humana",
+              }
+            : dados.encaminhamento === "solicitar_ferramenta_futura"
+              ? {
+                  explicacao:
+                    "Esta consulta ainda não está disponível. Posso oferecer atendimento humano.",
+                  motivo: "ferramenta_autorizada_ausente",
+                }
+              : null,
+      },
     }),
+    request_id: `req_${randomUUID()}`,
     status: dados.status ?? "completed",
     usage: { input_tokens: 30, output_tokens: 12 },
   };
@@ -117,6 +145,7 @@ function criarComponente(
   sobrescrever: Partial<{
     escalonamentoAtivo: boolean;
     maxOutputTokens: number;
+    maxContextTokens: number;
     maxTentativas: number;
     timeoutEmMs: number;
   }> = {},
@@ -144,6 +173,7 @@ function criarComponente(
     cliente,
     configuracao: {
       escalonamentoAtivo: false,
+      maxContextTokens: 8_000,
       maxOutputTokens: 1200,
       maxTentativas: 2,
       timeoutEmMs: 20_000,
@@ -199,7 +229,11 @@ test("envia somente contexto permitido e remove identificadores internos", async
 test("valida os três encaminhamentos autorizados", async () => {
   const casos = [
     ["gerar_resposta", "encaminhar_geracao_resposta", "Resposta segura."],
-    ["solicitar_ferramenta_futura", "aguardar_ferramenta", null],
+    [
+      "solicitar_ferramenta_futura",
+      "aguardar_atendimento_humano",
+      "Limitação segura.",
+    ],
     ["aguardar_atendimento_humano", "aguardar_atendimento_humano", null],
   ] as const;
 
@@ -214,14 +248,41 @@ test("valida os três encaminhamentos autorizados", async () => {
   }
 });
 
+test("capacidade futura produz limitação honesta e oferta humana utilizável", async () => {
+  const cliente = new ClienteResponsesTeste();
+  cliente.fila.push(
+    resposta({
+      encaminhamento: "solicitar_ferramenta_futura",
+      resposta:
+        "Não consigo comparar todas as promoções da loja com segurança neste momento.",
+    }),
+  );
+
+  const resultado = await criarComponente(cliente).processar({
+    contexto: contextoTeste(),
+    execucaoId: randomUUID(),
+  });
+
+  assert.equal(resultado.tipo, "aguardar_atendimento_humano");
+  if (resultado.tipo !== "aguardar_atendimento_humano") return;
+  assert.equal(resultado.motivo, "ferramenta_autorizada_ausente");
+  assert.match(
+    resultado.explicacaoOferta,
+    /consulta ainda não está disponível/i,
+  );
+});
+
 test("rejeita resposta vazia, schema inválido, ferramenta injetada e truncamento", async () => {
   const respostasInvalidas: RespostaResponsesOpenAi[] = [
     { ...resposta(), output_text: "" },
-    { ...resposta(), output_text: '{"encaminhamento":"inexistente"}' },
+    {
+      ...resposta(),
+      output_text: '{"decisao":{"encaminhamento":"inexistente"}}',
+    },
     {
       ...resposta(),
       output_text:
-        '{"criterio_escalonamento":null,"encaminhamento":"solicitar_ferramenta_futura","resposta":null,"ferramenta":"buscar_preco"}',
+        '{"criterio_escalonamento":null,"decisao":{"encaminhamento":"solicitar_ferramenta_futura","resposta":null,"transferencia":null,"ferramenta":"buscar_preco"}}',
     },
     resposta({ status: "incomplete" }),
   ];
@@ -289,6 +350,22 @@ test("falha de autenticação é definitiva e não recebe retentativa", async ()
       erro instanceof FalhaComponenteOrquestrado &&
       erro.classificacao === "definitiva" &&
       erro.tipo === "falta_autorizacao",
+  );
+  assert.equal(cliente.chamadas.length, 1);
+});
+
+test("quota insuficiente não recebe retentativa paga inútil", async () => {
+  const cliente = new ClienteResponsesTeste();
+  cliente.fila.push(new ErroClienteResponsesOpenAi("quota"));
+  await assert.rejects(
+    criarComponente(cliente).processar({
+      contexto: contextoTeste(),
+      execucaoId: randomUUID(),
+    }),
+    (erro) =>
+      erro instanceof FalhaComponenteOrquestrado &&
+      erro.classificacao === "recuperavel" &&
+      erro.tipo === "limite_excedido",
   );
   assert.equal(cliente.chamadas.length, 1);
 });
@@ -365,13 +442,18 @@ test("não escalona quando a flag está desativada", async () => {
       resposta: "Resposta preliminar.",
     }),
   );
-  await assert.rejects(
-    criarComponente(cliente, { escalonamentoAtivo: false }).processar({
-      contexto: contextoTeste(),
-      execucaoId: randomUUID(),
-    }),
-  );
+  const resultado = await criarComponente(cliente, {
+    escalonamentoAtivo: false,
+  }).processar({
+    contexto: contextoTeste(),
+    execucaoId: randomUUID(),
+  });
   assert.equal(cliente.chamadas.length, 1);
+  assert.equal(resultado.tipo, "encaminhar_geracao_resposta");
+  assert.equal(
+    resultado.metadados.motivoEscalonamento,
+    "dificuldade_compreensao_modelo_principal",
+  );
 });
 
 test("valida ausência ou configuração inválida da chave sem expor valor", () => {
@@ -442,12 +524,146 @@ test("executa ferramenta autorizada e continua o ciclo até a resposta final", a
   assert.equal(execucoes.length, 1);
   assert.equal(execucoes[0]?.execucaoId, "execucao-correta");
   assert.equal(execucoes[0]?.nome, "consultar_produto_publico");
+  const contextoSeguro = execucoes[0]?.contextoSeguro as Record<
+    string,
+    unknown
+  >;
+  assert.equal(contextoSeguro.usuarioIdEsperado, "usuario-interno-nao-enviar");
+  assert.equal(contextoSeguro.conversaId, "conversa-interna-nao-enviar");
+  assert.notEqual(
+    contextoSeguro.identificadorSessaoHash,
+    "sessao-secreta-nao-enviar",
+  );
+  assert.doesNotMatch(
+    JSON.stringify(contextoSeguro),
+    /cookie|password|senha|token/i,
+  );
   assert.equal(cliente.chamadas.length, 2);
   assert.ok(Array.isArray(cliente.chamadas[1]?.input));
   const continuacao = JSON.stringify(cliente.chamadas[1]?.input);
   assert.match(continuacao, /function_call_output/);
   assert.match(continuacao, /catalogo_loja/);
   assert.doesNotMatch(continuacao, /OPENAI_API_KEY/);
+});
+
+test("mantém o ciclo de ferramentas dentro do orçamento sem perder a resposta", async () => {
+  const cliente = new ClienteResponsesTeste();
+  cliente.fila.push(
+    {
+      ...resposta(),
+      output: [
+        {
+          arguments: '{"slug":"produto-publicado"}',
+          call_id: "call_compactacao_1",
+          name: "consultar_produto_publico",
+          type: "function_call",
+        },
+      ],
+      output_text: "",
+    },
+    resposta({ resposta: "Preço e disponibilidade confirmados." }),
+  );
+  const contexto = contextoTeste();
+  contexto.mensagensAnteriores = Array.from({ length: 6 }, (_, indice) => ({
+    autor: indice % 2 === 0 ? ("cliente" as const) : ("assistente_ia" as const),
+    conteudo: `Histórico anterior ${indice} ${"detalhe ".repeat(20)}`,
+    criadoEm: new Date(2026, 6, 30, 10, indice),
+    id: `mensagem-historica-${indice}`,
+    status: "concluida" as const,
+  }));
+
+  const resultado = await criarComponente(
+    cliente,
+    { maxContextTokens: 8_000 },
+    {
+      async executar() {
+        return {
+          consultado_em: "2026-07-30T12:00:00.000Z",
+          dados: {
+            detalhes: "resultado ".repeat(80),
+            nome: "Produto publicado",
+          },
+          fonte: "catalogo_loja",
+          status: "encontrado",
+        };
+      },
+    },
+  ).processar({ contexto, execucaoId: randomUUID() });
+
+  assert.equal(resultado.tipo, "encaminhar_geracao_resposta");
+  assert.equal(cliente.chamadas.length, 2);
+  assert.ok(Array.isArray(cliente.chamadas[1]?.input));
+  assert.match(
+    JSON.stringify(cliente.chamadas[1]?.input),
+    /function_call_output/,
+  );
+});
+
+test("mantém contrato em três mensagens consecutivas, incluindo assunto fora da loja", async () => {
+  const cliente = new ClienteResponsesTeste();
+  const terceiraSemUso = resposta({
+    resposta: "Posso ajudar apenas com assuntos relacionados à loja.",
+  });
+  delete terceiraSemUso.usage;
+  cliente.fila.push(
+    resposta({ resposta: "Posso consultar informações públicas da loja." }),
+    resposta({ resposta: "Sim, continuo considerando o contexto anterior." }),
+    terceiraSemUso,
+  );
+  const componente = criarComponente(cliente);
+  const contexto = contextoTeste();
+  const mensagens = [
+    "Quais informações da loja você pode consultar?",
+    "Continue considerando minha pergunta anterior.",
+    "Explique um assunto sem relação com a loja.",
+  ];
+
+  for (const [indice, conteudo] of mensagens.entries()) {
+    contexto.mensagemAtual = {
+      ...contexto.mensagemAtual,
+      conteudo,
+      id: `mensagem-${indice + 1}`,
+    };
+    const resultado = await componente.processar({
+      contexto,
+      execucaoId: randomUUID(),
+    });
+    assert.equal(resultado.tipo, "encaminhar_geracao_resposta");
+  }
+
+  assert.equal(cliente.chamadas.length, 3);
+  assert.match(String(cliente.chamadas[1]?.input), /Continue considerando/);
+  assert.match(String(cliente.chamadas[2]?.input), /sem relação com a loja/);
+  assert.match(cliente.chamadas[2]?.instructions ?? "", /Não responda o conteúdo de conhecimento geral/);
+});
+
+test("diagnóstico de schema informa somente campo, categoria e request ID", async () => {
+  const cliente = new ClienteResponsesTeste();
+  cliente.fila.push({
+    ...resposta(),
+    output_text: JSON.stringify({ criterio_escalonamento: null }),
+    request_id: "req_diagnostico_seguro",
+  });
+  const registros: unknown[] = [];
+  const original = console.error;
+  console.error = (...argumentos: unknown[]) => registros.push(argumentos);
+  try {
+    await assert.rejects(
+      criarComponente(cliente).processar({
+        contexto: contextoTeste(),
+        execucaoId: randomUUID(),
+      }),
+    );
+  } finally {
+    console.error = original;
+  }
+
+  const serializado = JSON.stringify(registros);
+  assert.match(serializado, /validacao_resposta_openai/);
+  assert.match(serializado, /decisao_atendente_ia/);
+  assert.match(serializado, /ausente:decisao/);
+  assert.match(serializado, /req_diagnostico_seguro/);
+  assert.doesNotMatch(serializado, /output_text|criterio_escalonamento.*null/);
 });
 
 test("interrompe ciclo que excede o limite de chamadas de ferramenta", async () => {

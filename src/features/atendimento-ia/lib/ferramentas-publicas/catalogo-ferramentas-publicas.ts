@@ -160,7 +160,10 @@ export function criarCatalogoFerramentasPublicas(
     },
   ];
 
-  return new Map(
-    ferramentas.map((ferramenta) => [ferramenta.definicao.name, ferramenta]),
+  return new Map<NomeFerramentaPublica, FerramentaPublica>(
+    ferramentas.map((ferramenta) => [
+      ferramenta.definicao.name as NomeFerramentaPublica,
+      ferramenta,
+    ]),
   );
 }

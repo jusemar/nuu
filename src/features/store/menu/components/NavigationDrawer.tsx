@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronRight, Folder, Tag } from "lucide-react";
+import { ArrowLeft, ChevronRight, Folder } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -55,6 +55,7 @@ function ListaCategoriasDesktop({
         const classesItem = cn(
           "flex min-h-11 w-full items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-100",
           depth === 0 && "font-medium",
+          expandida && "bg-slate-100 text-slate-900",
         );
 
         return (
@@ -67,9 +68,7 @@ function ListaCategoriasDesktop({
               >
                 {temFilhos ? (
                   <Folder className="size-4 shrink-0 text-amber-500" />
-                ) : (
-                  <Tag className="size-4 shrink-0 text-slate-400" />
-                )}
+                ) : null}
                 <span className="min-w-0 flex-1 truncate">
                   {categoria.name}
                 </span>
@@ -78,14 +77,18 @@ function ListaCategoriasDesktop({
               {temFilhos ? (
                 <button
                   type="button"
-                  onClick={() => alternarCategoria(categoria.id)}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                  onClick={(evento) => {
+                    evento.preventDefault();
+                    evento.stopPropagation();
+                    alternarCategoria(categoria.id);
+                  }}
+                  className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-200 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:ring-offset-1 focus-visible:outline-none active:scale-95"
                   aria-expanded={expandida}
-                  aria-label={`${expandida ? "Recolher" : "Expandir"} ${categoria.name}`}
+                  aria-label={`${expandida ? "Recolher" : "Expandir"} subcategorias de ${categoria.name}`}
                 >
                   <ChevronRight
                     className={cn(
-                      "size-4 transition-transform",
+                      "size-5 transition-transform duration-200",
                       expandida && "rotate-90",
                     )}
                   />
@@ -94,7 +97,7 @@ function ListaCategoriasDesktop({
             </div>
 
             {temFilhos && expandida ? (
-              <div className="mt-1 border-l border-slate-200 pl-3">
+              <div className="mt-1 border-l-2 border-slate-300 pl-3">
                 <ListaCategoriasDesktop
                   categories={categoria.children ?? []}
                   depth={depth + 1}
@@ -151,7 +154,7 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
       <SheetContent
         id="menu-categorias-loja"
         side="left"
-        className="w-[min(88vw,320px)] gap-0 overflow-hidden border-slate-200 p-0 sm:max-w-[320px]"
+        className="w-[min(90vw,296px)] gap-0 overflow-hidden border-slate-200 p-0 sm:max-w-[296px]"
       >
         <SheetHeader className="min-h-16 justify-center border-b border-slate-200 px-4 py-3 pr-12 text-left">
           <div className="flex min-w-0 items-center gap-2">
@@ -199,9 +202,7 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
                           >
                             {temFilhos ? (
                               <Folder className="size-4 shrink-0 text-amber-500" />
-                            ) : (
-                              <Tag className="size-4 shrink-0 text-slate-400" />
-                            )}
+                            ) : null}
                             <span className="min-w-0 flex-1 truncate">
                               {categoria.name}
                             </span>
@@ -210,13 +211,15 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
                           {temFilhos ? (
                             <button
                               type="button"
-                              onClick={() =>
-                                setCaminho((atual) => [...atual, categoria])
-                              }
-                              className="flex size-10 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                              onClick={(evento) => {
+                                evento.preventDefault();
+                                evento.stopPropagation();
+                                setCaminho((atual) => [...atual, categoria]);
+                              }}
+                              className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-200 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:ring-offset-1 focus-visible:outline-none active:scale-95"
                               aria-label={`Abrir subcategorias de ${categoria.name}`}
                             >
-                              <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                              <ChevronRight className="size-5 shrink-0" />
                             </button>
                           ) : null}
                         </div>

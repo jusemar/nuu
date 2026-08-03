@@ -1,22 +1,22 @@
 "use client";
 
 import { ArrowLeft, Save, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { BasicInfoCard } from "./BasicInfoCard";
 import { SubcategoriesCard, SubcategoryItem } from "./SubcategoriesCard";
 import { SidebarCards } from "./SidebarCards";
 import { useSlugGenerator } from "./hooks/useSlugGenerator";
-import { generateSubcategoryId } from "./utils/subcategory.helpers";
-import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory";
-import { updateSubcategoryName } from "./utils/updateSubcategory";
 import {
   createChildSubcategory,
   calculateChildInsertPosition,
 } from "./utils/createChildSubcategory";
+import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory";
+import { generateSubcategoryId } from "./utils/subcategory.helpers";
+import { updateSubcategoryName } from "./utils/updateSubcategory";
 import { useCreateCategory } from "../../hooks/useCreateCategory";
 import { useUpdateCategory } from "../../hooks/useUpdateCategory"; // ← Importar hook de edição
 import { useCategoryList } from "../../hooks/useCategoryList";
@@ -159,10 +159,10 @@ export function CategoryForm({
       const categoryToSave = {
         name: categoryData.name,
         slug: categoryData.slug,
-        description: categoryData.description || undefined,
+        description: categoryData.description.trim(),
         isActive: categoryData.isActive,
         metaTitle: categoryData.metaTitle || undefined,
-        metaDescription: categoryData.metaDescription || undefined,
+        metaDescription: categoryData.metaDescription.trim(),
         orderIndex: categoryData.orderIndex,
         parentId: categoryData.parentId,
       };

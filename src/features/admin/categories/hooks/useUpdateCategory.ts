@@ -14,11 +14,12 @@
 // =====================================================================
 
 // Importações necessárias
-import { useMutation, useQueryClient } from '@tanstack/react-query' // TanStack Query para mutations e cache
-import { updateCategory } from '../services/categoryService' // Função que realmente altera o banco
-import { categoryKeys } from './query-keys' // Chaves de cache para categorias
-import { toast } from 'sonner' // Biblioteca de toasts (notificações)
-import type { UpdateCategoryInput } from '../types' // Tipo para os dados de atualização
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // TanStack Query para mutations e cache
+import { toast } from "sonner"; // Biblioteca de toasts (notificações)
+
+import { updateCategory } from "../services/categoryService"; // Função que realmente altera o banco
+import type { UpdateCategoryInput } from "../types"; // Tipo para os dados de atualização
+import { categoryKeys } from "./query-keys"; // Chaves de cache para categorias
 
 // =====================================================================
 // PASSO 1: Definir o tipo dos parâmetros que o hook recebe
@@ -27,9 +28,9 @@ import type { UpdateCategoryInput } from '../types' // Tipo para os dados de atu
 // - id: identificador da categoria a ser atualizada
 // - data: campos que serão alterados (todos opcionais)
 type UpdateCategoryParams = {
-  id: string
-  data: UpdateCategoryInput
-}
+  id: string;
+  data: UpdateCategoryInput;
+};
 
 // =====================================================================
 // PASSO 2: Criar o hook propriamente dito
@@ -37,60 +38,62 @@ type UpdateCategoryParams = {
 export function useUpdateCategory() {
   // PASSO 2.1: Inicializar o queryClient para manipular o cache
   // O queryClient nos permite invalidar queries, ler dados do cache, etc.
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   // PASSO 2.2: Retornar uma mutation do TanStack Query
   // useMutation é um hook do TanStack Query para operações de escrita
   // (create, update, delete) no servidor.
   return useMutation({
-    
     // =================================================================
     // PASSO 3: Definir a função que executa a operação
     // =================================================================
     // mutationFn é a função que será chamada quando quisermos atualizar
     // Ela recebe os parâmetros que definimos acima e chama o service.
-    mutationFn: ({ id, data }: UpdateCategoryParams) => 
+    mutationFn: ({ id, data }: UpdateCategoryParams) =>
       updateCategory(id, data), // ← Chama o service (server action)
-    
+
     // =================================================================
     // PASSO 4: Lidar com o SUCESSO da operação
     // =================================================================
     // onSuccess é executado quando a mutation é bem-sucedida.
     // Recebe os dados retornados e os parâmetros enviados.
     onSuccess: (_, variables) => {
-      
       // PASSO 4.1: Invalidar queries para forçar recarregamento
       // Isso garante que a lista de categorias seja recarregada
       // mostrando os dados atualizados.
-      queryClient.invalidateQueries({ 
-        queryKey: categoryKeys.lists() // Invalida TODAS as listas
-      })
-      
+      queryClient.invalidateQueries({
+        queryKey: categoryKeys.lists(), // Invalida TODAS as listas
+      });
+
       // PASSO 4.2: Invalidar o cache individual da categoria
       // Isso atualiza os detalhes da categoria específica na página de edição.
-      queryClient.invalidateQueries({ 
-        queryKey: categoryKeys.detail(variables.id) 
-      })
-      
+      queryClient.invalidateQueries({
+        queryKey: categoryKeys.detail(variables.id),
+      });
+
+      // A tela de edição usa uma chave própria para o detalhe da categoria.
+      queryClient.invalidateQueries({
+        queryKey: ["category-detail", "by-id", variables.id],
+      });
+
       // PASSO 4.3: Mostrar toast de sucesso
       // Feedback visual para o usuário.
-      toast.success('✅ Categoria atualizada com sucesso!')
+      toast.success("✅ Categoria atualizada com sucesso!");
     },
-    
+
     // =================================================================
     // PASSO 5: Lidar com o ERRO da operação
     // =================================================================
     // onError é executado quando a mutation falha.
     // Recebe o erro e os parâmetros que foram enviados.
     onError: (error) => {
-      
       // PASSO 5.1: Mostrar toast de erro
       // Feedback visual informando o problema.
-      toast.error('❌ Erro ao atualizar categoria', {
+      toast.error("❌ Erro ao atualizar categoria", {
         description: error.message, // Mensagem detalhada do erro
-      })
-    }
-  })
+      });
+    },
+  });
 }
 
 // =====================================================================

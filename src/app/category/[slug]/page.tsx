@@ -36,6 +36,10 @@ interface CategoryPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
+function obterDescricaoPadraoCategoria(nomeCategoria: string) {
+  return `Encontre os melhores ${nomeCategoria} com qualidade e preço imperdível.`;
+}
+
 type ItemFiltro = {
   id: string;
   name: string;
@@ -64,13 +68,15 @@ export async function generateMetadata({
   const { slug } = await params;
   const resultado = await buscarCategoriaPublicaPorSlug(slug);
   if (!resultado) return {};
+  const descricaoCategoria = resultado.categoria.description?.trim();
+  const metaDescricao = resultado.categoria.metaDescription?.trim();
 
   return {
     title: resultado.categoria.metaTitle || resultado.categoria.name,
     description:
-      resultado.categoria.metaDescription ||
-      resultado.categoria.description ||
-      undefined,
+      metaDescricao ||
+      descricaoCategoria ||
+      obterDescricaoPadraoCategoria(resultado.categoria.name),
     alternates: { canonical: `/category/${resultado.categoria.slug}` },
   };
 }
@@ -86,6 +92,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
 
   if (!resultadoCategoria) return notFound();
   const { categoria: category, breadcrumb } = resultadoCategoria;
+  const descricaoCategoria =
+    category.description?.trim() ||
+    obterDescricaoPadraoCategoria(category.name);
 
   const arvoreCategoria = await buscarArvoreCategoriaPublica(category.id);
   const categoriasIds = arvoreCategoria.map((categoria) => categoria.id);
@@ -380,10 +389,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
           <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
             {category?.name || "Categoria"}
           </h2>
-          <p className="mt-3 max-w-3xl text-gray-600">
-            Encontre os melhores {category?.name || "Categoria"} com qualidade e
-            preço imperdível.
-          </p>
+          <p className="mt-3 max-w-3xl text-gray-600">{descricaoCategoria}</p>
         </div>
       </section>
 

@@ -51,52 +51,47 @@ function ListaCategoriasDesktop({
     <ul className="space-y-1">
       {categoriasOrdenadas.map((categoria) => {
         const temFilhos = Boolean(categoria.children?.length);
-        const agrupadora = depth === 0 && temFilhos;
         const expandida = itensExpandidos.has(categoria.id);
         const classesItem = cn(
-          "flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition-colors",
-          "hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none",
+          "flex min-h-11 w-full items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-100",
           depth === 0 && "font-medium",
-        );
-        const conteudo = (
-          <>
-            {temFilhos ? (
-              <Folder className="size-4 shrink-0 text-amber-500" />
-            ) : (
-              <Tag className="size-4 shrink-0 text-slate-400" />
-            )}
-            <span className="min-w-0 flex-1 truncate">{categoria.name}</span>
-            {temFilhos ? (
-              <ChevronRight
-                className={cn(
-                  "size-4 shrink-0 text-slate-400 transition-transform",
-                  expandida && "rotate-90",
-                )}
-              />
-            ) : null}
-          </>
         );
 
         return (
           <li key={categoria.id}>
-            {agrupadora ? (
-              <button
-                type="button"
-                onClick={() => alternarCategoria(categoria.id)}
-                className={classesItem}
-                aria-expanded={expandida}
-              >
-                {conteudo}
-              </button>
-            ) : (
+            <div className={classesItem}>
               <Link
                 href={`/category/${categoria.slug}`}
                 onClick={onNavigate}
-                className={classesItem}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1.5 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
               >
-                {conteudo}
+                {temFilhos ? (
+                  <Folder className="size-4 shrink-0 text-amber-500" />
+                ) : (
+                  <Tag className="size-4 shrink-0 text-slate-400" />
+                )}
+                <span className="min-w-0 flex-1 truncate">
+                  {categoria.name}
+                </span>
               </Link>
-            )}
+
+              {temFilhos ? (
+                <button
+                  type="button"
+                  onClick={() => alternarCategoria(categoria.id)}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                  aria-expanded={expandida}
+                  aria-label={`${expandida ? "Recolher" : "Expandir"} ${categoria.name}`}
+                >
+                  <ChevronRight
+                    className={cn(
+                      "size-4 transition-transform",
+                      expandida && "rotate-90",
+                    )}
+                  />
+                </button>
+              ) : null}
+            </div>
 
             {temFilhos && expandida ? (
               <div className="mt-1 border-l border-slate-200 pl-3">
@@ -156,7 +151,7 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
       <SheetContent
         id="menu-categorias-loja"
         side="left"
-        className="w-[min(88vw,380px)] gap-0 overflow-hidden border-slate-200 p-0 sm:max-w-[380px]"
+        className="w-[min(88vw,320px)] gap-0 overflow-hidden border-slate-200 p-0 sm:max-w-[320px]"
       >
         <SheetHeader className="min-h-16 justify-center border-b border-slate-200 px-4 py-3 pr-12 text-left">
           <div className="flex min-w-0 items-center gap-2">
@@ -193,36 +188,38 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
                   )
                   .map((categoria) => {
                     const temFilhos = Boolean(categoria.children?.length);
-                    const agrupadora = caminho.length === 0 && temFilhos;
 
                     return (
                       <li key={categoria.id}>
-                        {agrupadora ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCaminho((atual) => [...atual, categoria])
-                            }
-                            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
-                          >
-                            <Folder className="size-4 shrink-0 text-amber-500" />
-                            <span className="min-w-0 flex-1 truncate">
-                              {categoria.name}
-                            </span>
-                            <ChevronRight className="size-4 shrink-0 text-slate-400" />
-                          </button>
-                        ) : (
+                        <div className="flex min-h-12 w-full items-center gap-1 rounded-lg px-2 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-100">
                           <Link
                             href={`/category/${categoria.slug}`}
                             onClick={onClose}
-                            className="flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-2 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
                           >
-                            <Tag className="size-4 shrink-0 text-slate-400" />
+                            {temFilhos ? (
+                              <Folder className="size-4 shrink-0 text-amber-500" />
+                            ) : (
+                              <Tag className="size-4 shrink-0 text-slate-400" />
+                            )}
                             <span className="min-w-0 flex-1 truncate">
                               {categoria.name}
                             </span>
                           </Link>
-                        )}
+
+                          {temFilhos ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCaminho((atual) => [...atual, categoria])
+                              }
+                              className="flex size-10 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+                              aria-label={`Abrir subcategorias de ${categoria.name}`}
+                            >
+                              <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                            </button>
+                          ) : null}
+                        </div>
                       </li>
                     );
                   })}

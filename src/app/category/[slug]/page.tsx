@@ -1,27 +1,30 @@
 // src/app/category/[slug]/page.tsx
-import { and, eq, sql } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
+import { Footer } from "@/components/common/footer";
+import { SortSection } from "@/components/common/wrappers/sort-section";
 import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
 import { Header } from "@/features/header/components/Header";
-import { Footer } from "@/components/common/footer";
-
-// Componentes da feature category
-import { CategoryFilter } from "@/features/store/category/components/CategoryFilter";
-import { CategoryTabs } from "@/features/store/category/components/CategoryTabs";
-import { MobileFilterDrawer } from "@/features/store/category/components/MobileFilterDrawer";
-import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
-import { SortSection } from "@/components/common/wrappers/sort-section";
-import { CategoryProductCard } from "@/features/store/category/components/CategoryProductCard";
 import {
   adaptarPrecosVitrine,
   type PrecosVitrineNormalizados,
 } from "@/features/precificacao/server";
-
+// Componentes da feature category
+import { CategoryFilter } from "@/features/store/category/components/CategoryFilter";
+import { CategoryProductCard } from "@/features/store/category/components/CategoryProductCard";
+import { CategoryTabs } from "@/features/store/category/components/CategoryTabs";
+import { MobileFilterDrawer } from "@/features/store/category/components/MobileFilterDrawer";
+import {
+  buscarArvoreCategoriaPublica,
+  coletarIdsCategoriaEDescendentes,
+} from "@/features/store/category/queries/buscar-arvore-categoria-publica";
+import { buscarCategoriaPublicaPorSlug } from "@/features/store/category/queries/buscar-categoria-publica";
 // Services
 import { getSubcategoryTabs } from "@/features/store/category/services/categoryTabsService";
-import { buscarCategoriaPublicaPorSlug } from "@/features/store/category/queries/buscar-categoria-publica";
 import {
   descreverErroBancoParaLog,
   erroEhTransitorioDeBanco,
@@ -84,6 +87,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   if (!resultadoCategoria) return notFound();
   const { categoria: category, breadcrumb } = resultadoCategoria;
 
+  const arvoreCategoria = await buscarArvoreCategoriaPublica(category.id);
+  const categoriasIds = arvoreCategoria.map((categoria) => categoria.id);
+
   // =================================================================
   // PASSO 2: Buscar produtos da categoria com todos os relacionamentos
   // =================================================================
@@ -96,7 +102,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
     () =>
       db.query.productTable.findMany({
         where: and(
-          eq(productTable.categoryId, category.id),
+          inArray(productTable.categoryId, categoriasIds),
           eq(productTable.isActive, true),
           eq(productTable.status, "published"),
           sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
@@ -151,8 +157,10 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
 
   const categoriasFiltro: ItemFiltro[] = categoriasFiltroBase
     .map((cat) => {
-      const count = products.filter(
-        (produto) => produto.categoryId === cat.id,
+      const idsRamo = coletarIdsCategoriaEDescendentes(cat.id, arvoreCategoria);
+
+      const count = products.filter((produto) =>
+        idsRamo.has(produto.categoryId),
       ).length;
       return { id: cat.id, name: cat.name, count };
     })
@@ -269,6 +277,12 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
   };
 
   const categoriasSelecionadas = new Set(parseLista(filtrosUrl.categories));
+  const categoriasSelecionadasComDescendentes = new Set<string>();
+  categoriasSelecionadas.forEach((categoriaId) => {
+    coletarIdsCategoriaEDescendentes(categoriaId, arvoreCategoria).forEach(
+      (id) => categoriasSelecionadasComDescendentes.add(id),
+    );
+  });
   const marcasSelecionadas = new Set(
     parseLista(filtrosUrl.brands).map((item) => item.toLowerCase()),
   );
@@ -304,7 +318,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
     : products.filter((product) => {
         if (
           categoriasSelecionadas.size > 0 &&
-          !categoriasSelecionadas.has(product.categoryId)
+          !categoriasSelecionadasComDescendentes.has(product.categoryId)
         ) {
           return false;
         }

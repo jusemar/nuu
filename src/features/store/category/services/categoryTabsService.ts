@@ -1,9 +1,11 @@
 // src/features/store/category/services/categoryTabsService.ts
 "use server";
 
+import { and, eq, inArray, sql } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { buscarArvoreCategoriaPublica } from "@/features/store/category/queries/buscar-arvore-categoria-publica";
 import {
   descreverErroBancoParaLog,
   erroEhTransitorioDeBanco,
@@ -16,6 +18,7 @@ import {
 export interface TabItem {
   id: string;
   name: string;
+  slug: string;
   count?: number;
 }
 
@@ -35,6 +38,7 @@ export async function getSubcategoryTabs(
         .select({
           id: categoryTable.id,
           name: categoryTable.name,
+          slug: categoryTable.slug,
         })
         .from(categoryTable)
         .where(
@@ -48,14 +52,20 @@ export async function getSubcategoryTabs(
       // Para cada subcategoria, conta quantos produtos existem
       const tabsWithCounts = await Promise.all(
         subcategories.map(async (sub) => {
+          const arvoreSubcategoria = await buscarArvoreCategoriaPublica(sub.id);
+          const categoriasIds = arvoreSubcategoria.map(
+            (categoria) => categoria.id,
+          );
+
           const result = await db
             .select({ count: sql<number>`count(*)` })
             .from(productTable)
             .where(
               and(
-                eq(productTable.categoryId, sub.id),
+                inArray(productTable.categoryId, categoriasIds),
                 eq(productTable.isActive, true),
                 eq(productTable.status, "published"),
+                sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
               ),
             );
 
@@ -64,6 +74,7 @@ export async function getSubcategoryTabs(
           return {
             id: sub.id,
             name: sub.name,
+            slug: sub.slug,
             count: count > 0 ? count : undefined, // Só mostra se tiver produtos
           };
         }),

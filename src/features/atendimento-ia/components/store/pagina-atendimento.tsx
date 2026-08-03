@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Bot,
+  ChevronDown,
   LoaderCircle,
   RotateCcw,
   UserRound,
@@ -14,6 +15,7 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -34,6 +36,10 @@ import {
   recuperarHistoricoChat,
 } from "../../lib/cliente-chat-atendimento";
 import { consumirHandoffAtendimento } from "../../lib/handoff-atendimento";
+import {
+  decidirRolagemConversa,
+  estaProximoDoFim,
+} from "../../lib/rolagem-conversa";
 import { mensagemAtendenteSchema } from "../../schemas/mensagem-atendente.schema";
 import type {
   MensagemChatAtendimento,
@@ -44,9 +50,17 @@ import { CartaoTransferenciaWhatsapp } from "./cartao-transferencia-whatsapp";
 type TentativaPendente = { chaveIdempotencia: string; mensagem: string };
 
 export function PaginaAtendimento() {
-  const fimConversaRef = useRef<HTMLDivElement>(null);
+  const listaConversaRef = useRef<HTMLElement>(null);
   const inicioExecutadoRef = useRef(false);
+  const historicoPosicionadoRef = useRef(false);
+  const acompanhandoRecentesRef = useRef(true);
+  const rolagemProgramaticaRef = useRef(false);
+  const quadroRolagemRef = useRef<number | null>(null);
+  const temporizadorRolagemRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const tentativaRef = useRef<TentativaPendente | null>(null);
+  const [acompanhandoRecentes, setAcompanhandoRecentes] = useState(true);
   const [carregando, setCarregando] = useState(true);
   const [conversaId, setConversaId] = useState<string | undefined>();
   const [digitada, setDigitada] = useState("");
@@ -55,6 +69,57 @@ export function PaginaAtendimento() {
   const [processando, setProcessando] = useState(false);
   const [transferencia, setTransferencia] =
     useState<TransferenciaChatAtendimento | null>(null);
+
+  const definirAcompanhamento = useCallback((ativo: boolean) => {
+    acompanhandoRecentesRef.current = ativo;
+    setAcompanhandoRecentes(ativo);
+  }, []);
+
+  const rolarParaMensagensRecentes = useCallback(
+    (comportamento: ScrollBehavior = "smooth") => {
+      const lista = listaConversaRef.current;
+      if (!lista) return;
+      if (quadroRolagemRef.current !== null)
+        cancelAnimationFrame(quadroRolagemRef.current);
+      if (temporizadorRolagemRef.current)
+        clearTimeout(temporizadorRolagemRef.current);
+      rolagemProgramaticaRef.current = true;
+      quadroRolagemRef.current = requestAnimationFrame(() => {
+        lista.scrollTo({ behavior: comportamento, top: lista.scrollHeight });
+        quadroRolagemRef.current = null;
+        temporizadorRolagemRef.current = setTimeout(
+          () => {
+            rolagemProgramaticaRef.current = false;
+          },
+          comportamento === "smooth" ? 450 : 0,
+        );
+      });
+    },
+    [],
+  );
+
+  const aoRolarConversa = useCallback(() => {
+    if (rolagemProgramaticaRef.current) return;
+    const lista = listaConversaRef.current;
+    if (!lista) return;
+    const proximoDoFim = estaProximoDoFim({
+      alturaConteudo: lista.scrollHeight,
+      alturaVisivel: lista.clientHeight,
+      posicaoVertical: lista.scrollTop,
+    });
+    const decisao = decidirRolagemConversa({
+      acompanhando: acompanhandoRecentesRef.current,
+      evento: "rolagem_manual",
+      proximoDoFim,
+    });
+    definirAcompanhamento(decisao.acompanhar);
+  }, [definirAcompanhamento]);
+
+  const aoIniciarRolagemManual = useCallback(() => {
+    rolagemProgramaticaRef.current = false;
+    if (temporizadorRolagemRef.current)
+      clearTimeout(temporizadorRolagemRef.current);
+  }, []);
 
   const enviar = useCallback(
     async (texto: string, repetir = false, conversaAlvo = conversaId) => {
@@ -73,6 +138,11 @@ export function PaginaAtendimento() {
               mensagem: validacao.data,
             };
       tentativaRef.current = tentativa;
+      const decisaoRolagem = decidirRolagemConversa({
+        acompanhando: acompanhandoRecentesRef.current,
+        evento: "envio_cliente",
+      });
+      definirAcompanhamento(decisaoRolagem.acompanhar);
       setProcessando(true);
       setErro(null);
       if (!repetir) {
@@ -123,7 +193,7 @@ export function PaginaAtendimento() {
         setProcessando(false);
       }
     },
-    [conversaId, processando],
+    [conversaId, definirAcompanhamento, processando],
   );
 
   useEffect(() => {
@@ -159,12 +229,36 @@ export function PaginaAtendimento() {
     void iniciar();
   }, [enviar]);
 
-  useEffect(() => {
-    fimConversaRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
+  useLayoutEffect(() => {
+    if (carregando) return;
+    const evento = historicoPosicionadoRef.current
+      ? "conteudo_atualizado"
+      : "historico_recuperado";
+    const decisao = decidirRolagemConversa({
+      acompanhando: acompanhandoRecentesRef.current,
+      evento,
     });
-  }, [mensagens, processando, erro]);
+    historicoPosicionadoRef.current = true;
+    if (decisao.comportamento)
+      rolarParaMensagensRecentes(decisao.comportamento);
+  }, [
+    carregando,
+    mensagens,
+    processando,
+    transferencia,
+    erro,
+    rolarParaMensagensRecentes,
+  ]);
+
+  useEffect(
+    () => () => {
+      if (quadroRolagemRef.current !== null)
+        cancelAnimationFrame(quadroRolagemRef.current);
+      if (temporizadorRolagemRef.current)
+        clearTimeout(temporizadorRolagemRef.current);
+    },
+    [],
+  );
 
   function aoEnviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -202,95 +296,125 @@ export function PaginaAtendimento() {
             </div>
           </div>
 
-          <section
-            aria-label="Conversa com o Atendente IA"
-            aria-busy={processando}
-            className="flex min-h-[55vh] flex-1 flex-col gap-4 py-6"
-          >
-            {carregando ? (
-              <p className="text-muted-foreground text-sm" role="status">
-                Preparando a conversa…
-              </p>
-            ) : null}
-            {!carregando && mensagens.length === 0 ? (
-              <div className="text-muted-foreground m-auto max-w-md text-center text-sm">
-                Envie uma pergunta sobre produtos, preços, disponibilidade,
-                entrega ou informações da loja.
-              </div>
-            ) : null}
-            {mensagens.map((mensagem) => (
-              <div
-                key={mensagem.id}
-                className={
-                  mensagem.autor === "cliente"
-                    ? "ml-auto flex max-w-[88%] items-end gap-2 sm:max-w-[75%]"
-                    : "flex max-w-[88%] items-end gap-2 sm:max-w-[75%]"
-                }
-              >
-                {mensagem.autor === "assistente_ia" ? (
-                  <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
-                    <Bot className="size-4" aria-hidden="true" />
-                  </span>
-                ) : null}
+          <div className="relative min-h-0 flex-1">
+            <section
+              ref={listaConversaRef}
+              aria-label="Conversa com o Atendente IA"
+              aria-busy={processando}
+              onPointerDown={aoIniciarRolagemManual}
+              onScroll={aoRolarConversa}
+              onTouchStart={aoIniciarRolagemManual}
+              onWheel={aoIniciarRolagemManual}
+              className="flex h-[55dvh] min-h-80 flex-col gap-4 overflow-y-auto overscroll-contain py-6 pr-1 [scrollbar-gutter:stable]"
+              data-testid="lista-conversa-atendimento"
+            >
+              {carregando ? (
+                <p className="text-muted-foreground text-sm" role="status">
+                  Preparando a conversa…
+                </p>
+              ) : null}
+              {!carregando && mensagens.length === 0 ? (
+                <div className="text-muted-foreground m-auto max-w-md text-center text-sm">
+                  Envie uma pergunta sobre produtos, preços, disponibilidade,
+                  entrega ou informações da loja.
+                </div>
+              ) : null}
+              {mensagens.map((mensagem) => (
                 <div
+                  key={mensagem.id}
                   className={
                     mensagem.autor === "cliente"
-                      ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:text-base"
-                      : "bg-muted rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:text-base"
+                      ? "ml-auto flex max-w-[88%] items-end gap-2 sm:max-w-[75%]"
+                      : "flex max-w-[88%] items-end gap-2 sm:max-w-[75%]"
                   }
                 >
-                  {mensagem.conteudo}
+                  {mensagem.autor === "assistente_ia" ? (
+                    <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+                      <Bot className="size-4" aria-hidden="true" />
+                    </span>
+                  ) : null}
+                  <div
+                    className={
+                      mensagem.autor === "cliente"
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:text-base"
+                        : "bg-muted rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap sm:text-base"
+                    }
+                  >
+                    {mensagem.conteudo}
+                  </div>
+                  {mensagem.autor === "cliente" ? (
+                    <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
+                      <UserRound className="size-4" aria-hidden="true" />
+                    </span>
+                  ) : null}
                 </div>
-                {mensagem.autor === "cliente" ? (
-                  <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
-                    <UserRound className="size-4" aria-hidden="true" />
-                  </span>
-                ) : null}
-              </div>
-            ))}
-            {processando ? (
-              <div
-                className="text-muted-foreground flex items-center gap-2 text-sm"
-                role="status"
-                aria-live="polite"
-              >
-                <LoaderCircle
-                  className="size-4 animate-spin"
-                  aria-hidden="true"
+              ))}
+              {processando ? (
+                <div
+                  className="text-muted-foreground flex items-center gap-2 text-sm"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <LoaderCircle
+                    className="size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                  O Atendente IA está preparando a resposta…
+                </div>
+              ) : null}
+              {transferencia ? (
+                <CartaoTransferenciaWhatsapp
+                  explicacao={transferencia.explicacao}
+                  link={transferencia.link}
+                  resumo={transferencia.resumo}
+                  resumoParaPreparar={{
+                    informacoesDeclaradas: mensagens
+                      .filter((item) => item.autor === "cliente")
+                      .slice(-1)
+                      .map((item) => item.conteudo.slice(0, 300)),
+                    interpretacaoNecessidade: (
+                      mensagens
+                        .filter((item) => item.autor === "cliente")
+                        .at(-1)?.conteudo ?? transferencia.explicacao
+                    ).slice(0, 300),
+                    necessidadePrincipal: (
+                      mensagens
+                        .filter((item) => item.autor === "cliente")
+                        .at(-1)?.conteudo ?? transferencia.explicacao
+                    ).slice(0, 300),
+                    pendenciaValidacaoHumana: transferencia.explicacao.slice(
+                      0,
+                      300,
+                    ),
+                    produtoRelacionado: null,
+                  }}
+                  status={transferencia.status}
+                  transferenciaId={transferencia.id}
                 />
-                O Atendente IA está preparando a resposta…
-              </div>
-            ) : null}
-            {transferencia ? (
-              <CartaoTransferenciaWhatsapp
-                explicacao={transferencia.explicacao}
-                link={transferencia.link}
-                resumo={transferencia.resumo}
-                resumoParaPreparar={{
-                  informacoesDeclaradas: mensagens
-                    .filter((item) => item.autor === "cliente")
-                    .slice(-1)
-                    .map((item) => item.conteudo.slice(0, 300)),
-                  interpretacaoNecessidade: (
-                    mensagens.filter((item) => item.autor === "cliente").at(-1)
-                      ?.conteudo ?? transferencia.explicacao
-                  ).slice(0, 300),
-                  necessidadePrincipal: (
-                    mensagens.filter((item) => item.autor === "cliente").at(-1)
-                      ?.conteudo ?? transferencia.explicacao
-                  ).slice(0, 300),
-                  pendenciaValidacaoHumana: transferencia.explicacao.slice(
-                    0,
-                    300,
-                  ),
-                  produtoRelacionado: null,
+              ) : null}
+              <div aria-hidden="true" className="h-px shrink-0" />
+            </section>
+            {!acompanhandoRecentes ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full shadow-md"
+                onClick={() => {
+                  const decisao = decidirRolagemConversa({
+                    acompanhando: false,
+                    evento: "ir_para_recentes",
+                  });
+                  definirAcompanhamento(decisao.acompanhar);
+                  if (decisao.comportamento)
+                    rolarParaMensagensRecentes(decisao.comportamento);
                 }}
-                status={transferencia.status}
-                transferenciaId={transferencia.id}
-              />
+              >
+                <ChevronDown aria-hidden="true" />
+                Ir para mensagens recentes
+              </Button>
             ) : null}
-            <div ref={fimConversaRef} />
-          </section>
+          </div>
 
           <form
             className="bg-background sticky bottom-0 border-t py-4"

@@ -1,14 +1,18 @@
 "use client";
 
-import ProductCarousel from "@/features/product-carousel/components/RotatingProductCarousel";
-import { ProductCard } from "@/features/product-card/components/ProductCard";
-import { getProductsByFlag } from "@/features/products/actions/get-products-by-flag";
 import { useEffect, useState } from "react";
+
 import DealsCarousel from "@/features/deals/components/DealsCarousel";
+import { ProductCard } from "@/features/product-card/components/ProductCard";
+import ProductCarousel from "@/features/product-carousel/components/RotatingProductCarousel";
+import { getProductsByFlag } from "@/features/products/actions/get-products-by-flag";
+
 import FeaturedProductCard from "./FeaturedProductCard/page";
 
+type ProdutoPorFlag = Awaited<ReturnType<typeof getProductsByFlag>>[number];
+
 export default function TestPage() {
-  const [testProducts, setTestProducts] = useState<any[]>([]);
+  const [testProducts, setTestProducts] = useState<ProdutoPorFlag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Testar a action getProductsByFlag
@@ -37,7 +41,7 @@ export default function TestPage() {
   }, []);
 
   // Novo estado para produtos com flag 'sale'
-  const [saleProducts, setSaleProducts] = useState<any[]>([]);
+  const [saleProducts, setSaleProducts] = useState<ProdutoPorFlag[]>([]);
   const [isLoadingSale, setIsLoadingSale] = useState(true);
 
   // Buscar produtos com flag 'sale'
@@ -105,16 +109,16 @@ export default function TestPage() {
 
         {isLoading ? (
           <p className="text-gray-500">
-            Carregando produtos com flag "general"...
+            Carregando produtos com flag {`"general"`}...
           </p>
         ) : testProducts.length === 0 ? (
           <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
             <p className="font-medium text-yellow-800">
-              ⚠️ Nenhum produto encontrado com flag "general"
+              ⚠️ Nenhum produto encontrado com flag {`"general"`}
             </p>
             <p className="mt-1 text-sm text-yellow-600">
               Verifique se existem produtos com <code>storeProductFlags</code>{" "}
-              contendo "general"
+              contendo {`"general"`}
             </p>
           </div>
         ) : (
@@ -180,7 +184,7 @@ export default function TestPage() {
       {/* Seção com dados REAIS da flag 'sale' */}
       <div className="mt-12 border-t pt-8">
         <h2 className="mb-6 text-2xl font-bold">
-          🔥 DealsCarousel com dados REAIS (flag 'sale')
+          🔥 DealsCarousel com dados REAIS (flag {`'sale'`})
         </h2>
 
         {isLoadingSale ? (
@@ -188,10 +192,10 @@ export default function TestPage() {
         ) : saleProducts.length === 0 ? (
           <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
             <p className="font-medium text-yellow-800">
-              ⚠️ Nenhum produto com flag "sale"
+              ⚠️ Nenhum produto com flag {`"sale"`}
             </p>
             <p className="mt-1 text-sm text-yellow-600">
-              Adicione a flag "sale" no campo storeProductFlags de alguns
+              Adicione a flag {`"sale"`} no campo storeProductFlags de alguns
               produtos
             </p>
           </div>
@@ -204,7 +208,7 @@ export default function TestPage() {
               const pricePromo = p.mainPrice?.promoPrice
                 ? p.mainPrice.promoPrice / 100
                 : null;
-              const hasPromo = p.mainPrice?.hasPromo && pricePromo;
+              const hasPromo = p.mainPrice?.hasPromo === true && pricePromo !== null;
               const discount =
                 hasPromo && priceNormal > 0
                   ? Math.round(((priceNormal - pricePromo) / priceNormal) * 100)
@@ -214,16 +218,15 @@ export default function TestPage() {
                 id: p.id,
                 image: p.mainImage?.imageUrl || "/produto-sem-foto.webp",
                 title: p.name,
-                description: p.cardShortText,
-                currentPrice: hasPromo ? pricePromo : priceNormal,
+                description: p.cardShortText ?? undefined,
+                currentPrice: hasPromo && pricePromo !== null ? pricePromo : priceNormal,
                 originalPrice: hasPromo ? priceNormal : undefined,
                 discount: discount,
-                hasFreeShipping: p.hasFreeShipping,
+                hasFreeShipping: p.hasFreeShipping ?? false,
                 hasFlashSale: hasPromo,
                 hasBestPrice: false,
               };
             })}
-            title="🔥 Ofertas Reais (Banco de Dados)"
           />
         )}
       </div>

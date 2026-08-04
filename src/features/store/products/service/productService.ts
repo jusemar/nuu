@@ -9,9 +9,10 @@
 // protegendo credenciais do banco de dados.
 import "server-only";
 
+import { and, eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
 
 // ==========================================
 // BUSCAR PRODUTO POR SLUG (dados reais)
@@ -60,5 +61,32 @@ export async function getProductBySlug(slug: string) {
     // Não registra slug, SQL, parâmetros nem a mensagem original do driver.
     console.error("Falha ao consultar produto para a PDP", { codigo, tipo });
     throw new Error(`Não foi possível carregar o produto. Código: ${codigo}`);
+  }
+}
+
+/** Busca legada por SKU mantendo os mesmos filtros públicos da busca por slug. */
+export async function getProductBySku(sku: string) {
+  try {
+    const product = await db.query.productTable.findFirst({
+      where: and(
+        eq(productTable.sku, sku),
+        eq(productTable.isActive, true),
+        eq(productTable.status, "published"),
+      ),
+      with: {
+        galleryImages: true,
+        pricing: true,
+        attributes: true,
+        variants: true,
+        modeloRetirada: true,
+        marca: true,
+      },
+    });
+
+    return product
+      ? { data: { ...product, brand: product.marca?.nome ?? null }, error: null }
+      : { data: null, error: "Produto não encontrado" };
+  } catch {
+    return { data: null, error: "Não foi possível carregar o produto" };
   }
 }

@@ -4,12 +4,17 @@
 // Responsabilidade: Buscar produto no banco/service
 // Retorna: dados, loading, erro e função de refresh
 
-import { useState, useEffect, useCallback } from 'react';
-import type { Produto } from '../types/product.types';
+import { useCallback,useEffect, useState } from 'react';
+
 import { getProductBySku } from '../service/productService';
 
+type ProdutoPorSku = Exclude<
+  Awaited<ReturnType<typeof getProductBySku>>["data"],
+  null
+>;
+
 interface UseProductDataReturn {
-  produto: Produto | null;      // Dados do produto
+  produto: ProdutoPorSku | null;      // Dados do produto
   loading: boolean;              // Estado de carregamento
   error: string | null;          // Mensagem de erro
   refetch: () => void;           // Função para recarregar
@@ -26,7 +31,7 @@ interface UseProductDataReturn {
  */
 export function useProductData(sku: string): UseProductDataReturn {
   // Estados do hook
-  const [produto, setProduto] = useState<Produto | null>(null);
+  const [produto, setProduto] = useState<ProdutoPorSku | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

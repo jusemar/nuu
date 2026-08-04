@@ -11,32 +11,34 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import {
-  Search,
-  Plus,
+  ArrowLeft,
   Building2,
   ChevronRight,
+  MapPin,
+  Navigation,
+  Plus,
+  Search,
   ToggleLeft,
   ToggleRight,
-  MapPin,
-  ArrowLeft,
-  Navigation,
 } from "lucide-react";
+import { useEffect,useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import {
-  getCities,
   createCity,
+  getCities,
   updateCityStatus,
 } from "../services/citiesService";
 import type { City } from "../types/cities";
@@ -81,6 +83,8 @@ export function CitiesPage({ stateUf, stateName }: CitiesPageProps) {
         isActive: true,
         neighborhoodsCount: 0,
         availableMethods: [],
+        bairrosCount: 0,
+        slotsConfigurados: false,
       });
       setIsModalOpen(false);
       setNewCityName("");

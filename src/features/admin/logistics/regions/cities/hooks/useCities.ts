@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo,useState } from 'react';
+
 import type { City } from '../types/cities';
 
 /**
@@ -18,6 +19,8 @@ const mockCities: City[] = [
     isActive: true, 
     neighborhoodsCount: 0, 
     availableMethods: ['motoboy', 'transportadora'],
+    bairrosCount: 0,
+    slotsConfigurados: false,
     createdAt: new Date('2024-01-15') 
   },
   { 
@@ -27,6 +30,8 @@ const mockCities: City[] = [
     isActive: true, 
     neighborhoodsCount: 5, 
     availableMethods: ['transportadora'],
+    bairrosCount: 5,
+    slotsConfigurados: false,
     createdAt: new Date('2024-02-20') 
   },
   { 
@@ -36,6 +41,8 @@ const mockCities: City[] = [
     isActive: false, 
     neighborhoodsCount: 0, 
     availableMethods: [],
+    bairrosCount: 0,
+    slotsConfigurados: false,
     createdAt: new Date('2024-03-10') 
   },
   { 
@@ -45,6 +52,8 @@ const mockCities: City[] = [
     isActive: true, 
     neighborhoodsCount: 0, 
     availableMethods: ['fornecedor'],
+    bairrosCount: 0,
+    slotsConfigurados: false,
     createdAt: new Date('2024-04-05') 
   },
 ];

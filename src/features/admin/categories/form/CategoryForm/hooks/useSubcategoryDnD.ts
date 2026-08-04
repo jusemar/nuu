@@ -1,26 +1,26 @@
 "use client"
 
-import { useState, useCallback } from 'react'
 import { 
-  DndContext, 
-  DragEndEvent, 
-  DragOverlay, 
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
   closestCorners, // ← TROCADO: Melhor para hierarquia
   defaultDropAnimationSideEffects,
-  MeasuringStrategy,
+  DndContext, 
+  DragEndEvent, 
   DragOverEvent, // ← NOVO: Para detectar durante arraste
-  UniqueIdentifier
-} from '@dnd-kit/core'
+  DragOverlay, 
+  DragStartEvent,
+  MeasuringStrategy,
+  PointerSensor,
+  UniqueIdentifier,
+  useSensor,
+  useSensors} from '@dnd-kit/core'
 import { 
   SortableContext,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
+import { useCallback,useState } from 'react'
+
 import { SubcategoryItem } from '../SubcategoriesCard'
-import { validateMove, reorderSubcategories } from '../utils/reorderSubcategories'
+import { reorderSubcategories,validateMove } from '../utils/reorderSubcategories'
 
 /**
  * Hook para gerenciar drag-and-drop de subcategorias
@@ -77,8 +77,14 @@ export function useSubcategoryDnD(
     if (overData?.type === 'subcategory') {
       // Verifica se está sobre a metade superior ou inferior do item
       const rect = over.rect
-      const clientY = event.clientY || 0
-      const relativeY = clientY - rect.top
+      // DragEndEvent não expõe coordenadas do ponteiro. O centro do retângulo
+      // traduzido do item representa a posição final de forma estável para
+      // mouse, toque e teclado.
+      const draggedRect = active.rect.current.translated
+      const draggedCenterY = draggedRect
+        ? draggedRect.top + draggedRect.height / 2
+        : rect.top + rect.height / 2
+      const relativeY = draggedCenterY - rect.top
       const middleY = rect.height / 2
 
       if (relativeY < middleY) {

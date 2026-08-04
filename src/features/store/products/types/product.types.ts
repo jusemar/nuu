@@ -72,6 +72,21 @@ export interface PrecoModalidade {
   isActive: boolean; // se esta modalidade está ativa
 }
 
+/** Contrato visual legado usado apenas pelos dados demonstrativos da PDP. */
+export interface ModalidadeInfo {
+  label: string;
+  badge: string;
+  badgeBg: string;
+  badgeColor: string;
+  precoNormal: string;
+  precoParc: string;
+  precoPix: string;
+  prazo: string;
+  envia: string;
+  garantia: string;
+  icon: string;
+}
+
 export interface VarianteProdutoLoja {
   id: string;
   sku: string;

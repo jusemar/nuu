@@ -22,8 +22,8 @@ import { notificarEnderecoClienteAtualizado } from "@/features/logistica/lib/cep
 
 import { salvarCadastroCliente } from "../../../actions/cadastro/salvar-cadastro-cliente";
 import {
-  completarCadastroClienteSchema,
   type CompletarCadastroClienteSchema,
+  completarCadastroClienteSchema,
 } from "../../../schemas/cadastro-cliente.schema";
 import type { CadastroClienteCompleto } from "../../../types/cadastro-cliente.types";
 import type { SessaoClienteAutenticado } from "../../../types/sessao-cliente.types";
@@ -114,14 +114,13 @@ export function FormularioCompletarCadastro({
 
     const resultado = await consultarEnderecoCep(cep);
 
-    const enderecoConsultado =
-      "endereco" in resultado ? resultado.endereco : null;
-
-    if (!resultado.encontrado || !enderecoConsultado) {
-      setMensagemCep(resultado.mensagem ?? "Não foi possível consultar o CEP.");
+    if (!resultado.encontrado) {
+      setMensagemCep(resultado.mensagem);
       setBuscandoCep(false);
       return;
     }
+
+    const enderecoConsultado = resultado.endereco;
 
     form.setValue("cep", enderecoConsultado.cep, { shouldValidate: true });
     form.setValue("rua", enderecoConsultado.rua, { shouldValidate: true });

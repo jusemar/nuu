@@ -6,6 +6,7 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { FeaturedProductCard } from "@/features/featured-products-carousel/components/FeaturedProductCard";
+import type { TipoBadgePromocionalVisual } from "@/features/promocoes";
 
 import { useProductsInfinite } from "../hooks/useInfiniteProducts";
 import { ProductGridSkeleton } from "./ProductGridSkeleton";
@@ -67,7 +68,9 @@ function formatProductForCard(product: ProdutoDescoberta) {
     originalPrice,
     currentPrice,
     discount,
-    badgePromocao: product.mainPrice?.badgePromocional ?? undefined,
+    badgePromocao: normalizarBadgePromocional(
+      product.mainPrice?.badgePromocional,
+    ),
     hasFreeShipping: product.hasFreeShipping || false,
     isFeatured: product.storeProductFlags?.includes("featured") || false,
     isExclusive: product.storeProductFlags?.includes("exclusive") || false,
@@ -75,6 +78,12 @@ function formatProductForCard(product: ProdutoDescoberta) {
     rating: undefined,
     reviewCount: undefined,
   };
+}
+
+function normalizarBadgePromocional(
+  valor: string | null | undefined,
+): TipoBadgePromocionalVisual | undefined {
+  return valor === "promocao" || valor === "relampago" ? valor : undefined;
 }
 
 export function ProductGridWithLoadMore() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lock, Check } from "lucide-react";
+import { Check,Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -20,15 +20,15 @@ import {
 } from "../../../queries/previa-totais/calcular-previa-totais-pedido";
 import { calcularResumoCheckout } from "../../../queries/resumo-checkout/calcular-resumo-checkout";
 import {
-  checkoutVisitanteSchema,
   type CheckoutVisitanteSchema,
+  checkoutVisitanteSchema,
 } from "../../../schemas/checkout.schema";
 import type { ResumoCheckoutCalculado } from "../../../types/checkout.types";
 import { FormularioEndereco } from "./formulario-endereco";
 import { FormularioIdentificacao } from "./formulario-identificacao";
 import { PagamentoPixPendente } from "./pagamento-pix-pendente";
-import { RevisaoProdutosEntrega } from "./revisao-pedido/revisao-produtos-entrega";
 import { ResumoPedido } from "./resumo-pedido";
+import { RevisaoProdutosEntrega } from "./revisao-pedido/revisao-produtos-entrega";
 
 const steps = [
   { n: 1, label: "Carrinho", done: true },
@@ -470,7 +470,7 @@ export function CheckoutVisitante({
             itens={carrinho.itens}
             parcelasCartao={parcelasCartao}
             resumoCheckout={resumoCheckout}
-            cupom={cupom}
+            cupom={cupom ?? ""}
             register={form.register}
             setValue={form.setValue}
             mensagemCupom={mensagemCupom}

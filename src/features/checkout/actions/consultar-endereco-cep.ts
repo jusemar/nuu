@@ -12,7 +12,23 @@ type ViaCepCheckoutResponse = {
   erro?: boolean;
 };
 
-export async function consultarEnderecoCep(cep: string) {
+type ResultadoConsultaEnderecoCep =
+  | { encontrado: false; mensagem: string }
+  | {
+      encontrado: true;
+      endereco: {
+        cep: string;
+        rua: string;
+        complemento: string;
+        bairro: string;
+        cidade: string;
+        estado: string;
+      };
+    };
+
+export async function consultarEnderecoCep(
+  cep: string,
+): Promise<ResultadoConsultaEnderecoCep> {
   const cepLimpo = cep.replace(/\D/g, "");
 
   if (cepLimpo.length !== 8) {

@@ -569,6 +569,11 @@ export function ProductDetail({
     );
   }
 
+  const rotuloVarianteSelecionada = selectedVariant
+    ? selectedVariant.name ||
+      Object.values(selectedVariant.attributes).join(" / ")
+    : null;
+
   return (
     <PaginaProdutoAprovada
       produtoId={product.id}
@@ -640,12 +645,7 @@ export function ProductDetail({
           prazoEntrega={prazoEntrega}
           disponibilidadeCompra={disponibilidadeCompra}
           precoCalculado={precoCompraCalculado}
-          selectedVariantLabel={
-            selectedVariant
-              ? selectedVariant.name ||
-                Object.values(selectedVariant.attributes).join(" / ")
-              : null
-          }
+          selectedVariantLabel={rotuloVarianteSelecionada}
           retiradaLocal={retiradaLocal}
           allowsOwnDelivery={!!product.allowsOwnDelivery}
           cupomAplicado={cupomAplicado}
@@ -838,12 +838,7 @@ export function ProductDetail({
               // Dados reais de entrega
               disponibilidadeCompra={disponibilidadeCompra}
               precoCalculado={precoCompraCalculado}
-              selectedVariantLabel={
-                selectedVariant
-                  ? selectedVariant.name ||
-                    Object.values(selectedVariant.attributes).join(" / ")
-                  : null
-              }
+              selectedVariantLabel={rotuloVarianteSelecionada}
               retiradaLocal={retiradaLocal}
               allowsOwnDelivery={!!product.allowsOwnDelivery}
               // Cupom e callbacks

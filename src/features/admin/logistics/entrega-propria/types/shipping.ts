@@ -5,21 +5,29 @@
  */
 
 import type {
-  BairroAvulso,
+  BairroAvulso as BairroAvulsoRegistro,
   CepEspecifico,
   RegioBairro,
   ShippingBairroAvulsoSlot,
-  ShippingRegion,
+  ShippingRegion as ShippingRegionRegistro,
   ShippingRegionSlot,
 } from "@/db/table/logistics/entrega-propria";
 
 export type {
-  BairroAvulso,
   CepEspecifico,
   RegioBairro,
   ShippingBairroAvulsoSlot,
-  ShippingRegion,
   ShippingRegionSlot,
+};
+
+/** Registros usados pela interface já carregados com suas relações. */
+export type ShippingRegion = ShippingRegionRegistro & {
+  bairros: RegioBairro[];
+  slots: Array<ShippingRegionSlot & { dayName: string }>;
+};
+
+export type BairroAvulso = BairroAvulsoRegistro & {
+  slots: ShippingBairroAvulsoSlot[];
 };
 
 export type RegioFieldState =

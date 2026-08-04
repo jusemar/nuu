@@ -7,37 +7,40 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import {
-  Search,
-  Plus,
-  MapPin,
-  Clock,
-  DollarSign,
+  Building2,
   Calendar,
-  ToggleLeft,
-  ToggleRight,
-  Edit,
-  Trash2,
   ChevronDown,
   ChevronUp,
+  Clock,
+  DollarSign,
+  Edit,
+  MapPin,
   Navigation,
-  Building2,
+  Plus,
+  Search,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
 } from "lucide-react";
+import { useEffect,useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import {
-  getBairros,
   createBairro,
+  getBairros,
+  updateBairroSlots,
   updateBairroStatus,
 } from "../services/bairrosService";
 import type { Bairro } from "../types/bairros";
@@ -86,6 +89,28 @@ export function BairrosPage({
       console.error("Erro ao carregar bairros:", error);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function toggleSlot(bairroId: string, slotId: string) {
+    const bairro = bairros.find((item) => item.id === bairroId);
+    if (!bairro) return;
+
+    const slotsAtualizados = bairro.slots.map((slot) =>
+      slot.id === slotId ? { ...slot, isActive: !slot.isActive } : slot,
+    );
+    try {
+      const bairroAtualizado = await updateBairroSlots(
+        bairroId,
+        slotsAtualizados,
+      );
+      setBairros((atuais) =>
+        atuais.map((item) =>
+          item.id === bairroId ? bairroAtualizado : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar slot do bairro:", error);
     }
   }
 

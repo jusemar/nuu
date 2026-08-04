@@ -90,7 +90,7 @@ export const checkoutVisitanteSchema = z
     observacaoVizinho: z.string().max(300, "Use até 300 caracteres").optional(),
     cupom: z.string().optional(),
     formaPagamento: z.enum(["pix", "cartao"]),
-    parcelasCartao: z.coerce.number().int().min(1).max(12).optional(),
+    parcelasCartao: z.number().int().min(1).max(12).optional(),
     itens: z.array(itemCheckoutSchema).min(1, "Seu carrinho está vazio"),
   })
   .superRefine((dados, ctx) => {

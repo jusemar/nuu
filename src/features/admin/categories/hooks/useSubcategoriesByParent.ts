@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { categoryService } from '../services/categoryService'
+
+import { getAllCategories } from '../services/categoryService'
 import { Category } from '../types'
 
 /**
@@ -14,8 +15,8 @@ export function useSubcategoriesByParent(parentId: string | null | undefined) {
       
       try {
         // Busca todas as categorias e filtra pela parentId
-        const allCategories = await categoryService.listCategories()
-        return allCategories.filter((cat: any) => cat.parentId === parentId)
+        const allCategories = await getAllCategories()
+        return allCategories.filter((category) => category.parentId === parentId)
       } catch (error) {
         console.error('Erro ao buscar subcategorias:', error)
         throw new Error('Falha ao carregar subcategorias')

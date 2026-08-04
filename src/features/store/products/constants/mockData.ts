@@ -5,17 +5,18 @@
 // Quando conectar ao Drizzle, substitua por chamadas reais
 
 import type { 
-  Produto, 
   ModalidadeInfo, 
-  Transportadora, 
-  Parcelamento 
-} from '../types/product.types';
+  Parcelamento,
+  Produto,
+  Transportadora} from '../types/product.types';
 
 // ==========================================
 // PRODUTO PRINCIPAL
 // ==========================================
 
 export const produto: Produto = {
+  id: "mock-produto-aether",
+  slug: "aether-run-pro-x",
   nome: "Aether Run Pro X",
   marca: "AETHER",
   sku: "ATH-RUN-PRX-42",
@@ -25,11 +26,13 @@ export const produto: Produto = {
   
   // Galeria de imagens (URLs do Unsplash)
   imagens: [
-    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&q=90",
-    "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=900&q=90",
-    "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=900&q=90",
-    "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=900&q=90",
+    { id: "mock-1", imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&q=90", altText: "Tênis vermelho", isPrimary: true, sortOrder: 0 },
+    { id: "mock-2", imageUrl: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=900&q=90", altText: "Tênis esportivo", isPrimary: false, sortOrder: 1 },
+    { id: "mock-3", imageUrl: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=900&q=90", altText: "Tênis azul", isPrimary: false, sortOrder: 2 },
+    { id: "mock-4", imageUrl: "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=900&q=90", altText: "Tênis de corrida", isPrimary: false, sortOrder: 3 },
   ],
+  precos: [],
+  retiradaLocal: null,
   
   // Cores disponíveis com seus códigos hex
   cores: {

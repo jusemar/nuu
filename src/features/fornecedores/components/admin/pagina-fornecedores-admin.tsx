@@ -10,12 +10,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import {
-  alterarStatusVinculoProdutoFornecedor,
-  salvarFornecedor,
-  salvarVinculoProdutoFornecedorManual,
-} from "../../actions";
-import type { ConfiguracaoLaquilaAdmin } from "../../integracoes/laquila/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,14 +19,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -41,11 +27,26 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import {
+  alterarStatusVinculoProdutoFornecedor,
+  salvarFornecedor,
+  salvarVinculoProdutoFornecedorManual,
+} from "../../actions";
+import { FormularioConfiguracaoLaquila } from "../../integracoes/laquila/components/admin/formulario-configuracao-laquila";
+import type { ConfiguracaoLaquilaAdmin } from "../../integracoes/laquila/types";
 import {
   ordenarFornecedoresPorStatusENome,
   rotulosStatusFornecedor,
@@ -56,9 +57,7 @@ import type {
   ProdutoParaVinculoFornecedor,
   ProdutoVinculadoFornecedorAdmin,
 } from "../../types/fornecedores.types";
-
 import { AlternarStatusFornecedor } from "./alternar-status-fornecedor";
-import { FormularioConfiguracaoLaquila } from "../../integracoes/laquila/components/admin/formulario-configuracao-laquila";
 
 type PaginaFornecedoresAdminProps = {
   fornecedores: FornecedorComResumoImportacoes[];
@@ -283,6 +282,9 @@ export function PaginaFornecedoresAdmin({
                         ? {
                             ...fornecedor.integracaoApi,
                             nomeFornecedor: fornecedor.nome,
+                            // A listagem nunca carrega o segredo. O formulário
+                            // usa tokenConfigurado para preservar o valor atual.
+                            tokenCliente: null,
                           }
                         : configuracaoLaquila?.fornecedorId === fornecedor.id
                           ? configuracaoLaquila

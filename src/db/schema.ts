@@ -15,6 +15,7 @@ import {
 // ============================================
 
 import { categoryTable } from "./table/categories/categories";
+import { categoryFaqTable } from "./table/categories/category-faq";
 import { marcaTable } from "./table/marcas/marcas";
 import { productVariantTable } from "./table/products/product-variants";
 import { productTable } from "./table/products/products";
@@ -233,6 +234,7 @@ export const userRelations = relations(userTable, ({ many, one }) => ({
 
 export const categoryRelations = relations(categoryTable, ({ many, one }) => ({
   products: many(productTable),
+  faqs: many(categoryFaqTable),
   parent: one(categoryTable, {
     fields: [categoryTable.parentId],
     references: [categoryTable.id],
@@ -240,6 +242,13 @@ export const categoryRelations = relations(categoryTable, ({ many, one }) => ({
   }),
   children: many(categoryTable, {
     relationName: "categoryChildren",
+  }),
+}));
+
+export const categoryFaqRelations = relations(categoryFaqTable, ({ one }) => ({
+  category: one(categoryTable, {
+    fields: [categoryFaqTable.categoryId],
+    references: [categoryTable.id],
   }),
 }));
 
@@ -515,6 +524,7 @@ export {
   type ConfiguracaoLoja,
 } from "./tables/configuracoes-loja/tabelas/configuracoes-loja";
 export { categoryTable } from "./table/categories/categories";
+export { categoryFaqTable } from "./table/categories/category-faq";
 export { marcaTable } from "./table/marcas/marcas";
 export { productTable } from "./table/products/products";
 export { productVariantTable } from "./table/products/product-variants";

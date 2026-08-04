@@ -26,6 +26,7 @@ import {
   ESCOPO_IDEMPOTENCIA_ORQUESTRADOR,
   MODELO_EXECUCAO_NAO_INICIADA,
 } from "../constants/orquestrador";
+import type { ComportamentoEfetivo } from "../lib/admin/publicacao/resolver-versao-publicada-comportamento";
 import { conversaPertenceAIdentidade } from "../lib/seguranca-entrada-mensagem";
 import { validarTransicaoOrquestrador } from "../lib/transicoes-orquestrador";
 import type {
@@ -50,6 +51,7 @@ export class ErroOrquestrador extends Error {
 export class RepositorioOrquestradorDrizzle
   implements RepositorioOrquestrador, RepositorioResumoContexto
 {
+  constructor(private readonly comportamentoEfetivo?: ComportamentoEfetivo) {}
   async reivindicarProcessamento(dados: {
     contextoExpiraAposDias?: number;
     identidade: {
@@ -195,6 +197,15 @@ export class RepositorioOrquestradorDrizzle
             mensagemId: registro.mensagem.id,
             modelo: MODELO_EXECUCAO_NAO_INICIADA,
             status: "processando",
+            tipoExecucao: "publica",
+            comportamentoVersaoId: this.comportamentoEfetivo?.versaoId,
+            identidadePublicacao:
+              this.comportamentoEfetivo?.identidadePublicacao,
+            fallbackComportamento: this.comportamentoEfetivo?.fallback ?? true,
+            hashConfiguracaoEfetiva:
+              this.comportamentoEfetivo?.hashConfiguracao,
+            versaoCatalogoFerramentas: "catalogo-ferramentas-v1",
+            versaoSchemaResposta: "decisao-atendente-ia-v1",
           })
           .returning({ id: atendimentoIaExecucoesTable.id });
 
@@ -278,14 +289,18 @@ export class RepositorioOrquestradorDrizzle
         const [vinculo] = await transacao
           .select({
             conversaId: atendimentoIaMensagensTable.conversaId,
-            identificadorSessao: atendimentoIaConversasTable.identificadorSessao,
+            identificadorSessao:
+              atendimentoIaConversasTable.identificadorSessao,
             status: atendimentoIaMensagensTable.status,
             usuarioId: atendimentoIaConversasTable.usuarioId,
           })
           .from(atendimentoIaMensagensTable)
           .innerJoin(
             atendimentoIaConversasTable,
-            eq(atendimentoIaConversasTable.id, atendimentoIaMensagensTable.conversaId),
+            eq(
+              atendimentoIaConversasTable.id,
+              atendimentoIaMensagensTable.conversaId,
+            ),
           )
           .innerJoin(
             atendimentoIaExecucoesTable,
@@ -359,33 +374,51 @@ export class RepositorioOrquestradorDrizzle
           mensagemRespostaId = mensagemResposta.id;
         }
         if (dados.resultado.tipo === "aguardar_atendimento_humano") {
-          const [mensagemOferta] = await transacao.insert(atendimentoIaMensagensTable).values({
-            autor: "assistente_ia",
-            chaveIdempotencia: `oferta_transferencia:${dados.execucaoId}`,
-            conteudo: dados.resultado.explicacaoOferta,
-            conversaId: vinculo.conversaId,
-            status: "concluida",
-          }).onConflictDoNothing().returning({ id: atendimentoIaMensagensTable.id });
+          const [mensagemOferta] = await transacao
+            .insert(atendimentoIaMensagensTable)
+            .values({
+              autor: "assistente_ia",
+              chaveIdempotencia: `oferta_transferencia:${dados.execucaoId}`,
+              conteudo: dados.resultado.explicacaoOferta,
+              conversaId: vinculo.conversaId,
+              status: "concluida",
+            })
+            .onConflictDoNothing()
+            .returning({ id: atendimentoIaMensagensTable.id });
           mensagemRespostaId = mensagemOferta?.id ?? null;
-          const [transferencia] = await transacao.insert(atendimentoIaTransferenciasTable).values({
-            canal: "whatsapp",
-            chaveIdempotencia: `oferta_transferencia:${dados.execucaoId}`,
-            conversaId: vinculo.conversaId,
-            execucaoSolicitacaoId: dados.execucaoId,
-            mensagemSolicitacaoId: dados.mensagemId,
-            motivo: dados.resultado.motivo,
-            referenciaSessaoHash: createHash("sha256").update(vinculo.identificadorSessao, "utf8").digest("hex"),
-            resumo: "",
-            status: "oferecido",
-            usuarioId: vinculo.usuarioId,
-          }).onConflictDoNothing().returning({ id: atendimentoIaTransferenciasTable.id });
+          const [transferencia] = await transacao
+            .insert(atendimentoIaTransferenciasTable)
+            .values({
+              canal: "whatsapp",
+              chaveIdempotencia: `oferta_transferencia:${dados.execucaoId}`,
+              conversaId: vinculo.conversaId,
+              execucaoSolicitacaoId: dados.execucaoId,
+              mensagemSolicitacaoId: dados.mensagemId,
+              motivo: dados.resultado.motivo,
+              referenciaSessaoHash: createHash("sha256")
+                .update(vinculo.identificadorSessao, "utf8")
+                .digest("hex"),
+              resumo: "",
+              status: "oferecido",
+              usuarioId: vinculo.usuarioId,
+            })
+            .onConflictDoNothing()
+            .returning({ id: atendimentoIaTransferenciasTable.id });
           if (!transferencia) {
-            const [existente] = await transacao.select({ id: atendimentoIaTransferenciasTable.id })
+            const [existente] = await transacao
+              .select({ id: atendimentoIaTransferenciasTable.id })
               .from(atendimentoIaTransferenciasTable)
-              .where(eq(atendimentoIaTransferenciasTable.chaveIdempotencia, `oferta_transferencia:${dados.execucaoId}`)).limit(1);
+              .where(
+                eq(
+                  atendimentoIaTransferenciasTable.chaveIdempotencia,
+                  `oferta_transferencia:${dados.execucaoId}`,
+                ),
+              )
+              .limit(1);
             transferenciaId = existente?.id ?? null;
           } else transferenciaId = transferencia.id;
-          if (!transferenciaId) throw new ErroOrquestrador("PERSISTENCIA_INDISPONIVEL");
+          if (!transferenciaId)
+            throw new ErroOrquestrador("PERSISTENCIA_INDISPONIVEL");
         }
 
         await transacao
@@ -674,12 +707,17 @@ export class RepositorioOrquestradorDrizzle
       const [idempotente] = await transacao
         .select()
         .from(atendimentoIaResumosTable)
-        .where(eq(atendimentoIaResumosTable.execucaoGeradoraId, dados.execucaoId))
+        .where(
+          eq(atendimentoIaResumosTable.execucaoGeradoraId, dados.execucaoId),
+        )
         .limit(1);
       if (idempotente) return idempotente;
 
       const [anterior] = await transacao
-        .select({ id: atendimentoIaResumosTable.id, versao: atendimentoIaResumosTable.versao })
+        .select({
+          id: atendimentoIaResumosTable.id,
+          versao: atendimentoIaResumosTable.versao,
+        })
         .from(atendimentoIaResumosTable)
         .where(
           and(
@@ -823,8 +861,7 @@ export class RepositorioOrquestradorDrizzle
           categoria: atendimentoIaMemoriasTable.categoria,
           assuntoNormalizado: atendimentoIaMemoriasTable.assuntoNormalizado,
           id: atendimentoIaMemoriasTable.id,
-          necessidadeEncerrada:
-            atendimentoIaMemoriasTable.necessidadeEncerrada,
+          necessidadeEncerrada: atendimentoIaMemoriasTable.necessidadeEncerrada,
           origem: atendimentoIaMemoriasTable.origem,
           valorEstruturado: atendimentoIaMemoriasTable.valorEstruturado,
         })
@@ -938,7 +975,13 @@ export class RepositorioOrquestradorDrizzle
         .then((resultados) =>
           resultados.flatMap((item) =>
             item.resultado
-              ? [{ nome: item.nome, resultado: item.resultado, versao: item.versao }]
+              ? [
+                  {
+                    nome: item.nome,
+                    resultado: item.resultado,
+                    versao: item.versao,
+                  },
+                ]
               : [],
           ),
         ),

@@ -18,4 +18,15 @@ describe("menu admin sidebar", () => {
       "Entrega Própria",
     ]);
   });
+
+  it("exibe somente a entrada principal do treinamento do Atendente IA", () => {
+    const grupoAtendenteIa = menuAdmin.find(
+      (item) => item.id === "atendente-ia",
+    );
+    assert.ok(grupoAtendenteIa && "items" in grupoAtendenteIa);
+    assert.deepEqual(
+      grupoAtendenteIa.items.map((item) => item.label),
+      ["Treinamento da IA"],
+    );
+  });
 });

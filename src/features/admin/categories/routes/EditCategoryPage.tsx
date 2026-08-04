@@ -1,9 +1,10 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useCategoryDetail } from "../hooks/useCategoryDetail";
-import { CategoryForm } from "../form/CategoryForm";
 import { Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
+
+import { CategoryForm } from "../form/CategoryForm";
+import { useCategoryDetail } from "../hooks/useCategoryDetail";
 
 export default function EditCategoryPage() {
   const params = useParams();
@@ -49,6 +50,7 @@ export default function EditCategoryPage() {
     name: category.name,
     slug: category.slug || "",
     description: category.description || "",
+    descriptionBottom: category.descriptionBottom || "",
     isActive: category.isActive,
     metaTitle: category.metaTitle || "",
     metaDescription: category.metaDescription || "",

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -14,6 +15,7 @@ import {
   atendimentoIaExecucaoStatusEnum,
   atendimentoIaFerramentaClassificacaoEnum,
 } from "../enums";
+import { atendimentoIaComportamentoVersoesTable } from "./comportamento";
 import {
   atendimentoIaConversasTable,
   atendimentoIaMensagensTable,
@@ -40,11 +42,20 @@ export const atendimentoIaExecucoesTable = pgTable(
     tokensEntrada: integer("tokens_entrada").notNull().default(0),
     tokensSaida: integer("tokens_saida").notNull().default(0),
     duracaoEmMs: integer("duracao_em_ms"),
-    custoEstimadoMicros: integer("custo_estimado_micros")
-      .notNull()
-      .default(0),
+    custoEstimadoMicros: integer("custo_estimado_micros").notNull().default(0),
     motivoEscalonamento: text("motivo_escalonamento"),
     erro: text("erro"),
+    tipoExecucao: text("tipo_execucao").notNull().default("publica"),
+    comportamentoVersaoId: uuid("comportamento_versao_id").references(
+      () => atendimentoIaComportamentoVersoesTable.id,
+      { onDelete: "set null" },
+    ),
+    conhecimentoVersoesIds: jsonb("conhecimento_versoes_ids").$type<string[]>(),
+    identidadePublicacao: text("identidade_publicacao"),
+    versaoCatalogoFerramentas: text("versao_catalogo_ferramentas"),
+    versaoSchemaResposta: text("versao_schema_resposta"),
+    fallbackComportamento: boolean("fallback_comportamento"),
+    hashConfiguracaoEfetiva: text("hash_configuracao_efetiva"),
     iniciadoEm: timestamp("iniciado_em").notNull().defaultNow(),
     concluidoEm: timestamp("concluido_em"),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
@@ -91,9 +102,7 @@ export const atendimentoIaExecucoesFerramentasTable = pgTable(
       .on(table.chaveIdempotencia)
       .where(sql`${table.chaveIdempotencia} is not null`),
     index("atendimento_ia_exec_ferramentas_execucao_idx").on(table.execucaoId),
-    index("atendimento_ia_exec_ferramentas_nome_idx").on(
-      table.nomeFerramenta,
-    ),
+    index("atendimento_ia_exec_ferramentas_nome_idx").on(table.nomeFerramenta),
   ],
 );
 

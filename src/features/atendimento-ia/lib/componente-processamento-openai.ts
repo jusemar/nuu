@@ -149,7 +149,10 @@ function criarHashSessao(contexto: ContextoPersistidoOrquestrador) {
     .digest("hex");
 }
 
-function estimarTokensEntradaModelo(input: RequisicaoResponsesOpenAi["input"]) {
+function estimarTokensEntradaModelo(
+  input: RequisicaoResponsesOpenAi["input"],
+  instrucoesSistema = INSTRUCOES_SISTEMA_ATENDENTE_IA,
+) {
   const estimarItem = (item: Record<string, unknown>) => {
     let custo = 0;
     const estrutura = { ...item };
@@ -162,7 +165,7 @@ function estimarTokensEntradaModelo(input: RequisicaoResponsesOpenAi["input"]) {
     return custo + estimarTokensSeguro(estrutura);
   };
   return (
-    estimarTokensSeguro(INSTRUCOES_SISTEMA_ATENDENTE_IA) +
+    estimarTokensSeguro(instrucoesSistema) +
     (typeof input === "string"
       ? estimarTokensSeguro(input)
       : input.reduce((total, item) => total + estimarItem(item), 0))
@@ -270,7 +273,11 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
   configuracao: ConfiguracaoIntegracaoOpenAi;
   executorFerramentas: ExecutorFerramentasPublicas;
   ferramentas: DefinicaoFerramentaOpenAi[];
+  /** Resolvida exclusivamente no servidor; nunca aceita entrada da requisição pública. */
+  instrucoesSistema?: string;
 }): ComponenteProcessamentoOrquestrado {
+  const instrucoesSistema =
+    dependencias.instrucoesSistema ?? INSTRUCOES_SISTEMA_ATENDENTE_IA;
   async function chamarModelo(
     modelo: "gpt-5.6-terra" | "gpt-5.6-sol",
     contexto: ContextoPersistidoOrquestrador,
@@ -278,7 +285,7 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
   ) {
     const requisicao: RequisicaoResponsesOpenAi = {
       input,
-      instructions: INSTRUCOES_SISTEMA_ATENDENTE_IA,
+      instructions: instrucoesSistema,
       max_output_tokens: dependencias.configuracao.maxOutputTokens,
       model: modelo,
       safety_identifier: criarIdentificadorSeguranca(contexto),
@@ -409,10 +416,14 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
       ): Promise<ResultadoModeloValidado> {
         let entradaOriginal = JSON.stringify(
           (() => {
-            const controlado = montarContextoControlado(contextoAtual, {
-              // Reserva o custo do envelope serializado da requisição.
-              limiteTokens: dependencias.configuracao.maxContextTokens - 512,
-            });
+            const controlado = montarContextoControlado(
+              contextoAtual,
+              {
+                // Reserva o custo do envelope serializado da requisição.
+                limiteTokens: dependencias.configuracao.maxContextTokens - 512,
+              },
+              instrucoesSistema,
+            );
             if (
               controlado.tokensEstimados >
               dependencias.configuracao.maxContextTokens - 512
@@ -433,7 +444,10 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
         let tokensEntradaProjetados: number | null = null;
 
         while (true) {
-          const custoInputEstimado = estimarTokensEntradaModelo(input);
+          const custoInputEstimado = estimarTokensEntradaModelo(
+            input,
+            instrucoesSistema,
+          );
           if (
             (tokensEntradaProjetados ?? custoInputEstimado) >
             dependencias.configuracao.maxContextTokens
@@ -525,7 +539,10 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
             ? Math.max(0.25, resposta.usage.input_tokens / custoInputEstimado)
             : 1;
           const projetarTokens = (valor: RequisicaoResponsesOpenAi["input"]) =>
-            Math.ceil(estimarTokensEntradaModelo(valor) * proporcaoReal);
+            Math.ceil(
+              estimarTokensEntradaModelo(valor, instrucoesSistema) *
+                proporcaoReal,
+            );
           let tokensProjetados = projetarTokens(proximoHistorico);
 
           if (tokensProjetados > dependencias.configuracao.maxContextTokens) {
@@ -538,6 +555,7 @@ export function criarComponenteProcessamentoOpenAi(dependencias: {
             const contextoRecompactado = montarContextoControlado(
               contextoAtual,
               { limiteTokens: limiteContextoConversa },
+              instrucoesSistema,
             );
             if (
               limiteContextoConversa > 0 &&

@@ -29,6 +29,7 @@ export interface Category {
   name: string;
   slug: string;
   description?: string | null;
+  descriptionBottom?: string | null;
   isActive: boolean;
   metaTitle?: string | null;
   metaDescription?: string | null;
@@ -48,6 +49,7 @@ export interface CreateCategoryInput {
   name: string;
   slug: string; // OBRIGATÓRIO: deve vir preenchido do formulário
   description?: string;
+  descriptionBottom?: string | null;
   isActive: boolean;
   metaTitle?: string;
   metaDescription?: string;
@@ -64,6 +66,7 @@ export interface UpdateCategoryInput {
   name?: string;
   slug?: string; // Se enviado, deve ser string válida (não vazio)
   description?: string;
+  descriptionBottom?: string | null;
   isActive?: boolean;
   metaTitle?: string;
   metaDescription?: string;

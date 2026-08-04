@@ -33,9 +33,7 @@ export const atendimentoIaConversasTable = pgTable(
     status: atendimentoIaConversaStatusEnum("status")
       .notNull()
       .default("ativa"),
-    ultimaAtividadeEm: timestamp("ultima_atividade_em")
-      .notNull()
-      .defaultNow(),
+    ultimaAtividadeEm: timestamp("ultima_atividade_em").notNull().defaultNow(),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
     avisoPrivacidadeVersao: text("aviso_privacidade_versao"),
@@ -43,9 +41,7 @@ export const atendimentoIaConversasTable = pgTable(
   },
   (table) => [
     index("atendimento_ia_conversas_usuario_idx").on(table.usuarioId),
-    index("atendimento_ia_conversas_sessao_idx").on(
-      table.identificadorSessao,
-    ),
+    index("atendimento_ia_conversas_sessao_idx").on(table.identificadorSessao),
     index("atendimento_ia_conversas_status_atividade_idx").on(
       table.status,
       table.ultimaAtividadeEm,
@@ -202,8 +198,12 @@ export const atendimentoIaMemoriasTable = pgTable(
       }),
     sensibilidade: text("sensibilidade").notNull().default("comercial"),
     situacao: text("situacao").notNull().default("ativa"),
-    ultimaUtilizacaoValidaEm: timestamp("ultima_utilizacao_valida_em").notNull(),
-    necessidadeEncerrada: boolean("necessidade_encerrada").notNull().default(false),
+    ultimaUtilizacaoValidaEm: timestamp(
+      "ultima_utilizacao_valida_em",
+    ).notNull(),
+    necessidadeEncerrada: boolean("necessidade_encerrada")
+      .notNull()
+      .default(false),
     substituidaPorId: uuid("substituida_por_id").references(
       (): AnyPgColumn => atendimentoIaMemoriasTable.id,
       { onDelete: "set null" },

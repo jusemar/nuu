@@ -1,12 +1,15 @@
 // src/features/admin/categories/form/CategoryForm/BasicInfoCard.tsx
 "use client";
 
+import { Link as LinkIcon,Upload } from "lucide-react";
+
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Link as LinkIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+
 import type { Category } from "../../types";
 
 // Interface simplificada - Melhor prática: passar apenas o necessário
@@ -16,6 +19,7 @@ interface BasicInfoCardProps {
     name: string;
     slug: string;
     description: string;
+    descriptionBottom: string;
     isActive: boolean;
     metaTitle: string;
     metaDescription: string;
@@ -146,6 +150,18 @@ export function BasicInfoCard({
               placeholder="Descreva esta categoria para os clientes..."
               rows={4}
               disabled={isLoading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Descrição inferior da categoria</Label>
+            <p className="text-xs text-gray-500">
+              Conteúdo complementar exibido no final da página pública da categoria. Use para orientações, informações detalhadas, links internos e conteúdo editorial.
+            </p>
+            <RichTextEditor
+              value={data.descriptionBottom}
+              onChange={(descriptionBottom) => onDataChange({ descriptionBottom })}
+              placeholder="Adicione o conteúdo editorial complementar..."
             />
           </div>
 

@@ -8,7 +8,10 @@ import {
   atendimentoIaBuscasRagTable,
   atendimentoIaDocumentosInstitucionaisTable,
   atendimentoIaDocumentoVersoesTable,
+  atendimentoIaExecucoesTable,
   atendimentoIaFragmentosInstitucionaisTable,
+  atendimentoIaPublicacaoItensTable,
+  atendimentoIaPublicacoesTable,
   atendimentoIaResultadosRagTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
@@ -25,26 +28,19 @@ function vetorSql(vetor: number[]) {
 }
 
 export class RepositorioConhecimentoInstitucionalDrizzle {
-  async possuiBasePublicadaCompativel(dados: { dimensao: number; modelo: string }) {
-    const [resultado] = await dbTransacional
-      .select({ quantidade: sql<number>`count(*)::int` })
-      .from(atendimentoIaFragmentosInstitucionaisTable)
-      .innerJoin(
-        atendimentoIaDocumentoVersoesTable,
-        eq(
-          atendimentoIaDocumentoVersoesTable.id,
-          atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId,
-        ),
-      )
-      .where(
-        and(
-          eq(atendimentoIaFragmentosInstitucionaisTable.ativo, true),
-          eq(atendimentoIaFragmentosInstitucionaisTable.modeloEmbedding, dados.modelo),
-          eq(atendimentoIaFragmentosInstitucionaisTable.dimensaoEmbedding, dados.dimensao),
-          eq(atendimentoIaDocumentoVersoesTable.estado, "publicado"),
-        ),
-      );
-    return (resultado?.quantidade ?? 0) > 0;
+  async possuiBasePublicadaCompativel(dados: {
+    dimensao: number;
+    modelo: string;
+  }) {
+    const publicacoesAdminAtivas =
+      process.env.ATENDENTE_IA_PUBLICACOES_ADMIN_ATIVAS === "true";
+    const filtro = publicacoesAdminAtivas
+      ? sql`f.ativo=true and v.estado='publicado' and exists (select 1 from atendimento_ia_publicacao_itens pi join atendimento_ia_publicacoes p on p.id=pi.publicacao_id where pi.candidato_id=v.id and p.status='concluida')`
+      : sql`((f.ativo=true and v.estado='publicado' and not exists (select 1 from atendimento_ia_publicacao_itens pi where pi.candidato_id=v.id)) or (not f.ativo and exists (select 1 from atendimento_ia_publicacao_itens pi join atendimento_ia_publicacoes p on p.id=pi.publicacao_id where pi.versao_anterior_id=v.id and p.status='concluida') and not exists (select 1 from atendimento_ia_publicacao_itens propria where propria.candidato_id=v.id)))`;
+    const resultado = await dbTransacional.execute(
+      sql`select count(*)::int quantidade from atendimento_ia_fragmentos_institucionais f join atendimento_ia_documento_versoes v on v.id=f.versao_documento_id where ${filtro} and f.modelo_embedding=${dados.modelo} and f.dimensao_embedding=${dados.dimensao}`,
+    );
+    return Number(resultado.rows[0]?.quantidade ?? 0) > 0;
   }
 
   async criarVersao(dados: {
@@ -71,12 +67,22 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
       const [documento] = await tx
         .select()
         .from(atendimentoIaDocumentosInstitucionaisTable)
-        .where(eq(atendimentoIaDocumentosInstitucionaisTable.chaveEstavel, dados.chaveEstavel))
+        .where(
+          eq(
+            atendimentoIaDocumentosInstitucionaisTable.chaveEstavel,
+            dados.chaveEstavel,
+          ),
+        )
         .limit(1);
       if (!documento) throw new Error("DOCUMENTO_INSTITUCIONAL_INDISPONIVEL");
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${documento.id}))`);
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${documento.id}))`,
+      );
       const [anterior] = await tx
-        .select({ id: atendimentoIaDocumentoVersoesTable.id, versao: atendimentoIaDocumentoVersoesTable.versao })
+        .select({
+          id: atendimentoIaDocumentoVersoesTable.id,
+          versao: atendimentoIaDocumentoVersoesTable.versao,
+        })
         .from(atendimentoIaDocumentoVersoesTable)
         .where(eq(atendimentoIaDocumentoVersoesTable.documentoId, documento.id))
         .orderBy(desc(atendimentoIaDocumentoVersoesTable.versao))
@@ -182,14 +188,22 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
       if (!versao || versao.estado !== "em_revisao") {
         throw new Error("VERSAO_NAO_REVISAVEL");
       }
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${versao.documentoId}))`);
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${versao.documentoId}))`,
+      );
       const [idempotente] = await tx
         .select()
         .from(atendimentoIaDocumentoVersoesTable)
         .where(
           and(
-            eq(atendimentoIaDocumentoVersoesTable.documentoId, versao.documentoId),
-            eq(atendimentoIaDocumentoVersoesTable.hashIndexacao, dados.hashIndexacao),
+            eq(
+              atendimentoIaDocumentoVersoesTable.documentoId,
+              versao.documentoId,
+            ),
+            eq(
+              atendimentoIaDocumentoVersoesTable.hashIndexacao,
+              dados.hashIndexacao,
+            ),
             eq(atendimentoIaDocumentoVersoesTable.statusIndexacao, "concluida"),
           ),
         )
@@ -197,9 +211,14 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
       if (idempotente) return { idempotente: true, versao: idempotente };
 
       const agora = new Date();
-      await tx.delete(atendimentoIaFragmentosInstitucionaisTable).where(
-        eq(atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId, versao.id),
-      );
+      await tx
+        .delete(atendimentoIaFragmentosInstitucionaisTable)
+        .where(
+          eq(
+            atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId,
+            versao.id,
+          ),
+        );
       if (dados.fragmentos.length !== dados.embeddings.length) {
         throw new Error("QUANTIDADE_EMBEDDINGS_INCOMPATIVEL");
       }
@@ -237,13 +256,21 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
       await tx
         .update(atendimentoIaFragmentosInstitucionaisTable)
         .set({ ativo: true, atualizadoEm: agora })
-        .where(eq(atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId, versao.id));
+        .where(
+          eq(
+            atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId,
+            versao.id,
+          ),
+        );
       const anteriores = await tx
         .update(atendimentoIaDocumentoVersoesTable)
         .set({ atualizadoEm: agora, desativadoEm: agora, estado: "desativado" })
         .where(
           and(
-            eq(atendimentoIaDocumentoVersoesTable.documentoId, versao.documentoId),
+            eq(
+              atendimentoIaDocumentoVersoesTable.documentoId,
+              versao.documentoId,
+            ),
             eq(atendimentoIaDocumentoVersoesTable.estado, "publicado"),
             sql`${atendimentoIaDocumentoVersoesTable.id} <> ${versao.id}`,
           ),
@@ -277,7 +304,12 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
       await tx
         .update(atendimentoIaFragmentosInstitucionaisTable)
         .set({ ativo: false, atualizadoEm: agora })
-        .where(eq(atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId, versaoId));
+        .where(
+          eq(
+            atendimentoIaFragmentosInstitucionaisTable.versaoDocumentoId,
+            versaoId,
+          ),
+        );
       return versao;
     });
   }
@@ -291,11 +323,16 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
     pergunta: string;
     vetor: number[];
   }): Promise<CandidatoRag[]> {
-    if (dados.vetor.length !== dados.dimensao) throw new Error("DIMENSAO_EMBEDDING_INCOMPATIVEL");
+    if (dados.vetor.length !== dados.dimensao)
+      throw new Error("DIMENSAO_EMBEDDING_INCOMPATIVEL");
     const vetor = vetorSql(dados.vetor);
+    const filtroPublicacao =
+      process.env.ATENDENTE_IA_PUBLICACOES_ADMIN_ATIVAS === "true"
+        ? sql`f.ativo=true and v.estado='publicado' and exists (select 1 from atendimento_ia_publicacao_itens pi join atendimento_ia_publicacoes p on p.id=pi.publicacao_id where pi.candidato_id=v.id and p.status='concluida')`
+        : sql`((f.ativo=true and v.estado='publicado' and not exists (select 1 from atendimento_ia_publicacao_itens pi where pi.candidato_id=v.id)) or (not f.ativo and exists (select 1 from atendimento_ia_publicacao_itens pi join atendimento_ia_publicacoes p on p.id=pi.publicacao_id where pi.versao_anterior_id=v.id and p.status='concluida') and not exists (select 1 from atendimento_ia_publicacao_itens propria where propria.candidato_id=v.id)))`;
     const resultado = await dbTransacional.execute(sql`
       with pontuados as (
-        select f.id as fragmento_id, d.id as documento_id, v.versao, v.titulo,
+        select f.id as fragmento_id, d.id as documento_id, v.id as versao_id, v.versao, v.titulo,
                f.secao, f.conteudo, f.hash_conteudo,
                greatest(0, 1 - (f.embedding <=> ${vetor}::vector))::real as pontuacao_semantica,
                least(1, greatest(
@@ -305,7 +342,7 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
         from atendimento_ia_fragmentos_institucionais f
         join atendimento_ia_documento_versoes v on v.id=f.versao_documento_id
         join atendimento_ia_documentos_institucionais d on d.id=v.documento_id
-        where f.ativo=true and v.estado='publicado' and v.status_indexacao='concluida'
+        where ${filtroPublicacao} and v.status_indexacao='concluida'
           and f.modelo_embedding=${dados.modelo} and f.dimensao_embedding=${dados.dimensao}
       )
       select * from pontuados
@@ -323,10 +360,13 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
       secao: linha.secao ? String(linha.secao) : null,
       titulo: String(linha.titulo),
       versao: Number(linha.versao),
+      versaoId: String(linha.versao_id),
     }));
   }
 
-  async registrarBusca(dados: ResultadoRecuperacaoRag & { hashPergunta: string }) {
+  async registrarBusca(
+    dados: ResultadoRecuperacaoRag & { hashPergunta: string },
+  ) {
     return dbTransacional.transaction(async (tx) => {
       const [existente] = await tx
         .select()
@@ -361,6 +401,59 @@ export class RepositorioConhecimentoInstitucionalDrizzle {
             posicao,
           })),
         );
+        const versoesIds = [
+          ...new Set(
+            dados.fontes.flatMap((fonte) =>
+              fonte.versaoId ? [fonte.versaoId] : [],
+            ),
+          ),
+        ];
+        const publicacoes = versoesIds.length
+          ? await tx
+              .select({ identidade: atendimentoIaPublicacoesTable.identidade })
+              .from(atendimentoIaPublicacaoItensTable)
+              .innerJoin(
+                atendimentoIaPublicacoesTable,
+                eq(
+                  atendimentoIaPublicacoesTable.id,
+                  atendimentoIaPublicacaoItensTable.publicacaoId,
+                ),
+              )
+              .where(
+                sql`${atendimentoIaPublicacaoItensTable.candidatoId} in (${sql.join(
+                  versoesIds.map((id) => sql`${id}`),
+                  sql`, `,
+                )}) and ${atendimentoIaPublicacoesTable.status}='concluida'`,
+              )
+          : [];
+        const [execucao] = await tx
+          .select({
+            hash: atendimentoIaExecucoesTable.hashConfiguracaoEfetiva,
+            identidade: atendimentoIaExecucoesTable.identidadePublicacao,
+          })
+          .from(atendimentoIaExecucoesTable)
+          .where(eq(atendimentoIaExecucoesTable.id, dados.execucaoId))
+          .limit(1);
+        const identidades = [
+          ...(execucao?.identidade ? [execucao.identidade] : []),
+          ...publicacoes.map((item) => item.identidade),
+        ].filter((item, indice, todos) => todos.indexOf(item) === indice);
+        const hashEfetivo = createHash("sha256")
+          .update(
+            JSON.stringify({
+              comportamento: execucao?.hash ?? null,
+              conhecimentos: [...versoesIds].sort(),
+            }),
+          )
+          .digest("hex");
+        await tx
+          .update(atendimentoIaExecucoesTable)
+          .set({
+            conhecimentoVersoesIds: versoesIds,
+            identidadePublicacao: identidades.join(";") || null,
+            hashConfiguracaoEfetiva: hashEfetivo,
+          })
+          .where(eq(atendimentoIaExecucoesTable.id, dados.execucaoId));
       }
       return busca;
     });

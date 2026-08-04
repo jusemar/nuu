@@ -13,6 +13,7 @@ export const configuracaoAtendenteIaAmbienteSchema = z.object({
   ATENDENTE_IA_RAG_ATIVO: flagAmbienteSchema,
   ATENDENTE_IA_ACOES_ATIVAS: flagAmbienteSchema,
   ATENDENTE_IA_RECURSOS_EXPERIMENTAIS_ATIVOS: flagAmbienteSchema,
+  ATENDENTE_IA_PUBLICACOES_ADMIN_ATIVAS: flagAmbienteSchema,
 });
 
 export type ConfiguracaoAtendenteIaAmbiente = z.infer<

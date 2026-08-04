@@ -19,17 +19,118 @@ import {
   atendimentoIaAuditoriasTable,
   atendimentoIaAvaliacoesTable,
   atendimentoIaOcorrenciasTable,
+  atendimentoIaPropostaEvidenciasTable,
+  atendimentoIaPropostasMelhoriaTable,
+  atendimentoIaRevisoesTable,
   atendimentoIaTransferenciasTable,
 } from "./tabelas/governanca";
+import {
+  atendimentoIaExecucoesLaboratorioTable,
+  atendimentoIaResultadosLaboratorioTable,
+} from "./tabelas/laboratorio";
 import {
   atendimentoIaExecucoesFerramentasTable,
   atendimentoIaExecucoesTable,
   atendimentoIaIdempotenciasTable,
 } from "./tabelas/operacoes";
+import { atendimentoIaPapeisAdminTable } from "./tabelas/permissoes-admin";
 import {
   atendimentoIaConfirmacoesFerramentasTable,
   atendimentoIaOperacoesProtegidasTable,
 } from "./tabelas/protecao-ferramentas";
+import {
+  atendimentoIaPublicacaoItensTable,
+  atendimentoIaPublicacoesTable,
+} from "./tabelas/publicacoes";
+import {
+  atendimentoIaCasosTesteTable,
+  atendimentoIaCasoTesteVersoesTable,
+  atendimentoIaConjuntosTesteTable,
+  atendimentoIaConjuntoTesteCasosTable,
+} from "./tabelas/testes";
+
+export const atendimentoIaExecucoesLaboratorioRelations = relations(
+  atendimentoIaExecucoesLaboratorioTable,
+  ({ many, one }) => ({
+    solicitadoPor: one(userTable, {
+      fields: [atendimentoIaExecucoesLaboratorioTable.solicitadoPorId],
+      references: [userTable.id],
+    }),
+    resultados: many(atendimentoIaResultadosLaboratorioTable),
+  }),
+);
+export const atendimentoIaResultadosLaboratorioRelations = relations(
+  atendimentoIaResultadosLaboratorioTable,
+  ({ one }) => ({
+    execucao: one(atendimentoIaExecucoesLaboratorioTable, {
+      fields: [atendimentoIaResultadosLaboratorioTable.execucaoLaboratorioId],
+      references: [atendimentoIaExecucoesLaboratorioTable.id],
+    }),
+    caso: one(atendimentoIaCasoTesteVersoesTable, {
+      fields: [atendimentoIaResultadosLaboratorioTable.casoTesteVersaoId],
+      references: [atendimentoIaCasoTesteVersoesTable.id],
+    }),
+  }),
+);
+
+export const atendimentoIaPublicacoesRelations = relations(
+  atendimentoIaPublicacoesTable,
+  ({ many, one }) => ({
+    itens: many(atendimentoIaPublicacaoItensTable),
+    publicadoPor: one(userTable, {
+      fields: [atendimentoIaPublicacoesTable.publicadoPorId],
+      references: [userTable.id],
+    }),
+  }),
+);
+
+export const atendimentoIaPublicacaoItensRelations = relations(
+  atendimentoIaPublicacaoItensTable,
+  ({ one }) => ({
+    publicacao: one(atendimentoIaPublicacoesTable, {
+      fields: [atendimentoIaPublicacaoItensTable.publicacaoId],
+      references: [atendimentoIaPublicacoesTable.id],
+    }),
+  }),
+);
+
+export const atendimentoIaCasosTesteRelations = relations(
+  atendimentoIaCasosTesteTable,
+  ({ many, one }) => ({
+    criadoPor: one(userTable, {
+      fields: [atendimentoIaCasosTesteTable.criadoPorId],
+      references: [userTable.id],
+    }),
+    versoes: many(atendimentoIaCasoTesteVersoesTable),
+  }),
+);
+export const atendimentoIaCasoTesteVersoesRelations = relations(
+  atendimentoIaCasoTesteVersoesTable,
+  ({ many, one }) => ({
+    caso: one(atendimentoIaCasosTesteTable, {
+      fields: [atendimentoIaCasoTesteVersoesTable.casoTesteId],
+      references: [atendimentoIaCasosTesteTable.id],
+    }),
+    vinculos: many(atendimentoIaConjuntoTesteCasosTable),
+  }),
+);
+export const atendimentoIaConjuntosTesteRelations = relations(
+  atendimentoIaConjuntosTesteTable,
+  ({ many }) => ({ casos: many(atendimentoIaConjuntoTesteCasosTable) }),
+);
+export const atendimentoIaConjuntoTesteCasosRelations = relations(
+  atendimentoIaConjuntoTesteCasosTable,
+  ({ one }) => ({
+    conjunto: one(atendimentoIaConjuntosTesteTable, {
+      fields: [atendimentoIaConjuntoTesteCasosTable.conjuntoTesteId],
+      references: [atendimentoIaConjuntosTesteTable.id],
+    }),
+    versao: one(atendimentoIaCasoTesteVersoesTable, {
+      fields: [atendimentoIaConjuntoTesteCasosTable.casoTesteVersaoId],
+      references: [atendimentoIaCasoTesteVersoesTable.id],
+    }),
+  }),
+);
 
 export const atendimentoIaConversasRelations = relations(
   atendimentoIaConversasTable,
@@ -170,6 +271,57 @@ export const atendimentoIaAvaliacoesRelations = relations(
       fields: [atendimentoIaAvaliacoesTable.mensagemId],
       references: [atendimentoIaMensagensTable.id],
     }),
+    proposta: one(atendimentoIaPropostasMelhoriaTable, {
+      fields: [atendimentoIaAvaliacoesTable.propostaMelhoriaId],
+      references: [atendimentoIaPropostasMelhoriaTable.id],
+    }),
+  }),
+);
+
+export const atendimentoIaPropostasMelhoriaRelations = relations(
+  atendimentoIaPropostasMelhoriaTable,
+  ({ many, one }) => ({
+    criadoPor: one(userTable, {
+      fields: [atendimentoIaPropostasMelhoriaTable.criadoPorId],
+      references: [userTable.id],
+      relationName: "proposta_melhoria_criada_por",
+    }),
+    evidencias: many(atendimentoIaPropostaEvidenciasTable),
+    responsavel: one(userTable, {
+      fields: [atendimentoIaPropostasMelhoriaTable.responsavelId],
+      references: [userTable.id],
+      relationName: "proposta_melhoria_responsavel",
+    }),
+    revisoes: many(atendimentoIaRevisoesTable),
+  }),
+);
+
+export const atendimentoIaPropostaEvidenciasRelations = relations(
+  atendimentoIaPropostaEvidenciasTable,
+  ({ one }) => ({
+    criadoPor: one(userTable, {
+      fields: [atendimentoIaPropostaEvidenciasTable.criadoPorId],
+      references: [userTable.id],
+      relationName: "evidencia_proposta_criada_por",
+    }),
+    proposta: one(atendimentoIaPropostasMelhoriaTable, {
+      fields: [atendimentoIaPropostaEvidenciasTable.propostaId],
+      references: [atendimentoIaPropostasMelhoriaTable.id],
+    }),
+  }),
+);
+
+export const atendimentoIaRevisoesRelations = relations(
+  atendimentoIaRevisoesTable,
+  ({ one }) => ({
+    avaliacao: one(atendimentoIaAvaliacoesTable, {
+      fields: [atendimentoIaRevisoesTable.avaliacaoId],
+      references: [atendimentoIaAvaliacoesTable.id],
+    }),
+    proposta: one(atendimentoIaPropostasMelhoriaTable, {
+      fields: [atendimentoIaRevisoesTable.propostaId],
+      references: [atendimentoIaPropostasMelhoriaTable.id],
+    }),
   }),
 );
 
@@ -209,6 +361,27 @@ export const atendimentoIaAuditoriasRelations = relations(
     execucaoFerramenta: one(atendimentoIaExecucoesFerramentasTable, {
       fields: [atendimentoIaAuditoriasTable.execucaoFerramentaId],
       references: [atendimentoIaExecucoesFerramentasTable.id],
+    }),
+  }),
+);
+
+export const atendimentoIaPapeisAdminRelations = relations(
+  atendimentoIaPapeisAdminTable,
+  ({ one }) => ({
+    usuario: one(userTable, {
+      fields: [atendimentoIaPapeisAdminTable.usuarioId],
+      references: [userTable.id],
+      relationName: "papel_atendimento_ia_usuario",
+    }),
+    atribuidoPor: one(userTable, {
+      fields: [atendimentoIaPapeisAdminTable.atribuidoPorId],
+      references: [userTable.id],
+      relationName: "papel_atendimento_ia_atribuidor",
+    }),
+    revogadoPor: one(userTable, {
+      fields: [atendimentoIaPapeisAdminTable.revogadoPorId],
+      references: [userTable.id],
+      relationName: "papel_atendimento_ia_revogador",
     }),
   }),
 );
@@ -258,12 +431,24 @@ export const atendimentoIaOperacoesProtegidasRelations = relations(
 
 export const atendimentoIaDocumentosInstitucionaisRelations = relations(
   atendimentoIaDocumentosInstitucionaisTable,
-  ({ many }) => ({ versoes: many(atendimentoIaDocumentoVersoesTable) }),
+  ({ many, one }) => ({
+    criadoPor: one(userTable, {
+      fields: [atendimentoIaDocumentosInstitucionaisTable.criadoPorId],
+      references: [userTable.id],
+      relationName: "conhecimento_criado_por",
+    }),
+    versoes: many(atendimentoIaDocumentoVersoesTable),
+  }),
 );
 
 export const atendimentoIaDocumentoVersoesRelations = relations(
   atendimentoIaDocumentoVersoesTable,
   ({ many, one }) => ({
+    criadoPor: one(userTable, {
+      fields: [atendimentoIaDocumentoVersoesTable.criadoPorId],
+      references: [userTable.id],
+      relationName: "versao_conhecimento_criada_por",
+    }),
     documento: one(atendimentoIaDocumentosInstitucionaisTable, {
       fields: [atendimentoIaDocumentoVersoesTable.documentoId],
       references: [atendimentoIaDocumentosInstitucionaisTable.id],
@@ -271,6 +456,21 @@ export const atendimentoIaDocumentoVersoesRelations = relations(
     responsavelRevisao: one(userTable, {
       fields: [atendimentoIaDocumentoVersoesTable.responsavelRevisaoId],
       references: [userTable.id],
+    }),
+    enviadoRevisaoPor: one(userTable, {
+      fields: [atendimentoIaDocumentoVersoesTable.enviadoRevisaoPorId],
+      references: [userTable.id],
+      relationName: "versao_conhecimento_enviada_revisao_por",
+    }),
+    reprovadoPor: one(userTable, {
+      fields: [atendimentoIaDocumentoVersoesTable.reprovadoPorId],
+      references: [userTable.id],
+      relationName: "versao_conhecimento_reprovada_por",
+    }),
+    restauradaDeVersao: one(atendimentoIaDocumentoVersoesTable, {
+      fields: [atendimentoIaDocumentoVersoesTable.restauradaDeVersaoId],
+      references: [atendimentoIaDocumentoVersoesTable.id],
+      relationName: "versao_institucional_restaurada_de",
     }),
     versaoAnterior: one(atendimentoIaDocumentoVersoesTable, {
       fields: [atendimentoIaDocumentoVersoesTable.versaoAnteriorId],

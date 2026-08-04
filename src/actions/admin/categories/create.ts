@@ -9,6 +9,7 @@ export async function createCategory(formData: {
   name: string
   slug: string
   description?: string
+  descriptionBottom?: string
   isActive: boolean
   metaTitle?: string
   metaDescription?: string
@@ -62,6 +63,7 @@ export async function createCategory(formData: {
         name: formData.name,
         slug: formData.slug,
         description: formData.description || null,
+        descriptionBottom: formData.descriptionBottom || null,
         metaTitle: formData.metaTitle || null,
         metaDescription: formData.metaDescription || null,
         isActive: formData.isActive,

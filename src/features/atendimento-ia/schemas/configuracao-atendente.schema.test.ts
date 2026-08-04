@@ -18,7 +18,8 @@ test("mantém todos os recursos desativados quando não há configuração", () 
     ATENDENTE_IA_ESCALONAMENTO_ATIVO: false,
     ATENDENTE_IA_RAG_ATIVO: false,
     ATENDENTE_IA_ACOES_ATIVAS: false,
-    ATENDENTE_IA_RECURSOS_EXPERIMENTAIS_ATIVOS: false,
+      ATENDENTE_IA_RECURSOS_EXPERIMENTAIS_ATIVOS: false,
+      ATENDENTE_IA_PUBLICACOES_ADMIN_ATIVAS: false,
   });
 });
 

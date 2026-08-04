@@ -29,6 +29,7 @@ export async function POST(request: Request) {
       name,
       slug,
       description,
+      descriptionBottom,
       isActive = true,
       metaTitle,
       metaDescription,
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
         name,
         slug,
         description: description || null,
+        descriptionBottom: descriptionBottom || null,
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
         isActive,
@@ -108,4 +110,4 @@ export async function POST(request: Request) {
     console.error('Erro na API de categorias (POST):', error);
     return NextResponse.json({ success: false, message: 'Erro interno ao criar categoria' }, { status: 500 });
   }
-} 
+}

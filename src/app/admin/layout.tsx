@@ -35,7 +35,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="bg-background flex min-h-dvh">
+    <div className="painel-admin bg-background flex min-h-dvh">
       <AdminSidebar />
 
       <div className="flex min-w-0 flex-1 flex-col">

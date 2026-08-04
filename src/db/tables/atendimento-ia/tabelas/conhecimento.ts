@@ -17,8 +17,10 @@ import {
 import { userTable } from "../../autenticacao";
 import {
   atendimentoIaBuscaRagStatusEnum,
+  atendimentoIaConhecimentoSituacaoEnum,
   atendimentoIaDocumentoEstadoEnum,
   atendimentoIaIndexacaoStatusEnum,
+  atendimentoIaTipoConhecimentoEnum,
 } from "../enums";
 import { atendimentoIaExecucoesTable } from "./operacoes";
 
@@ -27,14 +29,29 @@ export const atendimentoIaDocumentosInstitucionaisTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     chaveEstavel: text("chave_estavel").notNull(),
+    tipoConhecimento: atendimentoIaTipoConhecimentoEnum("tipo_conhecimento")
+      .notNull()
+      .default("institucional"),
+    tituloAdministrativo: text("titulo_administrativo"),
     categoria: text("categoria").notNull(),
     origem: text("origem").notNull(),
-    metadados: jsonb("metadados").$type<Record<string, unknown>>().notNull().default({}),
+    situacao: atendimentoIaConhecimentoSituacaoEnum("situacao")
+      .notNull()
+      .default("ativa"),
+    criadoPorId: text("criado_por_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    metadados: jsonb("metadados")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("atendimento_ia_documentos_chave_unique").on(table.chaveEstavel),
+    uniqueIndex("atendimento_ia_documentos_chave_unique").on(
+      table.chaveEstavel,
+    ),
     index("atendimento_ia_documentos_categoria_idx").on(table.categoria),
   ],
 );
@@ -51,8 +68,36 @@ export const atendimentoIaDocumentoVersoesTable = pgTable(
     versao: integer("versao").notNull(),
     titulo: text("titulo").notNull(),
     conteudo: text("conteudo").notNull(),
+    conteudoEstruturado: jsonb("conteudo_estruturado").$type<
+      Record<string, unknown>
+    >(),
     hashConteudo: text("hash_conteudo").notNull(),
-    estado: atendimentoIaDocumentoEstadoEnum("estado").notNull().default("rascunho"),
+    criadoPorId: text("criado_por_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    enviadoRevisaoEm: timestamp("enviado_revisao_em"),
+    enviadoRevisaoPorId: text("enviado_revisao_por_id").references(
+      () => userTable.id,
+      { onDelete: "set null" },
+    ),
+    motivoAlteracao: text("motivo_alteracao"),
+    resumoAlteracao: text("resumo_alteracao"),
+    reprovadoEm: timestamp("reprovado_em"),
+    reprovadoPorId: text("reprovado_por_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    motivoReprovacao: text("motivo_reprovacao"),
+    publicacaoBloqueada: boolean("publicacao_bloqueada")
+      .notNull()
+      .default(false),
+    motivoBloqueio: text("motivo_bloqueio"),
+    restauradaDeVersaoId: uuid("restaurada_de_versao_id").references(
+      (): AnyPgColumn => atendimentoIaDocumentoVersoesTable.id,
+      { onDelete: "set null" },
+    ),
+    estado: atendimentoIaDocumentoEstadoEnum("estado")
+      .notNull()
+      .default("rascunho"),
     responsavelRevisaoId: text("responsavel_revisao_id").references(
       () => userTable.id,
       { onDelete: "set null" },
@@ -71,7 +116,10 @@ export const atendimentoIaDocumentoVersoesTable = pgTable(
     dimensaoEmbedding: integer("dimensao_embedding"),
     hashIndexacao: text("hash_indexacao"),
     indexadoEm: timestamp("indexado_em"),
-    metadados: jsonb("metadados").$type<Record<string, unknown>>().notNull().default({}),
+    metadados: jsonb("metadados")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
   },
@@ -135,10 +183,14 @@ export const atendimentoIaBuscasRagTable = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     execucaoId: uuid("execucao_id")
       .notNull()
-      .references(() => atendimentoIaExecucoesTable.id, { onDelete: "cascade" }),
+      .references(() => atendimentoIaExecucoesTable.id, {
+        onDelete: "cascade",
+      }),
     hashPergunta: text("hash_pergunta").notNull(),
     status: atendimentoIaBuscaRagStatusEnum("status").notNull(),
-    configuracao: jsonb("configuracao").$type<Record<string, unknown>>().notNull(),
+    configuracao: jsonb("configuracao")
+      .$type<Record<string, unknown>>()
+      .notNull(),
     conflito: boolean("conflito").notNull().default(false),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
   },
@@ -157,7 +209,9 @@ export const atendimentoIaResultadosRagTable = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     buscaId: uuid("busca_id")
       .notNull()
-      .references(() => atendimentoIaBuscasRagTable.id, { onDelete: "cascade" }),
+      .references(() => atendimentoIaBuscasRagTable.id, {
+        onDelete: "cascade",
+      }),
     fragmentoId: uuid("fragmento_id")
       .notNull()
       .references(() => atendimentoIaFragmentosInstitucionaisTable.id, {

@@ -9,6 +9,8 @@ import {
   type ComponenteProcessamentoOrquestrado,
   FalhaComponenteOrquestrado,
 } from "../types/orquestrador";
+import type { ComportamentoEfetivo } from "./admin/publicacao/resolver-versao-publicada-comportamento";
+import { resolverVersaoPublicadaComportamento } from "./admin/publicacao/resolver-versao-publicada-comportamento";
 import { ClienteResponsesOpenAiOficial } from "./cliente-responses-openai";
 import { criarComponenteProcessamentoOpenAi } from "./componente-processamento-openai";
 import { criarCatalogoFerramentasProtegidas } from "./ferramentas-protegidas/catalogo-ferramentas-protegidas";
@@ -21,9 +23,10 @@ import { ResolvedorSessaoExistente } from "./ferramentas-protegidas/resolvedor-s
 import { criarCatalogoFerramentasPublicas } from "./ferramentas-publicas/catalogo-ferramentas-publicas";
 import { criarExecutorFerramentasPublicas } from "./ferramentas-publicas/executar-ferramenta-publica";
 
-export function obterComponenteProcessamentoOpenAi(
+export async function obterComponenteProcessamentoOpenAi(
   escalonamentoAtivo: boolean,
-): ComponenteProcessamentoOrquestrado {
+  comportamentoResolvido?: ComportamentoEfetivo,
+): Promise<ComponenteProcessamentoOrquestrado> {
   // O adapter determinístico existe somente para a validação local da UI. A
   // condição de produção impede que uma variável acidental simule respostas
   // no ambiente real.
@@ -80,6 +83,8 @@ export function obterComponenteProcessamentoOpenAi(
     protegidas: catalogoProtegido,
     publicas: catalogoPublico,
   });
+  const comportamento =
+    comportamentoResolvido ?? (await resolverVersaoPublicadaComportamento());
   return criarComponenteProcessamentoOpenAi({
     cliente: new ClienteResponsesOpenAiOficial(validacao.data.OPENAI_API_KEY),
     configuracao: {
@@ -95,7 +100,10 @@ export function obterComponenteProcessamentoOpenAi(
       new Set(catalogoProtegido.keys()),
     ),
     ferramentas: [...registro.values()]
-      .filter((ferramenta) => ferramenta.habilitada && ferramenta.handlerAutorizado)
+      .filter(
+        (ferramenta) => ferramenta.habilitada && ferramenta.handlerAutorizado,
+      )
       .map((ferramenta) => ferramenta.definicao),
+    instrucoesSistema: comportamento.instrucoes,
   });
 }

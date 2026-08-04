@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
@@ -7,10 +8,10 @@ import * as schema from "./schema";
 
 const urlIntegracao = process.env.DATABASE_URL_INTEGRACAO_ATENDIMENTO_IA;
 let poolTransacional: Pool | null = null;
-type BancoTransacional = ReturnType<typeof drizzleNodePostgres>;
+type BancoTransacional = NodePgDatabase<typeof schema>;
 
 function criarBancoTransacional(): BancoTransacional {
-  const urlBanco = urlIntegracao ?? process.env.DATABASE_URL;
+  const urlBanco = urlIntegracao || process.env.DATABASE_URL;
 
   if (!urlBanco) throw new Error("DATABASE_URL_NAO_CONFIGURADA");
 

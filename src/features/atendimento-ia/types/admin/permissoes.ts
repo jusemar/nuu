@@ -9,7 +9,10 @@ export type CapacidadeAtendimentoIaAdmin =
   (typeof CAPACIDADES_ATENDIMENTO_IA_ADMIN)[number];
 
 export type AcessoAtendimentoIaAdmin = {
+  ativo: true;
+  capacidades: CapacidadeAtendimentoIaAdmin[];
   capacidadesAdicionais: CapacidadeAtendimentoIaAdmin[];
+  papelAtribuicaoId: string;
   origem: "atribuicao_explicita" | "bootstrap_admin_emails";
   papel: PapelAtendimentoIaAdmin;
   usuarioId: string;

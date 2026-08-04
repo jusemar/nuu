@@ -51,7 +51,7 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
   }
 
   return (
-    <header className="bg-background/95 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur md:px-6">
+    <header className="bg-background/80 border-border/70 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur-xl md:px-6">
       <div className="mx-auto flex max-w-[120rem] flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 lg:hidden">
           <p className="text-muted-foreground text-xs font-medium">Admin</p>
@@ -61,11 +61,11 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
         {/* A busca ocupa uma linha própria no mobile para não comprimir ações. */}
         <div className="order-3 w-full lg:order-none lg:max-w-2xl lg:flex-1">
           <div className="relative">
-            <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               placeholder="Pesquisar no admin"
               aria-label="Pesquisar no admin"
-              className="h-10 w-full pr-10 pl-10 text-sm"
+              className="bg-card/75 border-border/80 h-10 w-full rounded-xl pr-10 pl-10 text-sm shadow-none transition-shadow focus-visible:shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -89,11 +89,11 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
             <Button
               variant="ghost"
               size="icon"
-              className="relative size-11"
+              className="hover:border-border/70 hover:bg-card relative size-10 rounded-xl border border-transparent"
               aria-label="Notificações"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white bg-red-500"></span>
+              <span className="bg-destructive ring-background absolute top-1.5 right-1.5 size-2 rounded-full ring-2"></span>
             </Button>
           </div>
 
@@ -102,17 +102,17 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
               <Button
                 type="button"
                 variant="ghost"
-                className="h-11 gap-3 border-l py-1.5 pl-3"
+                className="border-border/70 bg-card/70 hover:bg-card h-10 gap-2.5 rounded-xl border py-1 pr-2 pl-1.5"
                 aria-label="Abrir menu da minha conta"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 ring-1 ring-gray-200">
-                  <User className="h-3.5 w-3.5 text-blue-600" />
+                <span className="bg-primary-light ring-primary/10 flex size-7 items-center justify-center rounded-lg ring-1">
+                  <User className="text-primary size-3.5" />
                 </span>
                 <span className="hidden min-w-0 text-left lg:block">
-                  <span className="block max-w-40 truncate text-sm font-semibold text-gray-900">
+                  <span className="text-foreground block max-w-40 truncate text-sm font-semibold">
                     {usuario.name}
                   </span>
-                  <span className="block max-w-40 truncate text-xs text-gray-500">
+                  <span className="text-muted-foreground block max-w-40 truncate text-xs">
                     {usuario.email}
                   </span>
                 </span>

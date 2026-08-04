@@ -23,8 +23,10 @@ export const avaliacaoRespostaAdminSchema = z
       .max(CRITERIOS_AVALIACAO_ADMIN.length)
       .default([]),
     decisao: z.enum(DECISOES_AVALIACAO_ADMIN),
+    conversaId: z.string().uuid().optional(),
     mensagemId: z.string().uuid(),
     nota: z.number().int().min(1).max(5),
+    respostaCorrigida: z.string().trim().min(10).max(8_000).optional(),
     versaoRubrica: z.literal(VERSAO_RUBRICA_AVALIACAO_ADMIN),
   })
   .strict()
@@ -38,3 +40,8 @@ export const avaliacaoRespostaAdminSchema = z
       });
     }
   });
+
+export const registrarAvaliacaoRespostaAdminSchema =
+  avaliacaoRespostaAdminSchema
+    .safeExtend({ conversaId: z.string().uuid() })
+    .strict();

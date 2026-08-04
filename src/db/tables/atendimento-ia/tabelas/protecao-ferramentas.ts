@@ -27,10 +27,14 @@ export const atendimentoIaConfirmacoesFerramentasTable = pgTable(
     referenciaSessaoHash: text("referencia_sessao_hash").notNull(),
     conversaId: uuid("conversa_id")
       .notNull()
-      .references(() => atendimentoIaConversasTable.id, { onDelete: "cascade" }),
+      .references(() => atendimentoIaConversasTable.id, {
+        onDelete: "cascade",
+      }),
     execucaoSolicitacaoId: uuid("execucao_solicitacao_id")
       .notNull()
-      .references(() => atendimentoIaExecucoesTable.id, { onDelete: "cascade" }),
+      .references(() => atendimentoIaExecucoesTable.id, {
+        onDelete: "cascade",
+      }),
     ferramenta: text("ferramenta").notNull(),
     acao: text("acao").notNull(),
     recursoTipo: text("recurso_tipo").notNull(),
@@ -78,7 +82,9 @@ export const atendimentoIaOperacoesProtegidasTable = pgTable(
       }),
     execucaoId: uuid("execucao_id")
       .notNull()
-      .references(() => atendimentoIaExecucoesTable.id, { onDelete: "cascade" }),
+      .references(() => atendimentoIaExecucoesTable.id, {
+        onDelete: "cascade",
+      }),
     ferramenta: text("ferramenta").notNull(),
     acao: text("acao").notNull(),
     recursoTipo: text("recurso_tipo").notNull(),
@@ -102,6 +108,8 @@ export const atendimentoIaOperacoesProtegidasTable = pgTable(
     index("atendimento_ia_operacoes_protegidas_confirmacao_idx").on(
       table.confirmacaoId,
     ),
-    index("atendimento_ia_operacoes_protegidas_execucao_idx").on(table.execucaoId),
+    index("atendimento_ia_operacoes_protegidas_execucao_idx").on(
+      table.execucaoId,
+    ),
   ],
 );

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { resolverVersaoPublicadaComportamento } from "../lib/admin/publicacao/resolver-versao-publicada-comportamento";
 import { obterComponenteProcessamentoOpenAi } from "../lib/obter-componente-processamento-openai";
 import { obterConfiguracaoAtendenteIa } from "../lib/obter-configuracao-atendente";
 import { obterManutentorResumoContexto } from "../lib/obter-manutentor-resumo-contexto";
@@ -13,12 +14,14 @@ export async function executarOrquestradorMensagem(dados: {
   mensagemId: string;
 }) {
   const configuracao = obterConfiguracaoAtendenteIa();
-  const repositorio = new RepositorioOrquestradorDrizzle();
+  const comportamento = await resolverVersaoPublicadaComportamento();
+  const repositorio = new RepositorioOrquestradorDrizzle(comportamento);
 
   return orquestrarMensagem(
     {
-      componente: obterComponenteProcessamentoOpenAi(
+      componente: await obterComponenteProcessamentoOpenAi(
         configuracao.ATENDENTE_IA_ESCALONAMENTO_ATIVO,
+        comportamento,
       ),
       contextoExpiraAposDias: (identidade) =>
         identidade.usuarioId

@@ -1,8 +1,15 @@
 import { createHash } from "node:crypto";
 
 import { INSTRUCOES_SISTEMA_ATENDENTE_IA } from "../constants/instrucoes-openai";
-import type { ConfiguracaoContexto, ContextoControlado, DecisaoResumo } from "../types/contexto";
-import type { ContextoPersistidoOrquestrador, MensagemContextoOrquestrador } from "../types/orquestrador";
+import type {
+  ConfiguracaoContexto,
+  ContextoControlado,
+  DecisaoResumo,
+} from "../types/contexto";
+import type {
+  ContextoPersistidoOrquestrador,
+  MensagemContextoOrquestrador,
+} from "../types/orquestrador";
 
 const PADROES_RESTRITOS = [
   /\b(?:senha|password|token|api[_ -]?key|chave secreta)\b\s*[:=]\s*\S+/giu,
@@ -19,10 +26,14 @@ export function sanitizarConteudoContexto(conteudo: string) {
 export function sanitizarValorContexto(valor: unknown): unknown {
   if (typeof valor === "string") return sanitizarConteudoContexto(valor);
   if (Array.isArray(valor)) return valor.map(sanitizarValorContexto);
-  if (!valor || typeof valor !== "object" || valor instanceof Date) return valor;
+  if (!valor || typeof valor !== "object" || valor instanceof Date)
+    return valor;
   return Object.fromEntries(
     Object.entries(valor as Record<string, unknown>)
-      .filter(([chave]) => !/(^id$|Id$|_id$|usuario|sessao|execucao|interno)/i.test(chave))
+      .filter(
+        ([chave]) =>
+          !/(^id$|Id$|_id$|usuario|sessao|execucao|interno)/i.test(chave),
+      )
       .map(([chave, item]) => [chave, sanitizarValorContexto(item)]),
   );
 }
@@ -55,7 +66,9 @@ function termosRelevantes(texto: string) {
   );
 }
 
-export function calcularHashMensagens(mensagens: MensagemContextoOrquestrador[]) {
+export function calcularHashMensagens(
+  mensagens: MensagemContextoOrquestrador[],
+) {
   const conteudo = mensagens.map((mensagem) => ({
     autor: mensagem.autor,
     conteudo: mensagem.conteudo,
@@ -75,7 +88,8 @@ export function resumoEhValido(contexto: ContextoPersistidoOrquestrador) {
   return (
     contexto.resumo.versao > 0 &&
     contexto.resumo.quantidadeMensagens === abrangidas.length &&
-    contexto.resumo.hashConteudoConsiderado === calcularHashMensagens(abrangidas)
+    contexto.resumo.hashConteudoConsiderado ===
+      calcularHashMensagens(abrangidas)
   );
 }
 
@@ -99,7 +113,10 @@ export function decidirResumo(
     ...contexto.mensagensAnteriores.map(semIdentificadores),
     semIdentificadores(contexto.mensagemAtual),
   ]);
-  if (!contexto.resumo && tokensTotais >= configuracao.limiarPrimeiroResumoTokens) {
+  if (
+    !contexto.resumo &&
+    tokensTotais >= configuracao.limiarPrimeiroResumoTokens
+  ) {
     return { mensagens: contexto.mensagensAnteriores, tipo: "gerar" };
   }
   if (
@@ -115,15 +132,20 @@ export function decidirResumo(
 export function montarContextoControlado(
   contexto: ContextoPersistidoOrquestrador,
   configuracao: Pick<ConfiguracaoContexto, "limiteTokens">,
+  instrucoesSistema = INSTRUCOES_SISTEMA_ATENDENTE_IA,
 ): ContextoControlado {
   const mensagemAtual = semIdentificadores(contexto.mensagemAtual);
   const memorias = contexto.memoriaPermitida.map((memoria) => ({
     categoria: memoria.categoria,
     origem: memoria.origem,
-    valorEstruturado: sanitizarValorContexto(memoria.valorEstruturado) as Record<string, unknown>,
+    valorEstruturado: sanitizarValorContexto(
+      memoria.valorEstruturado,
+    ) as Record<string, unknown>,
   }));
   const base = {
-    estado: sanitizarValorContexto(contexto.estado) as ContextoPersistidoOrquestrador["estado"],
+    estado: sanitizarValorContexto(
+      contexto.estado,
+    ) as ContextoPersistidoOrquestrador["estado"],
     fontesInstitucionais: contexto.fontesInstitucionais
       ? {
           conflito: contexto.fontesInstitucionais.conflito,
@@ -142,28 +164,38 @@ export function montarContextoControlado(
     mensagensAnteriores: [] as ReturnType<typeof semIdentificadores>[],
     resultadosFerramentas: contexto.resultadosFerramentas.map((resultado) => ({
       nome: resultado.nome,
-      resultado: sanitizarValorContexto(resultado.resultado) as Record<string, unknown>,
+      resultado: sanitizarValorContexto(resultado.resultado) as Record<
+        string,
+        unknown
+      >,
       versao: resultado.versao,
     })),
-    resumo: contexto.resumo && resumoEhValido(contexto)
-      ? {
-          conteudo: sanitizarConteudoContexto(contexto.resumo.conteudo),
-          resumoEstruturado: sanitizarValorContexto(contexto.resumo.resumoEstruturado) as Record<string, unknown>,
-          versao: contexto.resumo.versao,
-        }
-      : null,
+    resumo:
+      contexto.resumo && resumoEhValido(contexto)
+        ? {
+            conteudo: sanitizarConteudoContexto(contexto.resumo.conteudo),
+            resumoEstruturado: sanitizarValorContexto(
+              contexto.resumo.resumoEstruturado,
+            ) as Record<string, unknown>,
+            versao: contexto.resumo.versao,
+          }
+        : null,
   };
-  let custoFixo = estimarTokensSeguro(INSTRUCOES_SISTEMA_ATENDENTE_IA) + estimarTokensSeguro(base);
+  let custoFixo =
+    estimarTokensSeguro(instrucoesSistema) + estimarTokensSeguro(base);
   if (custoFixo > configuracao.limiteTokens && base.resumo) {
     base.resumo = null;
     custoFixo =
-      estimarTokensSeguro(INSTRUCOES_SISTEMA_ATENDENTE_IA) +
-      estimarTokensSeguro(base);
+      estimarTokensSeguro(instrucoesSistema) + estimarTokensSeguro(base);
   }
   if (custoFixo > configuracao.limiteTokens) {
     // A mensagem atual é preservada; o chamador classifica o excesso em vez de
     // permitir truncamento silencioso pela API.
-    return { dados: base, mensagensDescartadas: contexto.mensagensAnteriores.length, tokensEstimados: custoFixo };
+    return {
+      dados: base,
+      mensagensDescartadas: contexto.mensagensAnteriores.length,
+      tokensEstimados: custoFixo,
+    };
   }
   let consumidos = custoFixo;
   for (const memoria of memorias) {
@@ -181,7 +213,9 @@ export function montarContextoControlado(
     const relevanciaB = [...termosRelevantes(b.conteudo)].filter((termo) =>
       termosAtuais.has(termo),
     ).length;
-    return relevanciaB - relevanciaA || b.criadoEm.getTime() - a.criadoEm.getTime();
+    return (
+      relevanciaB - relevanciaA || b.criadoEm.getTime() - a.criadoEm.getTime()
+    );
   });
   for (const mensagem of candidatas) {
     const segura = semIdentificadores(mensagem);
@@ -195,7 +229,8 @@ export function montarContextoControlado(
   );
   return {
     dados: base,
-    mensagensDescartadas: contexto.mensagensAnteriores.length - selecionadas.length,
+    mensagensDescartadas:
+      contexto.mensagensAnteriores.length - selecionadas.length,
     tokensEstimados: consumidos,
   };
 }

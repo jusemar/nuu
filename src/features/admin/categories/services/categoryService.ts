@@ -370,6 +370,7 @@ export async function getAllCategories(): Promise<Category[]> {
             name: categoryTable.name,
             slug: categoryTable.slug,
             description: categoryTable.description,
+            descriptionBottom: categoryTable.descriptionBottom,
             parentId: categoryTable.parentId,
             level: categoryTable.level,
             orderIndex: categoryTable.orderIndex,
@@ -397,6 +398,7 @@ export async function getAllCategories(): Promise<Category[]> {
       name: cat.name,
       slug: cat.slug,
       description: cat.description,
+      descriptionBottom: cat.descriptionBottom,
       parentId: cat.parentId,
       level: niveisReais.get(cat.id) ?? 0,
       orderIndex: cat.orderIndex ?? 1,
@@ -446,6 +448,7 @@ export async function getCategoryById(id: string): Promise<Category | null> {
             name: categoryTable.name,
             slug: categoryTable.slug,
             description: categoryTable.description,
+            descriptionBottom: categoryTable.descriptionBottom,
             parentId: categoryTable.parentId,
             level: categoryTable.level,
             orderIndex: categoryTable.orderIndex,
@@ -490,8 +493,11 @@ export async function getCategoryById(id: string): Promise<Category | null> {
         const category = mainCategory[0];
 
         // Cria um mapa de todos os itens para fácil acesso
+        const linhasSubcategorias = Array.isArray(allSubs)
+          ? allSubs
+          : (allSubs.rows ?? []);
         const itemMap = new Map();
-        allSubs.rows.forEach((row: any) => {
+        linhasSubcategorias.forEach((row: any) => {
           itemMap.set(row.id, {
             id: row.id,
             name: row.name,
@@ -531,6 +537,7 @@ export async function getCategoryById(id: string): Promise<Category | null> {
           name: category.name,
           slug: category.slug,
           description: category.description,
+          descriptionBottom: category.descriptionBottom,
           parentId: category.parentId,
           level: category.level ?? 0,
           orderIndex: category.orderIndex ?? 1,
@@ -592,6 +599,7 @@ export async function createCategory(data: CreateCategoryInput) {
           name: data.name.trim(),
           slug: data.slug.trim(),
           description: data.description || null,
+          descriptionBottom: data.descriptionBottom || null,
           isActive: data.isActive ?? true,
           metaTitle: data.metaTitle || null,
           metaDescription: data.metaDescription || null,
@@ -744,6 +752,8 @@ export async function updateCategory(id: string, data: UpdateCategoryInput) {
       if (data.slug !== undefined) updateData.slug = data.slug;
       if (data.description !== undefined)
         updateData.description = data.description;
+      if (data.descriptionBottom !== undefined)
+        updateData.descriptionBottom = data.descriptionBottom;
       if (data.isActive !== undefined) updateData.isActive = data.isActive;
       if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle;
       if (data.metaDescription !== undefined)

@@ -1,26 +1,29 @@
 "use client";
 
-import { ArrowLeft, Save, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+import { useCategoryList } from "../../hooks/useCategoryList";
+import { useCreateCategory } from "../../hooks/useCreateCategory";
+import { useUpdateCategory } from "../../hooks/useUpdateCategory"; // ← Importar hook de edição
+import { obterIdsDescendentes } from "../../lib/calcular-niveis-categorias";
+import { CategoryFaqSection } from "../../components/CategoryFaqSection";
 import { BasicInfoCard } from "./BasicInfoCard";
-import { SubcategoriesCard, SubcategoryItem } from "./SubcategoriesCard";
-import { SidebarCards } from "./SidebarCards";
 import { useSlugGenerator } from "./hooks/useSlugGenerator";
+import { SidebarCards } from "./SidebarCards";
+import { SubcategoriesCard, SubcategoryItem } from "./SubcategoriesCard";
 import {
-  createChildSubcategory,
   calculateChildInsertPosition,
+  createChildSubcategory,
 } from "./utils/createChildSubcategory";
 import { deleteSubcategoryWithDetails } from "./utils/deleteSubcategory";
 import { generateSubcategoryId } from "./utils/subcategory.helpers";
 import { updateSubcategoryName } from "./utils/updateSubcategory";
-import { useCreateCategory } from "../../hooks/useCreateCategory";
-import { useUpdateCategory } from "../../hooks/useUpdateCategory"; // ← Importar hook de edição
-import { useCategoryList } from "../../hooks/useCategoryList";
-import { obterIdsDescendentes } from "../../lib/calcular-niveis-categorias";
 
 // =====================================================================
 // PASSO 1: Definir as props que o componente pode receber
@@ -31,6 +34,7 @@ interface CategoryFormProps {
     name: string;
     slug: string;
     description?: string | null;
+    descriptionBottom?: string | null;
     isActive?: boolean;
     metaTitle?: string | null;
     metaDescription?: string | null;
@@ -68,6 +72,7 @@ export function CategoryForm({
     name: initialData?.name || "",
     slug: initialData?.slug || "",
     description: initialData?.description || "",
+    descriptionBottom: initialData?.descriptionBottom || "",
     isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
     metaTitle: initialData?.metaTitle || "",
     metaDescription: initialData?.metaDescription || "",
@@ -160,6 +165,7 @@ export function CategoryForm({
         name: categoryData.name,
         slug: categoryData.slug,
         description: categoryData.description.trim(),
+        descriptionBottom: categoryData.descriptionBottom,
         isActive: categoryData.isActive,
         metaTitle: categoryData.metaTitle || undefined,
         metaDescription: categoryData.metaDescription.trim(),
@@ -495,6 +501,7 @@ export function CategoryForm({
           />
         </div>
       </div>
+      <CategoryFaqSection categoriaId={initialData?.id} />
     </div>
   );
 }

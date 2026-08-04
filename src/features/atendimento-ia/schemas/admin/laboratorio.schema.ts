@@ -85,3 +85,63 @@ export const execucaoLaboratorioAdminSchema = z
       });
     }
   });
+
+export const TIPOS_COMPARACAO_LABORATORIO = [
+  "conhecimento",
+  "comportamento",
+  "combinado",
+  "lote",
+] as const;
+export const executarLaboratorioSchema = z
+  .object({
+    chaveIdempotencia: z.string().uuid(),
+    tipoComparacao: z.enum(TIPOS_COMPARACAO_LABORATORIO),
+    casoTesteVersaoId: z.string().uuid().optional(),
+    conjuntoTesteId: z.string().uuid().optional(),
+    versaoCandidataConhecimentoId: z.string().uuid().optional(),
+    versaoCandidataComportamentoId: z.string().uuid().optional(),
+  })
+  .strict()
+  .superRefine((d, c) => {
+    if (Boolean(d.casoTesteVersaoId) === Boolean(d.conjuntoTesteId))
+      c.addIssue({
+        code: "custom",
+        path: ["casoTesteVersaoId"],
+        message: "Selecione exatamente um caso ou conjunto.",
+      });
+    if (
+      ["conhecimento", "combinado", "lote"].includes(d.tipoComparacao) &&
+      !d.versaoCandidataConhecimentoId
+    )
+      c.addIssue({
+        code: "custom",
+        path: ["versaoCandidataConhecimentoId"],
+        message: "Conhecimento candidato obrigatório.",
+      });
+    if (
+      ["comportamento", "combinado", "lote"].includes(d.tipoComparacao) &&
+      !d.versaoCandidataComportamentoId
+    )
+      c.addIssue({
+        code: "custom",
+        path: ["versaoCandidataComportamentoId"],
+        message: "Comportamento candidato obrigatório.",
+      });
+  });
+export const cancelarRegressaoSchema = z
+  .object({ execucaoId: z.string().uuid() })
+  .strict();
+export const retomarRegressaoSchema = z
+  .object({
+    execucaoId: z.string().uuid(),
+    chaveIdempotencia: z.string().uuid(),
+  })
+  .strict();
+export const avaliarResultadoLaboratorioSchema = z
+  .object({
+    resultadoId: z.string().uuid(),
+    decisao: z.enum(["aprovado", "reprovado", "inconclusivo", "bloqueado"]),
+    comentario: z.string().trim().max(2_000).nullable().default(null),
+    atualizadoEmEsperado: z.coerce.date(),
+  })
+  .strict();

@@ -9,6 +9,7 @@ export async function updateCategory(id: string, data: Partial<{
   name: string
   slug: string
   description?: string
+  descriptionBottom?: string
   isActive: boolean
   metaTitle?: string
   metaDescription?: string

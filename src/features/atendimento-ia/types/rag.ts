@@ -1,6 +1,10 @@
 import type { ConfiguracaoRag } from "../schemas/configuracao-rag.schema";
 
-export type EstadoEditorialDocumento = "rascunho" | "em_revisao" | "publicado" | "desativado";
+export type EstadoEditorialDocumento =
+  | "rascunho"
+  | "em_revisao"
+  | "publicado"
+  | "desativado";
 
 export type FragmentoInstitucional = {
   conteudo: string;
@@ -31,6 +35,7 @@ export type CandidatoRag = {
   secao: string | null;
   titulo: string;
   versao: number;
+  versaoId?: string;
 };
 
 export type FonteRagSelecionada = CandidatoRag & { pontuacaoFinal: number };

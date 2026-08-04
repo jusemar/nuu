@@ -16,6 +16,12 @@ import {
   atendimentoIaAuditoriaCategoriaEnum,
   atendimentoIaAuditoriaResultadoEnum,
   atendimentoIaAuditoriaSeveridadeEnum,
+  atendimentoIaAvaliacaoStatusEnum,
+  atendimentoIaClassificacaoProblemaEnum,
+  atendimentoIaEvidenciaTipoEnum,
+  atendimentoIaPropostaStatusEnum,
+  atendimentoIaResultadoAvaliacaoEnum,
+  atendimentoIaRevisaoStatusEnum,
   atendimentoIaTipoFalhaEnum,
   atendimentoIaTransferenciaStatusEnum,
 } from "../enums";
@@ -27,6 +33,43 @@ import {
   atendimentoIaExecucoesFerramentasTable,
   atendimentoIaExecucoesTable,
 } from "./operacoes";
+
+export const atendimentoIaPropostasMelhoriaTable = pgTable(
+  "atendimento_ia_propostas_melhoria",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    titulo: text("titulo").notNull(),
+    descricao: text("descricao").notNull(),
+    categoria: text("categoria").notNull(),
+    criterioAceite: text("criterio_aceite").notNull(),
+    impacto: text("impacto").notNull(),
+    prioridade: text("prioridade").notNull(),
+    risco: text("risco").notNull(),
+    status: atendimentoIaPropostaStatusEnum("status")
+      .notNull()
+      .default("aberta"),
+    criadoPorId: text("criado_por_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "restrict" }),
+    responsavelId: text("responsavel_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    avaliacaoOrigemId: uuid("avaliacao_origem_id"),
+    intencaoCasoTeste: jsonb("intencao_caso_teste").$type<
+      Record<string, unknown>
+    >(),
+    expiraEm: timestamp("expira_em").notNull(),
+    criadoEm: timestamp("criado_em").notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+  },
+  (table) => [
+    index("atendimento_ia_propostas_status_atualizado_idx").on(
+      table.status,
+      table.atualizadoEm,
+    ),
+    index("atendimento_ia_propostas_expiracao_idx").on(table.expiraEm),
+  ],
+);
 
 export const atendimentoIaTransferenciasTable = pgTable(
   "atendimento_ia_transferencias",
@@ -105,8 +148,25 @@ export const atendimentoIaAvaliacoesTable = pgTable(
     ),
     origem: text("origem").notNull(),
     nota: integer("nota"),
+    resultado: atendimentoIaResultadoAvaliacaoEnum("resultado"),
+    classificacaoProblema: atendimentoIaClassificacaoProblemaEnum(
+      "classificacao_problema",
+    ),
     criterios: jsonb("criterios").$type<Record<string, unknown>>(),
     comentario: text("comentario"),
+    resolucao: text("resolucao"),
+    avaliadorId: text("avaliador_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    status: atendimentoIaAvaliacaoStatusEnum("status")
+      .notNull()
+      .default("registrada"),
+    rubricaVersao: text("rubrica_versao"),
+    avaliadoEm: timestamp("avaliado_em"),
+    propostaMelhoriaId: uuid("proposta_melhoria_id").references(
+      () => atendimentoIaPropostasMelhoriaTable.id,
+      { onDelete: "set null" },
+    ),
     criadoEm: timestamp("criado_em").notNull().defaultNow(),
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
   },
@@ -115,6 +175,75 @@ export const atendimentoIaAvaliacoesTable = pgTable(
       table.conversaId,
       table.criadoEm,
     ),
+  ],
+);
+
+export const atendimentoIaRevisoesTable = pgTable(
+  "atendimento_ia_revisoes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    avaliacaoId: uuid("avaliacao_id").references(
+      () => atendimentoIaAvaliacoesTable.id,
+      { onDelete: "set null" },
+    ),
+    propostaId: uuid("proposta_id").references(
+      () => atendimentoIaPropostasMelhoriaTable.id,
+      { onDelete: "set null" },
+    ),
+    status: atendimentoIaRevisaoStatusEnum("status")
+      .notNull()
+      .default("pendente"),
+    autorId: text("autor_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "restrict" }),
+    responsavelId: text("responsavel_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    decididoPorId: text("decidido_por_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    decisaoJustificativa: text("decisao_justificativa"),
+    decididoEm: timestamp("decidido_em"),
+    versao: integer("versao").notNull().default(1),
+    criadoEm: timestamp("criado_em").notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+  },
+  (table) => [
+    index("atendimento_ia_revisoes_status_atualizado_idx").on(
+      table.status,
+      table.atualizadoEm,
+    ),
+    index("atendimento_ia_revisoes_avaliacao_idx").on(table.avaliacaoId),
+    index("atendimento_ia_revisoes_proposta_idx").on(table.propostaId),
+  ],
+);
+
+export const atendimentoIaPropostaEvidenciasTable = pgTable(
+  "atendimento_ia_proposta_evidencias",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    propostaId: uuid("proposta_id")
+      .notNull()
+      .references(() => atendimentoIaPropostasMelhoriaTable.id, {
+        onDelete: "cascade",
+      }),
+    tipo: atendimentoIaEvidenciaTipoEnum("tipo").notNull(),
+    referenciaId: uuid("referencia_id").notNull(),
+    descricaoSanitizada: text("descricao_sanitizada").notNull(),
+    dataEvidencia: timestamp("data_evidencia").notNull(),
+    criadoPorId: text("criado_por_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "restrict" }),
+    criadoEm: timestamp("criado_em").notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("atendimento_ia_evidencias_proposta_tipo_ref_unique").on(
+      table.propostaId,
+      table.tipo,
+      table.referenciaId,
+    ),
+    index("atendimento_ia_evidencias_proposta_idx").on(table.propostaId),
   ],
 );
 
@@ -136,9 +265,7 @@ export const atendimentoIaOcorrenciasTable = pgTable(
     ),
     tipo: atendimentoIaTipoFalhaEnum("tipo").notNull(),
     descricaoSanitizada: text("descricao_sanitizada").notNull(),
-    recuperacaoTentada: boolean("recuperacao_tentada")
-      .notNull()
-      .default(false),
+    recuperacaoTentada: boolean("recuperacao_tentada").notNull().default(false),
     recuperacaoConcluida: boolean("recuperacao_concluida")
       .notNull()
       .default(false),
@@ -176,8 +303,12 @@ export const atendimentoIaAuditoriasTable = pgTable(
       { onDelete: "set null" },
     ),
     correlacaoId: uuid("correlacao_id").notNull().defaultRandom(),
-    categoria: atendimentoIaAuditoriaCategoriaEnum("categoria").notNull().default("operacao"),
-    severidade: atendimentoIaAuditoriaSeveridadeEnum("severidade").notNull().default("informativo"),
+    categoria: atendimentoIaAuditoriaCategoriaEnum("categoria")
+      .notNull()
+      .default("operacao"),
+    severidade: atendimentoIaAuditoriaSeveridadeEnum("severidade")
+      .notNull()
+      .default("informativo"),
     resultado: atendimentoIaAuditoriaResultadoEnum("resultado"),
     evento: text("evento").notNull(),
     tipoAtor: text("tipo_ator").notNull(),
@@ -189,8 +320,13 @@ export const atendimentoIaAuditoriasTable = pgTable(
     estadoAnterior: text("estado_anterior"),
     estadoPosterior: text("estado_posterior"),
     codigoFalha: text("codigo_falha"),
-    versoes: jsonb("versoes").$type<Record<string, string>>().notNull().default({}),
-    hashIntegridade: text("hash_integridade").notNull().default(sql`md5(random()::text || clock_timestamp()::text)`),
+    versoes: jsonb("versoes")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    hashIntegridade: text("hash_integridade")
+      .notNull()
+      .default(sql`md5(random()::text || clock_timestamp()::text)`),
     corrigeEventoId: uuid("corrige_evento_id"),
     justificativaCorrecao: text("justificativa_correcao"),
     metadados: jsonb("metadados").$type<Record<string, unknown>>(),
@@ -204,8 +340,15 @@ export const atendimentoIaAuditoriasTable = pgTable(
     ),
     index("atendimento_ia_auditorias_evento_idx").on(table.evento),
     index("atendimento_ia_auditorias_correlacao_idx").on(table.correlacaoId),
-    index("atendimento_ia_auditorias_categoria_severidade_idx").on(table.categoria, table.severidade, table.criadoEm),
-    index("atendimento_ia_auditorias_sessao_idx").on(table.referenciaSessaoHash, table.criadoEm),
+    index("atendimento_ia_auditorias_categoria_severidade_idx").on(
+      table.categoria,
+      table.severidade,
+      table.criadoEm,
+    ),
+    index("atendimento_ia_auditorias_sessao_idx").on(
+      table.referenciaSessaoHash,
+      table.criadoEm,
+    ),
   ],
 );
 
@@ -230,6 +373,9 @@ export const atendimentoIaLimitesUsoTable = pgTable(
       table.janelaInicio,
     ),
     index("atendimento_ia_limites_uso_expiracao_idx").on(table.janelaFim),
-    index("atendimento_ia_limites_uso_recurso_idx").on(table.recurso, table.janelaInicio),
+    index("atendimento_ia_limites_uso_recurso_idx").on(
+      table.recurso,
+      table.janelaInicio,
+    ),
   ],
 );

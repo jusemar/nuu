@@ -30,11 +30,11 @@ export const CRITERIOS_AVALIACAO_ADMIN = [
   "fidelidade_fontes",
   "utilidade",
   "clareza",
+  "humanizacao",
   "seguranca",
-  "tom",
-  "tratamento_escopo",
   "uso_ferramentas",
   "transferencia",
+  "respeito_escopo",
 ] as const;
 
 export const VERSAO_RUBRICA_AVALIACAO_ADMIN = "atendimento-ia-rubrica-v1";

@@ -12,6 +12,7 @@
 "use client";
 
 import {
+  Bot,
   Building2,
   ChevronDown,
   ChevronLeft,
@@ -66,6 +67,7 @@ const iconMap: Record<string, React.ElementType> = {
   MapPin,
   Store,
   Building2,
+  Bot,
   Navigation,
   DollarSign,
   PackageCheck,
@@ -254,6 +256,22 @@ export const menuAdmin: EntradaMenuAdmin[] = [
     icon: "ShoppingCart",
   },
 
+  // O módulo mantém uma única entrada; a navegação interna organiza as áreas.
+  {
+    id: "atendente-ia",
+    type: "group" as const,
+    label: "Atendente IA",
+    icon: "Bot",
+    items: [
+      {
+        id: "treinamento-atendente-ia",
+        label: "Treinamento da IA",
+        href: "/admin/atendente-ia/treinamento",
+        icon: "Bot",
+      },
+    ],
+  },
+
   // Grupo: Marketing
   {
     id: "marketing",
@@ -361,14 +379,22 @@ export function AdminSidebar() {
         href={item.href}
         onClick={closeMobile}
         aria-current={active ? "page" : undefined}
-        className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${isCollapsed && level === 0 ? "justify-center" : ""} ${level > 0 ? "ml-4 text-sm" : ""} ${
+        className={`group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 ${isCollapsed && level === 0 ? "justify-center" : ""} ${level > 0 ? "ml-4 text-sm" : ""} ${
           active
-            ? "bg-sidebar-accent text-sidebar-primary"
-            : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            ? "bg-sidebar-accent text-sidebar-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary)_10%,transparent)]"
+            : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
         } `}
         title={isCollapsed && level === 0 ? item.label : ""}
       >
-        {Icon && <Icon size={20} className="shrink-0" />}
+        {active && !isCollapsed && level === 0 && (
+          <span className="bg-sidebar-primary absolute inset-y-2 left-0 w-0.5 rounded-full" />
+        )}
+        {Icon && (
+          <Icon
+            size={18}
+            className="shrink-0 transition-transform group-hover:scale-105"
+          />
+        )}
         {(!isCollapsed || level > 0) && (
           <span className="truncate font-medium">{item.label}</span>
         )}
@@ -395,11 +421,11 @@ export function AdminSidebar() {
           type="button"
           onClick={() => toggleGroup(group.id)}
           aria-expanded={expanded}
-          className={`focus-visible:ring-ring flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none ${hasActiveChild ? "bg-sidebar-accent text-sidebar-primary" : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"} ${isCollapsed && level === 0 ? "justify-center" : ""} `}
+          className={`focus-visible:ring-ring flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${hasActiveChild ? "bg-sidebar-accent text-sidebar-primary" : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"} ${isCollapsed && level === 0 ? "justify-center" : ""} `}
           title={isCollapsed && level === 0 ? group.label : ""}
         >
           <div className="flex items-center gap-3">
-            {Icon && <Icon size={20} className="shrink-0" />}
+            {Icon && <Icon size={18} className="shrink-0" />}
             {(!isCollapsed || level > 0) && (
               <span className="truncate font-medium">{group.label}</span>
             )}
@@ -426,16 +452,26 @@ export function AdminSidebar() {
     <>
       {/* A sidebar completa permanece disponível no desktop. */}
       <aside
-        className={`bg-sidebar text-sidebar-foreground sticky top-0 hidden h-dvh shrink-0 border-r transition-[width] duration-300 lg:flex lg:flex-col ${isCollapsed ? "w-16" : "w-64"}`}
+        className={`bg-sidebar/95 text-sidebar-foreground border-sidebar-border/80 sticky top-0 hidden h-dvh shrink-0 border-r backdrop-blur-xl transition-[width] duration-300 lg:flex lg:flex-col ${isCollapsed ? "w-16" : "w-64"}`}
       >
         {/* Cabeçalho */}
         <div
-          className={`flex h-16 shrink-0 items-center border-b p-4 ${isCollapsed ? "justify-center" : "justify-between"} `}
+          className={`border-sidebar-border/70 flex h-16 shrink-0 items-center border-b px-3 ${isCollapsed ? "justify-center" : "justify-between"} `}
         >
           {!isCollapsed && (
-            <h1 className="text-foreground truncate text-xl font-bold">
-              Admin
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <span className="gradient-primary flex size-8 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm">
+                D
+              </span>
+              <div>
+                <h1 className="text-foreground truncate text-sm font-semibold">
+                  Do Rocha
+                </h1>
+                <p className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
+                  Admin
+                </p>
+              </div>
+            </div>
           )}
           <Button
             variant="ghost"
@@ -455,7 +491,7 @@ export function AdminSidebar() {
         {/* Menu */}
         <nav
           aria-label="Navegação principal"
-          className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3"
+          className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-3"
         >
           {menuAdmin.map((item) =>
             "href" in item ? renderItem(item) : renderGroup(item),

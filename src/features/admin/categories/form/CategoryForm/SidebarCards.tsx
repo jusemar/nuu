@@ -25,6 +25,7 @@ interface SidebarCardsProps {
       name: string;
       slug: string;
       description: string;
+      descriptionBottom: string;
       isActive: boolean;
       metaTitle: string;
       metaDescription: string;

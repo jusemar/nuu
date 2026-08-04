@@ -33,8 +33,20 @@ export const perguntaRespostaAdminSchema = z
       .max(6)
       .default([]),
     observacoesInternas: z.string().trim().max(2_000).optional(),
+    palavrasChave: z
+      .array(z.string().trim().min(2).max(80))
+      .max(30)
+      .default([]),
     perguntaPrincipal: z.string().trim().min(3).max(500),
     respostaPrincipal: textoPrincipalSchema,
+    respostaSeguraSemConfirmacao: z
+      .string()
+      .trim()
+      .min(10)
+      .max(2_000)
+      .default(
+        "Não consigo confirmar esse dado sem consultar a fonte real da loja.",
+      ),
     variacoes: z.array(variacaoSchema).max(20).default([]),
   })
   .strict()
@@ -76,8 +88,10 @@ export function criarConteudoCanonicoPerguntaRespostaAdmin(
   return {
     condicoes: dados.condicoes,
     consultasDadosReais: dados.consultasDadosReais,
+    palavrasChave: dados.palavrasChave,
     perguntaPrincipal: dados.perguntaPrincipal,
     respostaPrincipal: dados.respostaPrincipal,
+    respostaSeguraSemConfirmacao: dados.respostaSeguraSemConfirmacao,
     variacoes: dados.variacoes,
   };
 }

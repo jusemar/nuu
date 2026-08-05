@@ -1690,6 +1690,58 @@ export function VariantsTab({ data, onChange, draftKey }: VariantsTabProps) {
               <section className="space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">
+                    Pagamento na entrega
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Por padrão a variante segue o produto. Só mude aqui se esta
+                    variante precisar de uma decisão própria.
+                  </p>
+                </div>
+                {/*
+                  Três estados, e por isso um select e não um switch: um switch tem só
+                  ligado/desligado e não consegue representar "herdando". O valor vazio
+                  é gravado como `null`, que é o que mantém a herança viva no banco.
+                */}
+                <select
+                  id="variante-pagamento-na-entrega"
+                  aria-label="Pagamento na entrega desta variante"
+                  className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border bg-white px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] sm:max-w-sm dark:bg-zinc-950"
+                  value={
+                    logisticsVariant.aceitaPagamentoNaEntrega === true
+                      ? "aceita"
+                      : logisticsVariant.aceitaPagamentoNaEntrega === false
+                        ? "nao-aceita"
+                        : "herda"
+                  }
+                  onChange={(event) =>
+                    updateVariant(
+                      logisticsVariant.id,
+                      logisticsVariantIndex,
+                      {
+                        aceitaPagamentoNaEntrega:
+                          event.target.value === "aceita"
+                            ? true
+                            : event.target.value === "nao-aceita"
+                              ? false
+                              : null,
+                      },
+                    )
+                  }
+                >
+                  <option value="herda">
+                    Herdar do produto
+                    {data.entrega?.aceitaPagamentoNaEntrega
+                      ? " (aceita)"
+                      : " (não aceita)"}
+                  </option>
+                  <option value="aceita">Aceitar nesta variante</option>
+                  <option value="nao-aceita">Não aceitar nesta variante</option>
+                </select>
+              </section>
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
                     Classificação logística
                   </h3>
                   <p className="text-xs text-slate-500">

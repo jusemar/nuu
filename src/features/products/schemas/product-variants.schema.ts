@@ -29,6 +29,17 @@ export const productVariantSchema = z.object({
   lengthInCm: z.coerce.number().int().min(0).optional().nullable(),
   imageUrl: z.string().trim().optional().nullable(),
   classificacoesLogisticasIds: z.array(z.string().uuid()).default([]),
+  /**
+   * Opt-in de pagamento na entrega desta variante.
+   *
+   * Três estados, e o `null` é significativo: `null` herda a decisão do produto, `true`
+   * libera e `false` bloqueia só esta variante. Por isso NÃO tem `.default()` — um padrão
+   * `false` transformaria "não decidido" em "bloqueado" e mataria a herança.
+   *
+   * ATENÇÃO: este campo precisa aparecer em três lugares para sobreviver ao salvamento.
+   * Ver o comentário em `admin-product-variants.actions.ts`.
+   */
+  aceitaPagamentoNaEntrega: z.boolean().nullable().optional(),
   isActive: z.boolean().default(true),
   isDefault: z.boolean().default(false),
 });

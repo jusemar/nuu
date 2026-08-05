@@ -35,6 +35,7 @@ type Props = {
     modeloRetiradaId?: string | null;
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
+    aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
   };
@@ -249,6 +250,32 @@ export function EntregaTab({
                   onCheckedChange={handleOwnDeliveryChange}
                 />
               </div>
+
+              {/* Pagamento na entrega só existe dentro da entrega própria: é o entregador
+                  da loja que recebe. Por isso o controle vive aqui e só aparece quando a
+                  entrega própria está ligada — mostrá-lo antes sugeriria uma combinação
+                  que o motor de elegibilidade nunca aprovaria. */}
+              {data.permiteEntregaPropria ? (
+                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  <div>
+                    <Label className="font-medium">
+                      Aceitar pagamento na entrega
+                    </Label>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Permite que o cliente pague ao receber. A disponibilidade
+                      final ainda depende do serviço de entrega, do valor do
+                      pedido e da configuração em Logística › Pagamento na
+                      Entrega.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={data.aceitaPagamentoNaEntrega ?? false}
+                    onCheckedChange={(marcado) =>
+                      onChange?.({ aceitaPagamentoNaEntrega: marcado })
+                    }
+                  />
+                </div>
+              ) : null}
 
               {data.permiteEntregaPropria ? (
                 <ProdutoEntregaPropriaPrecos

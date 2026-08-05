@@ -111,6 +111,19 @@ export const productTable = pgTable("product", {
    */
   allowsPickup: boolean("allows_pickup").default(false),
 
+  /**
+   * Se este produto pode ser pago no momento da entrega.
+   *
+   * Nasce `false` de propósito: pagamento na entrega é opt-in. Nenhum produto
+   * fica elegível sem o gestor marcar explicitamente — o padrão seguro é não
+   * mandar mercadoria antes de receber. Marcar aqui é condição necessária, nunca
+   * suficiente: o serviço de entrega, a modalidade comercial e a faixa de valor
+   * ainda precisam permitir.
+   */
+  aceitaPagamentoNaEntrega: boolean("aceita_pagamento_na_entrega")
+    .notNull()
+    .default(false),
+
   // ============================================
   // RETIRADA LOCAL — Modelo e prazo
   // ============================================

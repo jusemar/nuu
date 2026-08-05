@@ -1,12 +1,14 @@
 import { relations } from "drizzle-orm";
 
 import { userTable } from "../autenticacao";
+import { servicosFreteTable } from "../logistica/tabelas/servicos-frete";
 import { checkoutClientesTable } from "./tabelas/clientes";
 import { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 import { checkoutEnderecosTable } from "./tabelas/enderecos";
 import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 import { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 import { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
+import { checkoutPedidoPagamentoEntregaTable } from "./tabelas/pedido-pagamento-entrega";
 import { checkoutPagamentosTable } from "./tabelas/pagamentos";
 import { checkoutPedidosTable } from "./tabelas/pedidos";
 import { checkoutStripeWebhookEventosTable } from "./tabelas/stripe-webhook-eventos";
@@ -54,6 +56,32 @@ export const checkoutPedidosRelations = relations(
       fields: [checkoutPedidosTable.id],
       references: [checkoutPedidoLogisticasTable.pedidoId],
     }),
+    // 1:1 como `logistica`: só existe em pedido pago na entrega. Ausência da linha
+    // significa pagamento online — não há estado intermediário a interpretar.
+    pagamentoNaEntrega: one(checkoutPedidoPagamentoEntregaTable, {
+      fields: [checkoutPedidosTable.id],
+      references: [checkoutPedidoPagamentoEntregaTable.pedidoId],
+    }),
+  }),
+);
+
+export const checkoutPedidoPagamentoEntregaRelations = relations(
+  checkoutPedidoPagamentoEntregaTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutPedidoPagamentoEntregaTable.pedidoId],
+      references: [checkoutPedidosTable.id],
+    }),
+    servicoFrete: one(servicosFreteTable, {
+      fields: [checkoutPedidoPagamentoEntregaTable.servicoFreteId],
+      references: [servicosFreteTable.id],
+    }),
+    // Quem deu a baixa no dinheiro. A leitura do admin precisa do nome/e-mail atual
+    // do usuário; a coluna `recebidoPorEmail` ao lado é o registro imutável.
+    recebidoPor: one(userTable, {
+      fields: [checkoutPedidoPagamentoEntregaTable.recebidoPorUsuarioId],
+      references: [userTable.id],
+    }),
   }),
 );
 
@@ -85,6 +113,11 @@ export const checkoutPedidoHistoricosRelations = relations(
     pedido: one(checkoutPedidosTable, {
       fields: [checkoutPedidoHistoricosTable.pedidoId],
       references: [checkoutPedidosTable.id],
+    }),
+    // Nulo em histórico de origem "system". Só preenchido quando um admin agiu.
+    usuarioAdmin: one(userTable, {
+      fields: [checkoutPedidoHistoricosTable.usuarioAdminId],
+      references: [userTable.id],
     }),
   }),
 );

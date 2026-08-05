@@ -74,6 +74,29 @@ export const transportadorasFreteIniciais: RegistroTransportadoraSeed[] = [
 ];
 
 export const servicosFreteIniciais: RegistroServicoSeed[] = [
+  // Serviços de entrega própria.
+  // Os identificadores abaixo NÃO são livres: eles precisam ser exatamente os mesmos
+  // que o motor de cotação já emite em tempo de execução no campo `servico` de `OpcaoFrete`
+  // (ver `criar-porta-entrega-propria-atual.ts` e `criar-consulta-entrega-propria-checkout.ts`).
+  // É esse casamento que dá identidade estável em banco a cada modalidade de entrega própria,
+  // permitindo pendurar configuração por serviço (ex.: pagamento na entrega) sem depender
+  // de string solta espalhada pelo código.
+  // Entrega própria não tem transportadora terceira — quem entrega é a própria loja —,
+  // por isso `transportadoraIdentificador: null`.
+  {
+    identificador: "entrega-propria-atual",
+    nome: "Entrega rápida",
+    provedorIdentificador: "entrega-propria",
+    transportadoraIdentificador: null,
+    ativo: true,
+  },
+  {
+    identificador: "entrega-programada",
+    nome: "Entrega programada",
+    provedorIdentificador: "entrega-propria",
+    transportadoraIdentificador: null,
+    ativo: true,
+  },
   {
     identificador: "correios-pac",
     nome: "Correios PAC",

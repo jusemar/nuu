@@ -228,6 +228,7 @@ export default function EditProductPage() {
           modeloRetiradaId: product.modeloRetiradaId || null,
           prazoCustom: product.prazoRetiradaCustom || "",
           permiteEntregaPropria: product.allowsOwnDelivery ?? false,
+          aceitaPagamentoNaEntrega: product.aceitaPagamentoNaEntrega ?? false,
           precosEntregaPropria: product.precosEntregaPropria || [],
           classificacoesLogisticasIds:
             product.classificacoesLogisticasIds || [],

@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { categoryTable } from "../../table/categories/categories";
 import { productTable } from "../../table/products/products";
 import { productVariantTable } from "../../table/products/product-variants";
+import { configuracoesPagamentoNaEntregaServicoTable } from "./tabelas/configuracoes-pagamento-na-entrega-servico";
 import { produtosTiposLogisticosTable } from "./tabelas/produtos-tipos-logisticos";
 import { provedoresFreteTable } from "./tabelas/provedores-frete";
 import { regrasCategoriasFreteTable } from "./tabelas/regras-categorias-frete";
@@ -52,6 +53,26 @@ export const servicosFreteRelations = relations(
     regrasCategorias: many(regrasCategoriasFreteTable),
     regrasProdutos: many(regrasProdutosFreteTable),
     regrasTiposLogisticos: many(regrasTiposLogisticosFreteTable),
+    // `one` e não `many`: o uniqueIndex em `servicoFreteId` garante no máximo
+    // uma configuração por serviço. Ausência = serviço sem configuração, que o
+    // motor de elegibilidade trata como bloqueio, nunca como permissão.
+    configuracaoPagamentoNaEntrega: one(
+      configuracoesPagamentoNaEntregaServicoTable,
+      {
+        fields: [servicosFreteTable.id],
+        references: [configuracoesPagamentoNaEntregaServicoTable.servicoFreteId],
+      },
+    ),
+  }),
+);
+
+export const configuracoesPagamentoNaEntregaServicoRelations = relations(
+  configuracoesPagamentoNaEntregaServicoTable,
+  ({ one }) => ({
+    servico: one(servicosFreteTable, {
+      fields: [configuracoesPagamentoNaEntregaServicoTable.servicoFreteId],
+      references: [servicosFreteTable.id],
+    }),
   }),
 );
 

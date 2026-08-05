@@ -27,6 +27,20 @@ export const productVariantTable = pgTable("product_variant", {
   widthInCm: integer("width_in_cm"),
   heightInCm: integer("height_in_cm"),
   
+  /**
+   * Se ESTA variante aceita pagamento na entrega.
+   *
+   * Nullable e SEM default de propósito. A coluna tem três estados, não dois:
+   *   null  → herda a decisão do produto (caso normal)
+   *   true  → libera esta variante mesmo que o produto esteja liberado
+   *   false → bloqueia SÓ esta variante, ainda que o produto aceite
+   *
+   * É o mesmo idioma já usado em `weightInGrams` e nas classificações logísticas:
+   * `null` significa "não decidido aqui, pergunte ao produto". Um default `false`
+   * destruiria isso — toda variante nasceria bloqueando o produto.
+   */
+  aceitaPagamentoNaEntrega: boolean("aceita_pagamento_na_entrega"),
+
   // Status e controle
   isActive: boolean("is_active").notNull().default(true),
   isDefault: boolean("is_default").notNull().default(false), // Variante principal

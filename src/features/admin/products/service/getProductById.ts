@@ -161,6 +161,7 @@ export async function getProductById(id: string) {
         // Retirada local
         allowsPickup: productTable.allowsPickup,
         allowsOwnDelivery: productTable.allowsOwnDelivery,
+        aceitaPagamentoNaEntrega: productTable.aceitaPagamentoNaEntrega,
         modeloRetiradaId: productTable.modeloRetiradaId,
         prazoRetiradaCustom: productTable.prazoRetiradaCustom,
 
@@ -248,6 +249,7 @@ export async function getProductById(id: string) {
         widthInCm: productVariantTable.widthInCm,
         lengthInCm: productVariantTable.lengthInCm,
         imageUrl: productVariantTable.imageUrl,
+        aceitaPagamentoNaEntrega: productVariantTable.aceitaPagamentoNaEntrega,
         isActive: productVariantTable.isActive,
         isDefault: productVariantTable.isDefault,
       })
@@ -399,6 +401,7 @@ export async function getProductById(id: string) {
         // Dados de retirada local
         allowsPickup: product.allowsPickup,
         allowsOwnDelivery: product.allowsOwnDelivery,
+        aceitaPagamentoNaEntrega: product.aceitaPagamentoNaEntrega,
         modeloRetiradaId: product.modeloRetiradaId,
         prazoRetiradaCustom: product.prazoRetiradaCustom,
         precosEntregaPropria: precosEntregaPropria.map((preco) => ({

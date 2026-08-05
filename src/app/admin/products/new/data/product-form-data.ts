@@ -51,6 +51,8 @@ export interface ProductFormData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
+    /** Opt-in do produto para pagar no recebimento. Nasce desligado. */
+    aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
   };
@@ -135,6 +137,7 @@ export const initialProductData: ProductFormData = {
     modeloRetiradaId: null,
     prazoCustom: "",
     permiteEntregaPropria: false,
+    aceitaPagamentoNaEntrega: false,
     precosEntregaPropria: [],
     classificacoesLogisticasIds: [],
   },

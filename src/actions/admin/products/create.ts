@@ -82,6 +82,7 @@ interface CreateProductData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
+    aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
   };
@@ -168,6 +169,9 @@ export async function createProduct(data: CreateProductData) {
         // Configuração de retirada local
         allowsPickup: data.entrega?.permiteRetirada ?? false,
         allowsOwnDelivery: data.entrega?.permiteEntregaPropria ?? false,
+        // Opt-in: sem marcação explícita do gestor, o produto não aceita.
+        aceitaPagamentoNaEntrega:
+          data.entrega?.aceitaPagamentoNaEntrega ?? false,
         modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
         prazoRetiradaCustom: data.entrega?.prazoCustom || null,
 

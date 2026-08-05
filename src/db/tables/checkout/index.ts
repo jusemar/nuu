@@ -1,6 +1,7 @@
 export {
   checkoutPagamentoGatewayEnum,
   checkoutPagamentoMetodoEnum,
+  checkoutPagamentoNaEntregaFormaEnum,
   checkoutPagamentoStatusEnum,
   checkoutPedidoHistoricoOrigemEnum,
   checkoutPedidoHistoricoTipoEnum,
@@ -13,6 +14,7 @@ export {
   checkoutPedidoHistoricosRelations,
   checkoutPedidoItensRelations,
   checkoutPedidoLogisticasRelations,
+  checkoutPedidoPagamentoEntregaRelations,
   checkoutStripeWebhookEventosRelations,
   checkoutPagamentosRelations,
   checkoutPedidosRelations,
@@ -23,6 +25,10 @@ export { checkoutEnderecosTable } from "./tabelas/enderecos";
 export { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 export { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 export { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
+export {
+  checkoutPedidoPagamentoEntregaTable,
+  type SnapshotElegibilidadePagamentoNaEntrega,
+} from "./tabelas/pedido-pagamento-entrega";
 export { checkoutPagamentosTable } from "./tabelas/pagamentos";
 export { checkoutPedidosTable } from "./tabelas/pedidos";
 export { checkoutStripeWebhookEventosTable } from "./tabelas/stripe-webhook-eventos";

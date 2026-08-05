@@ -12,6 +12,7 @@
 "use client";
 
 import {
+  Banknote,
   Bot,
   Building2,
   ChevronDown,
@@ -58,6 +59,7 @@ import { useSidebar } from "../hooks/useSidebar";
  * Mapeamento de nomes de ícones para componentes do Lucide
  */
 const iconMap: Record<string, React.ElementType> = {
+  Banknote,
   LayoutDashboard,
   Package,
   FolderIcon,
@@ -183,6 +185,12 @@ export const menuAdmin: EntradaMenuAdmin[] = [
         label: "Regras de Disponibilidade",
         href: "/admin/logistica/regras-disponibilidade",
         icon: "Navigation",
+      },
+      {
+        id: "pagamento-na-entrega-logistica",
+        label: "Pagamento na Entrega",
+        href: "/admin/logistica/pagamento-na-entrega",
+        icon: "Banknote",
       },
       {
         id: "retirada-local",

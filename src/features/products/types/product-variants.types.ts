@@ -24,6 +24,11 @@ export type ProductVariantInput = {
   lengthInCm?: number | null;
   imageUrl?: string | null;
   classificacoesLogisticasIds?: string[];
+  /**
+   * Opt-in de pagamento na entrega. `null`/ausente = herda do produto,
+   * `true` = aceita, `false` = bloqueia só esta variante.
+   */
+  aceitaPagamentoNaEntrega?: boolean | null;
   isActive: boolean;
   isDefault: boolean;
 };

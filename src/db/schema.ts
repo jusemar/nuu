@@ -594,6 +594,7 @@ export {
   checkoutEnderecosTable,
   checkoutPagamentoGatewayEnum,
   checkoutPagamentoMetodoEnum,
+  checkoutPagamentoNaEntregaFormaEnum,
   checkoutPagamentoStatusEnum,
   checkoutPedidoHistoricoOrigemEnum,
   checkoutPedidoHistoricoTipoEnum,
@@ -605,11 +606,14 @@ export {
   checkoutPedidoItensTable,
   checkoutPedidoLogisticasRelations,
   checkoutPedidoLogisticasTable,
+  checkoutPedidoPagamentoEntregaRelations,
+  checkoutPedidoPagamentoEntregaTable,
   checkoutStripeWebhookEventosRelations,
   checkoutStripeWebhookEventosTable,
   checkoutPedidosRelations,
   checkoutPedidosTable,
   checkoutPedidoStatusEnum,
+  type SnapshotElegibilidadePagamentoNaEntrega,
 } from "./tables/checkout";
 
 // Precificação e regras comerciais
@@ -727,6 +731,8 @@ export {
 
 // Regras profissionais de disponibilidade de frete
 export {
+  configuracoesPagamentoNaEntregaServicoRelations,
+  configuracoesPagamentoNaEntregaServicoTable,
   produtosTiposLogisticosRelations,
   produtosTiposLogisticosTable,
   provedoresFreteRelations,

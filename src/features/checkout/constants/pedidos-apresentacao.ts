@@ -28,6 +28,7 @@ export const PEDIDO_HISTORICO_TIPO_LABEL: Record<
   pedido_enviado: "Pedido enviado",
   rastreio_atualizado: "Rastreio atualizado",
   pedido_entregue: "Pedido entregue",
+  pagamento_recebido_na_entrega: "Pagamento recebido na entrega",
 };
 
 export const PEDIDO_HISTORICO_ORIGEM_LABEL: Record<
@@ -48,10 +49,18 @@ export const PAGAMENTO_STATUS_LABEL: Record<PagamentoStatusCheckout, string> = {
 export const PAGAMENTO_METODO_LABEL: Record<PagamentoMetodoCheckout, string> = {
   cartao: "Cartao",
   pix: "PIX",
+  // Formas de pagamento na entrega. Os rótulos deixam explícito que o dinheiro
+  // entra no recebimento, para não se confundirem com PIX/cartão online na
+  // listagem de pedidos do admin.
+  dinheiro: "Dinheiro na entrega",
+  pix_na_entrega: "PIX na entrega",
+  debito_entrega: "Débito na entrega",
+  credito_entrega: "Crédito na entrega",
 };
 
 export const PAGAMENTO_GATEWAY_LABEL: Record<PagamentoGatewayCheckout, string> =
   {
     stripe: "Stripe",
     efibank: "Efí",
+    manual: "Recebimento manual",
   };

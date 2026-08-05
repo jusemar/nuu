@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -49,6 +50,18 @@ export const checkoutPedidosTable = pgTable(
     pagamentoStatus: checkoutPagamentoStatusEnum("pagamento_status")
       .notNull()
       .default("pending"),
+    /**
+     * Chave gerada pelo navegador ao abrir o checkout e reenviada em cada tentativa.
+     *
+     * Existe porque hoje um duplo clique em "finalizar" cria dois pedidos. Com PIX
+     * o estrago é pequeno (o segundo expira sozinho); com pagamento na entrega são
+     * dois pedidos válidos, e alguém entrega a mercadoria duas vezes.
+     *
+     * Nullable para não invalidar os pedidos já existentes, e o índice único ignora
+     * nulos — então o campo fica completamente inerte até o Bloco 7 passar a
+     * preenchê-lo. Adicionado agora só para não precisar de uma segunda migration.
+     */
+    chaveIdempotencia: text("chave_idempotencia"),
     observacao: text("observacao"),
     observacaoCliente: text("observacao_cliente"),
     autorizarEntregaVizinho: boolean("autorizar_entrega_vizinho")
@@ -62,5 +75,11 @@ export const checkoutPedidosTable = pgTable(
   (table) => [
     index("checkout_pedidos_cliente_id_idx").on(table.clienteId),
     index("checkout_pedidos_status_idx").on(table.status),
+    // No Postgres, um índice único não considera dois NULLs iguais: todos os pedidos
+    // atuais (chave nula) convivem sem conflito, e a proteção passa a valer sozinha
+    // assim que a chave começar a ser gravada.
+    uniqueIndex("checkout_pedidos_chave_idempotencia_unique").on(
+      table.chaveIdempotencia,
+    ),
   ],
 );

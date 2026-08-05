@@ -64,5 +64,48 @@ describe("seed dados iniciais logística", () => {
       true,
     );
   });
+
+  it("registra os servicos de entrega propria com os identificadores usados na cotacao", () => {
+    // Estes identificadores são um contrato com o motor de cotação: são exatamente
+    // as strings emitidas no campo `servico` de `OpcaoFrete`. Se alguém renomear aqui
+    // sem renomear lá, a configuração por serviço deixa de casar com o frete escolhido
+    // e o pedido perde a referência — por isso o teste trava os dois valores.
+    const servicosEntregaPropria = servicosFreteIniciais.filter(
+      (item) => item.provedorIdentificador === "entrega-propria",
+    );
+
+    assert.deepEqual(
+      servicosEntregaPropria.map((item) => item.identificador).sort(),
+      ["entrega-programada", "entrega-propria-atual"],
+    );
+
+    // Entrega própria é feita pela loja: nenhum serviço pode apontar para transportadora.
+    assert.equal(
+      servicosEntregaPropria.every((item) => item.transportadoraIdentificador === null),
+      true,
+    );
+  });
+
+  it("nao recria os servicos de entrega propria quando o seed roda duas vezes", () => {
+    // Idempotência: simula o banco já contendo apenas os dois serviços de entrega própria
+    // e confirma que um segundo `npm run seed:logistica-dados-iniciais` não os duplicaria.
+    const plano = planejarSeedDadosIniciaisLogistica({
+      provedoresExistentes: provedoresFreteIniciais,
+      tiposExistentes: tiposLogisticosIniciais,
+      transportadorasExistentes: transportadorasFreteIniciais.map((item) => ({
+        identificador: item.identificador,
+        provedorIdentificador: item.provedorIdentificador,
+      })),
+      servicosExistentes: [
+        { identificador: "entrega-propria-atual", provedorIdentificador: "entrega-propria" },
+        { identificador: "entrega-programada", provedorIdentificador: "entrega-propria" },
+      ],
+    });
+
+    assert.equal(
+      plano.servicosCriar.some((item) => item.provedorIdentificador === "entrega-propria"),
+      false,
+    );
+  });
 });
 

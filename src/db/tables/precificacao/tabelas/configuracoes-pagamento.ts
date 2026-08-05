@@ -17,6 +17,17 @@ export const configuracoesPagamentoTable = pgTable(
     pixAtivo: boolean("pix_ativo").notNull().default(true),
     cartaoAtivo: boolean("cartao_ativo").notNull().default(true),
     boletoAtivo: boolean("boleto_ativo").notNull().default(false),
+    /**
+     * Kill-switch global do pagamento na entrega.
+     *
+     * Nasce `false` para que todo o código dos blocos seguintes possa subir para
+     * produção inerte: a funcionalidade fica em pé, testável, mas invisível ao
+     * cliente. Ligar é uma decisão de negócio separada do deploy, e desligar
+     * derruba a opção na loja inteira em um único UPDATE, sem redeploy.
+     */
+    pagamentoNaEntregaAtivo: boolean("pagamento_na_entrega_ativo")
+      .notNull()
+      .default(false),
     percentualAcrescimoCartaoBps: integer("percentual_acrescimo_cartao_bps")
       .notNull()
       .default(1500),

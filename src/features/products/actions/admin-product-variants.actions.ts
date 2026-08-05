@@ -17,6 +17,7 @@ import type {
   ProductKind,
   ProductVariantFormInput,
 } from "../types/product-variants.types";
+import { montarLinhaVarianteParaBanco } from "../lib/montar-linha-variante-para-banco";
 import { normalizeProductKind } from "../lib/product-kind";
 
 type SaveProductVariantsInput = {
@@ -102,6 +103,8 @@ export async function salvarEstruturaVariantesProduto({
         widthInCm: toIntegerOrNull(variant.widthInCm),
         lengthInCm: toIntegerOrNull(variant.lengthInCm),
         imageUrl: variant.imageUrl?.trim() || null,
+        // `?? null` e nunca `?? false`: ausência significa "herda do produto".
+        aceitaPagamentoNaEntrega: variant.aceitaPagamentoNaEntrega ?? null,
         isActive: variant.isActive ?? true,
         isDefault: variant.isDefault ?? false,
       }),
@@ -110,26 +113,18 @@ export async function salvarEstruturaVariantesProduto({
     .map((result) => result.data);
 
   if (parsedVariants.length > 0) {
+    // ⚠️ Salvar variantes é destrutivo: o delete acima apaga todas e a inserção abaixo as
+    // recria. Um campo novo precisa entrar em três lugares — `productVariantSchema`, o
+    // `safeParse` acima e `montarLinhaVarianteParaBanco`. Faltando no último, o Zod aceita
+    // e o valor some sem erro nenhum. O mapeamento foi extraído para uma função pura
+    // justamente para ter teste cobrindo isso.
+    const agora = new Date();
     const variantesInseridas = await executor
       .insert(productVariantTable)
       .values(
-        parsedVariants.map((variant) => ({
-          productId,
-          sku: variant.sku,
-          name: variant.name,
-          attributes: variant.attributes,
-          priceInCents: variant.priceInCents,
-          comparePriceInCents: variant.comparePriceInCents,
-          stockQuantity: variant.stockQuantity,
-          weightInGrams: variant.weightInGrams,
-          heightInCm: variant.heightInCm,
-          widthInCm: variant.widthInCm,
-          lengthInCm: variant.lengthInCm,
-          imageUrl: variant.imageUrl,
-          isActive: variant.isActive,
-          isDefault: variant.isDefault,
-          updatedAt: new Date(),
-        })),
+        parsedVariants.map((variant) =>
+          montarLinhaVarianteParaBanco(variant, productId, agora),
+        ),
       )
       .returning({
         id: productVariantTable.id,

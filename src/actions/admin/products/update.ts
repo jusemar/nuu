@@ -174,6 +174,7 @@ interface UpdateProductData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
+    aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
   };
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
@@ -329,6 +330,8 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updateFields.allowsPickup = data.entrega.permiteRetirada ?? false;
       updateFields.allowsOwnDelivery =
         data.entrega.permiteEntregaPropria ?? false;
+      updateFields.aceitaPagamentoNaEntrega =
+        data.entrega.aceitaPagamentoNaEntrega ?? false;
       updateFields.modeloRetiradaId = data.entrega.modeloRetiradaId || null;
       updateFields.prazoRetiradaCustom = data.entrega.prazoCustom || null;
     }

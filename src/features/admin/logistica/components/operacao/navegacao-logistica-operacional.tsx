@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Plug, Route, Settings2, Store, Truck, Warehouse } from "lucide-react";
+import { Banknote, Plug, Route, Settings2, Store, Truck, Warehouse } from "lucide-react";
 
 const itensNavegacao = [
   { href: "/admin/logistica/visao-geral", nome: "Visão Geral", icone: Warehouse },
@@ -10,6 +10,11 @@ const itensNavegacao = [
     href: "/admin/logistica/regras-disponibilidade",
     nome: "Regras de Disponibilidade",
     icone: Settings2,
+  },
+  {
+    href: "/admin/logistica/pagamento-na-entrega",
+    nome: "Pagamento na Entrega",
+    icone: Banknote,
   },
   { href: "/admin/logistica/retirada-local", nome: "Retirada", icone: Store },
   { href: "/admin/logistics/entrega-propria", nome: "Entrega Própria", icone: Route },

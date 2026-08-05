@@ -10,9 +10,22 @@ export type PedidoStatusCheckout =
 
 export type PagamentoStatusCheckout = "pending" | "paid" | "failed" | "expired";
 
-export type PagamentoGatewayCheckout = "stripe" | "efibank";
+/**
+ * Espelha `checkout_pagamento_gateway`. "manual" não é um gateway de verdade:
+ * descreve o canal de liquidação de um pagamento recebido em mãos, dado que a
+ * coluna do banco é NOT NULL. É ele o discriminador entre pagamento online e
+ * pagamento na entrega.
+ */
+export type PagamentoGatewayCheckout = "stripe" | "efibank" | "manual";
 
-export type PagamentoMetodoCheckout = "cartao" | "pix";
+/** Espelha `checkout_pagamento_metodo`. As 4 últimas só ocorrem com gateway "manual". */
+export type PagamentoMetodoCheckout =
+  | "cartao"
+  | "pix"
+  | "dinheiro"
+  | "pix_na_entrega"
+  | "debito_entrega"
+  | "credito_entrega";
 
 export type ClienteCheckout = {
   id: string;
@@ -79,7 +92,8 @@ export type PedidoHistoricoTipoCheckout =
   | "status_alterado_manual"
   | "pedido_enviado"
   | "rastreio_atualizado"
-  | "pedido_entregue";
+  | "pedido_entregue"
+  | "pagamento_recebido_na_entrega";
 
 export type PedidoHistoricoOrigemCheckout = "system" | "admin";
 

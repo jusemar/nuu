@@ -26,6 +26,24 @@ export const checkoutPedidoHistoricosTable = pgTable(
     origem: checkoutPedidoHistoricoOrigemEnum("origem").notNull(),
     statusAnterior: checkoutPedidoStatusEnum("status_anterior"),
     statusNovo: checkoutPedidoStatusEnum("status_novo"),
+
+    // ============================================
+    // AUTORIA (quem fez a ação)
+    // ============================================
+    /**
+     * `origem` só diz "system" ou "admin" — insuficiente para auditar dinheiro:
+     * não responde QUAL admin deu baixa em um pagamento recebido em mãos.
+     *
+     * Ambas nullable porque histórico gerado pelo sistema (webhook, expiração)
+     * não tem admin. O e-mail fica gravado ao lado do id de propósito: se a conta
+     * do admin for removida, o id vira inútil mas a auditoria continua legível.
+     *
+     * Sem FK para `user`, seguindo o padrão de `checkout_clientes.userId` — arquivo
+     * de tabela não referencia outro domínio; a relação é declarada em `relacoes.ts`.
+     */
+    usuarioAdminId: text("usuario_admin_id"),
+    usuarioAdminEmail: text("usuario_admin_email"),
+
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

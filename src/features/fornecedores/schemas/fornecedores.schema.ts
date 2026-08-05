@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  EXTENSOES_ARQUIVO_IMPORTACAO,
+  MENSAGEM_ARQUIVO_ACIMA_DO_LIMITE,
+  TAMANHO_MAXIMO_ARQUIVO_IMPORTACAO_BYTES,
+} from "../constants/importacao-arquivo";
+
 export const tiposIntegracaoFornecedor = ["arquivo_excel", "api"] as const;
 export const statusFornecedor = ["ativo", "inativo", "pendente"] as const;
 export const tiposArquivoImportacaoFornecedor = [
@@ -117,12 +123,17 @@ export const fornecedorProdutoStagingSchema = z.object({
 
 export const arquivoImportacaoFornecedorSchema = z.object({
   nome: z.string().trim().min(1).max(255),
+  // O limite vem da constante única do domínio, alinhada ao teto real de
+  // infraestrutura da Vercel (~4,5 MB). A mensagem é a mesma exibida no
+  // formulário, para o gestor ver o texto idêntico no client e no servidor.
   tamanho: z
     .number()
     .int()
     .positive()
-    .max(10 * 1024 * 1024),
-  extensao: z.enum(["xlsx", "xls", "csv"]),
+    .max(TAMANHO_MAXIMO_ARQUIVO_IMPORTACAO_BYTES, {
+      message: MENSAGEM_ARQUIVO_ACIMA_DO_LIMITE,
+    }),
+  extensao: z.enum(EXTENSOES_ARQUIVO_IMPORTACAO),
 });
 
 export const analiseImportacaoFornecedorSchema = z.object({

@@ -4,20 +4,13 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
-  Filter,
   FileSpreadsheet,
+  Filter,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { importarPlanilhaFornecedor } from "../../actions";
-import {
-  ordenarFornecedoresPorStatusENome,
-  rotulosStatusFornecedor,
-  rotulosTipoIntegracaoFornecedor,
-} from "../../services/fornecedores.service";
-import type { FornecedorComResumoImportacoes } from "../../types/fornecedores.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +28,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+
+import {
+  ordenarFornecedoresPorStatusENome,
+  rotulosStatusFornecedor,
+  rotulosTipoIntegracaoFornecedor,
+} from "../../services/fornecedores.service";
+import type { FornecedorComResumoImportacoes } from "../../types/fornecedores.types";
+import { FormularioNovaImportacaoFornecedor } from "./formulario-nova-importacao-fornecedor";
 
 type ImportacaoFornecedorRecenteAdmin = {
   id: string;
@@ -190,31 +191,10 @@ function ImportacaoNovaDrawer({
             Selecione o fornecedor e envie a planilha para o staging.
           </SheetDescription>
         </SheetHeader>
-        <form action={importarPlanilhaFornecedor} className="mt-6 grid gap-3">
-          <select
-            name="fornecedorId"
-            required
-            className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
-          >
-            <option value="">Selecione o fornecedor</option>
-            {fornecedoresOrdenados.map((fornecedor) => (
-              <option key={fornecedor.id} value={fornecedor.id}>
-                {fornecedor.nome}
-              </option>
-            ))}
-          </select>
-          <input
-            name="arquivo"
-            type="file"
-            required
-            accept=".xlsx,.xls,.csv"
-            className="h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-          />
-          <Button type="submit" className="mt-1">
-            <Upload className="mr-2 h-4 w-4" />
-            Enviar para staging
-          </Button>
-        </form>
+        <FormularioNovaImportacaoFornecedor
+          fornecedores={fornecedoresOrdenados}
+          className="mt-6 grid gap-3"
+        />
       </SheetContent>
     </Sheet>
   );

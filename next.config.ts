@@ -4,17 +4,24 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // O upload da planilha de fornecedor usa Server Action
-      // (`<form action={importarPlanilhaFornecedor}>`), e o Next.js limita o
-      // corpo dessas requisições a 1 MB por padrão — qualquer planilha real
-      // estourava esse teto antes mesmo da action executar.
+      // (`<form action={...}>`), e o Next.js limita o corpo dessas requisições
+      // a 1 MB por padrão — qualquer planilha real estourava esse teto antes
+      // mesmo da action executar.
       //
-      // O valor abaixo acompanha o limite que o próprio projeto já declara em
-      // `arquivoImportacaoFornecedorSchema` (10 MB), evitando um segundo número
-      // mágico divergente da validação de negócio.
+      // "4.2mb" = 4.404.019 bytes (o Next interpreta "mb" em base binária).
+      // Esse número foi escolhido para ficar ENTRE dois outros limites:
       //
-      // Atenção: na Vercel existe um teto de infraestrutura (~4,5 MB por
-      // requisição de Serverless Function) que NÃO é configurável aqui.
-      bodySizeLimit: "10mb",
+      //   4.300.000 B  regra de negócio
+      //                (features/fornecedores/constants/importacao-arquivo.ts)
+      //   4.404.019 B  este bodySizeLimit
+      //   4.500.000 B  teto de infraestrutura da Vercel (não configurável)
+      //
+      // A folga acima da regra de negócio é intencional: um arquivo pouco maior
+      // que o permitido ainda chega na Server Action e recebe uma mensagem
+      // amigável, em vez de ser cortado pelo framework com um 413 cru.
+      // Ficar abaixo do teto da Vercel mantém o comportamento igual em
+      // desenvolvimento e em produção.
+      bodySizeLimit: "4.2mb",
     },
   },
   eslint: {

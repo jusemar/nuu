@@ -211,6 +211,15 @@ export type ResultadoImportacaoFornecedor = {
   totalNaoEncontrados?: number;
 };
 
+/**
+ * Estado que a Server Action de envio de planilha devolve ao formulário.
+ * `erro` nulo significa que ainda não houve tentativa ou que ela deu certo
+ * (nesse caso a action redireciona antes de retornar).
+ */
+export type EstadoEnvioPlanilhaFornecedor = {
+  erro: string | null;
+};
+
 export type StagingFornecedorComImportacao = DadosFornecedorProdutoStaging & {
   nomeFornecedor: string;
 };

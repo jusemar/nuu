@@ -49,6 +49,14 @@ export {
 } from "./lib/situacao-publicacao-produto";
 export type { SituacaoPublicacaoProduto } from "./lib/situacao-publicacao-produto";
 
+export {
+  CAMINHO_PUBLICO_PRODUTO,
+  ehUrlCanonicaGeradaAutomaticamente,
+  montarCaminhoProduto,
+  montarUrlCanonicaProduto,
+  resolverUrlCanonicaProduto,
+} from "./lib/url-canonica-produto";
+
 export { BotaoDuplicarProduto } from "./components/admin/botao-duplicar-produto";
 export { BotaoPublicarProduto } from "./components/admin/botao-publicar-produto";
 export { SeloSituacaoPublicacao } from "./components/admin/selo-situacao-publicacao";

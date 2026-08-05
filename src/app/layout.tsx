@@ -6,6 +6,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 import { ContextoCepLogisticaProvider } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
+import { obterUrlBaseSite } from "@/lib/seo/url-site";
 import { CategoriesProvider } from "@/providers/categories-provider";
 import ReactQueryProvider from "@/providers/react-query";
 
@@ -24,6 +25,9 @@ const geistMono = Geist_Mono({
 
 // ─── Metadata — SEO e compartilhamento social ─────────────────────────────────
 export const metadata: Metadata = {
+  // Base usada pelo Next.js para transformar caminhos relativos (canonical,
+  // Open Graph) em URLs absolutas. Vem da configuração única do projeto.
+  metadataBase: new URL(obterUrlBaseSite()),
   title: {
     default: "Do Rocha | Sua Loja Virtual",
     template: "%s | Do Rocha", // páginas filhas: "Produto X | Do Rocha"

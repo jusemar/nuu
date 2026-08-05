@@ -40,5 +40,15 @@ export {
 
 export type { VariantIssue } from "./lib/variant-editor";
 
+export {
+  DESCRICOES_SITUACAO_PUBLICACAO,
+  FLAG_CATALOGO,
+  obterSituacaoPublicacaoProduto,
+  ROTULOS_SITUACAO_PUBLICACAO,
+  situacaoImpedeExibicao,
+} from "./lib/situacao-publicacao-produto";
+export type { SituacaoPublicacaoProduto } from "./lib/situacao-publicacao-produto";
+
 export { BotaoDuplicarProduto } from "./components/admin/botao-duplicar-produto";
 export { BotaoPublicarProduto } from "./components/admin/botao-publicar-produto";
+export { SeloSituacaoPublicacao } from "./components/admin/selo-situacao-publicacao";

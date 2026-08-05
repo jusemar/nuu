@@ -9,15 +9,19 @@ import {
   PackageCheck,
   Save,
   Search,
+  Send,
   ShieldCheck,
   Store,
   Truck,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { publicarProdutoAdmin } from "@/features/products/actions/publicar-produto-admin";
 import { useCreateProduct } from "@/hooks/admin/mutations/products/useCreateProduct";
 
 import { ShippingTab } from "../../../../features/admin/products/components/ShippingTab";
@@ -31,9 +35,19 @@ import { clearVariantsDraft, VariantsTab } from "./components/tabs/VariantsTab";
 import { WarrantyTab } from "./components/tabs/WarrantyTab";
 import { initialProductData, ProductFormData } from "./data/product-form-data";
 
+/** Identifica qual botão do cabeçalho está em andamento. */
+type AcaoCadastroEmAndamento = "rascunho" | "publicacao";
+
 export default function NewProductPage() {
+  const router = useRouter();
   const variantsDraftKey = "novo-produto";
+  const [acaoEmAndamento, setAcaoEmAndamento] =
+    useState<AcaoCadastroEmAndamento | null>(null);
+
   const createProductMutation = useCreateProduct({
+    // Esta tela informa o resultado real (publicado x rascunho) em uma única
+    // mensagem, então o aviso genérico do hook é desligado.
+    mostrarAvisoDeSucesso: false,
     onSuccess: () => {
       clearVariantsDraft(variantsDraftKey);
       // RESETA O FORMULÁRIO APÓS SUCESSO
@@ -171,17 +185,77 @@ export default function NewProductPage() {
     },
   ];
 
-  const handlePublishProduct = async () => {
+  /**
+   * Grava o produto sempre como rascunho.
+   *
+   * A publicação nunca é decidida pelo formulário: quem publica é a action
+   * `publicarProdutoAdmin`, que valida as mesmas regras exigidas pelas
+   * consultas públicas da loja. Assim o admin nunca aparenta "publicado"
+   * enquanto o banco mantém `draft`.
+   *
+   * @returns o id do produto criado, ou null quando o cadastro falhou.
+   */
+  const criarProdutoComoRascunho = async (): Promise<string | null> => {
+    if (!productData.categoryId) {
+      toast.error("Selecione uma categoria antes de salvar.");
+      return null;
+    }
+
+    const resultado = await createProductMutation.mutateAsync({
+      ...productData,
+      status: "draft",
+    });
+
+    // O aviso de erro do cadastro já é exibido pelo próprio hook.
+    return resultado.success ? (resultado.productId ?? null) : null;
+  };
+
+  /** Botão "Salvar rascunho": grava sem publicar e deixa isso explícito. */
+  const handleSaveDraft = async () => {
+    if (acaoEmAndamento) return;
+    setAcaoEmAndamento("rascunho");
+
     try {
-      console.log("Dados sendo enviados:", productData);
-      if (!productData.categoryId) {
-        alert("Selecione uma categoria antes de salvar!");
+      const produtoId = await criarProdutoComoRascunho();
+      if (!produtoId) return;
+
+      toast.success("Rascunho salvo.", {
+        description:
+          "O produto ainda NÃO aparece na loja. Publique quando estiver completo.",
+      });
+    } finally {
+      setAcaoEmAndamento(null);
+    }
+  };
+
+  /**
+   * Botão "Publicar": cria o produto e publica de verdade.
+   *
+   * Se o produto estiver incompleto, ele permanece como rascunho e o motivo
+   * é informado — nunca publicamos automaticamente um produto incompleto.
+   */
+  const handlePublishProduct = async () => {
+    if (acaoEmAndamento) return;
+    setAcaoEmAndamento("publicacao");
+
+    try {
+      const produtoId = await criarProdutoComoRascunho();
+      if (!produtoId) return;
+
+      const publicacao = await publicarProdutoAdmin(produtoId);
+
+      if (!publicacao.sucesso) {
+        toast.warning("Produto salvo como rascunho — ainda não aparece na loja.", {
+          description: `${publicacao.erro} Abrimos a edição para você concluir.`,
+          duration: 10000,
+        });
+        router.push(`/admin/products/${produtoId}/edit`);
         return;
       }
 
-      await createProductMutation.mutateAsync(productData);
-    } catch (error) {
-      console.error("Erro ao publicar produto:", error);
+      toast.success("Produto publicado e disponível na loja.");
+    } finally {
+      setAcaoEmAndamento(null);
     }
   };
 
@@ -200,7 +274,8 @@ export default function NewProductPage() {
             <div className="min-w-0">
               <h1 className="text-xl font-bold sm:text-2xl">Novo Produto</h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                Cadastre um novo produto no catálogo
+                O produto nasce como rascunho e só aparece na loja depois de
+                publicado.
               </p>
             </div>
           </div>
@@ -210,18 +285,27 @@ export default function NewProductPage() {
               <Eye className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Preview</span>
             </Button>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSaveDraft}
+              disabled={acaoEmAndamento !== null}
+            >
               <Save className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Salvar Rascunho</span>
+              <span className="hidden sm:inline">
+                {acaoEmAndamento === "rascunho"
+                  ? "Salvando..."
+                  : "Salvar Rascunho"}
+              </span>
             </Button>
             <Button
               className="shrink-0"
               size="sm"
               onClick={handlePublishProduct}
-              disabled={createProductMutation.isPending}
+              disabled={acaoEmAndamento !== null}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {createProductMutation.isPending ? "Publicando..." : "Publicar"}
+              <Send className="mr-2 h-4 w-4" />
+              {acaoEmAndamento === "publicacao" ? "Publicando..." : "Publicar"}
             </Button>
           </div>
         </div>

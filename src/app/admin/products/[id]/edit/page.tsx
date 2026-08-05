@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BotaoDuplicarProduto,
   BotaoPublicarProduto,
+  SeloSituacaoPublicacao,
 } from "@/features/products";
 import { useUpdateProduct } from "@/hooks/admin/mutations/products/useUpdateProduct";
 import { useProductId } from "@/hooks/admin/queries/products/use-Product-Id";
@@ -416,7 +417,18 @@ export default function EditProductPage() {
               </Link>
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold sm:text-2xl">Editar Produto</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold sm:text-2xl">
+                  Editar Produto
+                </h1>
+                {/* Mostra a situação real na loja: publicado, rascunho,
+                    inativo ou fora do Catálogo. */}
+                <SeloSituacaoPublicacao
+                  status={productData.status}
+                  isActive={productData.isActive}
+                  storeProductFlags={productData.storeProductFlags}
+                />
+              </div>
               <p className="text-muted-foreground line-clamp-2 text-sm sm:text-base">
                 {productData.name}
               </p>

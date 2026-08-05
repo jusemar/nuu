@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, ne, or } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/connection";
@@ -73,21 +73,30 @@ export async function publicarProdutoAdmin(produtoId: string) {
       };
     }
 
-    const [skuEmUso] = await db
+    // O SKU não pode colidir com OUTRO produto nem com a variante de OUTRO
+    // produto. As variantes do próprio produto são ignoradas de propósito:
+    // todo produto simples nasce com uma variante técnica que reusa o mesmo
+    // SKU, e considerá-la conflito impediria qualquer publicação.
+    const [produtoComMesmoSku] = await db
       .select({ id: productTable.id })
       .from(productTable)
-      .leftJoin(productVariantTable, eq(productVariantTable.sku, produto.sku))
       .where(
-        or(
-          and(
-            eq(productTable.sku, produto.sku),
-            ne(productTable.id, produto.id),
-          ),
+        and(eq(productTable.sku, produto.sku), ne(productTable.id, produto.id)),
+      )
+      .limit(1);
+
+    const [varianteComMesmoSku] = await db
+      .select({ id: productVariantTable.id })
+      .from(productVariantTable)
+      .where(
+        and(
           eq(productVariantTable.sku, produto.sku),
+          ne(productVariantTable.productId, produto.id),
         ),
       )
       .limit(1);
-    if (skuEmUso) {
+
+    if (produtoComMesmoSku || varianteComMesmoSku) {
       return {
         sucesso: false as const,
         erro: "O SKU informado já está em uso.",

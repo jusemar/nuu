@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { SeloSituacaoPublicacao } from "@/features/products";
 import { useProductBulkActions } from "@/hooks/admin/mutations/products/useProductBulkActions";
 import { useProducts } from "@/hooks/admin/queries/products/use-products";
 
@@ -27,6 +28,8 @@ interface Product {
   categoryName: string | null;
   sku: string;
   isActive: boolean | null;
+  status: string | null;
+  storeProductFlags: string[] | null;
   brand: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -152,13 +155,27 @@ export default function ProductsPage() {
     /*status*/
     {
       accessorKey: "isActive",
-      header: "Status",
+      header: "Ativo",
       cell: ({ row }: CellContext<Product, unknown>) => (
         <EditableSwitch
           value={Boolean(row.getValue("isActive"))}
           onSave={(newValue) =>
             updateLocalProduct(row.original.id, "isActive", newValue)
           }
+        />
+      ),
+    },
+    {
+      // Situação real na loja: o switch "Ativo" sozinho não diz se o produto
+      // aparece, porque as consultas públicas também exigem status publicado
+      // e a flag de Catálogo.
+      id: "situacaoPublicacao",
+      header: "Publicação",
+      cell: ({ row }: CellContext<Product, unknown>) => (
+        <SeloSituacaoPublicacao
+          status={row.original.status}
+          isActive={row.original.isActive}
+          storeProductFlags={row.original.storeProductFlags}
         />
       ),
     },

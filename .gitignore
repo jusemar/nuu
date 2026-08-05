@@ -47,3 +47,7 @@ next-env.d.ts
 /backups/
 /drizzle-backup-*/
 /*-backup-*/
+
+# Graphify
+graphify-out/
+src/graphify-out/

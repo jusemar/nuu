@@ -13,6 +13,8 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
+import { SeloPagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/components/store/selo-pagamento-na-entrega-pdp";
+import { avaliarSeloPagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-pdp";
 import {
   calcularPrecosProduto,
   normalizarModalidadePrecoCanonica,
@@ -165,7 +167,7 @@ export default async function ProductPage({ params }: PageProps) {
         precoBaseEmCentavos: variant.priceInCents,
       })),
   );
-  const [breadcrumbCategorias, configuracaoLoja, produtosRelacionados] =
+  const [breadcrumbCategorias, configuracaoLoja, produtosRelacionados, selo] =
     await Promise.all([
       buscarBreadcrumbCategoriaPorId(product.categoryId),
       buscarConfiguracaoLoja(),
@@ -173,6 +175,17 @@ export default async function ProductPage({ params }: PageProps) {
         produtoId: product.id,
         categoriaId: product.categoryId,
         marcaId: product.marcaId,
+      }),
+      // Calculado no servidor e descido como prop: a PDP não busca nada no cliente e não
+      // reimplementa regra nenhuma — quem decide é o motor central.
+      avaliarSeloPagamentoNaEntregaPdp({
+        produtoId: product.id,
+        // Sem variante: a PDP abre na visão do produto, e a variante escolhida é estado do
+        // cliente. `null` faz o motor herdar a decisão do produto, que é o comportamento
+        // correto para uma informação genérica da página.
+        varianteId: null,
+        modalidadeComercial: pricing[0]?.type ?? null,
+        permiteEntregaPropria: Boolean(product.allowsOwnDelivery),
       }),
     ]);
 
@@ -185,6 +198,7 @@ export default async function ProductPage({ params }: PageProps) {
       precosCalculadosPorModalidade={precosCalculadosPorModalidade}
       precosCalculadosPorVariante={precosCalculadosPorVariante}
       produtosRelacionados={produtosRelacionados}
+      seloPagamentoNaEntrega={<SeloPagamentoNaEntregaPdp selo={selo} />}
     />
   );
 }

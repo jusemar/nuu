@@ -91,6 +91,13 @@ interface BuyBoxProps {
   // Entrega Própria
   allowsOwnDelivery?: boolean;
 
+  /**
+   * Bloco informativo renderizado no servidor e recebido pronto (ex.: o selo de pagamento
+   * na entrega). Vem como slot para a caixa de compra não precisar saber de onde a
+   * informação veio nem buscar nada no cliente.
+   */
+  seloInformativo?: React.ReactNode;
+
   // Modalidades
   modalidades?: Array<{
     type: string;
@@ -200,6 +207,7 @@ export function BuyBox({
   onRemoverCupom,
   retiradaLocal = null,
   allowsOwnDelivery = false,
+  seloInformativo = null,
   modalidadeAtiva,
   modoPreVisualizacao = false,
   mostrarFreteDemonstrativo = false,
@@ -1192,6 +1200,7 @@ export function BuyBox({
           ))}
         </div>
       )}
+      {seloInformativo}
     </div>
   );
 }

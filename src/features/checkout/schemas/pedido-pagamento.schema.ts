@@ -11,9 +11,25 @@ export const pedidoStatusCheckoutSchema = z.enum([
   "expired",
 ]);
 
-export const pagamentoGatewayCheckoutSchema = z.enum(["stripe", "efibank"]);
+/**
+ * Inclui "manual": pagamento na entrega usa esse canal. Sem ele, qualquer filtro ou
+ * validação baseada neste schema passaria a excluir silenciosamente os pedidos pagos
+ * no recebimento.
+ */
+export const pagamentoGatewayCheckoutSchema = z.enum([
+  "stripe",
+  "efibank",
+  "manual",
+]);
 
-export const pagamentoMetodoCheckoutSchema = z.enum(["cartao", "pix"]);
+export const pagamentoMetodoCheckoutSchema = z.enum([
+  "cartao",
+  "pix",
+  "dinheiro",
+  "pix_na_entrega",
+  "debito_entrega",
+  "credito_entrega",
+]);
 
 export const pagamentoStatusCheckoutSchema = z.enum([
   "pending",

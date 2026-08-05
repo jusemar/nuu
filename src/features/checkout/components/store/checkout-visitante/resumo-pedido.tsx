@@ -1,6 +1,7 @@
-import { Lock, ShieldCheck, Check } from "lucide-react";
+import { Check,Lock, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
+
 import { formatarPrecoCarrinho, type ItemCarrinho } from "@/features/carrinho";
 import type { ResultadoCalcularPreviaTotaisPedido } from "@/features/checkout/queries/previa-totais/calcular-previa-totais-pedido";
 import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
@@ -14,8 +15,11 @@ import { OpcoesPagamento } from "./opcoes-pagamento";
 type ResumoPedidoProps = {
   resumoCheckout: ResumoCheckoutCalculado | null;
   itens: ItemCarrinho[];
-  formaPagamento: "pix" | "cartao";
+  formaPagamento: CheckoutVisitanteSchema["formaPagamento"];
   parcelasCartao?: number;
+  formaPagamentoNaEntrega?: CheckoutVisitanteSchema["formaPagamentoNaEntrega"];
+  precisaTroco?: boolean;
+  trocoParaEmCentavos?: number;
   carregandoPagamento: boolean;
   cupom: string;
   register: UseFormRegister<CheckoutVisitanteSchema>;
@@ -35,6 +39,9 @@ export function ResumoPedido({
   itens,
   formaPagamento,
   parcelasCartao = 1,
+  formaPagamentoNaEntrega,
+  precisaTroco,
+  trocoParaEmCentavos,
   carregandoPagamento,
   register,
   setValue,
@@ -88,6 +95,9 @@ export function ResumoPedido({
         <OpcoesPagamento
           formaPagamento={formaPagamento}
           parcelasCartao={parcelasCartao}
+          formaPagamentoNaEntrega={formaPagamentoNaEntrega}
+          precisaTroco={precisaTroco}
+          trocoParaEmCentavos={trocoParaEmCentavos}
           resumoCheckout={resumoCheckout}
           register={register}
           setValue={setValue}

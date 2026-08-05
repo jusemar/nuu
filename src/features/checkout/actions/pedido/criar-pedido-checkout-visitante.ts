@@ -9,12 +9,19 @@ import {
   checkoutPedidoHistoricosTable,
   checkoutPedidoItensTable,
   checkoutPedidoLogisticasTable,
+  checkoutPedidoPagamentoEntregaTable,
   checkoutPedidosTable,
   productTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
+import {
+  avaliarConsistenciaTrocoPedido,
+  type FormaPagamentoNaEntrega,
+  type ResultadoAvaliacaoPagamentoNaEntrega,
+} from "@/features/pagamento-na-entrega";
+import { avaliarPagamentoNaEntregaComBanco } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-checkout";
 import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
@@ -53,8 +60,99 @@ type LinhaNumeroPedido = {
   numeroPedido: string;
 };
 
-function resolverGatewayPagamento(formaPagamento: "pix" | "cartao") {
-  return formaPagamento === "pix" ? "efibank" : "stripe";
+/**
+ * Reconstrói, a partir do banco, o retorno de um pedido que já existia.
+ *
+ * Usado quando a chave de idempotência bate: o pedido não é recriado, e quem chamou recebe
+ * exatamente o mesmo formato de sempre, com `jaExistia` marcando que nada foi gravado
+ * agora. É esse sinalizador que evita reenviar e-mail e recriar cobrança no gateway.
+ */
+async function montarRetornoPedidoExistente(
+  executor: Parameters<Parameters<typeof dbTransacional.transaction>[0]>[0],
+  pedido: typeof checkoutPedidosTable.$inferSelect,
+) {
+  const [cliente] = await executor
+    .select()
+    .from(checkoutClientesTable)
+    .where(eq(checkoutClientesTable.id, pedido.clienteId))
+    .limit(1);
+
+  const [pagamento] = await executor
+    .select()
+    .from(checkoutPagamentosTable)
+    .where(eq(checkoutPagamentosTable.pedidoId, pedido.id))
+    .limit(1);
+
+  const itens = await executor
+    .select()
+    .from(checkoutPedidoItensTable)
+    .where(eq(checkoutPedidoItensTable.pedidoId, pedido.id));
+
+  if (!cliente || !pagamento) {
+    throw new Error("Pedido existente incompleto para reaproveitamento.");
+  }
+
+  return {
+    jaExistia: true as const,
+    clienteId: pedido.clienteId,
+    enderecoId: pedido.enderecoId,
+    pedidoId: pedido.id,
+    pagamentoId: pagamento.id,
+    numeroPedido: pedido.numeroPedido,
+    status: pedido.status,
+    pagamentoStatus: pagamento.status,
+    totalEmCentavos: pedido.totalEmCentavos,
+    subtotalEmCentavos: pedido.subtotalEmCentavos,
+    freteEmCentavos: pedido.freteEmCentavos,
+    descontoEmCentavos: pedido.descontoEmCentavos,
+    nomeCliente: cliente.nome,
+    emailCliente: cliente.email,
+    documentoCliente: cliente.documento,
+    pagamentoExistente: pagamento,
+    itens: itens.map((item) => ({
+      nome: item.nomeProduto,
+      quantidade: item.quantidade,
+      precoUnitarioEmCentavos: item.precoUnitarioEmCentavos,
+      totalEmCentavos: item.totalEmCentavos,
+    })),
+  };
+}
+
+type FormaPagamentoCheckout = CheckoutVisitanteSchema["formaPagamento"];
+
+/**
+ * Canal de liquidação de cada forma.
+ *
+ * `manual` não é um gateway de verdade: o dinheiro entra na mão do entregador e um admin
+ * dá baixa depois. É esse valor que distingue, em consulta, um pedido pago na entrega de
+ * um pedido online — sem precisar de status novo.
+ */
+function resolverGatewayPagamento(formaPagamento: FormaPagamentoCheckout) {
+  if (formaPagamento === "naEntrega") return "manual" as const;
+  return formaPagamento === "pix" ? ("efibank" as const) : ("stripe" as const);
+}
+
+/**
+ * Qual tabela de preço usar ao montar os itens.
+ *
+ * Pagar na entrega não tem acréscimo de gateway, então usa o preço do PIX. Repassar o
+ * preço do cartão seria cobrar juros de uma maquininha que a loja não opera.
+ */
+function resolverFormaPagamentoParaPreco(
+  formaPagamento: FormaPagamentoCheckout,
+): "pix" | "cartao" {
+  return formaPagamento === "cartao" ? "cartao" : "pix";
+}
+
+/** Método gravado em `checkout_pagamentos.metodo`. */
+function resolverMetodoPagamento(dados: CheckoutVisitanteSchema) {
+  if (dados.formaPagamento !== "naEntrega") return dados.formaPagamento;
+
+  if (dados.formaPagamentoNaEntrega === undefined) {
+    throw new Error("Escolha como vai pagar na entrega.");
+  }
+
+  return dados.formaPagamentoNaEntrega;
 }
 
 function montarRetornoPedidoCheckout(
@@ -102,6 +200,26 @@ export async function criarPedidoCheckoutVisitante(data: unknown) {
     usuarioId: sessao?.usuario.id ?? null,
   });
 
+  // Retry da mesma chave: o pedido já existia, então nada foi gravado agora. Reenviar
+  // e-mail ou recriar cobrança faria o cliente receber tudo em duplicidade.
+  if (pedidoCriado.jaExistia) {
+    const pagamento = pedidoCriado.pagamentoExistente;
+
+    if (pagamento?.gateway === "efibank" && pagamento.qrCode) {
+      return {
+        ...montarRetornoPedidoCheckout(pedidoCriado),
+        pix: {
+          txid: pagamento.pixTxid ?? "",
+          qrCode: pagamento.qrCode,
+          copiaECola: pagamento.copiaECola ?? "",
+          expiresAt: (pagamento.expiresAt ?? new Date()).toISOString(),
+        },
+      };
+    }
+
+    return montarRetornoPedidoCheckout(pedidoCriado);
+  }
+
   await enviarEmailPedidoRecebido({
     numeroPedido: pedidoCriado.numeroPedido,
     nomeCliente: pedidoCriado.nomeCliente,
@@ -112,6 +230,12 @@ export async function criarPedidoCheckoutVisitante(data: unknown) {
     totalEmCentavos: pedidoCriado.totalEmCentavos,
     itens: pedidoCriado.itens,
   });
+
+  // Pagamento na entrega não passa por gateway nenhum: não há cobrança a criar, não há
+  // QR Code, não há sessão de cartão. O pedido nasce pendente e a baixa é manual.
+  if (dados.formaPagamento === "naEntrega") {
+    return montarRetornoPedidoCheckout(pedidoCriado);
+  }
 
   if (dados.formaPagamento === "cartao") {
     try {
@@ -259,7 +383,15 @@ type CriarPedidoCheckoutVisitanteInternoParams = {
   usuarioId: string | null;
 };
 
-async function criarPedidoCheckoutVisitanteInterno({
+/**
+ * Núcleo transacional da criação do pedido.
+ *
+ * Exportado para poder ser exercitado fora de uma requisição HTTP. A action pública chama
+ * `headers()` (para ler a sessão), o que só funciona dentro do escopo de request do Next —
+ * então testar por ela impediria verificar justamente a parte crítica: a reavaliação da
+ * elegibilidade e a gravação, que vivem aqui.
+ */
+export async function criarPedidoCheckoutVisitanteInterno({
   dados,
   email,
   documento,
@@ -268,6 +400,30 @@ async function criarPedidoCheckoutVisitanteInterno({
   usuarioId,
 }: CriarPedidoCheckoutVisitanteInternoParams) {
   return dbTransacional.transaction(async (tx) => {
+    /**
+     * Primeira camada de idempotência: a mesma chave já criou pedido?
+     *
+     * Sem isto, um duplo clique gera dois pedidos. Com PIX o estrago é contido — o segundo
+     * expira sozinho. Com pagamento na entrega são dois pedidos válidos, e alguém entrega
+     * a mercadoria duas vezes.
+     *
+     * Devolver o pedido existente, em vez de erro, é o comportamento correto para um
+     * retry: do ponto de vista de quem chamou, a operação teve sucesso — e teve mesmo.
+     */
+    if (dados.chaveIdempotencia) {
+      const [pedidoExistente] = await tx
+        .select()
+        .from(checkoutPedidosTable)
+        .where(
+          eq(checkoutPedidosTable.chaveIdempotencia, dados.chaveIdempotencia),
+        )
+        .limit(1);
+
+      if (pedidoExistente) {
+        return await montarRetornoPedidoExistente(tx, pedidoExistente);
+      }
+    }
+
     const configuracaoPagamento = await buscarConfiguracaoPagamentoAtiva();
     const produtos = await tx.query.productTable.findMany({
       where: inArray(productTable.id, produtosIds),
@@ -291,7 +447,7 @@ async function criarPedidoCheckoutVisitanteInterno({
       return montarSnapshotItemPedidoCheckout({
         item,
         produto,
-        formaPagamento: dados.formaPagamento,
+        formaPagamento: resolverFormaPagamentoParaPreco(dados.formaPagamento),
         configuracaoPagamento,
       });
     });
@@ -426,6 +582,86 @@ async function criarPedidoCheckoutVisitanteInterno({
       },
     };
 
+    /**
+     * Reavaliação vinculante do pagamento na entrega.
+     *
+     * Acontece aqui dentro, na mesma transação que grava o pedido, e a partir de dados que
+     * o servidor acabou de produzir:
+     *
+     * - o serviço de entrega vem de `revalidacaoFrete.snapshotFrete`, nunca do carrinho —
+     *   o carrinho mora no localStorage e o usuário consegue editar o campo `servico`;
+     * - o total é `totais.totalEmCentavos`, o oficial recém-calculado, não o exibido na tela;
+     * - produto, variante e modalidade são relidos do banco pelo adaptador.
+     *
+     * Nada do que o frontend afirmou sobre elegibilidade é considerado. A avaliação feita
+     * no Bloco 6 servia para exibir a opção; esta é a que autoriza.
+     */
+    let avaliacaoNaEntrega: ResultadoAvaliacaoPagamentoNaEntrega | null = null;
+
+    if (dados.formaPagamento === "naEntrega") {
+      avaliacaoNaEntrega = await avaliarPagamentoNaEntregaComBanco(
+        {
+          contexto: "checkout",
+          itens: revalidacaoFrete.snapshotFrete.itens.map((item) => ({
+            itemCarrinhoId: item.itemCarrinhoId,
+            produtoId: item.produtoId,
+            varianteId: item.varianteId,
+            // CUIDADO com a colisão de nomes: `item.modalidade` no snapshot de frete é a
+            // modalidade de ENTREGA ("entrega-propria", "retirada", "frenet"), não a
+            // modalidade comercial ("stock", "pre_sale"). A comercial só existe no item do
+            // carrinho — e por vir do cliente, o carregador do contexto a confere contra
+            // `product_pricing` antes de repassá-la ao motor. Valor forjado não passa.
+            modalidadeInformada:
+              dados.itens.find((linha) => linha.id === item.itemCarrinhoId)
+                ?.modalidadeTipo ?? null,
+            frete: {
+              provedor: item.provedor,
+              servico: item.servico,
+              cepCotado: revalidacaoFrete.snapshotFrete.cep,
+            },
+          })),
+          totalPedidoEmCentavos: totais.totalEmCentavos,
+          cepEntrega: dados.cep,
+        },
+        tx,
+      );
+
+      if (!avaliacaoNaEntrega.elegivel) {
+        throw new Error(
+          avaliacaoNaEntrega.motivos[0]?.mensagem ??
+            "Pagamento na entrega indisponível para este pedido.",
+        );
+      }
+
+      const formaEscolhida = resolverMetodoPagamento(dados);
+
+      // A forma tem de estar entre as que o motor liberou AGORA. O teto de dinheiro, por
+      // exemplo, pode ter derrubado "dinheiro" entre a exibição e a finalização.
+      if (
+        !avaliacaoNaEntrega.formasPermitidas.includes(
+          formaEscolhida as FormaPagamentoNaEntrega,
+        )
+      ) {
+        throw new Error(
+          "A forma de pagamento na entrega escolhida não está disponível para este pedido.",
+        );
+      }
+
+      const consistenciaTroco = avaliarConsistenciaTrocoPedido({
+        formaEscolhida: formaEscolhida as FormaPagamentoNaEntrega,
+        precisaTroco: dados.precisaTroco ?? false,
+        trocoParaEmCentavos: dados.trocoParaEmCentavos ?? null,
+        valorAReceberEmCentavos: totais.totalEmCentavos,
+        totalAtualDoPedidoEmCentavos: totais.totalEmCentavos,
+      });
+
+      if (!consistenciaTroco.consistente) {
+        throw new Error(
+          consistenciaTroco.problemas[0]?.mensagem ?? "Troco inválido.",
+        );
+      }
+    }
+
     if (totais.totalEmCentavos <= 0) {
       throw new Error("Total do checkout inválido");
     }
@@ -516,6 +752,7 @@ async function criarPedidoCheckoutVisitanteInterno({
         .insert(checkoutPedidosTable)
         .values({
           numeroPedido,
+          chaveIdempotencia: dados.chaveIdempotencia ?? null,
           clienteId: cliente.id,
           enderecoId: endereco.id,
           status: "pending",
@@ -563,13 +800,42 @@ async function criarPedidoCheckoutVisitanteInterno({
       }),
     );
 
+    // Snapshot da decisão, congelado junto do pedido.
+    //
+    // Congelar em vez de recalcular na leitura porque a configuração muda com o tempo: se
+    // o gestor baixar o teto de dinheiro amanhã, um pedido criado hoje dentro da regra
+    // antiga continua legítimo — e o admin precisa enxergar qual regra o autorizou.
+    if (dados.formaPagamento === "naEntrega" && avaliacaoNaEntrega !== null) {
+      const formaEscolhida = resolverMetodoPagamento(
+        dados,
+      ) as FormaPagamentoNaEntrega;
+
+      await tx.insert(checkoutPedidoPagamentoEntregaTable).values({
+        pedidoId: pedido.id,
+        formaEscolhida,
+        servicoFreteId: avaliacaoNaEntrega.servico?.servicoFreteId ?? null,
+        // Denormalizado: sobrevive à exclusão do serviço e evita join na leitura.
+        servicoIdentificador: avaliacaoNaEntrega.servico?.identificador ?? "",
+        valorAReceberEmCentavos: totais.totalEmCentavos,
+        precisaTroco: dados.precisaTroco ?? false,
+        trocoParaEmCentavos: dados.precisaTroco
+          ? (dados.trocoParaEmCentavos ?? null)
+          : null,
+        observacoesCliente:
+          avaliacaoNaEntrega.regrasAplicadas?.observacoesCliente ?? null,
+        snapshotElegibilidade: avaliacaoNaEntrega,
+      });
+    }
+
     const pagamento = (
       await tx
         .insert(checkoutPagamentosTable)
         .values({
           pedidoId: pedido.id,
           gateway: gatewayPagamento,
-          metodo: dados.formaPagamento,
+          metodo: resolverMetodoPagamento(dados),
+          // "pending" também aqui: o dinheiro só entra na entrega. A baixa é manual e
+          // acontece no bloco seguinte — este bloco não contabiliza recebimento.
           status: "pending",
           valorEmCentavos: totais.totalEmCentavos,
           providerResponse: null,
@@ -593,6 +859,8 @@ async function criarPedidoCheckoutVisitanteInterno({
     });
 
     return {
+      jaExistia: false as const,
+      pagamentoExistente: null,
       clienteId: cliente.id,
       enderecoId: endereco.id,
       pedidoId: pedido.id,

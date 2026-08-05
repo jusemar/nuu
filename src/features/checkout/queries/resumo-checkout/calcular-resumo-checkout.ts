@@ -5,6 +5,7 @@ import { inArray } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
 import type { ItemCarrinho } from "@/features/carrinho";
+import { avaliarPagamentoNaEntregaComBanco } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-checkout";
 import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
@@ -24,6 +25,11 @@ import type { ResumoCheckoutCalculado } from "../../types/checkout.types";
 type CalcularResumoCheckoutParams = {
   itens: ItemCarrinho[];
   cupom?: string;
+  /**
+   * CEP digitado no checkout. Só chega aqui quando está completo — ver o efeito em
+   * `checkout-visitante.tsx`, que evita recalcular a cada tecla.
+   */
+  cepEntrega?: string | null;
 };
 
 const configuracaoVisualModalidade: Record<
@@ -78,6 +84,7 @@ function obterTituloModalidade({
 export async function calcularResumoCheckout({
   itens,
   cupom,
+  cepEntrega = null,
 }: CalcularResumoCheckoutParams): Promise<ResumoCheckoutCalculado | null> {
   if (itens.length === 0) {
     return null;
@@ -251,6 +258,40 @@ export async function calcularResumoCheckout({
     configuracao: configuracaoPagamento,
   });
 
+  // Avaliação de pagamento na entrega. Roda DEPOIS dos totais porque a faixa de valor e o
+  // teto de dinheiro dependem do total já calculado.
+  //
+  // A base é o total do PIX: pagar na entrega não tem acréscimo de gateway, então cobrar o
+  // valor do cartão seria cobrar juros de uma maquininha que a loja não usa.
+  //
+  // O frete vem do carrinho, que é editável pelo usuário — por isso este resultado é só
+  // exibição e carrega `exigeRevalidacao`. A decisão vinculante é refeita na criação do
+  // pedido, a partir do snapshot produzido pelo servidor.
+  const avaliacaoNaEntrega = await avaliarPagamentoNaEntregaComBanco({
+    // "carrinho" e não "checkout", ainda que isto rode na página de checkout: o contexto
+    // descreve a QUALIDADE DA FONTE, não a tela. O frete aqui vem do carrinho, que mora no
+    // localStorage e o usuário consegue editar. Declarar "checkout" faria o motor tratar a
+    // decisão como final e devolver `exigeRevalidacao: false` — exatamente a garantia que
+    // não temos. Quem passa "checkout" é a criação do pedido, com o snapshot do servidor.
+    contexto: "carrinho",
+    itens: itens.map((item) => ({
+      itemCarrinhoId: item.id,
+      produtoId: item.produtoId,
+      varianteId: item.produtoVarianteId ?? null,
+      modalidadeInformada: item.modalidadeTipo ?? null,
+      frete:
+        item.freteEscolhido === undefined
+          ? null
+          : {
+              provedor: item.freteEscolhido.id,
+              servico: item.freteEscolhido.servico ?? "",
+              cepCotado: item.freteEscolhido.cep ?? null,
+            },
+    })),
+    totalPedidoEmCentavos: totaisPix.totalEmCentavos,
+    cepEntrega,
+  });
+
   return {
     itens: itensCalculados,
     pagamentos: {
@@ -269,10 +310,23 @@ export async function calcularResumoCheckout({
         total: formatarPrecoEmReais(totaisCartao.totalEmCentavos),
         parcelamentos: parcelamentosCartao,
       },
+      naEntrega: {
+        ativo: avaliacaoNaEntrega.elegivel,
+        totalEmCentavos: totaisPix.totalEmCentavos,
+        total: formatarPrecoEmReais(totaisPix.totalEmCentavos),
+        formasPermitidas: avaliacaoNaEntrega.formasPermitidas,
+        motivos: avaliacaoNaEntrega.motivos,
+        observacoesCliente:
+          avaliacaoNaEntrega.regrasAplicadas?.observacoesCliente ?? null,
+        exigeTroco: avaliacaoNaEntrega.limites.exigeTroco,
+        exigeRevalidacao: avaliacaoNaEntrega.exigeRevalidacao,
+      },
     },
     totaisPorFormaPagamento: {
       pix: totaisPix,
       cartao: totaisCartao,
+      // Mesma base do PIX, pelo mesmo motivo: sem acréscimo de gateway.
+      naEntrega: totaisPix,
     },
   };
 }

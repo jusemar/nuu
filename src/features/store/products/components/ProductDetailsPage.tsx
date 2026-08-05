@@ -102,6 +102,8 @@ interface ProductDetailProps {
   modoPreVisualizacao?: boolean;
   /** Legado temporário da composição anterior, preservado sem uso no layout aprovado. */
   conteudoComplementar?: ReactNode;
+  /** Selo de pagamento na entrega, renderizado no servidor e recebido pronto. */
+  seloPagamentoNaEntrega?: React.ReactNode;
   produtosRelacionados?: ProdutoRelacionadoPdp[];
 }
 
@@ -116,6 +118,7 @@ export function ProductDetail({
   precosCalculadosPorVariante,
   modoPreVisualizacao = false,
   conteudoComplementar,
+  seloPagamentoNaEntrega,
   produtosRelacionados,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
@@ -526,6 +529,7 @@ export function ProductDetail({
             }
             retiradaLocal={retiradaLocal}
             allowsOwnDelivery={!!product.allowsOwnDelivery}
+            seloInformativo={seloPagamentoNaEntrega}
             cupomAplicado={cupomAplicado}
             onAplicarCupom={aplicarCupom}
             onRemoverCupom={removerCupom}
@@ -648,6 +652,7 @@ export function ProductDetail({
           selectedVariantLabel={rotuloVarianteSelecionada}
           retiradaLocal={retiradaLocal}
           allowsOwnDelivery={!!product.allowsOwnDelivery}
+          seloInformativo={seloPagamentoNaEntrega}
           cupomAplicado={cupomAplicado}
           onAplicarCupom={aplicarCupom}
           onRemoverCupom={removerCupom}
@@ -841,6 +846,7 @@ export function ProductDetail({
               selectedVariantLabel={rotuloVarianteSelecionada}
               retiradaLocal={retiradaLocal}
               allowsOwnDelivery={!!product.allowsOwnDelivery}
+              seloInformativo={seloPagamentoNaEntrega}
               // Cupom e callbacks
               cupomAplicado={cupomAplicado}
               onAplicarCupom={aplicarCupom}

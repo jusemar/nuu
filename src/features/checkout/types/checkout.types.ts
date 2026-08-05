@@ -1,4 +1,9 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+// Tipos puros, sem `server-only`: podem ser importados por componente client sem risco.
+import type {
+  FormaPagamentoNaEntrega,
+  MotivoPagamentoNaEntrega,
+} from "@/features/pagamento-na-entrega";
 import type { ParcelamentoCartaoCalculado } from "@/features/precificacao/client";
 
 export type DadosIdentificacaoCheckout = {
@@ -102,9 +107,39 @@ export type ResumoCheckoutCalculado = {
       total: string;
       parcelamentos: ParcelamentoCartaoCalculado[];
     };
+    /**
+     * Pagamento na entrega.
+     *
+     * Diferente de PIX e cartão, `ativo` aqui não é uma configuração: é o resultado do
+     * motor de elegibilidade, que depende do produto, do serviço de entrega, do valor e
+     * do endereço. Por isso vem acompanhado dos motivos — a interface precisa conseguir
+     * dizer POR QUE não está disponível.
+     *
+     * `exigeRevalidacao` é sempre verdadeiro aqui: este resumo é exibição. A decisão que
+     * autoriza o pedido é refeita no servidor, na transação de criação, a partir do
+     * snapshot de frete — nunca a partir do carrinho, que o usuário consegue editar.
+     */
+    naEntrega: {
+      ativo: boolean;
+      totalEmCentavos: number;
+      total: string;
+      formasPermitidas: FormaPagamentoNaEntrega[];
+      motivos: MotivoPagamentoNaEntrega[];
+      observacoesCliente: string | null;
+      exigeTroco: boolean;
+      exigeRevalidacao: boolean;
+    };
   };
   totaisPorFormaPagamento: {
     pix: TotaisCheckout;
     cartao: TotaisCheckout;
+    /**
+     * Base de valor igual à do PIX: pagar na entrega não tem acréscimo de gateway.
+     *
+     * A chave existe desde já para que, quando o Bloco 7 ampliar `formaPagamento`, o
+     * acesso dinâmico `totaisPorFormaPagamento[formaPagamento]` não devolva `undefined`
+     * em tempo de execução.
+     */
+    naEntrega: TotaisCheckout;
   };
 };

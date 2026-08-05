@@ -1,4 +1,4 @@
-import { Banknote, PowerOff, TriangleAlert } from "lucide-react";
+import { Banknote, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 
 import type { PainelPagamentoNaEntregaAdmin } from "../../queries/admin/listar-configuracoes-pagamento-na-entrega-servico";
+import { ChaveGeralPagamentoNaEntrega } from "./chave-geral-pagamento-na-entrega";
 import { FormularioConfiguracaoPagamentoNaEntregaServico } from "./formulario-configuracao-pagamento-na-entrega-servico";
 
 /** Resume, em uma frase, o que está valendo hoje para o serviço. */
@@ -50,23 +51,11 @@ export function PaginaPagamentoNaEntregaAdmin({
         </p>
       </header>
 
-      {/* Kill-switch global: contexto obrigatório. Sem ele, nada do que for configurado
-          abaixo chega ao cliente — e o gestor precisa saber disso antes de configurar. */}
-      {!painel.pagamentoNaEntregaAtivoGlobalmente && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          <PowerOff className="mt-0.5 size-4 shrink-0" />
-          <div className="space-y-1">
-            <p className="font-medium">
-              Pagamento na entrega está desligado na loja
-            </p>
-            <p>
-              As configurações abaixo podem ser preenchidas e salvas normalmente,
-              mas nenhuma opção aparece para o cliente enquanto a chave geral
-              estiver desligada.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Chave geral: contexto obrigatório antes de qualquer configuração abaixo, e o
+          mecanismo de ativação gradual da funcionalidade. */}
+      <ChaveGeralPagamentoNaEntrega
+        ativo={painel.pagamentoNaEntregaAtivoGlobalmente}
+      />
 
       {painel.linhas.length === 0 ? (
         <div className="flex items-start gap-3 rounded-lg border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">

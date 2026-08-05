@@ -1,6 +1,6 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PainelRecebimentoPagamentoEntrega } from "@/features/pagamento-na-entrega/components/admin/painel-recebimento-pagamento-entrega";
 
 import {
   PAGAMENTO_GATEWAY_LABEL,
@@ -260,6 +261,17 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
               statusAtual={pedido.status}
             />
           </Secao>
+
+          {/* Só aparece em pedido pago na entrega: a ausência do registro significa
+              pagamento online, e nesse caso nada muda na tela. */}
+          {pedido.pagamentoNaEntrega && (
+            <Secao titulo="Pagamento na entrega">
+              <PainelRecebimentoPagamentoEntrega
+                pedidoId={pedido.id}
+                pagamentoNaEntrega={pedido.pagamentoNaEntrega}
+              />
+            </Secao>
+          )}
 
           <Secao titulo="Logística">
             <FormularioLogisticaPedido

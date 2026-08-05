@@ -80,7 +80,31 @@ export type PedidoAdminDetalhe = {
     updatedAt: Date;
   } | null;
   logistica: PedidoAdminLogistica | null;
+  /** Só existe em pedido pago na entrega. `null` significa pagamento online. */
+  pagamentoNaEntrega: PedidoAdminPagamentoNaEntrega | null;
   historicos: PedidoAdminHistorico[];
+};
+
+/**
+ * O que o admin precisa ver e agir num pedido pago na entrega.
+ *
+ * `snapshotElegibilidade` é a decisão congelada na criação — é ela que responde "por que
+ * este pedido pôde ser pago na entrega", mesmo que a configuração tenha mudado depois.
+ */
+export type PedidoAdminPagamentoNaEntrega = {
+  id: string;
+  formaEscolhida: string;
+  servicoIdentificador: string;
+  valorAReceberEmCentavos: number;
+  precisaTroco: boolean;
+  trocoParaEmCentavos: number | null;
+  observacoesCliente: string | null;
+  /** Nulo enquanto o dinheiro não entrou. É o discriminador de "já foi dada baixa". */
+  recebidoEm: Date | null;
+  recebidoPorEmail: string | null;
+  valorRecebidoEmCentavos: number | null;
+  observacaoRecebimento: string | null;
+  snapshotElegibilidade: unknown;
 };
 
 export type PedidoAdminLogistica = {
@@ -93,6 +117,8 @@ export type PedidoAdminLogistica = {
 };
 
 export type PedidoAdminHistorico = {
+  /** E-mail do admin que executou a ação. Nulo em histórico de origem "system". */
+  usuarioAdminEmail?: string | null;
   id: string;
   tipo: PedidoHistoricoTipoCheckout;
   descricao: string;

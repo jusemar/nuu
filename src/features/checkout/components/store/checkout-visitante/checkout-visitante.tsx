@@ -120,7 +120,40 @@ export function CheckoutVisitante({
 
   const formaPagamento = form.watch("formaPagamento");
   const parcelasCartao = form.watch("parcelasCartao");
+  const formaPagamentoNaEntrega = form.watch("formaPagamentoNaEntrega");
+  const precisaTroco = form.watch("precisaTroco");
+  const trocoParaEmCentavos = form.watch("trocoParaEmCentavos");
   const cupom = form.watch("cupom");
+
+  /**
+   * CEP só quando está completo.
+   *
+   * O resumo é recalculado no servidor, e `cepEntrega` muda a cada tecla digitada. Depender
+   * do valor cru dispararia oito consultas para um CEP completo — sete delas com um CEP que
+   * nem existe. Reduzindo a um valor que só muda quando os 8 dígitos estão presentes, o
+   * recálculo acontece uma vez.
+   */
+  const cepEntregaCompleto = (() => {
+    const digitos = (cepEntrega ?? "").replace(/\D/g, "");
+    return digitos.length === 8 ? digitos : null;
+  })();
+
+  /**
+   * Chave de idempotência da tentativa de compra.
+   *
+   * Gerada uma única vez por montagem do checkout e reenviada em toda tentativa. Se o
+   * cliente clicar duas vezes, ou a rede repetir a requisição, o servidor reconhece a
+   * chave e devolve o pedido que já criou em vez de criar outro.
+   *
+   * `useState` com inicializador em vez de `useMemo`: `useMemo` pode ser descartado e
+   * recalculado pelo React, e uma chave nova anularia exatamente a proteção que ela existe
+   * para dar.
+   */
+  const [chaveIdempotencia] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
 
   useEffect(() => {
     // O formulário valida os dados; o carrinho continua sendo fonte do domínio carrinho.
@@ -139,6 +172,7 @@ export function CheckoutVisitante({
     calcularResumoCheckout({
       itens: carrinho.itens,
       cupom,
+      cepEntrega: cepEntregaCompleto,
     })
       .then((resumo) => {
         if (consultaCancelada) return;
@@ -177,7 +211,15 @@ export function CheckoutVisitante({
     return () => {
       consultaCancelada = true;
     };
-  }, [carrinho.itens, cupom, formaPagamento, form, parcelasCartao]);
+    // `cepEntregaCompleto` e não o CEP cru: ver o comentário na derivação acima.
+  }, [
+    carrinho.itens,
+    cepEntregaCompleto,
+    cupom,
+    formaPagamento,
+    form,
+    parcelasCartao,
+  ]);
 
   useEffect(() => {
     let consultaCancelada = false;
@@ -260,9 +302,21 @@ export function CheckoutVisitante({
       ...dados,
       cupom,
       itens: carrinho.itens,
+      chaveIdempotencia,
     })
       .then((pedido) => {
         setCarregandoPagamento(false);
+
+        // Pagamento na entrega não passa por gateway: o carrinho é limpo aqui, junto com
+        // o redirecionamento. Sem isto o cliente voltaria à loja com o carrinho cheio de
+        // itens que já viraram pedido.
+        if (dados.formaPagamento === "naEntrega") {
+          carrinho.limparCarrinho();
+          router.push(
+            `/checkout/success?pedido=${encodeURIComponent(pedido.numeroPedido)}`,
+          );
+          return;
+        }
 
         if ("pix" in pedido && pedido.pix) {
           carrinho.limparCarrinho();
@@ -467,6 +521,9 @@ export function CheckoutVisitante({
           <ResumoPedido
             carregandoPagamento={carregandoPagamento}
             formaPagamento={formaPagamento}
+            formaPagamentoNaEntrega={formaPagamentoNaEntrega}
+            precisaTroco={precisaTroco}
+            trocoParaEmCentavos={trocoParaEmCentavos}
             itens={carrinho.itens}
             parcelasCartao={parcelasCartao}
             resumoCheckout={resumoCheckout}

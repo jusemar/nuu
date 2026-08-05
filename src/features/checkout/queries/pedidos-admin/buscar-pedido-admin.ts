@@ -21,6 +21,7 @@ export async function buscarPedidoAdminPorId(
       itens: true,
       pagamentos: true,
       logistica: true,
+      pagamentoNaEntrega: true,
       historicos: {
         orderBy: [asc(checkoutPedidoHistoricosTable.createdAt)],
       },
@@ -102,11 +103,32 @@ export async function buscarPedidoAdminPorId(
           updatedAt: pedido.logistica.updatedAt,
         }
       : null,
+    pagamentoNaEntrega: pedido.pagamentoNaEntrega
+      ? {
+          id: pedido.pagamentoNaEntrega.id,
+          formaEscolhida: pedido.pagamentoNaEntrega.formaEscolhida,
+          servicoIdentificador: pedido.pagamentoNaEntrega.servicoIdentificador,
+          valorAReceberEmCentavos:
+            pedido.pagamentoNaEntrega.valorAReceberEmCentavos,
+          precisaTroco: pedido.pagamentoNaEntrega.precisaTroco,
+          trocoParaEmCentavos: pedido.pagamentoNaEntrega.trocoParaEmCentavos,
+          observacoesCliente: pedido.pagamentoNaEntrega.observacoesCliente,
+          recebidoEm: pedido.pagamentoNaEntrega.recebidoEm,
+          recebidoPorEmail: pedido.pagamentoNaEntrega.recebidoPorEmail,
+          valorRecebidoEmCentavos:
+            pedido.pagamentoNaEntrega.valorRecebidoEmCentavos,
+          observacaoRecebimento:
+            pedido.pagamentoNaEntrega.observacaoRecebimento,
+          snapshotElegibilidade:
+            pedido.pagamentoNaEntrega.snapshotElegibilidade,
+        }
+      : null,
     historicos: pedido.historicos.map((historico) => ({
       id: historico.id,
       tipo: historico.tipo,
       descricao: historico.descricao,
       origem: historico.origem,
+      usuarioAdminEmail: historico.usuarioAdminEmail,
       statusAnterior: historico.statusAnterior,
       statusNovo: historico.statusNovo,
       createdAt: historico.createdAt,

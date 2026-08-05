@@ -19,7 +19,15 @@ import type {
 } from "../../types/checkout.types";
 import { calcularResumoCheckout } from "../resumo-checkout/calcular-resumo-checkout";
 
-type FormaPagamentoPrevia = "pix" | "cartao";
+/**
+ * `na_entrega` entra aqui junto com a ampliação do enum em `checkout.schema.ts`.
+ *
+ * Os dois precisam andar juntos: `criar-pedido-checkout-visitante.ts` acessa
+ * `totaisPorFormaPagamento[dados.formaPagamento]` por indexação dinâmica. Ampliar o enum
+ * sem ampliar este registro devolveria `undefined` em tempo de execução, e o pedido seria
+ * gravado com totais zerados — sem nenhum erro aparecer.
+ */
+type FormaPagamentoPrevia = "pix" | "cartao" | "naEntrega";
 
 type EntradaCalcularPreviaTotaisPedido = {
   itens: ItemCarrinho[];
@@ -453,6 +461,20 @@ export async function calcularPreviaTotaisPedido({
           totaisCartao.descontoPromocionalEmCentavos +
           totaisCartao.descontoCupomEmCentavos +
           totaisCartao.descontoFretePromocionalEmCentavos,
+      },
+      // Mesma base do PIX: pagar na entrega não tem acréscimo de gateway, então repassar
+      // o valor do cartão seria cobrar juros de uma maquininha que a loja não opera.
+      naEntrega: {
+        ...totaisPix,
+        economiaEmCentavos:
+          totaisPix.descontoPromocionalEmCentavos +
+          totaisPix.descontoCupomEmCentavos +
+          totaisPix.descontoFretePromocionalEmCentavos +
+          Math.max(
+            totaisCartao.totalEstimadoEmCentavos -
+              totaisPix.totalEstimadoEmCentavos,
+            0,
+          ),
       },
     },
   };

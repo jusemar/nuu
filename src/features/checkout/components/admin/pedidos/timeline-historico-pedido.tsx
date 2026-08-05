@@ -41,6 +41,12 @@ export function TimelineHistoricoPedido({
             <p className="text-sm font-medium text-slate-900">
               {historico.descricao}
             </p>
+            {/* Quem executou. Ausente em histórico gerado pelo sistema. */}
+            {historico.usuarioAdminEmail && (
+              <p className="mt-0.5 text-xs text-slate-500">
+                por {historico.usuarioAdminEmail}
+              </p>
+            )}
             {(historico.statusAnterior || historico.statusNovo) && (
               <p className="text-xs text-slate-600">
                 {historico.statusAnterior

@@ -89,8 +89,26 @@ export const checkoutVisitanteSchema = z
     nomeVizinho: z.string().optional(),
     observacaoVizinho: z.string().max(300, "Use até 300 caracteres").optional(),
     cupom: z.string().optional(),
-    formaPagamento: z.enum(["pix", "cartao"]),
+    formaPagamento: z.enum(["pix", "cartao", "naEntrega"]),
     parcelasCartao: z.number().int().min(1).max(12).optional(),
+    /**
+     * Escolhas do pagamento na entrega. Só o cliente sabe com o que vai pagar e se precisa
+     * de troco — tudo mais (elegibilidade, valor, limites) é recalculado no servidor.
+     */
+    formaPagamentoNaEntrega: z
+      .enum(["dinheiro", "pix_na_entrega", "debito_entrega", "credito_entrega"])
+      .optional(),
+    precisaTroco: z.boolean().optional(),
+    /** Declaração do cliente: "vou pagar com uma nota de X". Em centavos. */
+    trocoParaEmCentavos: z.number().int().min(0).optional(),
+    /**
+     * Chave gerada no navegador ao abrir o checkout e reenviada em cada tentativa.
+     *
+     * É o que impede um duplo clique de virar dois pedidos entregáveis. Opcional para não
+     * quebrar clientes antigos que ainda não a enviam — nesse caso a proteção não vale,
+     * e é por isso que o campo deve virar obrigatório assim que o front estiver publicado.
+     */
+    chaveIdempotencia: z.string().trim().min(8).max(120).optional(),
     itens: z.array(itemCheckoutSchema).min(1, "Seu carrinho está vazio"),
   })
   .superRefine((dados, ctx) => {
@@ -99,6 +117,47 @@ export const checkoutVisitanteSchema = z
         code: z.ZodIssueCode.custom,
         path: ["nomeVizinho"],
         message: "Informe o nome do vizinho autorizado.",
+      });
+    }
+
+    if (dados.formaPagamento !== "naEntrega") {
+      // Fora do pagamento na entrega, esses campos não têm significado. Aceitá-los em
+      // silêncio deixaria um pedido PIX carregando "troco para R$ 200".
+      if (dados.formaPagamentoNaEntrega !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["formaPagamentoNaEntrega"],
+          message: "Forma de pagamento na entrega informada fora do contexto.",
+        });
+      }
+      return;
+    }
+
+    if (dados.formaPagamentoNaEntrega === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["formaPagamentoNaEntrega"],
+        message: "Escolha como vai pagar na entrega.",
+      });
+    }
+
+    // Invariantes do troco. A validação definitiva acontece no servidor, contra o total
+    // oficial; aqui é só o que dá para saber sem consultar o banco.
+    const ehDinheiro = dados.formaPagamentoNaEntrega === "dinheiro";
+
+    if (!ehDinheiro && (dados.precisaTroco || dados.trocoParaEmCentavos)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["precisaTroco"],
+        message: "Troco só se aplica a pagamento em dinheiro.",
+      });
+    }
+
+    if (ehDinheiro && dados.precisaTroco && !dados.trocoParaEmCentavos) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["trocoParaEmCentavos"],
+        message: "Informe para quanto precisa de troco.",
       });
     }
   });

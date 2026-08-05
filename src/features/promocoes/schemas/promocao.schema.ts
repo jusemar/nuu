@@ -356,7 +356,8 @@ export const filtrosExportacaoAuditoriaCuponsAdminSchema = z.object({
     .enum(["todos", "pending", "paid", "failed", "expired"])
     .optional(),
   codigoCupom: z.string().trim().optional(),
-  gateway: z.enum(["todos", "stripe", "efibank"]).optional(),
+  // "manual" incluído para que a auditoria de cupons enxergue pedidos pagos na entrega.
+  gateway: z.enum(["todos", "stripe", "efibank", "manual"]).optional(),
   inconsistencia: z
     .enum([
       "todas",

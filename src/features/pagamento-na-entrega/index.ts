@@ -1,11 +1,14 @@
 /**
  * Barrel da feature Pagamento na Entrega.
  *
- * Exporta o motor puro (Bloco 2) e a configuração administrativa por serviço (Bloco 3).
+ * Exporta o motor puro (Bloco 2), os contratos e a configuração por serviço (Bloco 3).
  *
- * A action e a query do admin NÃO são reexportadas aqui de propósito: ambas são
- * `server-only` e, puxadas por este barrel, contaminariam qualquer componente client que
- * importasse um tipo daqui. Quem precisa delas importa o caminho direto.
+ * As actions e queries NÃO são reexportadas aqui de propósito — inclusive as do Bloco 5.
+ * Todas são `server-only` e, puxadas por este barrel, contaminariam qualquer componente
+ * client que importasse apenas um tipo daqui. Quem precisa delas importa o caminho direto:
+ *
+ *   queries/avaliar-pagamento-na-entrega-checkout  → carrega do banco e roda o motor
+ *   queries/buscar-contexto-pagamento-na-entrega   → só o carregamento, para casos especiais
  */
 
 export {

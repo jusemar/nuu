@@ -35,7 +35,26 @@ function exigirTexto(valor: string | undefined, nome: string) {
   return texto;
 }
 
+/**
+ * Exige a escolha explícita do ambiente antes de qualquer conexão.
+ *
+ * Este script já recusava a URL principal como destino, mas passava a valer só depois de
+ * abrir conexões para comparar identidades. Aqui a recusa acontece antes de tudo, na mesma
+ * linguagem dos demais comandos locais — ver `scripts/lib/guarda-banco-local.ts`.
+ */
+function exigirAmbienteDescartavel() {
+  const ambiente = process.env.AMBIENTE_BANCO?.trim();
+
+  if (ambiente !== "descartavel") {
+    throw new Error(
+      'Defina AMBIENTE_BANCO=descartavel para operar os bancos descartáveis. Nenhuma consulta foi executada.',
+    );
+  }
+}
+
 function carregarUrls() {
+  exigirAmbienteDescartavel();
+
   const principal = lerAmbiente(".env");
   const clone = lerAmbiente(".env.baseline-clone.local");
   const vazio = lerAmbiente(".env.baseline-vazio.local");

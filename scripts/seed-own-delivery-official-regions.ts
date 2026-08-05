@@ -1,4 +1,8 @@
-import "dotenv/config";
+// Script local: NÃO carrega ambiente por conta própria.
+// Ele é lançado por `scripts/lib/executar-script-local.ts` (ver package.json), que valida
+// o destino, recusa o endpoint de produção e só então define DATABASE_URL. Importar
+// `dotenv/config` aqui reintroduziria o caminho implícito para `.env`, que guarda a URL
+// de produção — foi por ali que um seed local acabou consultando o banco principal.
 
 import { db } from "@/db/connection";
 import {

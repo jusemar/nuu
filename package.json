@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "bash scripts/executar-next-com-lock.sh dev",
     "build": "bash scripts/executar-next-com-lock.sh build",
-    "import:ceps": "tsx scripts/import-shipping-zip-addresses.ts",
-    "seed:own-delivery-regions": "tsx scripts/seed-own-delivery-official-regions.ts",
-    "seed:logistica-dados-iniciais": "tsx scripts/seed-dados-iniciais-logistica.ts",
-    "seed:admin-teste": "tsx src/features/autenticacao/scripts/criar-admin-teste.ts",
+    "import:ceps": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/import-shipping-zip-addresses.ts",
+    "seed:own-delivery-regions": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/seed-own-delivery-official-regions.ts",
+    "seed:logistica-dados-iniciais": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/seed-dados-iniciais-logistica.ts",
+    "seed:admin-teste": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts src/features/autenticacao/scripts/criar-admin-teste.ts",
     "start": "bash scripts/executar-next-com-lock.sh start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "manutencao:medidas-produtos": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/preencher-medidas-produtos-fisicos.ts",
+    "migrations:descartaveis": "AMBIENTE_BANCO=descartavel tsx scripts/executar-migrations-descartaveis.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

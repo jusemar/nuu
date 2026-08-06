@@ -16,7 +16,7 @@ import {
   registrarNaoRecebimentoPagamentoEntregaSchema,
   ROTULO_MOTIVO_NAO_RECEBIMENTO,
 } from "../../schemas/recebimento-pagamento-na-entrega.schema";
-import type { EstadoRecebimentoPagamentoEntrega } from "./confirmar-recebimento-pagamento-entrega-admin";
+import type { EstadoRecebimentoPagamentoEntrega } from "../../types/pagamento-na-entrega.types";
 
 /**
  * Registra que o pagamento na entrega não se concretizou.

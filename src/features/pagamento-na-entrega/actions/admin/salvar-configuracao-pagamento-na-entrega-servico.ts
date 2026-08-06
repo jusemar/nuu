@@ -16,16 +16,7 @@ import {
   extrairDadosFormularioConfiguracao,
   salvarConfiguracaoPagamentoNaEntregaServicoSchema,
 } from "../../schemas/configuracao-pagamento-na-entrega-servico.schema";
-
-export type EstadoSalvarConfiguracaoPagamentoNaEntrega = {
-  sucesso: boolean;
-  mensagem: string | null;
-  /** Identifica qual card respondeu, para a tela não piscar mensagem no serviço errado. */
-  servicoFreteId: string | null;
-};
-
-export const ESTADO_INICIAL_SALVAR_CONFIGURACAO_PAGAMENTO_NA_ENTREGA: EstadoSalvarConfiguracaoPagamentoNaEntrega =
-  { sucesso: false, mensagem: null, servicoFreteId: null };
+import type { EstadoSalvarConfiguracaoPagamentoNaEntrega } from "../../types/pagamento-na-entrega.types";
 
 /**
  * Salva a configuração de pagamento na entrega de um serviço de frete.

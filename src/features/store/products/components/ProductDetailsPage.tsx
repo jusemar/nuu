@@ -103,7 +103,12 @@ interface ProductDetailProps {
   /** Legado temporário da composição anterior, preservado sem uso no layout aprovado. */
   conteudoComplementar?: ReactNode;
   /** Selo de pagamento na entrega, renderizado no servidor e recebido pronto. */
-  seloPagamentoNaEntrega?: React.ReactNode;
+  /**
+   * Identificadores dos serviços de entrega própria que aceitam pagamento na entrega.
+   * Decidido no servidor pelo motor de elegibilidade; aqui só desce até o card da
+   * modalidade correspondente na buy-box.
+   */
+  servicosComPagamentoNaEntrega?: string[];
   produtosRelacionados?: ProdutoRelacionadoPdp[];
 }
 
@@ -118,7 +123,7 @@ export function ProductDetail({
   precosCalculadosPorVariante,
   modoPreVisualizacao = false,
   conteudoComplementar,
-  seloPagamentoNaEntrega,
+  servicosComPagamentoNaEntrega = [],
   produtosRelacionados,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
@@ -529,7 +534,7 @@ export function ProductDetail({
             }
             retiradaLocal={retiradaLocal}
             allowsOwnDelivery={!!product.allowsOwnDelivery}
-            seloInformativo={seloPagamentoNaEntrega}
+            servicosComPagamentoNaEntrega={servicosComPagamentoNaEntrega}
             cupomAplicado={cupomAplicado}
             onAplicarCupom={aplicarCupom}
             onRemoverCupom={removerCupom}
@@ -652,7 +657,7 @@ export function ProductDetail({
           selectedVariantLabel={rotuloVarianteSelecionada}
           retiradaLocal={retiradaLocal}
           allowsOwnDelivery={!!product.allowsOwnDelivery}
-          seloInformativo={seloPagamentoNaEntrega}
+          servicosComPagamentoNaEntrega={servicosComPagamentoNaEntrega}
           cupomAplicado={cupomAplicado}
           onAplicarCupom={aplicarCupom}
           onRemoverCupom={removerCupom}
@@ -846,7 +851,7 @@ export function ProductDetail({
               selectedVariantLabel={rotuloVarianteSelecionada}
               retiradaLocal={retiradaLocal}
               allowsOwnDelivery={!!product.allowsOwnDelivery}
-              seloInformativo={seloPagamentoNaEntrega}
+              servicosComPagamentoNaEntrega={servicosComPagamentoNaEntrega}
               // Cupom e callbacks
               cupomAplicado={cupomAplicado}
               onAplicarCupom={aplicarCupom}

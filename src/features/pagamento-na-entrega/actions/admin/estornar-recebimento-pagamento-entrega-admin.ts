@@ -13,7 +13,7 @@ import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 
 import { estornarRecebimentoPagamentoEntregaSchema } from "../../schemas/recebimento-pagamento-na-entrega.schema";
-import type { EstadoRecebimentoPagamentoEntrega } from "./confirmar-recebimento-pagamento-entrega-admin";
+import type { EstadoRecebimentoPagamentoEntrega } from "../../types/pagamento-na-entrega.types";
 
 /**
  * Desfaz uma baixa feita por engano, devolvendo o pedido ao estado pendente.

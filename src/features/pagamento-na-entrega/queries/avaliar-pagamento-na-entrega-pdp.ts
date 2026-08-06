@@ -2,23 +2,28 @@ import "server-only";
 
 import { db } from "@/db/connection";
 
-import { MENSAGEM_SELO_PDP_PAGAMENTO_NA_ENTREGA } from "../constants/pagamento-na-entrega.constants";
 import { avaliarElegibilidadePagamentoNaEntrega } from "../lib/avaliar-elegibilidade-pagamento-na-entrega";
 import type { FormaPagamentoNaEntrega } from "../types/pagamento-na-entrega.types";
 import { buscarContextoPagamentoNaEntrega } from "./buscar-contexto-pagamento-na-entrega";
 import type { ExecutorConsultaPagamentoNaEntrega } from "./carregar-configuracoes-pagamento-na-entrega";
 
 export type SeloPagamentoNaEntregaPdp = {
-  /** Só é `true` quando existe ao menos uma forma possível. */
-  exibir: boolean;
-  /** Texto aprovado, sem promessa de elegibilidade. */
-  mensagem: string;
+  /**
+   * Identificadores dos serviços de entrega própria (`servicos_frete.identificador`) que
+   * aceitam pagamento na entrega para este produto — por exemplo `entrega-propria-atual`
+   * ou `entrega-programada`.
+   *
+   * A informação é por serviço, e não do produto inteiro, porque o aviso vive dentro do
+   * card da modalidade na PDP: cada modalidade só anuncia o que ela própria aceita. Lista
+   * vazia significa nenhuma modalidade elegível e, portanto, nenhum aviso.
+   */
+  servicosComPagamentoNaEntrega: string[];
+  /** União das formas possíveis entre os serviços elegíveis. */
   formasPossiveis: FormaPagamentoNaEntrega[];
 };
 
 const SELO_OCULTO: SeloPagamentoNaEntregaPdp = {
-  exibir: false,
-  mensagem: MENSAGEM_SELO_PDP_PAGAMENTO_NA_ENTREGA,
+  servicosComPagamentoNaEntrega: [],
   formasPossiveis: [],
 };
 
@@ -79,6 +84,7 @@ export async function avaliarSeloPagamentoNaEntregaPdp(
 
   const avaliadoEm = new Date().toISOString();
   const formasPossiveis = new Set<FormaPagamentoNaEntrega>();
+  const servicosComPagamentoNaEntrega: string[] = [];
 
   for (const configuracao of contexto.configuracoesPorServico) {
     const resultado = avaliarElegibilidadePagamentoNaEntrega({
@@ -101,14 +107,17 @@ export async function avaliarSeloPagamentoNaEntregaPdp(
       avaliadoEm,
     });
 
+    // Nenhuma forma liberada significa que o produto, a variante, a modalidade ou a
+    // configuração deste serviço barram — e aí a modalidade não anuncia nada, em vez de
+    // anunciar negando.
+    if (resultado.formasPermitidas.length === 0) continue;
+
+    servicosComPagamentoNaEntrega.push(configuracao.servicoIdentificador);
     for (const forma of resultado.formasPermitidas) formasPossiveis.add(forma);
   }
 
   return {
-    // Nenhuma forma possível significa que o produto, a variante, a modalidade ou a
-    // configuração barram — e nesse caso o selo não aparece, em vez de aparecer negando.
-    exibir: formasPossiveis.size > 0,
-    mensagem: MENSAGEM_SELO_PDP_PAGAMENTO_NA_ENTREGA,
+    servicosComPagamentoNaEntrega,
     formasPossiveis: [...formasPossiveis],
   };
 }

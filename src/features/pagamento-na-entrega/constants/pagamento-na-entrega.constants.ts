@@ -1,5 +1,8 @@
 import type {
   CodigoMotivoPagamentoNaEntrega,
+  EstadoKillSwitchPagamentoNaEntrega,
+  EstadoRecebimentoPagamentoEntrega,
+  EstadoSalvarConfiguracaoPagamentoNaEntrega,
   FormaPagamentoNaEntrega,
   ModalidadeComercialCanonica,
 } from "../types/pagamento-na-entrega.types";
@@ -87,6 +90,33 @@ export const MENSAGEM_MOTIVO_PAGAMENTO_NA_ENTREGA: Record<
     "A disponibilidade será confirmada no checkout.",
 };
 
-/** Texto exato aprovado para o selo da página de produto. */
-export const MENSAGEM_SELO_PDP_PAGAMENTO_NA_ENTREGA =
-  "Pagamento na entrega disponível para formas de entrega própria selecionadas. A disponibilidade será confirmada no checkout.";
+/**
+ * Texto exato do indicador que aparece dentro do card da modalidade de entrega na PDP.
+ *
+ * Substituiu o aviso solto do topo da área comercial, que precisava explicar "para formas
+ * de entrega própria selecionadas" justamente por não estar ao lado de nenhuma delas. Com o
+ * indicador dentro do card, a modalidade é o próprio contexto e o texto pode ser curto.
+ */
+export const ROTULO_BADGE_PAGAMENTO_NA_ENTREGA =
+  "Pagamento na entrega disponível";
+
+// -----------------------------------------------------------------------------
+// Estados iniciais das Server Actions do admin
+// -----------------------------------------------------------------------------
+// Ficam aqui, e não junto das actions, porque um arquivo `"use server"` só pode exportar
+// funções async — exportar o objeto de estado inicial dali derruba a requisição em tempo de
+// execução. Os tipos correspondentes estão em `types/pagamento-na-entrega.types.ts`.
+
+/** Estado inicial da chave geral, antes de qualquer submissão. */
+export const ESTADO_INICIAL_KILL_SWITCH: EstadoKillSwitchPagamentoNaEntrega = {
+  sucesso: false,
+  mensagem: null,
+};
+
+/** Estado inicial do formulário de configuração por serviço. */
+export const ESTADO_INICIAL_SALVAR_CONFIGURACAO_PAGAMENTO_NA_ENTREGA: EstadoSalvarConfiguracaoPagamentoNaEntrega =
+  { sucesso: false, mensagem: null, servicoFreteId: null };
+
+/** Estado inicial das ações de baixa: confirmar, não receber e estornar. */
+export const ESTADO_INICIAL_RECEBIMENTO_PAGAMENTO_ENTREGA: EstadoRecebimentoPagamentoEntrega =
+  { sucesso: false, mensagem: null };

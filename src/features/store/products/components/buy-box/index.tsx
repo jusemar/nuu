@@ -16,6 +16,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
+import { BadgePagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/components/store/badge-pagamento-na-entrega-pdp";
 import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
 
@@ -92,11 +93,15 @@ interface BuyBoxProps {
   allowsOwnDelivery?: boolean;
 
   /**
-   * Bloco informativo renderizado no servidor e recebido pronto (ex.: o selo de pagamento
-   * na entrega). Vem como slot para a caixa de compra não precisar saber de onde a
-   * informação veio nem buscar nada no cliente.
+   * Identificadores dos serviços de entrega própria que aceitam pagamento na entrega
+   * (`entrega-propria-atual`, `entrega-programada`). Decidido no servidor pelo motor de
+   * elegibilidade e recebido pronto — a caixa de compra não busca nada no cliente e não
+   * reimplementa regra nenhuma, só marca o card da modalidade correspondente.
+   *
+   * Serviços de transportadora e a retirada nunca entram nesta lista: pagamento na entrega
+   * pressupõe entregador da própria loja recebendo o valor.
    */
-  seloInformativo?: React.ReactNode;
+  servicosComPagamentoNaEntrega?: string[];
 
   // Modalidades
   modalidades?: Array<{
@@ -207,7 +212,7 @@ export function BuyBox({
   onRemoverCupom,
   retiradaLocal = null,
   allowsOwnDelivery = false,
-  seloInformativo = null,
+  servicosComPagamentoNaEntrega = [],
   modalidadeAtiva,
   modoPreVisualizacao = false,
   mostrarFreteDemonstrativo = false,
@@ -287,6 +292,21 @@ export function BuyBox({
   const opcaoEntregaPropriaCotada = opcoesEntregaCotadas.find(
     (opcao) => opcao.provedor === "entrega-propria",
   );
+  /**
+   * O card desta modalidade deve anunciar pagamento na entrega?
+   *
+   * A dupla condição não é redundante: `provedor` garante que nenhuma transportadora nem a
+   * retirada exibam o indicador, e a lista — vinda do motor de elegibilidade no servidor —
+   * garante que só a modalidade efetivamente configurada o exiba. Basta uma das duas falhar
+   * para o indicador não aparecer.
+   */
+  const modalidadeAceitaPagamentoNaEntrega = (
+    provedor: string | undefined,
+    servico: string | undefined,
+  ) =>
+    provedor === "entrega-propria" &&
+    servico !== undefined &&
+    servicosComPagamentoNaEntrega.includes(servico);
   const resultadoEntregaPropriaEncontrado = resultadoDoCepAtual?.found
     ? resultadoDoCepAtual
     : null;
@@ -836,8 +856,8 @@ export function BuyBox({
                       </button>
                     </div>
                   ) : transportadoraSelecionada === "entrega-propria" ? (
-                    <div className="border-primary bg-primary-light relative flex items-center gap-2 rounded-lg border-[1.5px] p-2.5">
-                      <div className="text-text-primary flex-1 text-xs font-semibold">
+                    <div className="border-primary bg-primary-light relative flex flex-wrap items-center gap-2 rounded-lg border-[1.5px] p-2.5">
+                      <div className="text-text-primary min-w-0 flex-1 text-xs font-semibold">
                         Entrega rápida
                       </div>
                       <PrevisaoEntregaPropriaPdp
@@ -856,6 +876,14 @@ export function BuyBox({
                           rotuloGratis="Entrega rápida — GRÁTIS"
                         />
                       )}
+                      {modalidadeAceitaPagamentoNaEntrega(
+                        "entrega-propria",
+                        "entrega-propria-atual",
+                      ) && (
+                        <div className="basis-full">
+                          <BadgePagamentoNaEntregaPdp />
+                        </div>
+                      )}
                       <button
                         onClick={() => setTransportadoraSelecionada(null)}
                         className="border-surface-border text-text-hint hover:text-danger hover:border-danger absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-white text-[10px] transition-colors"
@@ -864,8 +892,8 @@ export function BuyBox({
                       </button>
                     </div>
                   ) : opcaoFrenetSelecionada ? (
-                    <div className="border-primary bg-primary-light relative flex items-center gap-2 rounded-lg border-[1.5px] p-2.5">
-                      <div className="text-text-primary flex-1 text-xs font-semibold">
+                    <div className="border-primary bg-primary-light relative flex flex-wrap items-center gap-2 rounded-lg border-[1.5px] p-2.5">
+                      <div className="text-text-primary min-w-0 flex-1 text-xs font-semibold">
                         {opcaoFrenetSelecionada.nome}
                       </div>
                       <div className="text-text-hint text-[11px]">
@@ -880,6 +908,14 @@ export function BuyBox({
                           opcaoFrenetSelecionada.freteGratisPromocionalAplicado
                         }
                       />
+                      {modalidadeAceitaPagamentoNaEntrega(
+                        opcaoFrenetSelecionada.provedor,
+                        opcaoFrenetSelecionada.servico,
+                      ) && (
+                        <div className="basis-full">
+                          <BadgePagamentoNaEntregaPdp />
+                        </div>
+                      )}
                       <button
                         onClick={() => setTransportadoraSelecionada(null)}
                         className="border-surface-border text-text-hint hover:text-danger hover:border-danger absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-white text-[10px] transition-colors"
@@ -973,6 +1009,16 @@ export function BuyBox({
                             rotuloGratis="Entrega rápida — GRÁTIS"
                           />
                         </div>
+                        {/* Linha própria do grid: na coluna estreita do meio o texto
+                            quebrava em três linhas no celular. */}
+                        {modalidadeAceitaPagamentoNaEntrega(
+                          "entrega-propria",
+                          "entrega-propria-atual",
+                        ) && (
+                          <div className="col-span-2 col-start-2">
+                            <BadgePagamentoNaEntregaPdp />
+                          </div>
+                        )}
                       </label>
                     ) : (
                       <div className="flex items-center gap-2 rounded-lg border-[1.5px] border-red-200 bg-red-50 p-2.5 sm:col-span-2">
@@ -1022,6 +1068,14 @@ export function BuyBox({
                             }
                           />
                         </div>
+                        {modalidadeAceitaPagamentoNaEntrega(
+                          opcao.provedor,
+                          opcao.servico,
+                        ) && (
+                          <div className="col-span-2 col-start-2">
+                            <BadgePagamentoNaEntregaPdp />
+                          </div>
+                        )}
                       </label>
                     ))}
                 </>
@@ -1200,7 +1254,6 @@ export function BuyBox({
           ))}
         </div>
       )}
-      {seloInformativo}
     </div>
   );
 }

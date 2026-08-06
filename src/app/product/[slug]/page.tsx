@@ -13,7 +13,6 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
-import { SeloPagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/components/store/selo-pagamento-na-entrega-pdp";
 import { avaliarSeloPagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-pdp";
 import {
   calcularPrecosProduto,
@@ -198,7 +197,7 @@ export default async function ProductPage({ params }: PageProps) {
       precosCalculadosPorModalidade={precosCalculadosPorModalidade}
       precosCalculadosPorVariante={precosCalculadosPorVariante}
       produtosRelacionados={produtosRelacionados}
-      seloPagamentoNaEntrega={<SeloPagamentoNaEntregaPdp selo={selo} />}
+      servicosComPagamentoNaEntrega={selo.servicosComPagamentoNaEntrega}
     />
   );
 }

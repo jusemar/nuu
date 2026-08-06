@@ -13,13 +13,11 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { PedidoAdminPagamentoNaEntrega } from "@/features/checkout/types/admin-pedidos.types";
 
-import {
-  confirmarRecebimentoPagamentoEntregaAdmin,
-  ESTADO_INICIAL_RECEBIMENTO_PAGAMENTO_ENTREGA,
-} from "../../actions/admin/confirmar-recebimento-pagamento-entrega-admin";
+import { confirmarRecebimentoPagamentoEntregaAdmin } from "../../actions/admin/confirmar-recebimento-pagamento-entrega-admin";
 import { estornarRecebimentoPagamentoEntregaAdmin } from "../../actions/admin/estornar-recebimento-pagamento-entrega-admin";
 import { registrarNaoRecebimentoPagamentoEntregaAdmin } from "../../actions/admin/registrar-nao-recebimento-pagamento-entrega-admin";
 import {
+  ESTADO_INICIAL_RECEBIMENTO_PAGAMENTO_ENTREGA,
   ORDEM_FORMAS_PAGAMENTO_NA_ENTREGA,
   ROTULO_FORMA_PAGAMENTO_NA_ENTREGA,
 } from "../../constants/pagamento-na-entrega.constants";

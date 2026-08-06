@@ -7,15 +7,7 @@ import { configuracoesPagamentoTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 
-export type EstadoKillSwitchPagamentoNaEntrega = {
-  sucesso: boolean;
-  mensagem: string | null;
-};
-
-export const ESTADO_INICIAL_KILL_SWITCH: EstadoKillSwitchPagamentoNaEntrega = {
-  sucesso: false,
-  mensagem: null,
-};
+import type { EstadoKillSwitchPagamentoNaEntrega } from "../../types/pagamento-na-entrega.types";
 
 /**
  * Liga ou desliga o pagamento na entrega na loja inteira.

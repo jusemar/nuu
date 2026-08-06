@@ -15,14 +15,7 @@ import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
 import { ROTULO_FORMA_PAGAMENTO_NA_ENTREGA } from "../../constants/pagamento-na-entrega.constants";
 import { confirmarRecebimentoPagamentoEntregaSchema } from "../../schemas/recebimento-pagamento-na-entrega.schema";
-
-export type EstadoRecebimentoPagamentoEntrega = {
-  sucesso: boolean;
-  mensagem: string | null;
-};
-
-export const ESTADO_INICIAL_RECEBIMENTO_PAGAMENTO_ENTREGA: EstadoRecebimentoPagamentoEntrega =
-  { sucesso: false, mensagem: null };
+import type { EstadoRecebimentoPagamentoEntrega } from "../../types/pagamento-na-entrega.types";
 
 /**
  * Dá baixa no dinheiro recebido na entrega.

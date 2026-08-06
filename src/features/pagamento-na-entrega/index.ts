@@ -13,10 +13,10 @@
 
 export {
   MENSAGEM_MOTIVO_PAGAMENTO_NA_ENTREGA,
-  MENSAGEM_SELO_PDP_PAGAMENTO_NA_ENTREGA,
   MODALIDADES_COMERCIAIS_SUPORTADAS_PADRAO,
   ORDEM_FORMAS_PAGAMENTO_NA_ENTREGA,
   PROVEDOR_ENTREGA_PROPRIA,
+  ROTULO_BADGE_PAGAMENTO_NA_ENTREGA,
   ROTULO_FORMA_PAGAMENTO_NA_ENTREGA,
 } from "./constants/pagamento-na-entrega.constants";
 export { avaliarConsistenciaTrocoPedido } from "./lib/avaliar-consistencia-troco-pedido";

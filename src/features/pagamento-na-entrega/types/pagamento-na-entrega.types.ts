@@ -227,3 +227,31 @@ export type ResultadoConsistenciaTrocoPedido = {
   /** Quanto o entregador precisa devolver. `null` quando não há troco a calcular. */
   trocoADevolverEmCentavos: number | null;
 };
+
+// -----------------------------------------------------------------------------
+// Contratos de estado das Server Actions do admin (useActionState)
+// -----------------------------------------------------------------------------
+// Estes tipos moram aqui, e não junto das actions, por uma restrição do Next.js: um arquivo
+// marcado com `"use server"` só pode exportar funções async. Exportar qualquer outra coisa
+// dele — inclusive o objeto de estado inicial — derruba a requisição com
+// `A "use server" file can only export async functions, found object`.
+
+/** Estado devolvido pela chave geral (liga/desliga o pagamento na entrega na loja). */
+export type EstadoKillSwitchPagamentoNaEntrega = {
+  sucesso: boolean;
+  mensagem: string | null;
+};
+
+/** Estado devolvido ao salvar a configuração de um serviço de entrega. */
+export type EstadoSalvarConfiguracaoPagamentoNaEntrega = {
+  sucesso: boolean;
+  mensagem: string | null;
+  /** Identifica qual card respondeu, para a tela não piscar mensagem no serviço errado. */
+  servicoFreteId: string | null;
+};
+
+/** Estado compartilhado pelas ações de baixa: confirmar, não receber e estornar. */
+export type EstadoRecebimentoPagamentoEntrega = {
+  sucesso: boolean;
+  mensagem: string | null;
+};

@@ -7,10 +7,8 @@ import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 
-import {
-  alternarKillSwitchPagamentoNaEntregaAdmin,
-  ESTADO_INICIAL_KILL_SWITCH,
-} from "../../actions/admin/alternar-kill-switch-pagamento-na-entrega-admin";
+import { alternarKillSwitchPagamentoNaEntregaAdmin } from "../../actions/admin/alternar-kill-switch-pagamento-na-entrega-admin";
+import { ESTADO_INICIAL_KILL_SWITCH } from "../../constants/pagamento-na-entrega.constants";
 
 function BotaoAlternar({ ativo }: { ativo: boolean }) {
   const { pending } = useFormStatus();

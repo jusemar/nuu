@@ -1,13 +1,12 @@
 import { Banknote, TriangleAlert } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 
 import type { PainelPagamentoNaEntregaAdmin } from "../../queries/admin/listar-configuracoes-pagamento-na-entrega-servico";
 import { ChaveGeralPagamentoNaEntrega } from "./chave-geral-pagamento-na-entrega";
@@ -66,18 +65,36 @@ export function PaginaPagamentoNaEntregaAdmin({
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-2">
+        /*
+          Accordion em vez de cards abertos lado a lado: com os dois formulários expandidos
+          a página ficava longa demais para operar. `type="single"` garante no máximo um
+          aberto; `collapsible` permite fechar o que está aberto e voltar ao estado inicial,
+          com tudo recolhido. Sem `defaultValue`, a página abre com os dois fechados.
+
+          O cabeçalho fechado precisa bastar para identificar o serviço sem expandir — por
+          isso mantém nome, identificador e o mesmo resumo de status que os cards traziam.
+          A seta de expansão já vem do `AccordionTrigger` do Design System.
+        */
+        <Accordion
+          type="single"
+          collapsible
+          className="divide-y rounded-lg border dark:border-zinc-800"
+        >
           {painel.linhas.map((linha) => (
-            <Card key={linha.servicoFreteId} className="flex flex-col">
-              <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base">
+            <AccordionItem
+              key={linha.servicoFreteId}
+              value={linha.servicoFreteId}
+              className="border-b-0 px-4"
+            >
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 pr-2">
+                  <div className="flex min-w-0 flex-col gap-0.5 text-left sm:flex-row sm:items-baseline sm:gap-2">
+                    <span className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
                       {linha.servicoNome}
-                    </CardTitle>
-                    <CardDescription className="font-mono text-xs">
+                    </span>
+                    <span className="truncate font-mono text-xs font-normal text-zinc-500 dark:text-zinc-400">
                       {linha.servicoIdentificador}
-                    </CardDescription>
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {!linha.servicoAtivo && (
@@ -88,13 +105,13 @@ export function PaginaPagamentoNaEntregaAdmin({
                     </Badge>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1">
+              </AccordionTrigger>
+              <AccordionContent>
                 <FormularioConfiguracaoPagamentoNaEntregaServico linha={linha} />
-              </CardContent>
-            </Card>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       )}
     </div>
   );

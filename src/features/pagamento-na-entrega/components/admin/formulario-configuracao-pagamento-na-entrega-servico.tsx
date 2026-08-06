@@ -13,11 +13,9 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
+import { salvarConfiguracaoPagamentoNaEntregaServico } from "../../actions/admin/salvar-configuracao-pagamento-na-entrega-servico";
 import {
   ESTADO_INICIAL_SALVAR_CONFIGURACAO_PAGAMENTO_NA_ENTREGA,
-  salvarConfiguracaoPagamentoNaEntregaServico,
-} from "../../actions/admin/salvar-configuracao-pagamento-na-entrega-servico";
-import {
   ORDEM_FORMAS_PAGAMENTO_NA_ENTREGA,
   ROTULO_FORMA_PAGAMENTO_NA_ENTREGA,
 } from "../../constants/pagamento-na-entrega.constants";

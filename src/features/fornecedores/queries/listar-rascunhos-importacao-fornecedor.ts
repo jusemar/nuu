@@ -14,6 +14,7 @@ import {
   extrairSecoesLojaRascunhoFornecedor,
   listarPendenciasRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 export type RascunhoImportacaoFornecedor = {
   id: string;
@@ -60,74 +61,93 @@ function extrairStagingId(dadosOrigemJson: unknown) {
 export async function listarRascunhosImportacaoFornecedor(
   importacaoId: string,
 ): Promise<RascunhoImportacaoFornecedor[]> {
-  const linhas = await db
-    .select({
-      id: produtoRascunhosTable.id,
-      fornecedorId: produtoRascunhosTable.fornecedorId,
-      codigoFornecedor: produtoRascunhosTable.codigoFornecedor,
-      nome: produtoRascunhosTable.nome,
-      descricao: produtoRascunhosTable.descricao,
-      categoriaId: produtoRascunhosTable.categoriaId,
-      categoriaNome: categoryTable.name,
-      marcaId: produtoRascunhosTable.marcaId,
-      marcaNome: marcaTable.nome,
-      ean: produtoRascunhosTable.ean,
-      ncm: produtoRascunhosTable.ncm,
-      precoFornecedor: produtoRascunhosTable.precoFornecedor,
-      precoLoja: produtoRascunhosTable.precoLoja,
-      estoqueFornecedor: produtoRascunhosTable.estoqueFornecedor,
-      peso: produtoRascunhosTable.peso,
-      altura: produtoRascunhosTable.altura,
-      largura: produtoRascunhosTable.largura,
-      comprimento: produtoRascunhosTable.comprimento,
-      imagens: produtoRascunhosTable.imagens,
-      dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
-      status: produtoRascunhosTable.status,
-    })
-    .from(produtoRascunhosTable)
-    .leftJoin(
-      categoryTable,
-      eq(produtoRascunhosTable.categoriaId, categoryTable.id),
-    )
-    .leftJoin(marcaTable, eq(produtoRascunhosTable.marcaId, marcaTable.id))
-    .where(
-      and(
-        eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
-        eq(produtoRascunhosTable.origemProvedor, "arquivo_excel"),
-        inArray(produtoRascunhosTable.status, [
-          "rascunho",
-          "pendente_conciliacao",
-          "pronto_para_publicar",
-        ]),
-        sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
-      ),
-    );
+  // As duas consultas são dependentes (a segunda usa os fornecedores da primeira), então
+  // ficam juntas na mesma leitura protegida: uma retentativa refaz o par inteiro e a lista
+  // de "já publicados" nunca é aplicada sobre rascunhos de outra tentativa.
+  const { linhas, vinculosAtivos } = await executarLeituraFornecedores(
+    {
+      etapa: "conciliacao:listar-rascunhos",
+      importacaoId,
+      mensagemAmigavel:
+        "Não foi possível carregar os itens da conciliação agora. Tente novamente em alguns segundos.",
+    },
+    async () => {
+      const linhasRascunho = await db
+        .select({
+          id: produtoRascunhosTable.id,
+          fornecedorId: produtoRascunhosTable.fornecedorId,
+          codigoFornecedor: produtoRascunhosTable.codigoFornecedor,
+          nome: produtoRascunhosTable.nome,
+          descricao: produtoRascunhosTable.descricao,
+          categoriaId: produtoRascunhosTable.categoriaId,
+          categoriaNome: categoryTable.name,
+          marcaId: produtoRascunhosTable.marcaId,
+          marcaNome: marcaTable.nome,
+          ean: produtoRascunhosTable.ean,
+          ncm: produtoRascunhosTable.ncm,
+          precoFornecedor: produtoRascunhosTable.precoFornecedor,
+          precoLoja: produtoRascunhosTable.precoLoja,
+          estoqueFornecedor: produtoRascunhosTable.estoqueFornecedor,
+          peso: produtoRascunhosTable.peso,
+          altura: produtoRascunhosTable.altura,
+          largura: produtoRascunhosTable.largura,
+          comprimento: produtoRascunhosTable.comprimento,
+          imagens: produtoRascunhosTable.imagens,
+          dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
+          status: produtoRascunhosTable.status,
+        })
+        .from(produtoRascunhosTable)
+        .leftJoin(
+          categoryTable,
+          eq(produtoRascunhosTable.categoriaId, categoryTable.id),
+        )
+        .leftJoin(marcaTable, eq(produtoRascunhosTable.marcaId, marcaTable.id))
+        .where(
+          and(
+            eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
+            eq(produtoRascunhosTable.origemProvedor, "arquivo_excel"),
+            inArray(produtoRascunhosTable.status, [
+              "rascunho",
+              "pendente_conciliacao",
+              "pronto_para_publicar",
+            ]),
+            sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
+          ),
+        );
 
-  const fornecedoresIds = Array.from(
-    new Set(
-      linhas
-        .map((linha) => linha.fornecedorId)
-        .filter((id): id is string => Boolean(id)),
-    ),
+      const fornecedoresIds = Array.from(
+        new Set(
+          linhasRascunho
+            .map((linha) => linha.fornecedorId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      return {
+        linhas: linhasRascunho,
+        vinculosAtivos:
+          fornecedoresIds.length > 0
+            ? await db
+                .select({
+                  fornecedorId: fornecedorProdutoVinculosTable.fornecedorId,
+                  codigoFornecedor:
+                    fornecedorProdutoVinculosTable.codigoFornecedor,
+                })
+                .from(fornecedorProdutoVinculosTable)
+                .where(
+                  and(
+                    inArray(
+                      fornecedorProdutoVinculosTable.fornecedorId,
+                      fornecedoresIds,
+                    ),
+                    eq(fornecedorProdutoVinculosTable.status, "ativo"),
+                  ),
+                )
+            : [],
+      };
+    },
   );
-  const vinculosAtivos =
-    fornecedoresIds.length > 0
-      ? await db
-          .select({
-            fornecedorId: fornecedorProdutoVinculosTable.fornecedorId,
-            codigoFornecedor: fornecedorProdutoVinculosTable.codigoFornecedor,
-          })
-          .from(fornecedorProdutoVinculosTable)
-          .where(
-            and(
-              inArray(
-                fornecedorProdutoVinculosTable.fornecedorId,
-                fornecedoresIds,
-              ),
-              eq(fornecedorProdutoVinculosTable.status, "ativo"),
-            ),
-          )
-      : [];
+
   const chavesPublicadas = new Set(
     vinculosAtivos.map(
       (vinculo) =>

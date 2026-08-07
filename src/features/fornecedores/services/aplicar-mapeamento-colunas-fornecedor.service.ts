@@ -1,12 +1,13 @@
 import { and, eq } from "drizzle-orm";
 
+import { db } from "@/db/connection";
 import {
   fornecedorMapeamentosColunasTable,
   fornecedorProdutosStagingTable,
   importacoesFornecedorTable,
 } from "@/db/schema";
-import { db } from "@/db/connection";
 import { dbTransacional } from "@/db/transaction";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 import { aplicarMapeamentoImportacaoFornecedorSchema } from "../schemas/fornecedores.schema";
 import type {
@@ -22,8 +23,8 @@ import {
   detectarMapeamentoColunasFornecedor,
   normalizarCabecalhoFornecedor,
 } from "./parser-planilha-fornecedor.service";
-import { prepararLinhaStagingFornecedor } from "./validacao-linha-importacao.service";
 import { salvarMapeamentoColunasFornecedor } from "./salvar-mapeamento-colunas-fornecedor.service";
+import { prepararLinhaStagingFornecedor } from "./validacao-linha-importacao.service";
 
 type DadosBrutos = Record<string, string | number | boolean | Date | null>;
 
@@ -125,15 +126,28 @@ export async function aplicarMapeamentoColunasFornecedor(
 ) {
   const dados = aplicarMapeamentoImportacaoFornecedorSchema.parse(entrada);
 
-  const [importacao] = await db
-    .select({
-      id: importacoesFornecedorTable.id,
-      fornecedorId: importacoesFornecedorTable.fornecedorId,
-      colunasPlanilha: importacoesFornecedorTable.colunasPlanilha,
-    })
-    .from(importacoesFornecedorTable)
-    .where(eq(importacoesFornecedorTable.id, dados.importacaoId))
-    .limit(1);
+  // Esta é a leitura que aparecia no navegador como "Failed query: select id, fornecedor_id,
+  // colunas_planilha from importacoes_fornecedor ...". O `dados.importacaoId` usado aqui é o
+  // mesmo id que veio do campo oculto do formulário e que segue para o `redirect` da action —
+  // a retentativa não recalcula nem troca esse id, apenas repete a mesma consulta.
+  const [importacao] = await executarLeituraFornecedores(
+    {
+      etapa: "mapeamento:buscar-importacao",
+      importacaoId: dados.importacaoId,
+      mensagemAmigavel:
+        "Não foi possível localizar esta importação agora. Tente novamente em alguns segundos.",
+    },
+    () =>
+      db
+        .select({
+          id: importacoesFornecedorTable.id,
+          fornecedorId: importacoesFornecedorTable.fornecedorId,
+          colunasPlanilha: importacoesFornecedorTable.colunasPlanilha,
+        })
+        .from(importacoesFornecedorTable)
+        .where(eq(importacoesFornecedorTable.id, dados.importacaoId))
+        .limit(1),
+  );
 
   if (!importacao) {
     throw new Error("Importação de fornecedor não encontrada.");
@@ -143,7 +157,15 @@ export async function aplicarMapeamentoColunasFornecedor(
   const mapeamentosSalvos =
     mapeamentosConfirmados.length > 0
       ? []
-      : await buscarMapeamentosSalvosFornecedor(importacao.fornecedorId);
+      : await executarLeituraFornecedores(
+          {
+            etapa: "mapeamento:buscar-mapeamentos-salvos",
+            importacaoId: dados.importacaoId,
+            mensagemAmigavel:
+              "Não foi possível carregar o mapeamento salvo deste fornecedor agora. Tente novamente em alguns segundos.",
+          },
+          () => buscarMapeamentosSalvosFornecedor(importacao.fornecedorId),
+        );
   const mapeamentosAplicados =
     mapeamentosConfirmados.length > 0
       ? mapeamentosConfirmados
@@ -156,14 +178,27 @@ export async function aplicarMapeamentoColunasFornecedor(
     });
   }
 
-  const linhasAtuais = await db
-    .select({
-      id: fornecedorProdutosStagingTable.id,
-      dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
-      status: fornecedorProdutosStagingTable.status,
-    })
-    .from(fornecedorProdutosStagingTable)
-    .where(eq(fornecedorProdutosStagingTable.importacaoId, dados.importacaoId));
+  // Lê as linhas já persistidas no staging pelo upload. É a leitura mais pesada do
+  // "Continuar para vínculos" e a que mais sofre com hibernação do banco.
+  const linhasAtuais = await executarLeituraFornecedores(
+    {
+      etapa: "mapeamento:carregar-linhas-do-staging",
+      importacaoId: dados.importacaoId,
+      mensagemAmigavel:
+        "Não foi possível carregar as linhas da planilha agora. Tente novamente em alguns segundos.",
+    },
+    () =>
+      db
+        .select({
+          id: fornecedorProdutosStagingTable.id,
+          dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
+          status: fornecedorProdutosStagingTable.status,
+        })
+        .from(fornecedorProdutosStagingTable)
+        .where(
+          eq(fornecedorProdutosStagingTable.importacaoId, dados.importacaoId),
+        ),
+  );
 
   const colunasPorCampo = resolverColunasPorCampo(
     importacao.colunasPlanilha,

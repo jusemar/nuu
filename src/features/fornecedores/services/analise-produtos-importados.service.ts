@@ -6,6 +6,7 @@ import {
   importacoesFornecedorTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 import type {
   CriterioLocalizacaoProdutoFornecedor,
@@ -107,26 +108,47 @@ async function atualizarLinhasNaoLocalizadas(
 export async function analisarProdutosImportadosFornecedor(
   importacaoId: string,
 ): Promise<ResultadoAnaliseProdutosImportados> {
-  const [importacao] = await db
-    .select({
-      fornecedorId: importacoesFornecedorTable.fornecedorId,
-    })
-    .from(importacoesFornecedorTable)
-    .where(eq(importacoesFornecedorTable.id, importacaoId))
-    .limit(1);
+  // Este service roda em dois pontos do fluxo: no "Continuar para vínculos" (chamado pelo
+  // service de mapeamento) e no botão "Atualizar vinculação". Como ele lê ANTES de gravar,
+  // uma leitura que falha aqui aborta a operação inteira — por isso a proteção.
+  const { importacao, linhas } = await executarLeituraFornecedores(
+    {
+      etapa: "vinculacao:carregar-linhas-para-analise",
+      importacaoId,
+      mensagemAmigavel:
+        "Não foi possível carregar os produtos para vincular agora. Tente novamente em alguns segundos.",
+    },
+    async () => {
+      const [registro] = await db
+        .select({
+          fornecedorId: importacoesFornecedorTable.fornecedorId,
+        })
+        .from(importacoesFornecedorTable)
+        .where(eq(importacoesFornecedorTable.id, importacaoId))
+        .limit(1);
+
+      return {
+        importacao: registro ?? null,
+        linhas: registro
+          ? await db
+              .select({
+                id: fornecedorProdutosStagingTable.id,
+                codigoFornecedor:
+                  fornecedorProdutosStagingTable.codigoFornecedor,
+                status: fornecedorProdutosStagingTable.status,
+              })
+              .from(fornecedorProdutosStagingTable)
+              .where(
+                eq(fornecedorProdutosStagingTable.importacaoId, importacaoId),
+              )
+          : [],
+      };
+    },
+  );
 
   if (!importacao) {
     throw new Error("Importação de fornecedor não encontrada.");
   }
-
-  const linhas = await db
-    .select({
-      id: fornecedorProdutosStagingTable.id,
-      codigoFornecedor: fornecedorProdutosStagingTable.codigoFornecedor,
-      status: fornecedorProdutosStagingTable.status,
-    })
-    .from(fornecedorProdutosStagingTable)
-    .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId));
 
   const linhasValidasParaAnalise = linhas.filter(
     (linha) =>
@@ -184,14 +206,25 @@ export async function analisarProdutosImportadosFornecedor(
     .set({ status: "em_homologacao", atualizadoEm: new Date() })
     .where(eq(importacoesFornecedorTable.id, importacaoId));
 
-  const linhasAnalisadas = await db
-    .select({
-      id: fornecedorProdutosStagingTable.id,
-      codigoFornecedor: fornecedorProdutosStagingTable.codigoFornecedor,
-      status: fornecedorProdutosStagingTable.status,
-    })
-    .from(fornecedorProdutosStagingTable)
-    .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId));
+  // Releitura só para montar o resumo. As gravações acima já foram concluídas, então esta
+  // leitura pode ser repetida sem risco de duplicar efeito.
+  const linhasAnalisadas = await executarLeituraFornecedores(
+    {
+      etapa: "vinculacao:reler-linhas-analisadas",
+      importacaoId,
+      mensagemAmigavel:
+        "A vinculação foi processada, mas não foi possível carregar o resumo agora. Atualize a página em alguns segundos.",
+    },
+    () =>
+      db
+        .select({
+          id: fornecedorProdutosStagingTable.id,
+          codigoFornecedor: fornecedorProdutosStagingTable.codigoFornecedor,
+          status: fornecedorProdutosStagingTable.status,
+        })
+        .from(fornecedorProdutosStagingTable)
+        .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId)),
+  );
 
   return {
     importacaoId,

@@ -4,36 +4,52 @@ import { asc, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedorProdutosStagingTable, productTable } from "@/db/schema";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 export async function listarStagingImportacaoFornecedor(importacaoId: string) {
-  return db
-    .select({
-      id: fornecedorProdutosStagingTable.id,
-      importacaoId: fornecedorProdutosStagingTable.importacaoId,
-      codigoFornecedor: fornecedorProdutosStagingTable.codigoFornecedor,
-      nomeProduto: fornecedorProdutosStagingTable.nomeProduto,
-      categoriaFornecedor: fornecedorProdutosStagingTable.categoriaFornecedor,
-      marcaFornecedor: fornecedorProdutosStagingTable.marcaFornecedor,
-      precoFornecedor: fornecedorProdutosStagingTable.precoFornecedor,
-      precoOriginal: fornecedorProdutosStagingTable.precoOriginal,
-      precoCalculado: fornecedorProdutosStagingTable.precoCalculado,
-      origemAjuste: fornecedorProdutosStagingTable.origemAjuste,
-      estoqueFornecedor: fornecedorProdutosStagingTable.estoqueFornecedor,
-      produtoLocalizadoId: fornecedorProdutosStagingTable.produtoLocalizadoId,
-      criterioLocalizacao: fornecedorProdutosStagingTable.criterioLocalizacao,
-      errosValidacao: fornecedorProdutosStagingTable.errosValidacao,
-      dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
-      status: fornecedorProdutosStagingTable.status,
-      criadoEm: fornecedorProdutosStagingTable.criadoEm,
-      atualizadoEm: fornecedorProdutosStagingTable.atualizadoEm,
-      produtoVinculadoNome: productTable.name,
-      produtoVinculadoSku: productTable.sku,
-    })
-    .from(fornecedorProdutosStagingTable)
-    .leftJoin(
-      productTable,
-      eq(productTable.id, fornecedorProdutosStagingTable.produtoLocalizadoId),
-    )
-    .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId))
-    .orderBy(asc(fornecedorProdutosStagingTable.criadoEm));
+  return executarLeituraFornecedores(
+    {
+      etapa: "vinculacao:listar-staging-completo",
+      importacaoId,
+      mensagemAmigavel:
+        "Não foi possível carregar as linhas desta importação agora. Tente novamente em alguns segundos.",
+    },
+    () =>
+      db
+        .select({
+          id: fornecedorProdutosStagingTable.id,
+          importacaoId: fornecedorProdutosStagingTable.importacaoId,
+          codigoFornecedor: fornecedorProdutosStagingTable.codigoFornecedor,
+          nomeProduto: fornecedorProdutosStagingTable.nomeProduto,
+          categoriaFornecedor:
+            fornecedorProdutosStagingTable.categoriaFornecedor,
+          marcaFornecedor: fornecedorProdutosStagingTable.marcaFornecedor,
+          precoFornecedor: fornecedorProdutosStagingTable.precoFornecedor,
+          precoOriginal: fornecedorProdutosStagingTable.precoOriginal,
+          precoCalculado: fornecedorProdutosStagingTable.precoCalculado,
+          origemAjuste: fornecedorProdutosStagingTable.origemAjuste,
+          estoqueFornecedor: fornecedorProdutosStagingTable.estoqueFornecedor,
+          produtoLocalizadoId:
+            fornecedorProdutosStagingTable.produtoLocalizadoId,
+          criterioLocalizacao:
+            fornecedorProdutosStagingTable.criterioLocalizacao,
+          errosValidacao: fornecedorProdutosStagingTable.errosValidacao,
+          dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
+          status: fornecedorProdutosStagingTable.status,
+          criadoEm: fornecedorProdutosStagingTable.criadoEm,
+          atualizadoEm: fornecedorProdutosStagingTable.atualizadoEm,
+          produtoVinculadoNome: productTable.name,
+          produtoVinculadoSku: productTable.sku,
+        })
+        .from(fornecedorProdutosStagingTable)
+        .leftJoin(
+          productTable,
+          eq(
+            productTable.id,
+            fornecedorProdutosStagingTable.produtoLocalizadoId,
+          ),
+        )
+        .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId))
+        .orderBy(asc(fornecedorProdutosStagingTable.criadoEm)),
+  );
 }

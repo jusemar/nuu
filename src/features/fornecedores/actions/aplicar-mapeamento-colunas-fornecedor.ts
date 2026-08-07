@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import type { CampoMapeamentoColunaFornecedor } from "../types/fornecedores.types";
+import { ErroLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
+
 import { aplicarMapeamentoColunasFornecedor } from "../services/aplicar-mapeamento-colunas-fornecedor.service";
+import type { CampoMapeamentoColunaFornecedor } from "../types/fornecedores.types";
 
 function lerConfiguracaoFluxo(formData: FormData): Record<string, unknown> {
   const valor = String(formData.get("configuracaoFluxoJson") ?? "").trim();
@@ -47,14 +49,36 @@ export async function aplicarMapeamentoColunasFornecedorAction(
         mapeamento.campoDestino.trim().length > 0,
     );
 
-  await aplicarMapeamentoColunasFornecedor({
-    importacaoId,
-    mapeamentos,
-    salvarParaFornecedor,
-    configuracaoFluxoJson: lerConfiguracaoFluxo(formData),
-  });
+  // Rede de segurança final: as leituras já devolvem mensagem amigável, mas uma falha em
+  // qualquer outro ponto do service chegaria crua ao navegador (foi assim que o SQL do
+  // `select ... from importacoes_fornecedor` acabou visível para o usuário).
+  try {
+    await aplicarMapeamentoColunasFornecedor({
+      importacaoId,
+      mapeamentos,
+      salvarParaFornecedor,
+      configuracaoFluxoJson: lerConfiguracaoFluxo(formData),
+    });
+  } catch (erro) {
+    console.error("[fornecedores] falha ao aplicar mapeamento de colunas", {
+      importacaoId,
+      totalMapeamentos: mapeamentos.length,
+      momento: new Date().toISOString(),
+      erro,
+    });
+
+    if (erro instanceof ErroLeituraFornecedores) throw erro;
+
+    throw new Error(
+      "Não foi possível aplicar o mapeamento agora. Tente novamente em alguns segundos.",
+    );
+  }
 
   revalidatePath(`/admin/fornecedores/importacoes/${importacaoId}`);
   revalidatePath("/admin/fornecedores/importacoes");
+  // Fica FORA do `try`: o `redirect` do Next funciona lançando uma exceção de controle de
+  // fluxo. Dentro do `try` ele seria confundido com erro e a navegação nunca aconteceria.
+  // O `importacaoId` é o mesmo lido do formulário no início — a etapa seguinte abre na
+  // importação certa.
   redirect(`/admin/fornecedores/importacoes/${importacaoId}?etapa=vinculacao`);
 }

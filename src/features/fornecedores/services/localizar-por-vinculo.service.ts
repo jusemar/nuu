@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedorProdutoVinculosTable, productTable } from "@/db/schema";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 import type { ResultadoLocalizacaoPorVinculoFornecedor } from "../types/fornecedores.types";
 
@@ -29,24 +30,38 @@ export async function localizarProdutosPorVinculoFornecedor(
     };
   }
 
-  const vinculos = await db
-    .select({
-      codigoFornecedor: fornecedorProdutoVinculosTable.codigoFornecedor,
-      produtoId: fornecedorProdutoVinculosTable.produtoId,
-      sku: productTable.sku,
-    })
-    .from(fornecedorProdutoVinculosTable)
-    .innerJoin(
-      productTable,
-      eq(productTable.id, fornecedorProdutoVinculosTable.produtoId),
-    )
-    .where(
-      and(
-        eq(fornecedorProdutoVinculosTable.fornecedorId, fornecedorId),
-        eq(fornecedorProdutoVinculosTable.status, "ativo"),
-        inArray(fornecedorProdutoVinculosTable.codigoFornecedor, codigosUnicos),
-      ),
-    );
+  // Elo final da cadeia do "Continuar para vínculos": é esta consulta que descobre quais
+  // códigos do fornecedor já apontam para um produto real. Se ela falhasse, a análise
+  // inteira era abortada e nenhum vínculo era registrado.
+  const vinculos = await executarLeituraFornecedores(
+    {
+      etapa: "vinculacao:localizar-por-vinculo-existente",
+      mensagemAmigavel:
+        "Não foi possível conferir os vínculos já existentes agora. Tente novamente em alguns segundos.",
+    },
+    () =>
+      db
+        .select({
+          codigoFornecedor: fornecedorProdutoVinculosTable.codigoFornecedor,
+          produtoId: fornecedorProdutoVinculosTable.produtoId,
+          sku: productTable.sku,
+        })
+        .from(fornecedorProdutoVinculosTable)
+        .innerJoin(
+          productTable,
+          eq(productTable.id, fornecedorProdutoVinculosTable.produtoId),
+        )
+        .where(
+          and(
+            eq(fornecedorProdutoVinculosTable.fornecedorId, fornecedorId),
+            eq(fornecedorProdutoVinculosTable.status, "ativo"),
+            inArray(
+              fornecedorProdutoVinculosTable.codigoFornecedor,
+              codigosUnicos,
+            ),
+          ),
+        ),
+  );
 
   const encontradosPorCodigo = new Map(
     vinculos

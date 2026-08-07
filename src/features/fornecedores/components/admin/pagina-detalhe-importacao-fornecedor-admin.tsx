@@ -7,10 +7,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import {
-  analisarImportacaoFornecedor,
-  aplicarMapeamentoColunasFornecedorAction,
-} from "../../actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,21 +17,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
-import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
-import {
-  type DadosTemporariosMapeamentoFornecedor,
-  type OpcaoValorPadraoLoja,
-  TabelaMapeamentoCamposFornecedor,
-} from "./tabela-mapeamento-campos-fornecedor";
 
+import {
+  analisarImportacaoFornecedor,
+  aplicarMapeamentoColunasFornecedorAction,
+} from "../../actions";
+import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
 import type {
   CampoMapeamentoColunaFornecedor,
   ColunaPlanilhaFornecedor,
   ProdutoParaVinculoFornecedor,
   ResultadoRevisaoImportacaoFornecedor,
 } from "../../types/fornecedores.types";
-import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
+import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
+import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
+import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
+import {
+  type DadosTemporariosMapeamentoFornecedor,
+  type OpcaoValorPadraoLoja,
+  TabelaMapeamentoCamposFornecedor,
+} from "./tabela-mapeamento-campos-fornecedor";
 
 type ImportacaoFornecedorAdmin = {
   id: string;
@@ -574,10 +575,17 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
         </div>
         <form action={analisarImportacaoFornecedor}>
           <input type="hidden" name="importacaoId" value={importacao.id} />
-          <Button type="submit" size="sm" variant="outline">
-            <RefreshCw className="mr-2 h-4 w-4" />
+          {/* Relocaliza todos os produtos da importação; em planilhas grandes leva alguns
+              segundos. Sem estado de processamento, o usuário clicava várias vezes e
+              disparava a mesma análise em paralelo. */}
+          <BotaoSubmitComEstado
+            size="sm"
+            variant="outline"
+            textoProcessando="Localizando produtos…"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
             Atualizar vinculação
-          </Button>
+          </BotaoSubmitComEstado>
         </form>
       </div>
 

@@ -7,6 +7,7 @@ import {
   fornecedorProdutosStagingTable,
   importacoesFornecedorTable,
 } from "@/db/schema";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 import {
   itemRevisaoImportacaoFornecedorSchema,
@@ -74,28 +75,52 @@ function valorTextoBruto(
 export async function analisarRevisaoImportacaoFornecedor(
   importacaoId: string,
 ): Promise<ResultadoRevisaoImportacaoFornecedor> {
-  const [importacao] = await db
-    .select({ id: importacoesFornecedorTable.id })
-    .from(importacoesFornecedorTable)
-    .where(eq(importacoesFornecedorTable.id, importacaoId))
-    .limit(1);
+  // A conferência de existência e a leitura das linhas ficam na mesma leitura protegida:
+  // são a mesma pergunta ("esta importação existe e o que ela tem?") e uma retentativa
+  // precisa refazer as duas para não analisar linhas de um estado intermediário.
+  const { importacao, linhas } = await executarLeituraFornecedores(
+    {
+      etapa: "revisao:analisar-importacao",
+      importacaoId,
+      mensagemAmigavel:
+        "Não foi possível carregar a revisão desta importação agora. Tente novamente em alguns segundos.",
+    },
+    async () => {
+      const [registro] = await db
+        .select({ id: importacoesFornecedorTable.id })
+        .from(importacoesFornecedorTable)
+        .where(eq(importacoesFornecedorTable.id, importacaoId))
+        .limit(1);
 
+      return {
+        importacao: registro ?? null,
+        linhas: registro
+          ? await db
+              .select({
+                id: fornecedorProdutosStagingTable.id,
+                codigoFornecedor:
+                  fornecedorProdutosStagingTable.codigoFornecedor,
+                dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
+                nomeProduto: fornecedorProdutosStagingTable.nomeProduto,
+                categoriaFornecedor:
+                  fornecedorProdutosStagingTable.categoriaFornecedor,
+                marcaFornecedor: fornecedorProdutosStagingTable.marcaFornecedor,
+                precoFornecedor: fornecedorProdutosStagingTable.precoFornecedor,
+              })
+              .from(fornecedorProdutosStagingTable)
+              .where(
+                eq(fornecedorProdutosStagingTable.importacaoId, importacaoId),
+              )
+          : [],
+      };
+    },
+  );
+
+  // "Não encontrada" é resposta legítima do banco, não falha de leitura — por isso a
+  // verificação fica FORA do bloco com retentativa: repetir não faria a importação existir.
   if (!importacao) {
     throw new Error("Importação de fornecedor não encontrada.");
   }
-
-  const linhas = await db
-    .select({
-      id: fornecedorProdutosStagingTable.id,
-      codigoFornecedor: fornecedorProdutosStagingTable.codigoFornecedor,
-      dadosBrutos: fornecedorProdutosStagingTable.dadosBrutos,
-      nomeProduto: fornecedorProdutosStagingTable.nomeProduto,
-      categoriaFornecedor: fornecedorProdutosStagingTable.categoriaFornecedor,
-      marcaFornecedor: fornecedorProdutosStagingTable.marcaFornecedor,
-      precoFornecedor: fornecedorProdutosStagingTable.precoFornecedor,
-    })
-    .from(fornecedorProdutosStagingTable)
-    .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId));
 
   const resumo = {
     totalImportado: linhas.length,

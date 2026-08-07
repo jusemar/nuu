@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import type {
   EstrategiaPrazoEntregaFornecedor,
   ModalidadeComercialFornecedor,
 } from "@/features/fornecedores/types/mapeamento-fornecedor.types";
+
+import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
 
 export type OpcaoMapeamentoFornecedor = {
   valor: string;
@@ -1873,6 +1875,18 @@ export function TabelaMapeamentoCamposFornecedor({
               <ArrowRight className="h-4 w-4" />
             </a>
           </Button>
+        ) : tipoBotaoAcaoPrincipal === "submit" ? (
+          // Caminho do fluxo por arquivo ("Continuar para vínculos"): o clique dispara a
+          // Server Action que aplica o mapeamento e só então redireciona para a Vinculação.
+          // Como isso leva alguns segundos, o botão precisa mostrar progresso e recusar
+          // cliques repetidos — senão o mapeamento é aplicado duas vezes.
+          <BotaoSubmitComEstado
+            className="h-10 min-w-[210px] gap-2"
+            textoProcessando="Aplicando mapeamento…"
+          >
+            {textoAcaoPrincipal}
+            <ArrowRight className="h-4 w-4" />
+          </BotaoSubmitComEstado>
         ) : (
           <Button
             type={tipoBotaoAcaoPrincipal}

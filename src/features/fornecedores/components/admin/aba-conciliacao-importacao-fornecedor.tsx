@@ -1,14 +1,14 @@
-import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
+import { alterarDecisaoRascunhosImportacaoFornecedor } from "../../actions/alterar-decisao-rascunhos-importacao-fornecedor";
 import {
   ajustarPrecosRascunhosImportacaoFornecedor,
   atualizarCamposRascunhosImportacaoFornecedor,
 } from "../../actions/atualizar-rascunhos-conciliacao-importacao-fornecedor";
-import { alterarDecisaoRascunhosImportacaoFornecedor } from "../../actions/alterar-decisao-rascunhos-importacao-fornecedor";
-import type { OpcaoValorPadraoLoja } from "./tabela-mapeamento-campos-fornecedor";
+import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
 import {
   type ItemConciliacaoFornecedor,
   TabelaConciliacaoFornecedor,
 } from "./tabela-conciliacao-fornecedor";
+import type { OpcaoValorPadraoLoja } from "./tabela-mapeamento-campos-fornecedor";
 
 type AbaConciliacaoImportacaoFornecedorProps = {
   importacaoId: string;
@@ -51,10 +51,70 @@ function montarAlertas(rascunho: RascunhoImportacaoFornecedor) {
   return alertas;
 }
 
+/**
+ * Monta o item de Conciliação do caminho "atualizar produto existente".
+ *
+ * Difere do caminho "criar": não exige categoria, marca, seção nem modalidade
+ * (o produto real já tem tudo isso) e carrega `produtoAtualizado` com o
+ * retrato atual da loja, usado pela tabela para montar a comparação.
+ */
+function montarItemConciliacaoAtualizacao(
+  rascunho: RascunhoImportacaoFornecedor,
+): ItemConciliacaoFornecedor {
+  const pendenciasObrigatorias = rascunho.pendencias;
+  const aguardandoAprovacao = rascunho.status === "pendente_conciliacao";
+
+  return {
+    id: rascunho.id,
+    produto: {
+      nome: rascunho.nome,
+      codigo: rascunho.codigoFornecedor,
+      preco: rascunho.precoLoja,
+      precoFornecedor: rascunho.precoFornecedor,
+      precoLoja: rascunho.precoLoja,
+      estoque: rascunho.estoqueFornecedor,
+      complemento: rascunho.produtoAtualizadoNome,
+      imagemUrl: null,
+    },
+    acaoPrevista: "atualizar",
+    statusVinculacao: "vinculado",
+    status:
+      pendenciasObrigatorias.length > 0
+        ? "pendencia"
+        : rascunho.status === "pronto_para_publicar"
+          ? "pronto"
+          : "alerta",
+    pendenciasObrigatorias,
+    alertas: aguardandoAprovacao ? ["Aguardando aprovação para publicar"] : [],
+    regrasObrigatorias: pendenciasObrigatorias.map((pendencia) => ({
+      campo: pendencia,
+      label: pendencia,
+      estrategia: "conciliacao",
+      observacao: "Resolva antes de aprovar.",
+      bloqueiaPublicacao: true,
+    })),
+    regrasImportantes: [],
+    configuracaoPreco: null,
+    produtoAtualizado: {
+      produtoId: rascunho.produtoAtualizadoId ?? "",
+      nome: rascunho.produtoAtualizadoNome,
+      sku: rascunho.produtoAtualizadoSku,
+      precoAtual: rascunho.precoAtualLoja,
+      estoqueAtual: rascunho.estoqueAtualLoja,
+    },
+  };
+}
+
 function montarItensConciliacaoArquivo(
   rascunhos: RascunhoImportacaoFornecedor[],
 ): ItemConciliacaoFornecedor[] {
   return rascunhos.map((rascunho) => {
+    // A presença de `produtoAtualizadoId` é o único sinal que separa os dois
+    // caminhos. Sem ela, tudo abaixo continua sendo o caminho "criar produto".
+    if (rascunho.produtoAtualizadoId) {
+      return montarItemConciliacaoAtualizacao(rascunho);
+    }
+
     const pendenciasObrigatorias = montarPendencias(rascunho);
     const alertas = montarAlertas(rascunho);
     const modalidade = rascunho.configuracaoComercial.modalidade;
@@ -136,10 +196,11 @@ export function AbaConciliacaoImportacaoFornecedor({
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-xs">
         <p className="font-medium text-slate-900">
-          Nenhum rascunho criado para conciliação.
+          Nenhum item selecionado para conciliação ainda.
         </p>
         <p className="mt-1 text-sm text-slate-500">
-          Volte para Vinculação e marque os produtos que serão criados.
+          Volte para Vinculação, selecione os itens vinculados ou marcados como
+          novos e clique em &quot;Continuar para conciliação&quot;.
         </p>
       </div>
     );

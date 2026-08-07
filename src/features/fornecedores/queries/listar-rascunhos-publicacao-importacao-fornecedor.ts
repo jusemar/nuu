@@ -28,5 +28,7 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
       imagemUrl: rascunho.imagens[0] ?? null,
       pronto: true,
       pendencias: [],
+      produtoAtualizadoId: rascunho.produtoAtualizadoId,
+      produtoAtualizadoNome: rascunho.produtoAtualizadoNome,
     }));
 }

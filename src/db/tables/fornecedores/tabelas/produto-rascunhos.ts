@@ -11,6 +11,7 @@ import {
 
 import { categoryTable } from "../../../table/categories/categories";
 import { marcaTable } from "../../../table/marcas/marcas";
+import { productTable } from "../../../table/products/products";
 import {
   produtoRascunhoOrigemTipoEnum,
   produtoRascunhoStatusEnum,
@@ -34,6 +35,13 @@ export const produtoRascunhosTable = pgTable(
       { onDelete: "set null" },
     ),
     codigoFornecedor: text("codigo_fornecedor"),
+    // Preenchido só quando este rascunho representa "atualizar produto
+    // existente" (item já vinculado na Vinculação) em vez de "criar produto
+    // novo". Publicação usa esta coluna para decidir entre update e create.
+    produtoAtualizadoId: uuid("produto_atualizado_id").references(
+      () => productTable.id,
+      { onDelete: "set null" },
+    ),
     nome: text("nome").notNull(),
     descricao: text("descricao"),
     categoriaId: uuid("categoria_id").references(() => categoryTable.id, {
@@ -69,6 +77,9 @@ export const produtoRascunhosTable = pgTable(
     index("produto_rascunhos_integracao_api_id_idx").on(table.integracaoApiId),
     index("produto_rascunhos_codigo_fornecedor_idx").on(table.codigoFornecedor),
     index("produto_rascunhos_status_idx").on(table.status),
+    index("produto_rascunhos_produto_atualizado_id_idx").on(
+      table.produtoAtualizadoId,
+    ),
   ],
 );
 

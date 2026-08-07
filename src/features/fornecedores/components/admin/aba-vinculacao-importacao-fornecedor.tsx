@@ -1,11 +1,12 @@
 "use client";
 
 import { alterarTriagemProdutosStagingFornecedorAction } from "../../actions/alterar-triagem-produtos-staging-fornecedor";
+import { confirmarItensVinculacaoFornecedorAction } from "../../actions/confirmar-itens-vinculacao-fornecedor";
 import { removerRascunhoProdutoImportacaoFornecedor } from "../../actions/remover-rascunho-produto-importacao-fornecedor";
 import { salvarRascunhoProdutoImportacaoFornecedor } from "../../actions/salvar-rascunho-produto-importacao-fornecedor";
+import { vincularProdutoFornecedor } from "../../actions/vincular-produto-fornecedor";
 import { extrairConfiguracaoComercialRascunhoFornecedor } from "../../lib/conciliacao/configuracao-rascunho-fornecedor";
 import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
-import { vincularProdutoFornecedor } from "../../actions/vincular-produto-fornecedor";
 import type { ProdutoParaVinculoFornecedor } from "../../types/fornecedores.types";
 import type { ValoresPadraoRascunhoProdutoFornecedor } from "../../types/mapeamento-fornecedor.types";
 import {
@@ -276,6 +277,12 @@ export function AbaVinculacaoImportacaoFornecedor({
             importacaoId,
             stagingIds: itemIds,
             acao,
+          })
+        }
+        aoContinuarSelecionados={(stagingIds) =>
+          confirmarItensVinculacaoFornecedorAction({
+            importacaoId,
+            stagingIds,
           })
         }
       />

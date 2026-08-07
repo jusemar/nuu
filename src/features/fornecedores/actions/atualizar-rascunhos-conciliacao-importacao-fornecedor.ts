@@ -48,6 +48,11 @@ const atualizarCamposRascunhosImportacaoFornecedorSchema = z.discriminatedUnion(
     }),
     z.object({
       rascunhoIds: idsRascunhosSchema,
+      campo: z.literal("estoque"),
+      estoque: z.number().int().nonnegative(),
+    }),
+    z.object({
+      rascunhoIds: idsRascunhosSchema,
       campo: z.literal("secoes_loja"),
       secoesLoja: secoesLojaSchema,
     }),

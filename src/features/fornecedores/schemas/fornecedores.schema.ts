@@ -146,6 +146,11 @@ export const alterarTriagemProdutosStagingFornecedorSchema = z.object({
   acao: z.enum(["ignorar", "restaurar"]),
 });
 
+export const confirmarItensVinculacaoFornecedorSchema = z.object({
+  importacaoId: z.uuid(),
+  stagingIds: z.array(z.uuid()).min(1).max(100),
+});
+
 export const problemaRevisaoImportacaoFornecedorSchema = z.object({
   codigo: z.enum([
     "sem_codigo",

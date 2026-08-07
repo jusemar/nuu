@@ -6,10 +6,12 @@ import {
   categoryTable,
   fornecedorProdutoVinculosTable,
   marcaTable,
+  productPricingTable,
   productTable,
   productVariantTable,
   produtoRascunhosTable,
 } from "@/db/schema";
+import { dbTransacional } from "@/db/transaction";
 import {
   extrairConfiguracaoComercialRascunhoFornecedor,
   extrairSecoesLojaRascunhoFornecedor,
@@ -129,6 +131,7 @@ export async function publicarProdutoRascunhoFornecedor(
       comprimento: produtoRascunhosTable.comprimento,
       imagens: produtoRascunhosTable.imagens,
       dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
+      produtoAtualizadoId: produtoRascunhosTable.produtoAtualizadoId,
     })
     .from(produtoRascunhosTable)
     .leftJoin(
@@ -141,6 +144,17 @@ export async function publicarProdutoRascunhoFornecedor(
 
   if (!rascunho) {
     throw new Error(`Rascunho ${origem.nomeOrigem} não encontrado.`);
+  }
+
+  // Bifurcação única entre os dois caminhos. Tudo daqui para baixo continua
+  // sendo, sem nenhuma alteração, o caminho original de CRIAR produto novo.
+  if (rascunho.produtoAtualizadoId) {
+    return publicarAtualizacaoProdutoVinculadoFornecedor({
+      id: rascunho.id,
+      produtoAtualizadoId: rascunho.produtoAtualizadoId,
+      precoLoja: rascunho.precoLoja,
+      estoqueFornecedor: rascunho.estoqueFornecedor,
+    });
   }
 
   const precoLoja = numeroNaoNegativo(rascunho.precoLoja);
@@ -301,5 +315,113 @@ export async function publicarProdutoRascunhoFornecedor(
     varianteTecnicaId: resultadoProduto.varianteTecnicaId,
     slug: resultadoProduto.slug,
     sku,
+  };
+}
+
+type RascunhoAtualizacaoProdutoVinculadoFornecedor = {
+  id: string;
+  produtoAtualizadoId: string;
+  precoLoja: string | null;
+  estoqueFornecedor: number | null;
+};
+
+/**
+ * Publica um rascunho "atualizar produto existente": nunca cria produto,
+ * só aplica preço/estoque ao produto real já vinculado — e só os campos
+ * cujo valor de origem está presente, para nunca apagar dado existente.
+ *
+ * Nome, categoria, descrição, imagens, SEO e qualquer outro campo do produto
+ * real ficam intocados de propósito: o fornecedor manda preço e estoque, não
+ * o conteúdo do catálogo.
+ */
+async function publicarAtualizacaoProdutoVinculadoFornecedor(
+  rascunho: RascunhoAtualizacaoProdutoVinculadoFornecedor,
+) {
+  const precoLoja = numeroNaoNegativo(rascunho.precoLoja);
+
+  if (!precoLoja || precoLoja <= 0) {
+    throw new Error(
+      "Defina o preço a aplicar antes de publicar esta atualização.",
+    );
+  }
+
+  const precoEmCentavos = Math.round(precoLoja * 100);
+  const agora = new Date();
+
+  // Transação com lock de linha: usa `dbTransacional` (node-postgres) porque o
+  // cliente HTTP do Neon não suporta transação nem `for("update")`.
+  const produto = await dbTransacional.transaction(async (tx) => {
+    const [produtoBloqueado] = await tx
+      .select({
+        id: productTable.id,
+        tipoProduto: productTable.productKind,
+        sku: productTable.sku,
+        slug: productTable.slug,
+      })
+      .from(productTable)
+      .where(eq(productTable.id, rascunho.produtoAtualizadoId))
+      .for("update");
+
+    if (!produtoBloqueado) {
+      throw new Error("O produto vinculado não existe mais na loja.");
+    }
+    if (produtoBloqueado.tipoProduto !== "simple") {
+      throw new Error(
+        "Este fluxo só atualiza produtos simples (sem variantes).",
+      );
+    }
+
+    const [precoBloqueado] = await tx
+      .select({ id: productPricingTable.id })
+      .from(productPricingTable)
+      .where(
+        and(
+          eq(productPricingTable.productId, produtoBloqueado.id),
+          eq(productPricingTable.isActive, true),
+          eq(productPricingTable.mainCardPrice, true),
+        ),
+      )
+      .for("update");
+
+    if (precoBloqueado) {
+      await tx
+        .update(productPricingTable)
+        .set({ price: precoEmCentavos, updatedAt: agora })
+        .where(eq(productPricingTable.id, precoBloqueado.id));
+    }
+
+    const [varianteBloqueada] = await tx
+      .select({ id: productVariantTable.id })
+      .from(productVariantTable)
+      .where(eq(productVariantTable.productId, produtoBloqueado.id))
+      .for("update");
+
+    // Estoque ausente na origem não apaga o estoque atual do produto.
+    if (varianteBloqueada && rascunho.estoqueFornecedor !== null) {
+      await tx
+        .update(productVariantTable)
+        .set({
+          stockQuantity: Math.max(0, rascunho.estoqueFornecedor),
+          updatedAt: agora,
+        })
+        .where(eq(productVariantTable.id, varianteBloqueada.id));
+    }
+
+    // Estado terminal do caminho "atualizar": some da Conciliação e da
+    // Publicação sem depender do sinal de vínculo ativo, que aqui já existia.
+    await tx
+      .update(produtoRascunhosTable)
+      .set({ status: "publicado", atualizadoEm: agora })
+      .where(eq(produtoRascunhosTable.id, rascunho.id));
+
+    return { ...produtoBloqueado, varianteId: varianteBloqueada?.id ?? null };
+  });
+
+  return {
+    rascunhoId: rascunho.id,
+    produtoId: produto.id,
+    varianteTecnicaId: produto.varianteId,
+    slug: produto.slug,
+    sku: produto.sku,
   };
 }

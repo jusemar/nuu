@@ -173,3 +173,18 @@ export function listarPendenciasRascunhoFornecedor(
 
   return pendencias;
 }
+
+/**
+ * Pendências de um rascunho "atualizar produto existente": não precisa de
+ * categoria/marca/seção/modalidade (o produto real já tem tudo isso), só do
+ * preço final a aplicar.
+ */
+export function listarPendenciasAtualizacaoRascunhoFornecedor(
+  precoLoja: string | null,
+) {
+  const preco = Number(precoLoja);
+
+  return !Number.isFinite(preco) || preco <= 0
+    ? ["Falta preço para aplicar a atualização"]
+    : [];
+}

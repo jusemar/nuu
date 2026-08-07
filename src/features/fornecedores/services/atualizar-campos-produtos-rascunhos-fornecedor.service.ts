@@ -1,11 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 
-import { categoryTable, marcaTable, produtoRascunhosTable } from "@/db/schema";
 import { db } from "@/db/connection";
+import { categoryTable, marcaTable, produtoRascunhosTable } from "@/db/schema";
 import {
-  type ModalidadeComercialRascunho,
+  listarPendenciasAtualizacaoRascunhoFornecedor,
   listarPendenciasRascunhoFornecedor,
   mesclarDadosComerciaisRascunhoFornecedor,
+  type ModalidadeComercialRascunho,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 
 type EntradaAtualizarCamposRascunhosFornecedor = {
@@ -15,6 +16,7 @@ type EntradaAtualizarCamposRascunhosFornecedor = {
   | { campo: "categoria"; categoriaId: string }
   | { campo: "marca"; marcaId: string }
   | { campo: "preco_loja"; precoLoja: number }
+  | { campo: "estoque"; estoque: number }
   | { campo: "secoes_loja"; secoesLoja: string[] }
   | {
       campo: "modalidade_comercial";
@@ -67,6 +69,14 @@ export async function atualizarCamposProdutosRascunhosFornecedor(
       .update(produtoRascunhosTable)
       .set({ precoLoja: entrada.precoLoja.toFixed(2), atualizadoEm: agora })
       .where(filtroRascunhos);
+  } else if (entrada.campo === "estoque") {
+    await db
+      .update(produtoRascunhosTable)
+      .set({
+        estoqueFornecedor: Math.max(0, Math.trunc(entrada.estoque)),
+        atualizadoEm: agora,
+      })
+      .where(filtroRascunhos);
   } else {
     const rascunhos = await db
       .select({
@@ -110,11 +120,29 @@ export async function atualizarCamposProdutosRascunhosFornecedor(
       marcaId: produtoRascunhosTable.marcaId,
       precoLoja: produtoRascunhosTable.precoLoja,
       dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
+      produtoAtualizadoId: produtoRascunhosTable.produtoAtualizadoId,
     })
     .from(produtoRascunhosTable)
     .where(filtroRascunhos);
 
   for (const rascunho of atualizados) {
+    // Itens "atualizar produto existente" exigem aprovação explícita
+    // (ação "aprovar") para virarem elegíveis à Publicação — editar um
+    // campo aqui nunca promove o status sozinho.
+    if (rascunho.produtoAtualizadoId) {
+      const pendencias = listarPendenciasAtualizacaoRascunhoFornecedor(
+        rascunho.precoLoja,
+      );
+      await db
+        .update(produtoRascunhosTable)
+        .set({
+          status: pendencias.length === 0 ? "pendente_conciliacao" : "rascunho",
+          atualizadoEm: agora,
+        })
+        .where(eq(produtoRascunhosTable.id, rascunho.id));
+      continue;
+    }
+
     const pendencias = listarPendenciasRascunhoFornecedor(rascunho);
     await db
       .update(produtoRascunhosTable)

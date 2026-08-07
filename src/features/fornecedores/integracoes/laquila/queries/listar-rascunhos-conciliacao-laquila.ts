@@ -1,12 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 
+import { db } from "@/db/connection";
 import {
   categoryTable,
   fornecedorProdutoVinculosTable,
   marcaTable,
   produtoRascunhosTable,
 } from "@/db/schema";
-import { db } from "@/db/connection";
 import {
   type ConfiguracaoComercialRascunhoFornecedor,
   extrairConfiguracaoComercialRascunhoFornecedor,
@@ -40,7 +40,10 @@ export type RascunhoConciliacaoLaquila = {
     | "rascunho"
     | "pendente_conciliacao"
     | "pronto_para_publicar"
-    | "ignorado";
+    | "ignorado"
+    // Valor novo do enum compartilhado `produto_rascunho_status`. A Laquila não
+    // produz esse estado hoje; consta aqui só para o tipo cobrir o enum inteiro.
+    | "publicado";
 };
 
 export async function listarRascunhosConciliacaoLaquila(): Promise<

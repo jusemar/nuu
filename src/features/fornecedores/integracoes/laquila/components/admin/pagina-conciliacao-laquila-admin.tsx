@@ -435,6 +435,13 @@ export function PaginaConciliacaoLaquilaAdmin({
           return { ...rascunho, secoesLoja: entrada.secoesLoja };
         }
 
+        // Variante nova do tipo compartilhado. A Laquila não expõe a aba de
+        // estoque hoje (só o fluxo de arquivo a habilita), mas o `switch`
+        // precisa cobri-la para o tipo fechar.
+        if (entrada.campo === "estoque") {
+          return { ...rascunho, estoqueFornecedor: entrada.estoque };
+        }
+
         if (entrada.campo === "modalidade_comercial") {
           return {
             ...rascunho,

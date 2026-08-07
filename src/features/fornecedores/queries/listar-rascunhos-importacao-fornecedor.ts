@@ -7,11 +7,15 @@ import {
   categoryTable,
   fornecedorProdutoVinculosTable,
   marcaTable,
+  productPricingTable,
+  productTable,
+  productVariantTable,
   produtoRascunhosTable,
 } from "@/db/schema";
 import {
   extrairConfiguracaoComercialRascunhoFornecedor,
   extrairSecoesLojaRascunhoFornecedor,
+  listarPendenciasAtualizacaoRascunhoFornecedor,
   listarPendenciasRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
@@ -43,6 +47,12 @@ export type RascunhoImportacaoFornecedor = {
   >;
   pendencias: string[];
   status: "rascunho" | "pendente_conciliacao" | "pronto_para_publicar";
+  /** Presente só quando este item é "atualizar produto existente". */
+  produtoAtualizadoId: string | null;
+  produtoAtualizadoNome: string | null;
+  produtoAtualizadoSku: string | null;
+  precoAtualLoja: string | null;
+  estoqueAtualLoja: number | null;
 };
 
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
@@ -95,6 +105,11 @@ export async function listarRascunhosImportacaoFornecedor(
           imagens: produtoRascunhosTable.imagens,
           dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
           status: produtoRascunhosTable.status,
+          produtoAtualizadoId: produtoRascunhosTable.produtoAtualizadoId,
+          produtoAtualizadoNome: productTable.name,
+          produtoAtualizadoSku: productTable.sku,
+          precoAtualLojaEmCentavos: productPricingTable.price,
+          estoqueAtualLoja: productVariantTable.stockQuantity,
         })
         .from(produtoRascunhosTable)
         .leftJoin(
@@ -102,6 +117,26 @@ export async function listarRascunhosImportacaoFornecedor(
           eq(produtoRascunhosTable.categoriaId, categoryTable.id),
         )
         .leftJoin(marcaTable, eq(produtoRascunhosTable.marcaId, marcaTable.id))
+        // Os três joins abaixo trazem o retrato ATUAL do produto real da loja,
+        // usado pela Conciliação para mostrar "o que está" × "o que chegou".
+        // São `leftJoin` de propósito: item "criar produto novo" não tem
+        // `produtoAtualizadoId` e simplesmente vem com esses campos nulos.
+        .leftJoin(
+          productTable,
+          eq(productTable.id, produtoRascunhosTable.produtoAtualizadoId),
+        )
+        .leftJoin(
+          productPricingTable,
+          and(
+            eq(productPricingTable.productId, productTable.id),
+            eq(productPricingTable.isActive, true),
+            eq(productPricingTable.mainCardPrice, true),
+          ),
+        )
+        .leftJoin(
+          productVariantTable,
+          eq(productVariantTable.productId, productTable.id),
+        )
         .where(
           and(
             eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
@@ -156,33 +191,56 @@ export async function listarRascunhosImportacaoFornecedor(
   );
 
   return linhas
-    .filter(
-      (linha) =>
+    .filter((linha) => {
+      // O sinal implícito "vínculo ativo = já publicado" só vale para itens
+      // "criar produto novo". Itens "atualizar" já nascem com vínculo ativo
+      // desde a Vinculação — isso não significa que este lote já foi
+      // publicado, então não devem ser excluídos por esse motivo.
+      if (linha.produtoAtualizadoId) return true;
+
+      return (
         !linha.fornecedorId ||
         !chavesPublicadas.has(
           `${linha.fornecedorId}:${linha.codigoFornecedor?.trim() ?? ""}`,
-        ),
-    )
-    .map(({ dadosOrigemJson, ...linha }) => {
-      const secoesLoja = extrairSecoesLojaRascunhoFornecedor(dadosOrigemJson);
-      const configuracaoComercial =
-        extrairConfiguracaoComercialRascunhoFornecedor(dadosOrigemJson);
-      const pendencias = listarPendenciasRascunhoFornecedor({
-        nome: linha.nome,
-        categoriaId: linha.categoriaId,
-        marcaId: linha.marcaId,
-        precoLoja: linha.precoLoja,
+        )
+      );
+    })
+    .map(
+      ({
         dadosOrigemJson,
-      });
+        precoAtualLojaEmCentavos,
+        estoqueAtualLoja,
+        ...linha
+      }) => {
+        const secoesLoja = extrairSecoesLojaRascunhoFornecedor(dadosOrigemJson);
+        const configuracaoComercial =
+          extrairConfiguracaoComercialRascunhoFornecedor(dadosOrigemJson);
+        // Item "atualizar" não precisa de categoria/marca/seção: o produto real
+        // já tem tudo isso. A única pendência possível é faltar preço a aplicar.
+        const pendencias = linha.produtoAtualizadoId
+          ? listarPendenciasAtualizacaoRascunhoFornecedor(linha.precoLoja)
+          : listarPendenciasRascunhoFornecedor({
+              nome: linha.nome,
+              categoriaId: linha.categoriaId,
+              marcaId: linha.marcaId,
+              precoLoja: linha.precoLoja,
+              dadosOrigemJson,
+            });
 
-      return {
-        ...linha,
-        status: linha.status as RascunhoImportacaoFornecedor["status"],
-        stagingId: extrairStagingId(dadosOrigemJson),
-        imagens: linha.imagens ?? [],
-        secoesLoja,
-        configuracaoComercial,
-        pendencias,
-      };
-    });
+        return {
+          ...linha,
+          status: linha.status as RascunhoImportacaoFornecedor["status"],
+          stagingId: extrairStagingId(dadosOrigemJson),
+          imagens: linha.imagens ?? [],
+          secoesLoja,
+          configuracaoComercial,
+          pendencias,
+          precoAtualLoja:
+            precoAtualLojaEmCentavos === null
+              ? null
+              : (precoAtualLojaEmCentavos / 100).toFixed(2),
+          estoqueAtualLoja: estoqueAtualLoja ?? null,
+        };
+      },
+    );
 }

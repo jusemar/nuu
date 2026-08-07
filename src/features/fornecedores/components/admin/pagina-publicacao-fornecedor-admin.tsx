@@ -33,6 +33,9 @@ export type RascunhoPublicacaoFornecedor = {
   imagemUrl: string | null;
   pronto: boolean;
   pendencias: string[];
+  /** Presente só quando este item vai atualizar um produto já existente. */
+  produtoAtualizadoId?: string | null;
+  produtoAtualizadoNome?: string | null;
 };
 
 type ItemPublicadoFornecedor = {
@@ -217,16 +220,33 @@ export function PaginaPublicacaoFornecedorAdmin({
                   aria-label={`Selecionar ${rascunho.nome}`}
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-950">
-                    {rascunho.nome}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-semibold text-slate-950">
+                      {rascunho.nome}
+                    </p>
+                    {/* Deixa explícito, antes de confirmar, se o item cria um
+                        produto novo ou mexe em um produto que já está na loja. */}
+                    <Badge
+                      variant="outline"
+                      className={
+                        rascunho.produtoAtualizadoId
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-slate-50 text-slate-600"
+                      }
+                    >
+                      {rascunho.produtoAtualizadoId
+                        ? "Atualizar produto"
+                        : "Criar produto"}
+                    </Badge>
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">
                     Código fornecedor:{" "}
                     {rascunho.codigoFornecedor ?? "Não informado"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {rascunho.categoriaNome ?? "Sem categoria"} ·{" "}
-                    {rascunho.marcaNome ?? "Sem marca"}
+                    {rascunho.produtoAtualizadoId
+                      ? `Produto na loja: ${rascunho.produtoAtualizadoNome ?? "-"}`
+                      : `${rascunho.categoriaNome ?? "Sem categoria"} · ${rascunho.marcaNome ?? "Sem marca"}`}
                   </p>
                 </div>
                 <p className="text-sm font-medium text-slate-800">

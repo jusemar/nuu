@@ -11,7 +11,7 @@ import {
 
 const alterarDecisaoRascunhosImportacaoFornecedorSchema = z.object({
   rascunhoIds: z.array(z.uuid()).min(1).max(100),
-  acao: z.enum(["ignorar", "desfazer"]),
+  acao: z.enum(["ignorar", "desfazer", "aprovar"]),
 });
 
 export async function alterarDecisaoRascunhosImportacaoFornecedor(
@@ -56,7 +56,9 @@ export async function alterarDecisaoRascunhosImportacaoFornecedor(
       mensagem:
         resultado.acao === "ignorar"
           ? `${resultado.totalAtualizados} item${resultado.totalAtualizados === 1 ? " ignorado" : "s ignorados"}.`
-          : `${resultado.totalAtualizados} item${resultado.totalAtualizados === 1 ? " voltou" : "s voltaram"} para Vinculação.`,
+          : resultado.acao === "aprovar"
+            ? `${resultado.totalAtualizados} atualização${resultado.totalAtualizados === 1 ? "" : "ões"} aprovada${resultado.totalAtualizados === 1 ? "" : "s"} para publicação.`
+            : `${resultado.totalAtualizados} item${resultado.totalAtualizados === 1 ? " voltou" : "s voltaram"} para Vinculação.`,
     };
   } catch (erro) {
     console.error("[alterarDecisaoRascunhosImportacaoFornecedor]", {

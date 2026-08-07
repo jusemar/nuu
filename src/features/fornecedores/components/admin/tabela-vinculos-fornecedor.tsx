@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import type { ProductFormData } from "@/app/admin/products/new/data/product-form-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,13 +29,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { ProductFormData } from "@/app/admin/products/new/data/product-form-data";
-import { cn } from "@/lib/utils";
 import { montarDadosIniciaisRascunhoProdutoFornecedor } from "@/features/fornecedores/lib/montar-dados-iniciais-rascunho-produto-fornecedor";
 import type {
   DadosFornecedorParaRascunhoProduto,
   ValoresPadraoRascunhoProdutoFornecedor,
 } from "@/features/fornecedores/types/mapeamento-fornecedor.types";
+import { cn } from "@/lib/utils";
+
+import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
 import { ModalRascunhoProdutoFornecedor } from "./modal-rascunho-produto-fornecedor";
 
 export type StatusVinculoFornecedorVisual =
@@ -151,6 +153,16 @@ export type TabelaVinculosFornecedorProps = {
     itemIds: string[];
     acao: "ignorar" | "restaurar";
   }) => Promise<{
+    sucesso: boolean;
+    mensagem?: string;
+    erro?: string;
+  }>;
+  /**
+   * Confirma a seleção atual para avançar à Conciliação — só os itens
+   * selecionados avançam; os demais continuam no staging. Quando presente,
+   * substitui o link estático de "Continuar" por essa ação.
+   */
+  aoContinuarSelecionados?: (stagingIds: string[]) => Promise<{
     sucesso: boolean;
     mensagem?: string;
     erro?: string;
@@ -647,9 +659,12 @@ function ModalVincularProdutoFornecedor({
           Cancelar
         </Button>
         {acaoVincular ? (
-          <Button type="submit" disabled={!selecionadoId}>
+          <BotaoSubmitComEstado
+            disabled={!selecionadoId}
+            textoProcessando="Vinculando produto…"
+          >
             Confirmar vínculo
-          </Button>
+          </BotaoSubmitComEstado>
         ) : permitirVinculoVisual ? (
           <Button
             type="button"
@@ -705,6 +720,7 @@ export function TabelaVinculosFornecedor({
   aoSalvarRascunhoPersistido,
   aoRemoverRascunhoPersistido,
   aoAlterarTriagemPersistida,
+  aoContinuarSelecionados,
 }: TabelaVinculosFornecedorProps) {
   const estadosIniciais = useMemo(
     () =>
@@ -734,6 +750,7 @@ export function TabelaVinculosFornecedor({
   const [mensagemRascunho, setMensagemRascunho] = useState<string | null>(null);
   const [confirmandoVinculo, setConfirmandoVinculo] = useState(false);
   const [criandoRascunhosEmMassa, setCriandoRascunhosEmMassa] = useState(false);
+  const [confirmandoSelecao, setConfirmandoSelecao] = useState(false);
   const [totalRascunhosPersistidos, setTotalRascunhosPersistidos] = useState(
     totalRascunhosPersistidosInicial,
   );
@@ -1100,6 +1117,43 @@ export function TabelaVinculosFornecedor({
 
   async function ignorarSelecionados() {
     if (await ignorarItens(idsSelecionados)) setIdsSelecionados([]);
+  }
+
+  async function continuarSelecionados() {
+    if (confirmandoSelecao || idsSelecionados.length === 0) return;
+    if (!aoContinuarSelecionados) return;
+
+    // Barreira de item pendente: só "vinculado" (produto real encontrado) e
+    // "rascunho" (marcado como novo) podem avançar. Quem ainda não recebeu
+    // decisão fica retido aqui, com a instrução do que fazer.
+    const itensNaoElegiveis = idsSelecionados.filter((id) => {
+      const estado = estados[id] ?? estadosIniciais[id];
+      return estado.status !== "vinculado" && estado.status !== "rascunho";
+    });
+
+    if (itensNaoElegiveis.length > 0) {
+      toast.error(
+        "Alguns itens selecionados ainda não têm decisão. Vincule, marque como novo ou ignore antes de continuar.",
+      );
+      return;
+    }
+
+    setConfirmandoSelecao(true);
+    try {
+      const resultado = await aoContinuarSelecionados(idsSelecionados);
+
+      if (!resultado.sucesso) {
+        toast.error(
+          resultado.erro ?? "Não foi possível continuar para a Conciliação.",
+        );
+        return;
+      }
+
+      toast.success(resultado.mensagem ?? "Itens enviados para a Conciliação.");
+      setIdsSelecionados([]);
+    } finally {
+      setConfirmandoSelecao(false);
+    }
   }
 
   async function restaurar(item: ItemVinculoFornecedor) {
@@ -1735,7 +1789,23 @@ export function TabelaVinculosFornecedor({
           {mensagemRascunho ??
             "Revise os vínculos antes de avançar para conciliação."}
         </p>
-        {hrefAcaoPrincipal ? (
+        {aoContinuarSelecionados ? (
+          // Deixou de ser um link estático: agora persiste a seleção antes de
+          // avançar. Sem isso, os itens vinculados chegavam à Conciliação sem
+          // nenhum registro e a tela aparecia vazia.
+          <Button
+            type="button"
+            disabled={confirmandoSelecao || idsSelecionados.length === 0}
+            aria-busy={confirmandoSelecao}
+            onClick={continuarSelecionados}
+          >
+            {confirmandoSelecao
+              ? "Enviando para conciliação…"
+              : idsSelecionados.length > 0
+                ? `Continuar para conciliação (${idsSelecionados.length})`
+                : textoAcaoPrincipalFinal}
+          </Button>
+        ) : hrefAcaoPrincipal ? (
           <Button asChild>
             <a href={hrefAcaoPrincipal}>{textoAcaoPrincipalFinal}</a>
           </Button>

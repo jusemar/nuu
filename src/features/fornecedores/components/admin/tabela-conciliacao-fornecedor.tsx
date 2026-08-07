@@ -52,12 +52,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   calcularAjustePrecoRascunhoFornecedor,
   type OperacaoAjustePrecoRascunhoFornecedor,
@@ -148,12 +148,21 @@ export type ItemConciliacaoFornecedor = {
     modalidadeComercial?: ModalidadeComercialRascunho | null;
     prazoEntrega?: string | null;
   };
+  /** Presente só quando `statusVinculacao === "vinculado"`: dados atuais do produto real da loja, para comparar com o recebido. */
+  produtoAtualizado?: {
+    produtoId: string;
+    nome: string | null;
+    sku: string | null;
+    precoAtual: string | null;
+    estoqueAtual: number | null;
+  } | null;
 };
 
 export type EntradaAtualizarCamposRascunhosFornecedor =
   | { rascunhoIds: string[]; campo: "categoria"; categoriaId: string }
   | { rascunhoIds: string[]; campo: "marca"; marcaId: string }
   | { rascunhoIds: string[]; campo: "preco_loja"; precoLoja: number }
+  | { rascunhoIds: string[]; campo: "estoque"; estoque: number }
   | {
       rascunhoIds: string[];
       campo: "secoes_loja";
@@ -172,7 +181,7 @@ export type EntradaAtualizarCamposRascunhosFornecedor =
 
 export type EntradaAlterarDecisaoRascunhosFornecedor = {
   rascunhoIds: string[];
-  acao: "ignorar" | "desfazer";
+  acao: "ignorar" | "desfazer" | "aprovar";
 };
 
 type TabelaConciliacaoFornecedorProps = {
@@ -802,6 +811,70 @@ function PainelDetalhesConciliacao({
                 </dl>
               </section>
 
+              {/* Comparação "o que está na loja" × "o que chegou do fornecedor".
+                  Só existe no caminho "atualizar": é ela que dá ao gestor a base
+                  para aprovar ou não a mudança. */}
+              {item.produtoAtualizado ? (
+                <section className="rounded-lg border border-blue-200 bg-blue-50/40 p-4">
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Produto real da loja × dados recebidos
+                  </h3>
+                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs text-slate-500">Produto da loja</dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.produtoAtualizado.nome ?? "-"}
+                        {item.produtoAtualizado.sku
+                          ? ` · SKU ${item.produtoAtualizado.sku}`
+                          : ""}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Preço atual</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatarMoeda(item.produtoAtualizado.precoAtual) ??
+                          "Não cadastrado"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Preço recebido</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatarMoeda(
+                          item.produto.precoLoja ?? item.produto.preco,
+                        ) ?? "Não recebido"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Estoque atual</dt>
+                      <dd className="font-medium text-slate-900">
+                        {typeof item.produtoAtualizado.estoqueAtual === "number"
+                          ? item.produtoAtualizado.estoqueAtual
+                          : "Não cadastrado"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Estoque recebido
+                      </dt>
+                      <dd className="font-medium text-slate-900">
+                        {typeof item.produto.estoque === "number"
+                          ? item.produto.estoque
+                          : "Não recebido"}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-3 text-xs text-slate-500">
+                    Campos ausentes no arquivo não apagam o dado atual do
+                    produto — só o preço e o estoque recebidos são aplicados na
+                    Publicação.
+                  </p>
+                </section>
+              ) : null}
+
+              {/* "Campos finais do rascunho" descreve um produto a ser CRIADO.
+                  Para item vinculado, o produto já existe e esses campos não se
+                  aplicam — a seção acima ocupa o lugar dela. */}
+              {item.statusVinculacao !== "vinculado" ? (
               <section className="rounded-lg border border-slate-200 bg-white p-4">
                 <h3 className="text-sm font-semibold text-slate-950">
                   Campos finais do rascunho
@@ -863,6 +936,7 @@ function PainelDetalhesConciliacao({
                   </div>
                 </dl>
               </section>
+              ) : null}
 
               <section className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/45 p-4">
                 <h3 className="text-sm font-semibold text-slate-950">
@@ -950,9 +1024,10 @@ function ModalEdicaoRascunhos({
   aoAplicarCampos: (entrada: EntradaAtualizarCamposRascunhosFornecedor) => void;
   aoAplicarPreco: (entrada: EntradaAjustarPrecosConciliacaoFornecedor) => void;
 }) {
-  const [aba, setAba] = useState<"preco" | "comercial" | "classificacao">(
-    "preco",
-  );
+  const [aba, setAba] = useState<
+    "preco" | "estoque" | "comercial" | "classificacao"
+  >("preco");
+  const [estoqueInput, setEstoqueInput] = useState("0");
   const [operacaoPreco, setOperacaoPreco] =
     useState<OperacaoAjustePrecoRascunhoFornecedor>("aumentar_percentual");
   const [valorPreco, setValorPreco] = useState("10");
@@ -1012,7 +1087,20 @@ function ModalEdicaoRascunhos({
     setPrazoEntrega(itemIndividual?.camposRascunho?.prazoEntrega ?? "");
     setOperacaoPreco("aumentar_percentual");
     setValorPreco("10");
+    setEstoqueInput(
+      typeof itemIndividual?.produto.estoque === "number"
+        ? String(itemIndividual.produto.estoque)
+        : "0",
+    );
   }, [aberto, itemIndividual]);
+
+  // Edição de item vinculado troca as abas de catálogo (categoria, marca,
+  // seções) por Estoque: aquelas pertencem ao produto real, que este fluxo
+  // não altera.
+  const ehEdicaoDeAtualizacao = itemIndividual
+    ? itemIndividual.statusVinculacao === "vinculado"
+    : itens.length > 0 &&
+      itens.every((item) => item.statusVinculacao === "vinculado");
 
   const valorPrecoNumerico = Number(valorPreco.replace(",", "."));
   const previewPrecos = itens.slice(0, 5).map((item) => ({
@@ -1025,6 +1113,9 @@ function ModalEdicaoRascunhos({
   }));
   const podeAplicarPreco =
     Number.isFinite(valorPrecoNumerico) && valorPrecoNumerico >= 0;
+  const estoqueNumerico = Number(estoqueInput);
+  const podeAplicarEstoque =
+    Number.isInteger(estoqueNumerico) && estoqueNumerico >= 0;
   const podeAplicarComercial =
     (campoComercial === "modalidade_comercial" && Boolean(modalidade)) ||
     (campoComercial === "prazo_entrega" && Boolean(prazoEntrega.trim())) ||
@@ -1036,9 +1127,11 @@ function ModalEdicaoRascunhos({
     rascunhoIds.length > 0 &&
     (aba === "preco"
       ? podeAplicarPreco
-      : aba === "comercial"
-        ? podeAplicarComercial
-        : podeAplicarClassificacao);
+      : aba === "estoque"
+        ? podeAplicarEstoque
+        : aba === "comercial"
+          ? podeAplicarComercial
+          : podeAplicarClassificacao);
 
   const aplicar = () => {
     if (aba === "preco") {
@@ -1046,6 +1139,15 @@ function ModalEdicaoRascunhos({
         rascunhoIds,
         operacao: operacaoPreco,
         valor: valorPrecoNumerico,
+      });
+      return;
+    }
+
+    if (aba === "estoque") {
+      aoAplicarCampos({
+        rascunhoIds,
+        campo: "estoque",
+        estoque: Math.trunc(estoqueNumerico),
       });
       return;
     }
@@ -1105,10 +1207,18 @@ function ModalEdicaoRascunhos({
           value={aba}
           onValueChange={(valor) => setAba(valor as typeof aba)}
         >
-          <TabsList className="grid h-auto w-full grid-cols-3">
+          <TabsList
+            className={`grid h-auto w-full ${ehEdicaoDeAtualizacao ? "grid-cols-2" : "grid-cols-3"}`}
+          >
             <TabsTrigger value="preco">Preço</TabsTrigger>
-            <TabsTrigger value="comercial">Dados comerciais</TabsTrigger>
-            <TabsTrigger value="classificacao">Classificação</TabsTrigger>
+            {ehEdicaoDeAtualizacao ? (
+              <TabsTrigger value="estoque">Estoque</TabsTrigger>
+            ) : (
+              <>
+                <TabsTrigger value="comercial">Dados comerciais</TabsTrigger>
+                <TabsTrigger value="classificacao">Classificação</TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="preco" className="space-y-4 pt-2">
@@ -1176,6 +1286,27 @@ function ModalEdicaoRascunhos({
               </div>
             </div>
           </TabsContent>
+
+          {ehEdicaoDeAtualizacao ? (
+            <TabsContent value="estoque" className="space-y-4 pt-2">
+              <label className="block space-y-1.5 text-sm">
+                <span className="font-medium text-slate-700">
+                  Estoque a aplicar
+                </span>
+                <Input
+                  value={estoqueInput}
+                  onChange={(evento) => setEstoqueInput(evento.target.value)}
+                  inputMode="numeric"
+                  placeholder="0"
+                />
+              </label>
+              <p className="text-xs text-slate-500">
+                Este valor substitui o estoque recebido do fornecedor para o
+                item selecionado. Ele será aplicado ao produto real quando a
+                atualização for aprovada e publicada.
+              </p>
+            </TabsContent>
+          ) : null}
 
           <TabsContent value="comercial" className="space-y-4 pt-2">
             <label className="block space-y-1.5 text-sm">
@@ -1360,7 +1491,7 @@ export function TabelaConciliacaoFornecedor({
   const [processandoCampos, setProcessandoCampos] = useState(false);
   const [processandoDecisao, setProcessandoDecisao] = useState(false);
   const [confirmacaoDecisao, setConfirmacaoDecisao] = useState<{
-    acao: "ignorar" | "desfazer";
+    acao: "ignorar" | "desfazer" | "aprovar";
     ids: string[];
   } | null>(null);
   const resumo = useMemo(() => calcularResumo(itens), [itens]);
@@ -1382,6 +1513,15 @@ export function TabelaConciliacaoFornecedor({
   const itensSelecionados = useMemo(
     () => itens.filter((item) => idsSelecionados.includes(item.id)),
     [idsSelecionados, itens],
+  );
+  // "Aprovar atualização" só se aplica a itens vinculados — o botão em massa
+  // atua apenas sobre esse subconjunto da seleção.
+  const idsSelecionadosVinculados = useMemo(
+    () =>
+      itensSelecionados
+        .filter((item) => item.statusVinculacao === "vinculado")
+        .map((item) => item.id),
+    [itensSelecionados],
   );
   const totalSelecionadosVisiveis = idsFiltrados.filter((id) =>
     idsSelecionados.includes(id),
@@ -1653,6 +1793,21 @@ export function TabelaConciliacaoFornecedor({
             ) : null}
             {aoAlterarDecisaoRascunhos ? (
               <>
+                {idsSelecionadosVinculados.length > 0 ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() =>
+                      setConfirmacaoDecisao({
+                        acao: "aprovar",
+                        ids: idsSelecionadosVinculados,
+                      })
+                    }
+                  >
+                    Aprovar atualização ({idsSelecionadosVinculados.length})
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -1923,6 +2078,19 @@ export function TabelaConciliacaoFornecedor({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {item.statusVinculacao === "vinculado" ? (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setConfirmacaoDecisao({
+                                acao: "aprovar",
+                                ids: [item.id],
+                              })
+                            }
+                          >
+                            <CheckCircle2 />
+                            Aprovar atualização
+                          </DropdownMenuItem>
+                        ) : null}
                         <DropdownMenuItem
                           onSelect={() =>
                             setConfirmacaoDecisao({
@@ -2105,6 +2273,19 @@ export function TabelaConciliacaoFornecedor({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {item.statusVinculacao === "vinculado" ? (
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setConfirmacaoDecisao({
+                              acao: "aprovar",
+                              ids: [item.id],
+                            })
+                          }
+                        >
+                          <CheckCircle2 />
+                          Aprovar atualização
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuItem
                         onSelect={() =>
                           setConfirmacaoDecisao({
@@ -2186,18 +2367,22 @@ export function TabelaConciliacaoFornecedor({
             <DialogTitle>
               {confirmacaoDecisao?.acao === "ignorar"
                 ? "Ignorar produtos"
-                : "Desfazer decisão"}
+                : confirmacaoDecisao?.acao === "aprovar"
+                  ? "Aprovar atualização"
+                  : "Desfazer decisão"}
             </DialogTitle>
             <DialogDescription>
-              Esta ação removerá {confirmacaoDecisao?.ids.length ?? 0} rascunho
-              {(confirmacaoDecisao?.ids.length ?? 0) === 1 ? "" : "s"} da
-              Conciliação. Deseja continuar?
+              {confirmacaoDecisao?.acao === "aprovar"
+                ? `Esta ação libera ${confirmacaoDecisao?.ids.length ?? 0} atualização${(confirmacaoDecisao?.ids.length ?? 0) === 1 ? "" : "ões"} para a Publicação. Deseja continuar?`
+                : `Esta ação removerá ${confirmacaoDecisao?.ids.length ?? 0} rascunho${(confirmacaoDecisao?.ids.length ?? 0) === 1 ? "" : "s"} da Conciliação. Deseja continuar?`}
             </DialogDescription>
           </DialogHeader>
           <p className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">
             {confirmacaoDecisao?.acao === "ignorar"
               ? "Os itens ficarão como Ignorados na Vinculação."
-              : "Os itens voltarão sem decisão para a Vinculação."}
+              : confirmacaoDecisao?.acao === "aprovar"
+                ? "O preço e o estoque revisados serão aplicados ao produto real quando a Publicação for confirmada."
+                : "Os itens voltarão sem decisão para a Vinculação."}
           </p>
           <DialogFooter>
             <Button

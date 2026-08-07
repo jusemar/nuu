@@ -6,7 +6,10 @@ import {
   calcularAjustePrecoRascunhoFornecedor,
   type OperacaoAjustePrecoRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/calcular-ajuste-preco-rascunho-fornecedor";
-import { listarPendenciasRascunhoFornecedor } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
+import {
+  listarPendenciasAtualizacaoRascunhoFornecedor,
+  listarPendenciasRascunhoFornecedor,
+} from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 
 type AjustePrecosRascunhosFornecedor = {
   rascunhoIds: string[];
@@ -27,6 +30,7 @@ export async function ajustarPrecosProdutosRascunhosFornecedor(
       precoFornecedor: produtoRascunhosTable.precoFornecedor,
       precoLoja: produtoRascunhosTable.precoLoja,
       dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
+      produtoAtualizadoId: produtoRascunhosTable.produtoAtualizadoId,
     })
     .from(produtoRascunhosTable)
     .where(
@@ -47,19 +51,24 @@ export async function ajustarPrecosProdutosRascunhosFornecedor(
 
       if (!precoLoja) return false;
 
-      const pendencias = listarPendenciasRascunhoFornecedor({
-        ...rascunho,
-        precoLoja,
-      });
+      // Itens "atualizar" exigem aprovação explícita (ação "aprovar") para
+      // virarem elegíveis à Publicação — ajustar o preço aqui nunca promove
+      // o status sozinho, e as pendências obrigatórias de categoria/marca
+      // não se aplicam a eles.
+      const status = rascunho.produtoAtualizadoId
+        ? listarPendenciasAtualizacaoRascunhoFornecedor(precoLoja).length === 0
+          ? "pendente_conciliacao"
+          : "rascunho"
+        : listarPendenciasRascunhoFornecedor({ ...rascunho, precoLoja })
+              .length === 0
+          ? "pronto_para_publicar"
+          : "pendente_conciliacao";
 
       await db
         .update(produtoRascunhosTable)
         .set({
           precoLoja,
-          status:
-            pendencias.length === 0
-              ? "pronto_para_publicar"
-              : "pendente_conciliacao",
+          status,
           atualizadoEm: new Date(),
         })
         .where(eq(produtoRascunhosTable.id, rascunho.id));

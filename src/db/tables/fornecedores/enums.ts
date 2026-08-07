@@ -111,4 +111,8 @@ export const produtoRascunhoStatusEnum = pgEnum("produto_rascunho_status", [
   "pendente_conciliacao",
   "pronto_para_publicar",
   "ignorado",
+  // Terminal, exclusivo do caminho "atualizar produto existente" — o
+  // caminho "criar" continua sinalizando conclusão pela existência de um
+  // vínculo ativo (ver listar-rascunhos-importacao-fornecedor.ts).
+  "publicado",
 ]);

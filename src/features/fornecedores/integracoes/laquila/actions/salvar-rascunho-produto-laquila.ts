@@ -1,15 +1,19 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { fornecedorIntegracoesApiTable } from "@/db/schema";
 import { db } from "@/db/connection";
+import {
+  fornecedorIntegracoesApiTable,
+  fornecedorProdutosApiStagingTable,
+} from "@/db/schema";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { salvarProdutoRascunhoFornecedor } from "@/features/fornecedores/services/salvar-produto-rascunho-fornecedor.service";
 
 import { PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
+import { buscarImportacaoApiLaquila } from "../queries/buscar-importacao-api-laquila";
 
 const produtoRecebidoRascunhoSchema = z.object({
   id: z.string().trim().min(1),
@@ -28,6 +32,9 @@ const produtoRecebidoRascunhoSchema = z.object({
 });
 
 const salvarRascunhoProdutoLaquilaSchema = z.object({
+  // Execução dona deste rascunho. Sem ela o rascunho não pertence a ciclo
+  // nenhum e a Conciliação da execução seguinte o veria como se fosse dela.
+  importacaoId: z.uuid(),
   item: produtoRecebidoRascunhoSchema,
   produto: z.record(z.string(), z.unknown()),
 });
@@ -192,6 +199,32 @@ function obterImagensProduto(produto: Record<string, unknown>) {
     .filter((url) => url.length > 0);
 }
 
+async function buscarLinhaStagingDaImportacao({
+  importacaoId,
+  codigoFornecedor,
+}: {
+  importacaoId: string;
+  codigoFornecedor: string | null;
+}) {
+  if (!codigoFornecedor) return null;
+
+  const [linha] = await db
+    .select({ id: fornecedorProdutosApiStagingTable.id })
+    .from(fornecedorProdutosApiStagingTable)
+    .where(
+      and(
+        eq(fornecedorProdutosApiStagingTable.importacaoId, importacaoId),
+        eq(
+          fornecedorProdutosApiStagingTable.codigoFornecedor,
+          codigoFornecedor,
+        ),
+      ),
+    )
+    .limit(1);
+
+  return linha ?? null;
+}
+
 async function buscarIntegracaoLaquilaAtual() {
   const [integracao] = await db
     .select({
@@ -239,9 +272,26 @@ export async function salvarRascunhoProdutoLaquila(
     };
   }
 
+  const importacao = await buscarImportacaoApiLaquila(
+    validacao.data.importacaoId,
+  );
+
+  if (!importacao) {
+    return {
+      sucesso: false,
+      erro: "Importação da API não encontrada para salvar o rascunho.",
+    };
+  }
+
   try {
     const { item, produto } = validacao.data;
     const agora = new Date();
+    // Linha de staging DESTA execução que originou o rascunho. É por ela que a
+    // Conciliação sabe voltar atrás ("desfazer") sem tocar em outro ciclo.
+    const linhaStaging = await buscarLinhaStagingDaImportacao({
+      importacaoId: importacao.id,
+      codigoFornecedor: item.codigo?.trim() ?? null,
+    });
     const nome = obterTexto(produto, "name") || item.nome;
     const descricao = obterTexto(produto, "description") || item.complemento;
     const categoriaId = obterTexto(produto, "categoryId") || null;
@@ -277,6 +327,15 @@ export async function salvarRascunhoProdutoLaquila(
         produtoRascunho: produto,
         codigoFornecedor,
         configuracaoComercial,
+        // Mesma convenção do fluxo de arquivo: é este bloco que amarra o
+        // rascunho a uma execução, e todas as queries e actions
+        // compartilhadas filtram por ele.
+        origemFluxoFornecedor: {
+          importacaoId: importacao.id,
+          stagingId: linhaStaging?.id ?? null,
+          origem: "api",
+          provedor: PROVEDOR_INTEGRACAO_LAQUILA,
+        },
         secoesLoja:
           Array.isArray(produto.storeProductFlags) &&
           produto.storeProductFlags.length > 0
@@ -300,8 +359,12 @@ export async function salvarRascunhoProdutoLaquila(
       codigoFornecedor,
     });
 
-    revalidatePath("/admin/fornecedores/integracoes/laquila/vinculos");
-    revalidatePath("/admin/fornecedores/integracoes/laquila/conciliacao");
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/vinculos`,
+    );
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/conciliacao`,
+    );
 
     return {
       sucesso: true,

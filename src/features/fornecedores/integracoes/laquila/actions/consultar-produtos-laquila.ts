@@ -1,28 +1,25 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-import {
-  fornecedorProdutosApiStagingTable,
-  fornecedorIntegracoesApiTable,
-} from "@/db/schema";
 import { db } from "@/db/connection";
+import { fornecedorIntegracoesApiTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 import { METODOS_LAQUILA } from "../constants";
 import {
-  TIMEOUT_TESTE_CONEXAO_LAQUILA_MS,
   consultarProdutosLaquila as consultarProdutosLaquilaApi,
   consultarSaldoPrecoLaquila as consultarSaldoPrecoLaquilaApi,
   criarClienteLaquila,
+  TIMEOUT_TESTE_CONEXAO_LAQUILA_MS,
 } from "../lib/cliente-laquila";
 import { descriptografarTokenLaquila } from "../lib/mascarar-segredos-laquila";
 import { normalizarProdutosLaquila } from "../lib/normalizar-produto-laquila";
 import {
-  type SaldoPrecoLaquilaNormalizado,
   normalizarSaldosPrecosLaquila,
+  type SaldoPrecoLaquilaNormalizado,
 } from "../lib/normalizar-saldo-preco-laquila";
 import { registrarLogIntegracaoFornecedorApi } from "../lib/registrar-log-integracao-fornecedor-api";
 import { consultarProdutosLaquilaSchema } from "../schemas";
@@ -40,7 +37,6 @@ type ResultadoConsultarProdutosLaquila = {
   mensagem?: string;
   erro?: string;
   totalConsultado?: number;
-  totalSalvo?: number;
   totalSaldoPrecoConsultado?: number;
   totalAtualizadoComPreco?: number;
   totalAtualizadoComEstoque?: number;
@@ -86,156 +82,28 @@ function montarPrevia(produtos: ReturnType<typeof normalizarProdutosLaquila>) {
   }));
 }
 
-async function salvarProdutosStagingApi({
-  integracaoId,
-  produtos,
-}: {
-  integracaoId: string;
-  produtos: ReturnType<typeof normalizarProdutosLaquila>;
-}) {
-  if (produtos.length === 0) return 0;
-
-  const agora = new Date();
-
-  await db
-    .insert(fornecedorProdutosApiStagingTable)
-    .values(
-      produtos.map((produto) => ({
-        integracaoApiId: integracaoId,
-        codigoFornecedor: produto.codigoFornecedor,
-        nomeProduto: produto.nomeProduto,
-        ean: produto.ean,
-        ncm: produto.ncm,
-        marcaFornecedor: produto.marcaFornecedor,
-        grupoFornecedor: produto.grupoFornecedor,
-        subgrupoFornecedor: produto.subgrupoFornecedor,
-        precoFornecedor: produto.precoFornecedor,
-        estoqueFornecedor: produto.estoqueFornecedor,
-        imagemUrl: produto.imagemUrl,
-        unidade: produto.unidade,
-        pesoBruto: produto.pesoBruto,
-        pesoLiquido: produto.pesoLiquido,
-        largura: produto.largura,
-        altura: produto.altura,
-        comprimento: produto.comprimento,
-        dadosBrutosJson: produto.dadosBrutosJson,
-        status: "novo" as const,
-        ultimaConsultaEm: agora,
-        atualizadoEm: agora,
-      })),
-    )
-    .onConflictDoUpdate({
-      target: [
-        fornecedorProdutosApiStagingTable.integracaoApiId,
-        fornecedorProdutosApiStagingTable.codigoFornecedor,
-      ],
-      set: {
-        nomeProduto: sql`excluded.nome_produto`,
-        ean: sql`excluded.ean`,
-        ncm: sql`excluded.ncm`,
-        marcaFornecedor: sql`excluded.marca_fornecedor`,
-        grupoFornecedor: sql`excluded.grupo_fornecedor`,
-        subgrupoFornecedor: sql`excluded.subgrupo_fornecedor`,
-        precoFornecedor: sql`excluded.preco_fornecedor`,
-        estoqueFornecedor: sql`excluded.estoque_fornecedor`,
-        imagemUrl: sql`excluded.imagem_url`,
-        unidade: sql`excluded.unidade`,
-        pesoBruto: sql`excluded.peso_bruto`,
-        pesoLiquido: sql`excluded.peso_liquido`,
-        largura: sql`excluded.largura`,
-        altura: sql`excluded.altura`,
-        comprimento: sql`excluded.comprimento`,
-        dadosBrutosJson: sql`excluded.dados_brutos_json`,
-        status: "novo",
-        ultimaConsultaEm: agora,
-        atualizadoEm: agora,
-      },
-    });
-
-  return produtos.length;
-}
-
-async function atualizarSaldoPrecoProdutosExistentes({
-  integracaoId,
-  saldosPrecos,
-}: {
-  integracaoId: string;
-  saldosPrecos: SaldoPrecoLaquilaNormalizado[];
-}) {
-  if (saldosPrecos.length === 0) {
-    return {
-      totalAtualizadoComPreco: 0,
-      totalAtualizadoComEstoque: 0,
-    };
-  }
-
-  const codigosFornecedor = saldosPrecos.map(
-    (saldoPreco) => saldoPreco.codigoFornecedor,
-  );
-  const produtosExistentes = await db
-    .select({
-      codigoFornecedor: fornecedorProdutosApiStagingTable.codigoFornecedor,
-    })
-    .from(fornecedorProdutosApiStagingTable)
-    .where(
-      and(
-        eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId),
-        sql`${fornecedorProdutosApiStagingTable.codigoFornecedor} = ANY(${codigosFornecedor})`,
-      ),
-    );
-  const codigosExistentes = new Set(
-    produtosExistentes.map((produto) => produto.codigoFornecedor),
-  );
-  let totalAtualizadoComPreco = 0;
-  let totalAtualizadoComEstoque = 0;
-  const agora = new Date();
+/**
+ * Quantos códigos consultados vieram com preço e/ou estoque no método 00006.
+ *
+ * Esta action é o BOTÃO DE DIAGNÓSTICO da tela de configuração: ela confere se
+ * as credenciais respondem e o que a Laquila devolve. Ela não grava mais nada
+ * em `fornecedor_produtos_api_staging` — staging pertence a uma execução
+ * (`importacoes_fornecedor`), e quem cria execução é `iniciarSincronizacaoLaquila`.
+ * Escrever aqui produzia justamente as linhas sem `importacaoId` que hoje são
+ * tratadas como legado.
+ */
+function resumirSaldoPrecoConsultado(
+  saldosPrecos: SaldoPrecoLaquilaNormalizado[],
+) {
+  let totalComPreco = 0;
+  let totalComEstoque = 0;
 
   for (const saldoPreco of saldosPrecos) {
-    if (!codigosExistentes.has(saldoPreco.codigoFornecedor)) continue;
-
-    const atualizacao: {
-      precoFornecedor?: string;
-      estoqueFornecedor?: number;
-      atualizadoEm: Date;
-    } = {
-      atualizadoEm: agora,
-    };
-
-    if (saldoPreco.precoFornecedor !== null) {
-      atualizacao.precoFornecedor = saldoPreco.precoFornecedor;
-      totalAtualizadoComPreco += 1;
-    }
-
-    if (saldoPreco.estoqueFornecedor !== null) {
-      atualizacao.estoqueFornecedor = saldoPreco.estoqueFornecedor;
-      totalAtualizadoComEstoque += 1;
-    }
-
-    if (
-      saldoPreco.precoFornecedor === null &&
-      saldoPreco.estoqueFornecedor === null
-    ) {
-      continue;
-    }
-
-    await db
-      .update(fornecedorProdutosApiStagingTable)
-      .set(atualizacao)
-      .where(
-        and(
-          eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId),
-          eq(
-            fornecedorProdutosApiStagingTable.codigoFornecedor,
-            saldoPreco.codigoFornecedor,
-          ),
-        ),
-      );
+    if (saldoPreco.precoFornecedor !== null) totalComPreco += 1;
+    if (saldoPreco.estoqueFornecedor !== null) totalComEstoque += 1;
   }
 
-  return {
-    totalAtualizadoComPreco,
-    totalAtualizadoComEstoque,
-  };
+  return { totalComPreco, totalComEstoque };
 }
 
 export async function consultarProdutosLaquila(
@@ -318,15 +186,10 @@ export async function consultarProdutosLaquila(
         sucesso: false,
         erro: resultado.erro,
         totalConsultado: 0,
-        totalSalvo: 0,
       };
     }
 
     const produtosNormalizados = normalizarProdutosLaquila(resultado.itens);
-    const totalSalvo = await salvarProdutosStagingApi({
-      integracaoId,
-      produtos: produtosNormalizados,
-    });
     const resultadoSaldoPreco = await consultarSaldoPrecoLaquilaApi({
       cliente,
       tokenCliente,
@@ -341,14 +204,11 @@ export async function consultarProdutosLaquila(
       const saldosPrecosNormalizados = normalizarSaldosPrecosLaquila(
         resultadoSaldoPreco.itens,
       );
-      const totaisAtualizacao = await atualizarSaldoPrecoProdutosExistentes({
-        integracaoId,
-        saldosPrecos: saldosPrecosNormalizados,
-      });
+      const resumo = resumirSaldoPrecoConsultado(saldosPrecosNormalizados);
 
       totalSaldoPrecoConsultado = resultadoSaldoPreco.itens.length;
-      totalAtualizadoComPreco = totaisAtualizacao.totalAtualizadoComPreco;
-      totalAtualizadoComEstoque = totaisAtualizacao.totalAtualizadoComEstoque;
+      totalAtualizadoComPreco = resumo.totalComPreco;
+      totalAtualizadoComEstoque = resumo.totalComEstoque;
 
       await registrarLogIntegracaoFornecedorApi({
         integracaoApiId: integracaoId,
@@ -356,7 +216,7 @@ export async function consultarProdutosLaquila(
         operacao: "consultar_saldo_preco_laquila",
         status: "sucesso",
         codigoHttp: resultadoSaldoPreco.codigoHttp,
-        mensagem: "Saldo e preço Laquila consultados e aplicados aos recebidos da API.",
+        mensagem: "Saldo e preço Laquila consultados para diagnóstico.",
         requestResumo: {
           pagina,
           itensPorPagina,
@@ -395,7 +255,7 @@ export async function consultarProdutosLaquila(
       operacao: "consultar_produtos_laquila",
       status: "sucesso",
       codigoHttp: resultado.codigoHttp,
-      mensagem: "Produtos Laquila consultados e salvos no staging API.",
+      mensagem: "Produtos Laquila consultados para diagnóstico da configuração.",
       requestResumo: {
         pagina,
         itensPorPagina,
@@ -404,7 +264,6 @@ export async function consultarProdutosLaquila(
       responseResumo: {
         totalConsultado: resultado.itens.length,
         totalNormalizado: produtosNormalizados.length,
-        totalSalvo,
         totalSaldoPrecoConsultado,
         totalAtualizadoComPreco,
         totalAtualizadoComEstoque,
@@ -418,7 +277,6 @@ export async function consultarProdutosLaquila(
       sucesso: true,
       mensagem: "Produtos Laquila consultados com sucesso.",
       totalConsultado: resultado.itens.length,
-      totalSalvo,
       totalSaldoPrecoConsultado,
       totalAtualizadoComPreco,
       totalAtualizadoComEstoque,

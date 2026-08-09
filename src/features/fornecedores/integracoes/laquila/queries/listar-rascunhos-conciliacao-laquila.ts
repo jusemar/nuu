@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -46,9 +46,17 @@ export type RascunhoConciliacaoLaquila = {
     | "publicado";
 };
 
-export async function listarRascunhosConciliacaoLaquila(): Promise<
-  RascunhoConciliacaoLaquila[]
-> {
+/**
+ * Rascunhos salvos por UMA execução da API, usados pela tela de Vinculação
+ * para saber o que já foi preparado neste ciclo.
+ *
+ * O `importacaoId` é obrigatório: sem ele a #102 enxergaria os rascunhos da
+ * #101 e a Vinculação mostraria como "já salvo" um item deste ciclo que nunca
+ * foi tocado nele.
+ */
+export async function listarRascunhosConciliacaoLaquila(
+  importacaoId: string,
+): Promise<RascunhoConciliacaoLaquila[]> {
   try {
     const linhas = await db
       .select({
@@ -89,6 +97,7 @@ export async function listarRascunhosConciliacaoLaquila(): Promise<
             "pendente_conciliacao",
             "pronto_para_publicar",
           ]),
+          sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
         ),
       );
 

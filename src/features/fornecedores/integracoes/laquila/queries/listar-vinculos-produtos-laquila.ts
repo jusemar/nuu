@@ -23,6 +23,14 @@ export type VinculoProdutoLaquila = {
   };
 };
 
+/**
+ * Vínculos permanentes do fornecedor Laquila.
+ *
+ * NÃO recebe `importacaoId` de propósito: vínculo é permanente
+ * (`fornecedorId + codigoFornecedor → produtoId`) e vale para todas as
+ * execuções futuras. É a importação que é histórica, não o vínculo — por isso
+ * a #102 reaproveita o que a #101 já vinculou em vez de vincular de novo.
+ */
 export async function listarVinculosProdutosLaquila() {
   const [integracao] = await db
     .select({ fornecedorId: fornecedorIntegracoesApiTable.fornecedorId })

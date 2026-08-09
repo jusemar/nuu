@@ -51,6 +51,8 @@ export const consultarProdutosLaquilaSchema = z.object({
 });
 
 export const salvarProdutosSelecionadosStagingLaquilaSchema = z.object({
+  /** Execução a que esta triagem pertence. */
+  importacaoId: z.uuid(),
   produtos: z
     .array(z.unknown())
     .min(1, "Selecione pelo menos um produto.")

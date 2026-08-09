@@ -1,11 +1,12 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedorProdutosApiStagingTable } from "@/db/schema";
-import type { StatusProdutoLaquilaMock } from "../types/produto-laquila-mock.types";
+
 import { CLASSIFICACOES_RECEBIDOS_API_LAQUILA } from "../constants";
+import type { StatusProdutoLaquilaMock } from "../types/produto-laquila-mock.types";
 
 export type ProdutoApiStagingLaquilaPrevia = {
   id: string;
@@ -134,10 +135,24 @@ export async function listarProdutosApiStagingLaquilaPrevia(
   return produtos;
 }
 
+/**
+ * Catálogo de staging da API.
+ *
+ * O escopo é sempre uma execução: `importacaoId` presente lê o retrato daquele
+ * ciclo, e é isto que faz a retomada funcionar sem tocar na API de novo. Quem
+ * passa `importacaoId: null` explicitamente está pedindo o **legado** — as
+ * linhas anteriores à existência do conceito de execução, que continuam
+ * legíveis mas ficam fora de qualquer ciclo novo.
+ */
 export async function listarProdutosApiStagingLaquilaCatalogo(
   integracaoId: string | null | undefined,
+  escopo: { importacaoId: string | null } = { importacaoId: null },
 ): Promise<ProdutoApiStagingLaquilaCatalogo[]> {
   if (!integracaoId) return [];
+
+  const filtroExecucao = escopo.importacaoId
+    ? eq(fornecedorProdutosApiStagingTable.importacaoId, escopo.importacaoId)
+    : isNull(fornecedorProdutosApiStagingTable.importacaoId);
 
   const produtos = await db
     .select({
@@ -157,7 +172,12 @@ export async function listarProdutosApiStagingLaquilaCatalogo(
       dadosBrutosJson: fornecedorProdutosApiStagingTable.dadosBrutosJson,
     })
     .from(fornecedorProdutosApiStagingTable)
-    .where(eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId))
+    .where(
+      and(
+        eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracaoId),
+        filtroExecucao,
+      ),
+    )
     .orderBy(desc(fornecedorProdutosApiStagingTable.ultimaConsultaEm));
 
   return produtos.flatMap((produto) => {

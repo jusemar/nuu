@@ -12,18 +12,6 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
-import {
-  consultarProdutosLaquila,
-  salvarConfiguracaoLaquila,
-  testarConexaoLaquila,
-} from "../../actions";
-import type { ProdutoApiStagingLaquilaPrevia } from "../../queries";
-import { configuracaoLaquilaSchema } from "../../schemas";
-import type { ConfiguracaoLaquilaSchema } from "../../schemas";
-import type {
-  ConfiguracaoLaquilaAdmin,
-  StatusTesteIntegracaoLaquila,
-} from "../../types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +23,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+
+import {
+  consultarProdutosLaquila,
+  salvarConfiguracaoLaquila,
+  testarConexaoLaquila,
+} from "../../actions";
+import type { ProdutoApiStagingLaquilaPrevia } from "../../queries";
+import type { ConfiguracaoLaquilaSchema } from "../../schemas";
+import { configuracaoLaquilaSchema } from "../../schemas";
+import type {
+  ConfiguracaoLaquilaAdmin,
+  StatusTesteIntegracaoLaquila,
+} from "../../types";
 
 type FormularioConfiguracaoLaquilaProps = {
   configuracao: ConfiguracaoLaquilaAdmin | null;
@@ -57,7 +58,7 @@ export function FormularioConfiguracaoLaquila({
   const [erro, setErro] = useState<string | null>(null);
   const [resumoProdutos, setResumoProdutos] = useState<{
     totalConsultado: number;
-    totalSalvo: number;
+    totalComPrecoEstoque: number;
   } | null>(null);
   const [produtosPrevia, setProdutosPrevia] = useState<
     ProdutoApiStagingLaquilaPrevia[]
@@ -174,7 +175,7 @@ export function FormularioConfiguracaoLaquila({
       if (resultado.sucesso) {
         setResumoProdutos({
           totalConsultado: resultado.totalConsultado ?? 0,
-          totalSalvo: resultado.totalSalvo ?? 0,
+          totalComPrecoEstoque: resultado.totalAtualizadoComPreco ?? 0,
         });
 
         if (resultado.produtos) {
@@ -305,8 +306,8 @@ export function FormularioConfiguracaoLaquila({
               <p className="text-sm font-medium text-slate-900">Produtos</p>
               {resumoProdutos ? (
                 <p className="text-xs text-slate-500">
-                  Consultados: {resumoProdutos.totalConsultado} · Salvos:{" "}
-                  {resumoProdutos.totalSalvo}
+                  Consultados: {resumoProdutos.totalConsultado} · Com preço:{" "}
+                  {resumoProdutos.totalComPrecoEstoque}
                 </p>
               ) : (
                 <p className="text-xs text-slate-500">Staging API</p>

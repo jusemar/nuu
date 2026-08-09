@@ -1,24 +1,15 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-import {
-  fornecedorIntegracoesApiTable,
-  fornecedorProdutosApiStagingTable,
-  fornecedoresTable,
-} from "@/db/schema";
 import { db } from "@/db/connection";
+import { fornecedorProdutosApiStagingTable } from "@/db/schema";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
-import {
-  FORNECEDOR_LAQUILA_NOME,
-  METODOS_LAQUILA,
-  PROVEDOR_INTEGRACAO_LAQUILA,
-} from "../constants";
-import type { ItemProdutoLaquilaApi } from "../lib/cliente-laquila";
-import { normalizarProdutosLaquila } from "../lib/normalizar-produto-laquila";
+import { METODOS_LAQUILA } from "../constants";
 import { registrarLogIntegracaoFornecedorApi } from "../lib/registrar-log-integracao-fornecedor-api";
+import { buscarImportacaoApiLaquila } from "../queries/buscar-importacao-api-laquila";
 import { salvarProdutosSelecionadosStagingLaquilaSchema } from "../schemas";
 
 type ResultadoSalvarProdutosSelecionadosStagingLaquila = {
@@ -42,91 +33,34 @@ function obterTexto(registro: Record<string, unknown>, chave: string) {
   return "";
 }
 
-function montarItemApiLaquila(valor: unknown): ItemProdutoLaquilaApi | null {
-  if (!ehRegistro(valor)) return null;
+/** Código do fornecedor de um item selecionado, venha ele do topo ou do bruto. */
+function extrairCodigoSelecionado(valor: unknown) {
+  if (!ehRegistro(valor)) return "";
 
-  const dadosBrutosOriginais = ehRegistro(valor.dadosBrutosJson)
+  const dadosBrutos = ehRegistro(valor.dadosBrutosJson)
     ? valor.dadosBrutosJson
     : ehRegistro(valor.dados_brutos_json)
       ? valor.dados_brutos_json
       : {};
-  const dadosBrutos = { ...dadosBrutosOriginais };
 
-  const item: Record<string, unknown> = {
-    ...dadosBrutos,
-    cd_item: obterTexto(valor, "cd_item") || obterTexto(dadosBrutos, "cd_item"),
-    descricao:
-      obterTexto(valor, "descricao") || obterTexto(dadosBrutos, "descricao"),
-    cd_ean: obterTexto(valor, "cd_ean") || obterTexto(dadosBrutos, "cd_ean"),
-    NCM: obterTexto(valor, "NCM") || obterTexto(dadosBrutos, "NCM"),
-    ds_ggrupo:
-      obterTexto(valor, "ds_ggrupo") || obterTexto(dadosBrutos, "ds_ggrupo"),
-    ds_grupo:
-      obterTexto(valor, "ds_grupo") || obterTexto(dadosBrutos, "ds_grupo"),
-    ds_sgrupo:
-      obterTexto(valor, "ds_sgrupo") || obterTexto(dadosBrutos, "ds_sgrupo"),
-    lista_fotos:
-      valor.lista_fotos ?? dadosBrutos.lista_fotos ?? dadosBrutos.imagemUrl,
-    vl_preco: valor.vl_preco ?? dadosBrutos.vl_preco ?? null,
-    qt_saldo: valor.qt_saldo ?? dadosBrutos.qt_saldo ?? null,
-    peso_bruto:
-      obterTexto(valor, "peso_bruto") || obterTexto(dadosBrutos, "peso_bruto"),
-    altura_caixa:
-      obterTexto(valor, "altura_caixa") ||
-      obterTexto(dadosBrutos, "altura_caixa"),
-    largura_caixa:
-      obterTexto(valor, "largura_caixa") ||
-      obterTexto(dadosBrutos, "largura_caixa"),
-    comprimento_caixa:
-      obterTexto(valor, "comprimento_caixa") ||
-      obterTexto(dadosBrutos, "comprimento_caixa"),
-  };
-
-  if (!item.cd_item || !item.descricao) return null;
-
-  return item;
+  return obterTexto(valor, "cd_item") || obterTexto(dadosBrutos, "cd_item");
 }
 
-function extrairPrimeiraFoto(valor: unknown) {
-  if (Array.isArray(valor)) {
-    return (
-      valor
-        .map((item) => String(item).trim())
-        .find((item) => item.length > 0) ?? null
-    );
-  }
-
-  if (typeof valor !== "string") return null;
-
-  return (
-    valor
-      .split(/[\n,;|]+/)
-      .map((item) => item.trim())
-      .find((item) => item.length > 0) ?? null
-  );
-}
-
-async function buscarIntegracaoLaquilaAtual() {
-  const [integracao] = await db
-    .select({
-      id: fornecedorIntegracoesApiTable.id,
-    })
-    .from(fornecedorIntegracoesApiTable)
-    .innerJoin(
-      fornecedoresTable,
-      eq(fornecedorIntegracoesApiTable.fornecedorId, fornecedoresTable.id),
-    )
-    .where(
-      and(
-        eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
-        eq(fornecedoresTable.nome, FORNECEDOR_LAQUILA_NOME),
-      ),
-    )
-    .limit(1);
-
-  return integracao ?? null;
-}
-
+/**
+ * Registra, DENTRO de uma execução, quais produtos o gestor levou adiante.
+ *
+ * Antes esta action apagava todo o staging da integração e reescrevia com os
+ * selecionados — era o que impedia a API de ter ciclos: cada seleção destruía
+ * o retrato anterior. Agora o staging já foi gravado pela sincronização, com
+ * `importacaoId`, e aqui apenas se marca a triagem do ciclo:
+ *
+ * - selecionado  → `novo` (segue para Vinculação);
+ * - não selecionado → `ignorado` (sai da fila ativa, permanece no histórico).
+ *
+ * Nada fora desta importação é tocado. Linhas já `vinculado` são preservadas:
+ * a decisão de vínculo é anterior e não deve ser desfeita por uma reabertura
+ * da tela de seleção.
+ */
 export async function salvarProdutosSelecionadosStagingLaquila(
   entrada: unknown,
 ): Promise<ResultadoSalvarProdutosSelecionadosStagingLaquila> {
@@ -142,41 +76,34 @@ export async function salvarProdutosSelecionadosStagingLaquila(
     };
   }
 
-  const sessaoValida = await possuiSessaoFornecedoresAdmin();
-
-  if (!sessaoValida) {
+  if (!(await possuiSessaoFornecedoresAdmin())) {
     return {
       sucesso: false,
       erro: "Sua sessão não está ativa. Entre novamente para salvar os selecionados.",
     };
   }
 
-  const integracao = await buscarIntegracaoLaquilaAtual();
+  const importacao = await buscarImportacaoApiLaquila(
+    validacao.data.importacaoId,
+  );
 
-  if (!integracao) {
+  if (!importacao) {
     return {
       sucesso: false,
-      erro: "Configuração Laquila não encontrada.",
+      erro: "Importação da API não encontrada.",
     };
   }
 
   try {
-    const itensApi = validacao.data.produtos.flatMap((produto) => {
-      const item = montarItemApiLaquila(produto);
-
-      return item ? [item] : [];
-    });
-    const itensUnicosPorCodigo = new Map<string, ItemProdutoLaquilaApi>();
-
-    for (const item of itensApi) {
-      itensUnicosPorCodigo.set(String(item.cd_item), item);
-    }
-
-    const produtosNormalizados = normalizarProdutosLaquila(
-      Array.from(itensUnicosPorCodigo.values()),
+    const codigosSelecionados = Array.from(
+      new Set(
+        validacao.data.produtos
+          .map(extrairCodigoSelecionado)
+          .filter((codigo) => codigo.length > 0),
+      ),
     );
 
-    if (produtosNormalizados.length === 0) {
+    if (codigosSelecionados.length === 0) {
       return {
         sucesso: false,
         erro: "Nenhum produto selecionado pôde ser preparado para vinculação.",
@@ -186,75 +113,87 @@ export async function salvarProdutosSelecionadosStagingLaquila(
     }
 
     const agora = new Date();
+    const escopoDaExecucao = eq(
+      fornecedorProdutosApiStagingTable.importacaoId,
+      importacao.id,
+    );
 
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(fornecedorProdutosApiStagingTable)
-        .where(
-          eq(fornecedorProdutosApiStagingTable.integracaoApiId, integracao.id),
-        );
+    const selecionados = await db
+      .update(fornecedorProdutosApiStagingTable)
+      .set({ status: "novo", atualizadoEm: agora })
+      .where(
+        and(
+          escopoDaExecucao,
+          inArray(
+            fornecedorProdutosApiStagingTable.codigoFornecedor,
+            codigosSelecionados,
+          ),
+          eq(fornecedorProdutosApiStagingTable.status, "ignorado"),
+        ),
+      )
+      .returning({ id: fornecedorProdutosApiStagingTable.id });
 
-      await tx.insert(fornecedorProdutosApiStagingTable).values(
-        produtosNormalizados.map((produto) => ({
-          integracaoApiId: integracao.id,
-          codigoFornecedor: produto.codigoFornecedor,
-          nomeProduto: produto.nomeProduto,
-          ean: produto.ean,
-          ncm: produto.ncm,
-          marcaFornecedor: produto.marcaFornecedor,
-          grupoFornecedor: produto.grupoFornecedor,
-          subgrupoFornecedor: produto.subgrupoFornecedor,
-          precoFornecedor: produto.precoFornecedor,
-          estoqueFornecedor: produto.estoqueFornecedor,
-          imagemUrl:
-            produto.imagemUrl ??
-            extrairPrimeiraFoto(produto.dadosBrutosJson.lista_fotos),
-          unidade: produto.unidade,
-          pesoBruto: produto.pesoBruto,
-          pesoLiquido: produto.pesoLiquido,
-          largura: produto.largura,
-          altura: produto.altura,
-          comprimento: produto.comprimento,
-          dadosBrutosJson: produto.dadosBrutosJson,
-          status: "novo" as const,
-          ultimaConsultaEm: agora,
-          atualizadoEm: agora,
-        })),
+    await db
+      .update(fornecedorProdutosApiStagingTable)
+      .set({ status: "ignorado", atualizadoEm: agora })
+      .where(
+        and(
+          escopoDaExecucao,
+          notInArray(
+            fornecedorProdutosApiStagingTable.codigoFornecedor,
+            codigosSelecionados,
+          ),
+          inArray(fornecedorProdutosApiStagingTable.status, [
+            "novo",
+            "atencao",
+          ]),
+        ),
       );
-    });
+
+    // Execuções antigas podem não ter a integração no `configuracaoFluxoJson`;
+    // nesse caso o log é dispensável, não vale falhar a triagem por ele.
+    if (!importacao.integracaoApiId) {
+      revalidatePath(
+        `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/vinculos`,
+      );
+
+      return {
+        sucesso: true,
+        mensagem: "Produtos selecionados salvos para vinculação.",
+        totalSelecionado: validacao.data.produtos.length,
+        totalSalvo: codigosSelecionados.length,
+      };
+    }
 
     await registrarLogIntegracaoFornecedorApi({
-      integracaoApiId: integracao.id,
+      integracaoApiId: importacao.integracaoApiId,
       metodo: METODOS_LAQUILA.consultarItem,
       operacao: "salvar_selecionados_staging_laquila",
       status: "sucesso",
-      mensagem: "Produtos selecionados salvos no staging Laquila.",
+      mensagem: "Triagem da execução Laquila registrada no staging.",
       responseResumo: {
+        importacaoId: importacao.id,
         totalSelecionado: validacao.data.produtos.length,
-        totalNormalizado: produtosNormalizados.length,
-        totalSalvo: produtosNormalizados.length,
+        totalCodigosSelecionados: codigosSelecionados.length,
+        totalReativados: selecionados.length,
       },
-    });
+    }).catch(() => undefined);
 
-    revalidatePath("/admin/fornecedores/integracoes/laquila/vinculos");
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/vinculos`,
+    );
 
     return {
       sucesso: true,
       mensagem: "Produtos selecionados salvos para vinculação.",
       totalSelecionado: validacao.data.produtos.length,
-      totalSalvo: produtosNormalizados.length,
+      totalSalvo: codigosSelecionados.length,
     };
   } catch (erro) {
-    await registrarLogIntegracaoFornecedorApi({
-      integracaoApiId: integracao.id,
-      metodo: METODOS_LAQUILA.consultarItem,
-      operacao: "salvar_selecionados_staging_laquila",
-      status: "erro",
-      mensagem:
-        erro instanceof Error
-          ? erro.message
-          : "Erro desconhecido ao salvar selecionados.",
-    }).catch(() => undefined);
+    console.error("[salvarProdutosSelecionadosStagingLaquila]", {
+      importacaoId: importacao.id,
+      mensagem: erro instanceof Error ? erro.message : "Erro desconhecido",
+    });
 
     return {
       sucesso: false,

@@ -259,7 +259,13 @@ export const tratarProdutosFornecedorComoNovosSchema = z.object({
 });
 
 export const buscaProdutoVinculoFornecedorSchema = z.object({
-  busca: z.string().trim().min(1).max(120).optional().default(""),
+  // Sem `.min(1)`: a caixa de busca abre vazia, e as páginas repassam esse
+  // vazio explicitamente (`buscaProduto ?? ""`). Com `.min(1)`, o `.default("")`
+  // não protegia — ele só cobre a chave AUSENTE, não a presente com "" — e o
+  // `parse` estourava um ZodError fora da leitura protegida, derrubando a
+  // página inteira na error boundary. Busca vazia é estado legítimo: a própria
+  // query devolve lista vazia (`if (!filtros.busca) return []`).
+  busca: z.string().trim().max(120).optional().default(""),
   limite: z.number().int().positive().max(50).optional().default(20),
 });
 

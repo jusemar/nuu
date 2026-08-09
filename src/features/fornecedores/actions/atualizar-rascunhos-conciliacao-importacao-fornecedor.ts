@@ -6,11 +6,11 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import { produtoRascunhosTable } from "@/db/schema";
+import type { OrigemImportacaoFornecedor } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
+import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { ajustarPrecosProdutosRascunhosFornecedor } from "@/features/fornecedores/services/ajustar-precos-produtos-rascunhos-fornecedor.service";
 import { atualizarCamposProdutosRascunhosFornecedor } from "@/features/fornecedores/services/atualizar-campos-produtos-rascunhos-fornecedor.service";
-
-const PROVEDOR_IMPORTACAO_EXCEL = "arquivo_excel";
 
 const idsRascunhosSchema = z.array(z.uuid()).min(1).max(200);
 const secoesLojaSchema = z
@@ -69,9 +69,15 @@ const atualizarCamposRascunhosImportacaoFornecedorSchema = z.discriminatedUnion(
   ],
 );
 
+/**
+ * Restringe os ids recebidos aos rascunhos que realmente pertencem a esta
+ * importação — e só a ela. A origem vem da própria importação, então a mesma
+ * action serve ao arquivo e à API sem bifurcação.
+ */
 async function listarIdsRascunhosDaImportacao(
   importacaoId: string,
   rascunhoIds: string[],
+  origem: OrigemImportacaoFornecedor,
 ) {
   const idsUnicos = Array.from(new Set(rascunhoIds));
   const rascunhos = await db
@@ -80,8 +86,8 @@ async function listarIdsRascunhosDaImportacao(
     .where(
       and(
         inArray(produtoRascunhosTable.id, idsUnicos),
-        eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
-        eq(produtoRascunhosTable.origemProvedor, PROVEDOR_IMPORTACAO_EXCEL),
+        eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
+        eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
         sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
       ),
     );
@@ -91,6 +97,9 @@ async function listarIdsRascunhosDaImportacao(
 
 function revalidarConciliacaoImportacao(importacaoId: string) {
   revalidatePath(`/admin/fornecedores/importacoes/${importacaoId}`);
+  revalidatePath(
+    `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/conciliacao`,
+  );
 }
 
 export async function ajustarPrecosRascunhosImportacaoFornecedor(
@@ -113,9 +122,16 @@ export async function ajustarPrecosRascunhosImportacaoFornecedor(
   }
 
   try {
+    const origem = await buscarOrigemImportacaoFornecedor(idValidado.data);
+
+    if (!origem) {
+      return { sucesso: false, erro: "Importação não encontrada." };
+    }
+
     const rascunhoIds = await listarIdsRascunhosDaImportacao(
       idValidado.data,
       validacao.data.rascunhoIds,
+      origem,
     );
 
     if (rascunhoIds.length !== new Set(validacao.data.rascunhoIds).size) {
@@ -127,7 +143,7 @@ export async function ajustarPrecosRascunhosImportacaoFornecedor(
 
     const precosAtualizados = await ajustarPrecosProdutosRascunhosFornecedor({
       rascunhoIds,
-      origemProvedor: PROVEDOR_IMPORTACAO_EXCEL,
+      origemProvedor: origem.origemProvedor,
       operacao: validacao.data.operacao,
       valor: validacao.data.valor,
     });
@@ -174,9 +190,16 @@ export async function atualizarCamposRascunhosImportacaoFornecedor(
   }
 
   try {
+    const origem = await buscarOrigemImportacaoFornecedor(idValidado.data);
+
+    if (!origem) {
+      return { sucesso: false, erro: "Importação não encontrada." };
+    }
+
     const rascunhoIds = await listarIdsRascunhosDaImportacao(
       idValidado.data,
       validacao.data.rascunhoIds,
+      origem,
     );
 
     if (rascunhoIds.length !== new Set(validacao.data.rascunhoIds).size) {
@@ -189,7 +212,7 @@ export async function atualizarCamposRascunhosImportacaoFornecedor(
     const atualizados = await atualizarCamposProdutosRascunhosFornecedor({
       ...validacao.data,
       rascunhoIds,
-      origemProvedor: PROVEDOR_IMPORTACAO_EXCEL,
+      origemProvedor: origem.origemProvedor,
     });
 
     revalidarConciliacaoImportacao(idValidado.data);

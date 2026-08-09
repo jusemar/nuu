@@ -50,6 +50,12 @@ export async function alterarDecisaoRascunhosImportacaoFornecedor(
     revalidatePath(
       `/admin/fornecedores/importacoes/${idImportacao}/publicacao`,
     );
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${idImportacao}/conciliacao`,
+    );
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${idImportacao}/publicacao`,
+    );
 
     return {
       sucesso: true,

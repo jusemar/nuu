@@ -20,6 +20,12 @@ import {
   listarPendenciasRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
+import {
+  ORIGEM_IMPORTACAO_ARQUIVO,
+  type OrigemImportacaoFornecedor,
+} from "@/features/fornecedores/lib/origem-importacao-fornecedor";
+
+import { buscarOrigemImportacaoFornecedor } from "./buscar-origem-importacao-fornecedor";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 // A categoria e a marca do PRODUTO REAL precisam de alias: as tabelas base já
@@ -90,9 +96,23 @@ function extrairStagingId(dadosOrigemJson: unknown) {
   return origem.stagingId;
 }
 
+/**
+ * Itens da Conciliação de UMA importação, seja ela de arquivo ou de API.
+ *
+ * A origem não é parâmetro da interface: ela é lida da própria importação. É o
+ * que permite que a mesma query sirva aos dois caminhos sem duplicar regra —
+ * inclusive a de produto já vinculado (Fornecedor × Loja atual × A publicar),
+ * que vive inteira aqui.
+ */
 export async function listarRascunhosImportacaoFornecedor(
   importacaoId: string,
+  origemInformada?: OrigemImportacaoFornecedor,
 ): Promise<RascunhoImportacaoFornecedor[]> {
+  const origem =
+    origemInformada ??
+    (await buscarOrigemImportacaoFornecedor(importacaoId)) ??
+    ORIGEM_IMPORTACAO_ARQUIVO;
+
   // As duas consultas são dependentes (a segunda usa os fornecedores da primeira), então
   // ficam juntas na mesma leitura protegida: uma retentativa refaz o par inteiro e a lista
   // de "já publicados" nunca é aplicada sobre rascunhos de outra tentativa.
@@ -178,8 +198,8 @@ export async function listarRascunhosImportacaoFornecedor(
           )
           .where(
             and(
-              eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
-              eq(produtoRascunhosTable.origemProvedor, "arquivo_excel"),
+              eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
+              eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
               inArray(produtoRascunhosTable.status, [
                 "rascunho",
                 "pendente_conciliacao",

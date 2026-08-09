@@ -315,6 +315,19 @@ export async function publicarProdutoRascunhoFornecedor(
     throw erro;
   }
 
+  // Estado terminal também no caminho "criar".
+  //
+  // Antes, só a existência de um vínculo ativo sinalizava que este rascunho já
+  // tinha virado produto — um sinal indireto, que os contadores por importação
+  // não conseguem ler (o vínculo é permanente e não pertence a execução
+  // nenhuma). Marcar o rascunho fecha o ciclo no lugar certo: a #101 sabe
+  // quantos itens ELA publicou, e a #102 continua livre para trazer o mesmo
+  // código de novo.
+  await db
+    .update(produtoRascunhosTable)
+    .set({ status: "publicado", atualizadoEm: new Date() })
+    .where(eq(produtoRascunhosTable.id, rascunho.id));
+
   return {
     rascunhoId: rascunho.id,
     produtoId: resultadoProduto.productId,

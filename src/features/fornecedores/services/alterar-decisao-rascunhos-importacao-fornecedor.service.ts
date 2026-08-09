@@ -3,12 +3,18 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import {
+  fornecedorProdutosApiStagingTable,
   fornecedorProdutosStagingTable,
   fornecedorProdutoVinculosTable,
   produtoRascunhosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { listarPendenciasAtualizacaoRascunhoFornecedor } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
+import {
+  ORIGEM_IMPORTACAO_ARQUIVO,
+  type OrigemImportacaoFornecedor,
+} from "@/features/fornecedores/lib/origem-importacao-fornecedor";
+import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 
 export class ErroDecisaoRascunhoFornecedor extends Error {}
 
@@ -16,6 +22,8 @@ type EntradaAlterarDecisaoRascunhosImportacaoFornecedor = {
   importacaoId: string;
   rascunhoIds: string[];
   acao: "ignorar" | "desfazer" | "aprovar";
+  /** Origem da importação. Quando ausente, é lida da própria importação. */
+  origem?: OrigemImportacaoFornecedor;
 };
 
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
@@ -35,7 +43,12 @@ export async function alterarDecisaoRascunhosImportacaoFornecedorService({
   importacaoId,
   rascunhoIds,
   acao,
+  origem: origemInformada,
 }: EntradaAlterarDecisaoRascunhosImportacaoFornecedor) {
+  const origem =
+    origemInformada ??
+    (await buscarOrigemImportacaoFornecedor(importacaoId)) ??
+    ORIGEM_IMPORTACAO_ARQUIVO;
   const idsUnicos = Array.from(new Set(rascunhoIds));
   const rascunhos = await db
     .select({
@@ -50,8 +63,8 @@ export async function alterarDecisaoRascunhosImportacaoFornecedorService({
     .where(
       and(
         inArray(produtoRascunhosTable.id, idsUnicos),
-        eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
-        eq(produtoRascunhosTable.origemProvedor, "arquivo_excel"),
+        eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
+        eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
         inArray(produtoRascunhosTable.status, [
           "rascunho",
           "pendente_conciliacao",
@@ -151,22 +164,62 @@ export async function alterarDecisaoRascunhosImportacaoFornecedorService({
   }
 
   const agora = new Date();
+  const origemApi = origem.origemTipo === "fornecedor_api";
 
   await dbTransacional.transaction(async (tx) => {
+    /**
+     * Devolve a linha de staging desta importação ao estado indicado.
+     *
+     * As duas origens guardam o staging em tabelas diferentes (a planilha em
+     * `fornecedor_produtos_staging`, a API em `fornecedor_produtos_api_staging`)
+     * com enums de status próprios. O `importacaoId` no `where` é o que garante
+     * que a decisão de um ciclo nunca alcance a linha de outro.
+     */
+    async function reverterStaging(
+      ids: string[],
+      destino: "ignorado" | "disponivel",
+    ) {
+      if (ids.length === 0) return;
+
+      if (origemApi) {
+        await tx
+          .update(fornecedorProdutosApiStagingTable)
+          .set({
+            status: destino === "ignorado" ? "ignorado" : "novo",
+            atualizadoEm: agora,
+          })
+          .where(
+            and(
+              eq(fornecedorProdutosApiStagingTable.importacaoId, importacaoId),
+              inArray(fornecedorProdutosApiStagingTable.id, ids),
+            ),
+          );
+        return;
+      }
+
+      await tx
+        .update(fornecedorProdutosStagingTable)
+        .set({
+          status: destino === "ignorado" ? "ignorado" : "aguardando_analise",
+          ...(destino === "ignorado"
+            ? {}
+            : { produtoLocalizadoId: null, criterioLocalizacao: null }),
+          atualizadoEm: agora,
+        })
+        .where(
+          and(
+            eq(fornecedorProdutosStagingTable.importacaoId, importacaoId),
+            inArray(fornecedorProdutosStagingTable.id, ids),
+          ),
+        );
+    }
+
     if (acao === "ignorar") {
       await tx
         .update(produtoRascunhosTable)
         .set({ status: "ignorado", atualizadoEm: agora })
         .where(inArray(produtoRascunhosTable.id, idsUnicos));
-      await tx
-        .update(fornecedorProdutosStagingTable)
-        .set({ status: "ignorado", atualizadoEm: agora })
-        .where(
-          and(
-            eq(fornecedorProdutosStagingTable.importacaoId, importacaoId),
-            inArray(fornecedorProdutosStagingTable.id, stagingIds),
-          ),
-        );
+      await reverterStaging(stagingIds, "ignorado");
       return;
     }
 
@@ -190,22 +243,7 @@ export async function alterarDecisaoRascunhosImportacaoFornecedorService({
       .delete(produtoRascunhosTable)
       .where(inArray(produtoRascunhosTable.id, idsUnicos));
 
-    if (stagingIdsCriar.length > 0) {
-      await tx
-        .update(fornecedorProdutosStagingTable)
-        .set({
-          status: "aguardando_analise",
-          produtoLocalizadoId: null,
-          criterioLocalizacao: null,
-          atualizadoEm: agora,
-        })
-        .where(
-          and(
-            eq(fornecedorProdutosStagingTable.importacaoId, importacaoId),
-            inArray(fornecedorProdutosStagingTable.id, stagingIdsCriar),
-          ),
-        );
-    }
+    await reverterStaging(stagingIdsCriar, "disponivel");
   });
 
   return { totalAtualizados: rascunhos.length, acao };

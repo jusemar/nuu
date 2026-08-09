@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import { produtoRascunhosTable } from "@/db/schema";
+import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { publicarProdutoRascunhoFornecedor } from "@/features/fornecedores/services/publicar-produto-rascunho-fornecedor.service";
 
@@ -45,6 +46,18 @@ export async function publicarProdutosImportacaoFornecedor(
     };
   }
 
+  // A origem vem da própria importação: a publicação é a mesma etapa para
+  // arquivo e API, e só o par (origem_tipo, origem_provedor) muda.
+  const origem = await buscarOrigemImportacaoFornecedor(idValidado.data);
+
+  if (!origem) {
+    return {
+      sucesso: false,
+      erro: "Importação não encontrada.",
+      publicados: [] as ItemPublicadoImportacaoFornecedor[],
+    };
+  }
+
   const idsUnicos = Array.from(new Set(validacao.data.rascunhoIds));
   const rascunhosPermitidos = await db
     .select({ id: produtoRascunhosTable.id })
@@ -52,8 +65,8 @@ export async function publicarProdutosImportacaoFornecedor(
     .where(
       and(
         inArray(produtoRascunhosTable.id, idsUnicos),
-        eq(produtoRascunhosTable.origemTipo, "fornecedor_excel"),
-        eq(produtoRascunhosTable.origemProvedor, "arquivo_excel"),
+        eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
+        eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
         eq(produtoRascunhosTable.status, "pronto_para_publicar"),
         sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${idValidado.data}`,
       ),
@@ -74,8 +87,8 @@ export async function publicarProdutosImportacaoFornecedor(
     try {
       publicados.push(
         await publicarProdutoRascunhoFornecedor(rascunhoId, {
-          origemTipo: "fornecedor_excel",
-          origemProvedor: "arquivo_excel",
+          origemTipo: origem.origemTipo,
+          origemProvedor: origem.origemProvedor,
           importacaoId: idValidado.data,
           nomeOrigem: "da importação",
         }),
@@ -92,6 +105,12 @@ export async function publicarProdutosImportacaoFornecedor(
   revalidatePath(`/admin/fornecedores/importacoes/${idValidado.data}`);
   revalidatePath(
     `/admin/fornecedores/importacoes/${idValidado.data}/publicacao`,
+  );
+  revalidatePath(
+    `/admin/fornecedores/integracoes/laquila/importacoes/${idValidado.data}/conciliacao`,
+  );
+  revalidatePath(
+    `/admin/fornecedores/integracoes/laquila/importacoes/${idValidado.data}/publicacao`,
   );
   revalidatePath("/");
 

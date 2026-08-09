@@ -30,9 +30,19 @@ function lerConfiguracaoFluxo(formData: FormData): Record<string, unknown> {
   }
 }
 
+/**
+ * Resultado devolvido ao formulário quando a aplicação do mapeamento falha.
+ *
+ * `null` significa "nada a relatar": ou o formulário ainda não foi enviado, ou
+ * o envio deu certo e terminou em `redirect()` — nesse caso esta função nem
+ * chega a retornar.
+ */
+export type EstadoAplicarMapeamentoFornecedor = { erro: string } | null;
+
 export async function aplicarMapeamentoColunasFornecedorAction(
+  _estadoAnterior: EstadoAplicarMapeamentoFornecedor,
   formData: FormData,
-) {
+): Promise<EstadoAplicarMapeamentoFornecedor> {
   const importacaoId = String(formData.get("importacaoId") ?? "");
   const salvarParaFornecedor =
     String(formData.get("salvarParaFornecedor") ?? "") === "true";
@@ -52,6 +62,11 @@ export async function aplicarMapeamentoColunasFornecedorAction(
   // Rede de segurança final: as leituras já devolvem mensagem amigável, mas uma falha em
   // qualquer outro ponto do service chegaria crua ao navegador (foi assim que o SQL do
   // `select ... from importacoes_fornecedor` acabou visível para o usuário).
+  //
+  // A falha é DEVOLVIDA, não lançada: lançar derrubava a página inteira na error
+  // boundary e o gestor perdia o mapeamento que acabara de configurar na tela —
+  // no celular isso significa refazer tudo. Devolvendo, o formulário continua
+  // montado, a mensagem aparece ao lado do botão e o botão volta a aceitar clique.
   try {
     await aplicarMapeamentoColunasFornecedor({
       importacaoId,
@@ -67,11 +82,15 @@ export async function aplicarMapeamentoColunasFornecedorAction(
       erro,
     });
 
-    if (erro instanceof ErroLeituraFornecedores) throw erro;
+    // `ErroLeituraFornecedores` já nasce com texto amigável e sem SQL — a
+    // política de leitura segura continua sendo a única dona dessa mensagem.
+    if (erro instanceof ErroLeituraFornecedores) {
+      return { erro: erro.message };
+    }
 
-    throw new Error(
-      "Não foi possível aplicar o mapeamento agora. Tente novamente em alguns segundos.",
-    );
+    return {
+      erro: "Não foi possível aplicar o mapeamento agora. Tente novamente em alguns segundos.",
+    };
   }
 
   revalidatePath(`/admin/fornecedores/importacoes/${importacaoId}`);

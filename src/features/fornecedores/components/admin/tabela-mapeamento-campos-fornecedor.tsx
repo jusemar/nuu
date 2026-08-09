@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, ArrowRight, ExternalLink, RefreshCw } from "lucide-react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { EstadoAplicarMapeamentoFornecedor } from "@/features/fornecedores/actions/aplicar-mapeamento-colunas-fornecedor";
 import type {
   ConfiguracaoComercialMapeamentoFornecedor,
   EstrategiaPrazoEntregaFornecedor,
@@ -12,6 +13,15 @@ import type {
 } from "@/features/fornecedores/types/mapeamento-fornecedor.types";
 
 import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
+
+/**
+ * Preenche o lugar da Server Action quando o componente é usado sem `action`
+ * (fluxo Laquila). Precisa existir fora do componente para manter identidade
+ * estável entre renders e nunca reiniciar o `useActionState`.
+ */
+async function acaoMapeamentoIndisponivel(): Promise<EstadoAplicarMapeamentoFornecedor> {
+  return null;
+}
 
 export type OpcaoMapeamentoFornecedor = {
   valor: string;
@@ -136,7 +146,16 @@ export type TabelaMapeamentoCamposFornecedorProps = {
     campoApi1: string;
     campoApi2: string;
   };
-  action?: (formData: FormData) => void | Promise<void>;
+  /**
+   * Server Action do fluxo por arquivo. Recebe o estado anterior porque é
+   * consumida por `useActionState`: é assim que a falha volta para a tela sem
+   * derrubar o formulário. O fluxo Laquila não usa esta prop — ele aciona por
+   * `aoAcionarPrincipal`.
+   */
+  action?: (
+    estadoAnterior: EstadoAplicarMapeamentoFornecedor,
+    formData: FormData,
+  ) => Promise<EstadoAplicarMapeamentoFornecedor>;
   camposOcultos?: Array<{ nome: string; valor: string }>;
   nomeCampoConfiguracaoFluxo?: string;
   textoCheckbox?: string;
@@ -1139,6 +1158,15 @@ export function TabelaMapeamentoCamposFornecedor({
     useState<EstrategiaResolucaoVisual>("conciliacao");
   const [valorPrazoEntrega, setValorPrazoEntrega] = useState("");
   const [salvarComoPadrao, setSalvarComoPadrao] = useState(false);
+  // `useActionState` é o que devolve a falha para dentro da tela. Sem ele, um erro
+  // na Server Action estouraria até a error boundary da rota e levaria junto o
+  // mapeamento que o gestor acabou de montar. Hooks não podem ser condicionais,
+  // então o fluxo sem `action` (Laquila) recebe uma função estável e inofensiva —
+  // o `<form>` dele continua sem `action`, exatamente como antes.
+  const [estadoEnvio, enviarMapeamento] = useActionState(
+    action ?? acaoMapeamentoIndisponivel,
+    null,
+  );
 
   useEffect(() => {
     const proximosDestinos = { ...destinosIniciais };
@@ -1471,7 +1499,7 @@ export function TabelaMapeamentoCamposFornecedor({
 
   return (
     <form
-      action={action}
+      action={action ? enviarMapeamento : undefined}
       className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
     >
       {camposOcultos.map((campo) => (
@@ -1880,13 +1908,27 @@ export function TabelaMapeamentoCamposFornecedor({
           // Server Action que aplica o mapeamento e só então redireciona para a Vinculação.
           // Como isso leva alguns segundos, o botão precisa mostrar progresso e recusar
           // cliques repetidos — senão o mapeamento é aplicado duas vezes.
-          <BotaoSubmitComEstado
-            className="h-10 min-w-[210px] gap-2"
-            textoProcessando="Aplicando mapeamento…"
-          >
-            {textoAcaoPrincipal}
-            <ArrowRight className="h-4 w-4" />
-          </BotaoSubmitComEstado>
+          <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <BotaoSubmitComEstado
+              className="h-10 min-w-[210px] gap-2"
+              textoProcessando="Aplicando mapeamento…"
+            >
+              {textoAcaoPrincipal}
+              <ArrowRight className="h-4 w-4" />
+            </BotaoSubmitComEstado>
+            {estadoEnvio?.erro ? (
+              <p
+                role="alert"
+                className="flex items-start gap-1.5 text-xs font-medium text-red-700 sm:max-w-[280px] sm:text-right"
+              >
+                <AlertCircle
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span>{estadoEnvio.erro}</span>
+              </p>
+            ) : null}
+          </div>
         ) : (
           <Button
             type={tipoBotaoAcaoPrincipal}

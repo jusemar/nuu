@@ -1,0 +1,3 @@
+ALTER TABLE "fornecedor_produtos_api_staging" ADD COLUMN "importacao_id" uuid;--> statement-breakpoint
+ALTER TABLE "fornecedor_produtos_api_staging" ADD CONSTRAINT "fornecedor_produtos_api_staging_importacao_id_importacoes_fornecedor_id_fk" FOREIGN KEY ("importacao_id") REFERENCES "public"."importacoes_fornecedor"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "fornecedor_produtos_api_staging_importacao_id_idx" ON "fornecedor_produtos_api_staging" USING btree ("importacao_id");

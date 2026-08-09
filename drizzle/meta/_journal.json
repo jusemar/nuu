@@ -120,6 +120,13 @@
       "when": 1786065348365,
       "tag": "0016_conciliacao_produto_atualizado",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786299084084,
+      "tag": "0017_violet_sinister_six",
+      "breakpoints": true
     }
   ]
 }

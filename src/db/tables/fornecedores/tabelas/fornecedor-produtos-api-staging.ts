@@ -1,7 +1,7 @@
 import {
   index,
-  jsonb,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -12,6 +12,7 @@ import {
 
 import { fornecedorProdutoApiStagingStatusEnum } from "../enums";
 import { fornecedorIntegracoesApiTable } from "./fornecedor-integracoes-api";
+import { importacoesFornecedorTable } from "./importacoes-fornecedor";
 
 type DadosBrutosJsonProdutoApi = Record<string, unknown>;
 
@@ -24,6 +25,16 @@ export const fornecedorProdutosApiStagingTable = pgTable(
       .references(() => fornecedorIntegracoesApiTable.id, {
         onDelete: "cascade",
       }),
+    // Execução que trouxe esta linha. É o que dá à integração por API o mesmo
+    // ciclo que o arquivo já tem: cada sincronização iniciada pelo gestor vira
+    // uma importação própria, com staging, conciliação e histórico separados.
+    //
+    // Nullable porque as linhas existentes vieram do modelo antigo, em que a
+    // API mantinha um retrato global por integração — elas continuam legíveis.
+    importacaoId: uuid("importacao_id").references(
+      () => importacoesFornecedorTable.id,
+      { onDelete: "cascade" },
+    ),
     codigoFornecedor: text("codigo_fornecedor").notNull(),
     nomeProduto: text("nome_produto").notNull(),
     ean: text("ean"),
@@ -58,6 +69,9 @@ export const fornecedorProdutosApiStagingTable = pgTable(
     index("fornecedor_produtos_api_staging_status_idx").on(table.status),
     index("fornecedor_produtos_api_staging_codigo_fornecedor_idx").on(
       table.codigoFornecedor,
+    ),
+    index("fornecedor_produtos_api_staging_importacao_id_idx").on(
+      table.importacaoId,
     ),
     index("fornecedor_produtos_api_staging_ean_idx").on(table.ean),
     index("fornecedor_produtos_api_staging_marca_fornecedor_idx").on(

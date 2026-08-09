@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { db } from "@/db/connection";
 import {
@@ -20,6 +21,12 @@ import {
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
+
+// A categoria e a marca do PRODUTO REAL precisam de alias: as tabelas base já
+// entram na consulta ligadas ao rascunho, e um item vinculado tem os dois lados
+// (o que o rascunho decidiu e o que a loja pratica hoje).
+const categoriaLojaTable = alias(categoryTable, "categoria_loja");
+const marcaLojaTable = alias(marcaTable, "marca_loja");
 
 export type RascunhoImportacaoFornecedor = {
   id: string;
@@ -54,6 +61,17 @@ export type RascunhoImportacaoFornecedor = {
   produtoAtualizadoSku: string | null;
   precoAtualLoja: string | null;
   estoqueAtualLoja: number | null;
+  /**
+   * Retrato ATUAL do produto real da loja nos campos que participam desta
+   * conciliação. Para item vinculado, é este o estado-base: o código do
+   * fornecedor só serviu para achar o produto, e o que a loja já pratica não
+   * vira "Pendente" por não ter vindo no arquivo.
+   */
+  categoriaAtualLojaId: string | null;
+  categoriaAtualLojaNome: string | null;
+  marcaAtualLojaId: string | null;
+  marcaAtualLojaNome: string | null;
+  secoesAtuaisLoja: string[];
 };
 
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
@@ -111,6 +129,11 @@ export async function listarRascunhosImportacaoFornecedor(
             produtoAtualizadoNome: productTable.name,
             produtoAtualizadoSku: productTable.sku,
             precoAtualLojaEmCentavos: productPricingTable.price,
+            categoriaAtualLojaId: productTable.categoryId,
+            categoriaAtualLojaNome: categoriaLojaTable.name,
+            marcaAtualLojaId: productTable.marcaId,
+            marcaAtualLojaNome: marcaLojaTable.nome,
+            secoesAtuaisLoja: productTable.storeProductFlags,
           })
           .from(produtoRascunhosTable)
           .leftJoin(
@@ -135,6 +158,11 @@ export async function listarRascunhosImportacaoFornecedor(
             productTable,
             eq(productTable.id, produtoRascunhosTable.produtoAtualizadoId),
           )
+          .leftJoin(
+            categoriaLojaTable,
+            eq(productTable.categoryId, categoriaLojaTable.id),
+          )
+          .leftJoin(marcaLojaTable, eq(productTable.marcaId, marcaLojaTable.id))
           .leftJoin(
             productPricingTable,
             and(
@@ -278,38 +306,47 @@ export async function listarRascunhosImportacaoFornecedor(
         )
       );
     })
-    .map(({ dadosOrigemJson, precoAtualLojaEmCentavos, ...linha }) => {
-      const secoesLoja = extrairSecoesLojaRascunhoFornecedor(dadosOrigemJson);
-      const configuracaoComercial =
-        extrairConfiguracaoComercialRascunhoFornecedor(dadosOrigemJson);
-      // Item "atualizar" não precisa de categoria/marca/seção: o produto real
-      // já tem tudo isso. A única pendência possível é faltar preço a aplicar.
-      const pendencias = linha.produtoAtualizadoId
-        ? listarPendenciasAtualizacaoRascunhoFornecedor(linha.precoLoja)
-        : listarPendenciasRascunhoFornecedor({
-            nome: linha.nome,
-            categoriaId: linha.categoriaId,
-            marcaId: linha.marcaId,
-            precoLoja: linha.precoLoja,
-            dadosOrigemJson,
-          });
+    .map(
+      ({
+        dadosOrigemJson,
+        precoAtualLojaEmCentavos,
+        secoesAtuaisLoja,
+        ...linha
+      }) => {
+        const secoesLoja = extrairSecoesLojaRascunhoFornecedor(dadosOrigemJson);
+        const configuracaoComercial =
+          extrairConfiguracaoComercialRascunhoFornecedor(dadosOrigemJson);
+        // Item "atualizar" não precisa de categoria/marca/seção: o produto real
+        // já tem tudo isso. A única pendência possível é faltar preço a aplicar.
+        const pendencias = linha.produtoAtualizadoId
+          ? listarPendenciasAtualizacaoRascunhoFornecedor(linha.precoLoja)
+          : listarPendenciasRascunhoFornecedor({
+              nome: linha.nome,
+              categoriaId: linha.categoriaId,
+              marcaId: linha.marcaId,
+              precoLoja: linha.precoLoja,
+              dadosOrigemJson,
+            });
 
-      return {
-        ...linha,
-        status: linha.status as RascunhoImportacaoFornecedor["status"],
-        stagingId: extrairStagingId(dadosOrigemJson),
-        imagens: linha.imagens ?? [],
-        secoesLoja,
-        configuracaoComercial,
-        pendencias,
-        precoAtualLoja:
-          precoAtualLojaEmCentavos === null
-            ? null
-            : (precoAtualLojaEmCentavos / 100).toFixed(2),
-        estoqueAtualLoja: resolverEstoqueAtualLoja(
-          linha.produtoAtualizadoId,
-          linha.produtoAtualizadoSku,
-        ),
-      };
-    });
+        return {
+          ...linha,
+          status: linha.status as RascunhoImportacaoFornecedor["status"],
+          stagingId: extrairStagingId(dadosOrigemJson),
+          imagens: linha.imagens ?? [],
+          secoesLoja,
+          configuracaoComercial,
+          pendencias,
+          precoAtualLoja:
+            precoAtualLojaEmCentavos === null
+              ? null
+              : (precoAtualLojaEmCentavos / 100).toFixed(2),
+          estoqueAtualLoja: resolverEstoqueAtualLoja(
+            linha.produtoAtualizadoId,
+            linha.produtoAtualizadoSku,
+          ),
+          // `store_product_flags` é nullable no banco; a tela trabalha com lista.
+          secoesAtuaisLoja: secoesAtuaisLoja ?? [],
+        };
+      },
+    );
 }

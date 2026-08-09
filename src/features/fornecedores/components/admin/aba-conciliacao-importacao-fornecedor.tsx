@@ -95,6 +95,29 @@ function montarItemConciliacaoAtualizacao(
     })),
     regrasImportantes: [],
     configuracaoPreco: null,
+    // O estado-base de um item vinculado é o PRODUTO REAL, não o rascunho.
+    //
+    // Antes, `camposRascunho` simplesmente não era preenchido aqui, e a tela
+    // caía nos textos de ausência: "Marca: Pendente", "Categoria: Pendente",
+    // "Seções: Não definidas" — mesmo com o produto da loja tendo os três. O
+    // código do fornecedor serve para ACHAR o produto; achado o vínculo, o que
+    // a loja já pratica é a verdade até o gestor decidir mudar.
+    //
+    // O valor do rascunho vem primeiro porque ele só existe quando o gestor
+    // editou o campo nesta conciliação — nesse caso é a decisão dele que vale.
+    camposRascunho: {
+      categoriaId: rascunho.categoriaId ?? rascunho.categoriaAtualLojaId,
+      categoriaNome: rascunho.categoriaNome ?? rascunho.categoriaAtualLojaNome,
+      marcaId: rascunho.marcaId ?? rascunho.marcaAtualLojaId,
+      marcaNome: rascunho.marcaNome ?? rascunho.marcaAtualLojaNome,
+      secoesLoja:
+        rascunho.secoesLoja.length > 0
+          ? rascunho.secoesLoja
+          : rascunho.secoesAtuaisLoja,
+      ncm: rascunho.ncm,
+      ean: rascunho.ean,
+      statusRascunho: rascunho.status,
+    },
     produtoAtualizado: {
       produtoId: rascunho.produtoAtualizadoId ?? "",
       nome: rascunho.produtoAtualizadoNome,

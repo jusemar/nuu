@@ -1,4 +1,4 @@
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 
 import { createProduct } from "@/actions/admin/products/create";
 import { db } from "@/db/connection";
@@ -17,6 +17,7 @@ import {
   extrairSecoesLojaRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { gerarSkuDisponivel as gerarSkuDisponivelCompartilhado } from "@/features/products/lib/gerar-sku-disponivel";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 type OrigemTipoRascunhoFornecedor =
   | "manual"
@@ -318,6 +319,20 @@ export async function publicarProdutoRascunhoFornecedor(
   };
 }
 
+/**
+ * Modalidade sob a qual este fluxo publica, no vocabulário de
+ * `product_pricing.type`: `"stock"` é como o banco representa "Estoque Próprio"
+ * (ver `MODALIDADES_PRECO_PRODUTO` em features/products/constants).
+ *
+ * Produto atualizado por importação de fornecedor passa a ser vendido com
+ * estoque em casa, então é essa modalidade que vira o card principal — o
+ * Dropshipping herdado do cadastro anterior deixa de ser o preço em destaque.
+ */
+const MODALIDADE_PUBLICACAO_FORNECEDOR = "stock";
+
+/** Prazo gravado em `delivery_days` para a modalidade publicada por este fluxo. */
+const PRAZO_PUBLICACAO_FORNECEDOR = "1 dia útil";
+
 type RascunhoAtualizacaoProdutoVinculadoFornecedor = {
   id: string;
   produtoAtualizadoId: string;
@@ -329,6 +344,10 @@ type RascunhoAtualizacaoProdutoVinculadoFornecedor = {
  * Publica um rascunho "atualizar produto existente": nunca cria produto,
  * só aplica preço/estoque ao produto real já vinculado — e só os campos
  * cujo valor de origem está presente, para nunca apagar dado existente.
+ *
+ * Deixa o produto vendendo por Estoque Próprio com prazo de 1 dia útil, que é a
+ * condição real de quem recebeu a mercadoria do fornecedor. As demais
+ * modalidades continuam cadastradas, apenas perdem o posto de card principal.
  *
  * Nome, categoria, descrição, imagens, SEO e qualquer outro campo do produto
  * real ficam intocados de propósito: o fornecedor manda preço e estoque, não
@@ -371,41 +390,143 @@ async function publicarAtualizacaoProdutoVinculadoFornecedor(
       );
     }
 
-    const [precoBloqueado] = await tx
-      .select({ id: productPricingTable.id })
+    // Todas as modalidades do produto entram no lock: a promoção de "Estoque
+    // Próprio" a card principal precisa rebaixar as outras no mesmo instante,
+    // senão o produto poderia ficar com dois cards principais.
+    const modalidadesBloqueadas = await tx
+      .select({
+        id: productPricingTable.id,
+        tipo: productPricingTable.type,
+        principal: productPricingTable.mainCardPrice,
+        temPromocao: productPricingTable.hasPromo,
+        precoPromocional: productPricingTable.promoPrice,
+      })
       .from(productPricingTable)
-      .where(
-        and(
-          eq(productPricingTable.productId, produtoBloqueado.id),
-          eq(productPricingTable.isActive, true),
-          eq(productPricingTable.mainCardPrice, true),
-        ),
-      )
+      .where(eq(productPricingTable.productId, produtoBloqueado.id))
       .for("update");
 
-    if (precoBloqueado) {
-      await tx
-        .update(productPricingTable)
-        .set({ price: precoEmCentavos, updatedAt: agora })
-        .where(eq(productPricingTable.id, precoBloqueado.id));
+    // Reutiliza a modalidade existente em vez de criar outra: um produto que já
+    // vendia por Estoque Próprio não pode terminar a publicação com duas linhas
+    // `stock` disputando o card principal.
+    const [estoqueProprioExistente] = modalidadesBloqueadas.filter(
+      (modalidade) => modalidade.tipo === MODALIDADE_PUBLICACAO_FORNECEDOR,
+    );
+
+    // Promoção ativa na linha reutilizada venceria o preço que estamos
+    // publicando: a vitrine e o carrinho passam a usar `promo_price_in_cents`
+    // (ver `obterPrecoModalidadeVigente`), então o produto exibiria o preço
+    // antigo da promoção com o preço do fornecedor já gravado ao lado.
+    //
+    // Cancelar promoção é decisão do módulo de promoções, não deste fluxo —
+    // por isso aqui a publicação para e explica, em vez de sobrescrever.
+    if (
+      estoqueProprioExistente?.temPromocao &&
+      estoqueProprioExistente.precoPromocional
+    ) {
+      throw new Error(
+        "A modalidade Estoque Próprio deste produto está em promoção. Encerre a promoção antes de publicar a atualização, senão a loja continuaria vendendo pelo preço promocional.",
+      );
     }
 
-    const [varianteBloqueada] = await tx
-      .select({ id: productVariantTable.id })
+    let idEstoqueProprio: string;
+
+    if (estoqueProprioExistente) {
+      idEstoqueProprio = estoqueProprioExistente.id;
+      await tx
+        .update(productPricingTable)
+        .set({
+          price: precoEmCentavos,
+          deliveryDays: PRAZO_PUBLICACAO_FORNECEDOR,
+          pricingModalDescription: PRAZO_PUBLICACAO_FORNECEDOR,
+          mainCardPrice: true,
+          isActive: true,
+          updatedAt: agora,
+        })
+        .where(eq(productPricingTable.id, estoqueProprioExistente.id));
+    } else {
+      const [criada] = await tx
+        .insert(productPricingTable)
+        .values({
+          productId: produtoBloqueado.id,
+          type: MODALIDADE_PUBLICACAO_FORNECEDOR,
+          price: precoEmCentavos,
+          deliveryDays: PRAZO_PUBLICACAO_FORNECEDOR,
+          pricingModalDescription: PRAZO_PUBLICACAO_FORNECEDOR,
+          mainCardPrice: true,
+          isActive: true,
+          updatedAt: agora,
+        })
+        .returning({ id: productPricingTable.id });
+
+      if (!criada) {
+        throw new Error(
+          "Não foi possível registrar a modalidade Estoque Próprio do produto.",
+        );
+      }
+      idEstoqueProprio = criada.id;
+    }
+
+    // As outras modalidades continuam cadastradas — Dropshipping segue
+    // disponível como secundária —, só deixam de ser o card principal. Nada é
+    // apagado: o catálogo do produto não é assunto do fornecedor.
+    const idsParaRebaixar = modalidadesBloqueadas
+      .filter(
+        (modalidade) =>
+          modalidade.id !== idEstoqueProprio && modalidade.principal,
+      )
+      .map((modalidade) => modalidade.id);
+
+    if (idsParaRebaixar.length > 0) {
+      await tx
+        .update(productPricingTable)
+        .set({ mainCardPrice: false, updatedAt: agora })
+        .where(inArray(productPricingTable.id, idsParaRebaixar));
+    }
+
+    // A variante técnica é escolhida pela regra estrita compartilhada, e não
+    // pela primeira linha que o banco devolver: produto simples deve ter
+    // exatamente uma variante interna coerente. Escrever numa linha ambígua
+    // alteraria preço e estoque de uma variante real por engano.
+    const variantesBloqueadas = await tx
+      .select({
+        id: productVariantTable.id,
+        sku: productVariantTable.sku,
+        atributos: productVariantTable.attributes,
+        precoEmCentavos: productVariantTable.priceInCents,
+        estoque: productVariantTable.stockQuantity,
+        ativa: productVariantTable.isActive,
+        principal: productVariantTable.isDefault,
+      })
       .from(productVariantTable)
       .where(eq(productVariantTable.productId, produtoBloqueado.id))
       .for("update");
 
-    // Estoque ausente na origem não apaga o estoque atual do produto.
-    if (varianteBloqueada && rascunho.estoqueFornecedor !== null) {
-      await tx
-        .update(productVariantTable)
-        .set({
-          stockQuantity: Math.max(0, rascunho.estoqueFornecedor),
-          updatedAt: agora,
-        })
-        .where(eq(productVariantTable.id, varianteBloqueada.id));
+    const identificacao = identificarVarianteTecnicaProdutoSimples({
+      skuProduto: produtoBloqueado.sku,
+      variantes: variantesBloqueadas,
+    });
+
+    if (identificacao.situacao !== "confiavel") {
+      throw new Error(
+        `Não é possível atualizar este produto com segurança: ${identificacao.motivo}`,
+      );
     }
+
+    // O preço vai para os DOIS lugares, como no caminho de criação: a vitrine
+    // lê `product_pricing`, mas carrinho e fechamento de pedido cobram por
+    // `product_variant.price_in_cents`. Atualizar só um dos dois faria a loja
+    // exibir o preço novo e cobrar o antigo.
+    await tx
+      .update(productVariantTable)
+      .set({
+        priceInCents: precoEmCentavos,
+        // Estoque ausente na origem não apaga o estoque atual do produto.
+        ...(rascunho.estoqueFornecedor !== null && {
+          stockQuantity: Math.max(0, rascunho.estoqueFornecedor),
+        }),
+        updatedAt: agora,
+      })
+      .where(eq(productVariantTable.id, identificacao.variante.id));
 
     // Estado terminal do caminho "atualizar": some da Conciliação e da
     // Publicação sem depender do sinal de vínculo ativo, que aqui já existia.
@@ -414,7 +535,7 @@ async function publicarAtualizacaoProdutoVinculadoFornecedor(
       .set({ status: "publicado", atualizadoEm: agora })
       .where(eq(produtoRascunhosTable.id, rascunho.id));
 
-    return { ...produtoBloqueado, varianteId: varianteBloqueada?.id ?? null };
+    return { ...produtoBloqueado, varianteId: identificacao.variante.id };
   });
 
   return {

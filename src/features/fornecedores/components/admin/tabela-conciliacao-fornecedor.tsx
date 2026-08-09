@@ -256,6 +256,61 @@ function formatarSecoesLoja(secoes?: string[]) {
   return secoes.map((secao) => NOMES_SECOES_LOJA[secao] ?? secao).join(", ");
 }
 
+/**
+ * Preços que o resumo da linha mostra, com o significado certo para cada caminho.
+ *
+ * Item VINCULADO tem três valores distintos, e eles não podem compartilhar rótulo:
+ *
+ *   Fornecedor    `produto.precoFornecedor` — o que veio no arquivo
+ *   Loja (atual)  `produtoAtualizado.precoAtual` — o que o produto real pratica
+ *                 hoje na loja (linha ativa e principal de `product_pricing`)
+ *   A publicar    `produto.precoLoja` — o preço do rascunho, já com o ajuste
+ *                 manual do gestor quando houver
+ *
+ * Antes, a linha rotulava `produto.precoLoja` como "Loja". Como o rascunho nasce
+ * com o preço do fornecedor, os dois lados apareciam com o mesmo número
+ * (R$ 516,16 × R$ 516,16) e a comparação — que é a razão de existir da
+ * Conciliação — simplesmente sumia da tela.
+ *
+ * Item NOVO não tem produto na loja para comparar, então mantém o par original.
+ */
+function resumirPrecosLinha(item: ItemConciliacaoFornecedor) {
+  const precoAPublicar = formatarMoeda(
+    item.produto.precoLoja ?? item.produto.preco,
+  );
+  const precoFornecedor = formatarMoeda(item.produto.precoFornecedor);
+
+  if (item.produtoAtualizado) {
+    return [
+      {
+        rotulo: "Fornecedor",
+        valor: precoFornecedor ?? "Não recebido",
+        destaque: false,
+      },
+      {
+        rotulo: "Loja (atual)",
+        valor:
+          formatarMoeda(item.produtoAtualizado.precoAtual) ?? "Não cadastrado",
+        destaque: false,
+      },
+      {
+        rotulo: "A publicar",
+        valor: precoAPublicar ?? "Pendente",
+        destaque: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      rotulo: "Fornecedor",
+      valor: precoFornecedor ?? "Não recebido",
+      destaque: false,
+    },
+    { rotulo: "Loja", valor: precoAPublicar ?? "Pendente", destaque: true },
+  ];
+}
+
 function calcularPrecoAjustadoPreview({
   item,
   operacao,
@@ -821,7 +876,9 @@ function PainelDetalhesConciliacao({
                   </h3>
                   <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                      <dt className="text-xs text-slate-500">Produto da loja</dt>
+                      <dt className="text-xs text-slate-500">
+                        Produto da loja
+                      </dt>
                       <dd className="font-medium text-slate-900">
                         {item.produtoAtualizado.nome ?? "-"}
                         {item.produtoAtualizado.sku
@@ -875,67 +932,71 @@ function PainelDetalhesConciliacao({
                   Para item vinculado, o produto já existe e esses campos não se
                   aplicam — a seção acima ocupa o lugar dela. */}
               {item.statusVinculacao !== "vinculado" ? (
-              <section className="rounded-lg border border-slate-200 bg-white p-4">
-                <h3 className="text-sm font-semibold text-slate-950">
-                  Campos finais do rascunho
-                </h3>
-                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs text-slate-500">Marca</dt>
-                    <dd className="font-medium text-slate-900">
-                      {item.camposRascunho?.marcaNome ?? "Pendente"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Categoria</dt>
-                    <dd className="font-medium text-slate-900">
-                      {item.camposRascunho?.categoriaNome ?? "Pendente"}
-                    </dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs text-slate-500">Seções da Loja</dt>
-                    <dd className="font-medium text-slate-900">
-                      {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Preço fornecedor</dt>
-                    <dd className="font-medium text-slate-900">
-                      {formatarMoeda(item.produto.precoFornecedor) ??
-                        "Não recebido"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Preço da loja</dt>
-                    <dd className="font-medium text-slate-900">
-                      {formatarMoeda(
-                        item.produto.precoLoja ?? item.produto.preco,
-                      ) ?? "Pendente"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">NCM</dt>
-                    <dd className="font-medium text-slate-900">
-                      {item.camposRascunho?.ncm ?? "Não recebido"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">EAN/GTIN</dt>
-                    <dd className="font-medium text-slate-900">
-                      {item.camposRascunho?.ean ?? "Não recebido"}
-                    </dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-xs text-slate-500">Peso e dimensões</dt>
-                    <dd className="font-medium text-slate-900">
-                      {item.camposRascunho?.peso ?? "-"} kg ·{` `}
-                      {item.camposRascunho?.altura ?? "-"} ×{` `}
-                      {item.camposRascunho?.largura ?? "-"} ×{` `}
-                      {item.camposRascunho?.comprimento ?? "-"} cm
-                    </dd>
-                  </div>
-                </dl>
-              </section>
+                <section className="rounded-lg border border-slate-200 bg-white p-4">
+                  <h3 className="text-sm font-semibold text-slate-950">
+                    Campos finais do rascunho
+                  </h3>
+                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs text-slate-500">Marca</dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.camposRascunho?.marcaNome ?? "Pendente"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Categoria</dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.camposRascunho?.categoriaNome ?? "Pendente"}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs text-slate-500">Seções da Loja</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Preço fornecedor
+                      </dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatarMoeda(item.produto.precoFornecedor) ??
+                          "Não recebido"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Preço da loja</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatarMoeda(
+                          item.produto.precoLoja ?? item.produto.preco,
+                        ) ?? "Pendente"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">NCM</dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.camposRascunho?.ncm ?? "Não recebido"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">EAN/GTIN</dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.camposRascunho?.ean ?? "Não recebido"}
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-xs text-slate-500">
+                        Peso e dimensões
+                      </dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.camposRascunho?.peso ?? "-"} kg ·{` `}
+                        {item.camposRascunho?.altura ?? "-"} ×{` `}
+                        {item.camposRascunho?.largura ?? "-"} ×{` `}
+                        {item.camposRascunho?.comprimento ?? "-"} cm
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
               ) : null}
 
               <section className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/45 p-4">
@@ -1972,21 +2033,23 @@ export function TabelaConciliacaoFornecedor({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <p className="text-xs text-slate-500">
-                    Fornecedor
-                    <span className="block font-medium text-slate-700">
-                      {formatarMoeda(item.produto.precoFornecedor) ??
-                        "Não recebido"}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Loja
-                    <span className="block font-semibold text-slate-950">
-                      {formatarMoeda(
-                        item.produto.precoLoja ?? item.produto.preco,
-                      ) ?? "Pendente"}
-                    </span>
-                  </p>
+                  {resumirPrecosLinha(item).map((preco, indice) => (
+                    <p
+                      key={preco.rotulo}
+                      className={`text-xs text-slate-500${indice > 0 ? "mt-1" : ""}`}
+                    >
+                      {preco.rotulo}
+                      <span
+                        className={`block ${
+                          preco.destaque
+                            ? "font-semibold text-slate-950"
+                            : "font-medium text-slate-700"
+                        }`}
+                      >
+                        {preco.valor}
+                      </span>
+                    </p>
+                  ))}
                 </TableCell>
                 <TableCell>
                   {item.status === "pendencia" ? (
@@ -2194,21 +2257,12 @@ export function TabelaConciliacaoFornecedor({
                     {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
                   </strong>
                 </p>
-                <p>
-                  <span className="text-slate-500">Preço fornecedor:</span>{" "}
-                  <strong>
-                    {formatarMoeda(item.produto.precoFornecedor) ??
-                      "Não recebido"}
-                  </strong>
-                </p>
-                <p>
-                  <span className="text-slate-500">Preço loja:</span>{" "}
-                  <strong>
-                    {formatarMoeda(
-                      item.produto.precoLoja ?? item.produto.preco,
-                    ) ?? "Pendente"}
-                  </strong>
-                </p>
+                {resumirPrecosLinha(item).map((preco) => (
+                  <p key={preco.rotulo}>
+                    <span className="text-slate-500">{preco.rotulo}:</span>{" "}
+                    <strong>{preco.valor}</strong>
+                  </p>
+                ))}
                 {item.status === "pendencia" ? (
                   <div className="flex flex-wrap gap-1 sm:col-span-2">
                     {item.pendenciasObrigatorias?.map((pendencia) => (

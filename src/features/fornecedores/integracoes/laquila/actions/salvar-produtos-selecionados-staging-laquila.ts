@@ -103,6 +103,9 @@ export async function salvarProdutosSelecionadosStagingLaquila(
       ),
     );
 
+    // Esta guarda também protege o `notInArray` mais abaixo: no Drizzle,
+    // `notInArray(coluna, [])` vira `where true`, e sem sair aqui uma seleção
+    // vazia marcaria TODA a execução como ignorada de uma vez.
     if (codigosSelecionados.length === 0) {
       return {
         sucesso: false,

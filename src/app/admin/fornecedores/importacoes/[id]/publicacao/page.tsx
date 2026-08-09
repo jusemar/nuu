@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 
-import { PaginaPublicacaoFornecedorAdmin } from "@/features/fornecedores/components/admin/pagina-publicacao-fornecedor-admin";
 import { publicarProdutosImportacaoFornecedor } from "@/features/fornecedores/actions/publicar-produtos-importacao-fornecedor";
+import { PaginaPublicacaoFornecedorAdmin } from "@/features/fornecedores/components/admin/pagina-publicacao-fornecedor-admin";
+import { origemDaImportacaoFornecedor } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
 import { buscarSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
-import { listarImportacoesFornecedoresAdmin } from "@/features/fornecedores/queries/listar-importacoes-fornecedores-admin";
+import { buscarImportacaoFornecedorAdmin } from "@/features/fornecedores/queries/buscar-importacao-fornecedor-admin";
 import { listarRascunhosPublicacaoImportacaoFornecedor } from "@/features/fornecedores/queries/listar-rascunhos-publicacao-importacao-fornecedor";
 
 type PublicacaoImportacaoFornecedorPageProps = {
@@ -14,14 +15,20 @@ export default async function PublicacaoImportacaoFornecedorPage({
   params,
 }: PublicacaoImportacaoFornecedorPageProps) {
   const { id } = await params;
-  const [importacoes, rascunhos, sessao] = await Promise.all([
-    listarImportacoesFornecedoresAdmin(),
-    listarRascunhosPublicacaoImportacaoFornecedor(id),
+  // A importação e a sessão não dependem uma da outra; a origem sai da própria
+  // importação, então os rascunhos não precisam de consulta extra para
+  // descobri-la.
+  const [importacao, sessao] = await Promise.all([
+    buscarImportacaoFornecedorAdmin(id),
     buscarSessaoFornecedoresAdmin(),
   ]);
-  const importacao = importacoes.find((item) => item.id === id);
 
   if (!importacao) notFound();
+
+  const rascunhos = await listarRascunhosPublicacaoImportacaoFornecedor(
+    id,
+    origemDaImportacaoFornecedor(importacao),
+  );
 
   return (
     <PaginaPublicacaoFornecedorAdmin

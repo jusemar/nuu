@@ -101,18 +101,32 @@ export async function publicarProdutosImportacaoFornecedor(
     }
   }
 
-  revalidatePath("/admin/products");
-  revalidatePath(`/admin/fornecedores/importacoes/${idValidado.data}`);
-  revalidatePath(
-    `/admin/fornecedores/importacoes/${idValidado.data}/publicacao`,
-  );
-  revalidatePath(
-    `/admin/fornecedores/integracoes/laquila/importacoes/${idValidado.data}/conciliacao`,
-  );
-  revalidatePath(
-    `/admin/fornecedores/integracoes/laquila/importacoes/${idValidado.data}/publicacao`,
-  );
-  revalidatePath("/");
+  // Publicação que não invalida nada não chega ao cliente.
+  //
+  // A escrita no banco sempre esteve certa, mas a vitrine continuava servindo a
+  // versão em cache de rota do Next: o gestor abria a PDP e via o preço antigo,
+  // concluindo — com razão — que "o produto não foi atualizado". A PDP de cada
+  // produto publicado é o caminho que faltava, e o `slug` já vem do service,
+  // sem custo de consulta extra.
+  if (publicados.length > 0) {
+    revalidatePath("/admin/products");
+    revalidatePath(`/admin/fornecedores/importacoes/${idValidado.data}`);
+    revalidatePath(
+      `/admin/fornecedores/importacoes/${idValidado.data}/publicacao`,
+    );
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${idValidado.data}/conciliacao`,
+    );
+    revalidatePath(
+      `/admin/fornecedores/integracoes/laquila/importacoes/${idValidado.data}/publicacao`,
+    );
+    revalidatePath("/");
+
+    for (const item of publicados) {
+      revalidatePath(`/product/${item.slug}`);
+      revalidatePath(`/admin/products/${item.produtoId}/edit`);
+    }
+  }
 
   if (publicados.length === 0) {
     return {

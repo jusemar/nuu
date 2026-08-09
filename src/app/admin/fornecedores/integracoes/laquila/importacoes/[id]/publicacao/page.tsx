@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { publicarProdutosImportacaoFornecedor } from "@/features/fornecedores/actions/publicar-produtos-importacao-fornecedor";
 import { PaginaPublicacaoFornecedorAdmin } from "@/features/fornecedores/components/admin/pagina-publicacao-fornecedor-admin";
 import { buscarImportacaoApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
+import { ORIGEM_IMPORTACAO_API_LAQUILA } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
 import { buscarSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { listarRascunhosPublicacaoImportacaoFornecedor } from "@/features/fornecedores/queries/listar-rascunhos-publicacao-importacao-fornecedor";
 
@@ -21,14 +22,20 @@ export default async function Page({
   params,
 }: PublicacaoImportacaoLaquilaPageProps) {
   const { id } = await params;
-  const importacao = await buscarImportacaoApiLaquila(id);
+  // A sessão não depende da importação: as duas leituras saem juntas.
+  const [importacao, sessao] = await Promise.all([
+    buscarImportacaoApiLaquila(id),
+    buscarSessaoFornecedoresAdmin(),
+  ]);
 
   if (!importacao) notFound();
 
-  const [rascunhos, sessao] = await Promise.all([
-    listarRascunhosPublicacaoImportacaoFornecedor(importacao.id),
-    buscarSessaoFornecedoresAdmin(),
-  ]);
+  // A origem já é conhecida (esta rota só abre importação de API da Laquila),
+  // então a query dos rascunhos não gasta uma ida ao banco para descobri-la.
+  const rascunhos = await listarRascunhosPublicacaoImportacaoFornecedor(
+    importacao.id,
+    ORIGEM_IMPORTACAO_API_LAQUILA,
+  );
 
   return (
     <PaginaPublicacaoFornecedorAdmin

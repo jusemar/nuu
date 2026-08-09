@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Eye,
   FileWarning,
+  Loader2,
   MoreHorizontal,
   PackageCheck,
   Pencil,
@@ -58,12 +59,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { montarComparativoConciliacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/comparativo-conciliacao-fornecedor";
+import { IndicadorAberturaImportacao } from "@/features/fornecedores/components/admin/compartilhados/indicador-abertura-importacao";
 import {
   calcularAjustePrecoRascunhoFornecedor,
   type OperacaoAjustePrecoRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/calcular-ajuste-preco-rascunho-fornecedor";
+import { montarComparativoConciliacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/comparativo-conciliacao-fornecedor";
 import type { ModalidadeComercialRascunho } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
+import { avaliarPortaoPublicacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/portao-publicacao-fornecedor";
 
 export type TipoOrigemConciliacaoFornecedor = "arquivo" | "api";
 
@@ -1770,6 +1773,36 @@ export function TabelaConciliacaoFornecedor({
   );
   const totalPendencias = resumo.pendencias;
   const possuiPendencias = totalPendencias > 0;
+  /**
+   * Estado REAL do portão para a Publicação.
+   *
+   * Antes esta barra olhava só `resumo.pendencias` — ou seja, "falta algum dado
+   * obrigatório?". Com o dado completo ela anunciava "Todos os produtos estão
+   * prontos para publicação" e liberava o botão, mesmo com todos os itens ainda
+   * em `pendente_conciliacao`. A Publicação, que só lista
+   * `pronto_para_publicar`, abria vazia: o gestor percorria o fluxo inteiro e o
+   * produto real nunca era atualizado.
+   *
+   * Agora o portão conta o que a Publicação vai realmente encontrar, e a
+   * aprovação pendente deixa de ser invisível.
+   */
+  const portaoPublicacao = useMemo(
+    () =>
+      avaliarPortaoPublicacaoFornecedor(
+        itens.map((item) => ({
+          id: item.id,
+          pendenciasObrigatorias: item.pendenciasObrigatorias,
+          statusRascunho: item.camposRascunho?.statusRascunho ?? null,
+          ignorado: item.acaoPrevista === "ignorar",
+        })),
+      ),
+    [itens],
+  );
+  const idsAguardandoAprovacao = portaoPublicacao.idsAguardandoAprovacao;
+  const podeAprovarEmLote =
+    Boolean(aoAlterarDecisaoRascunhos) && idsAguardandoAprovacao.length > 0;
+  const [aprovandoParaPublicar, setAprovandoParaPublicar] = useState(false);
+  const [navegandoParaPublicacao, setNavegandoParaPublicacao] = useState(false);
   const idsFiltrados = useMemo(
     () => itensFiltrados.map((item) => item.id),
     [itensFiltrados],
@@ -1898,6 +1931,50 @@ export function TabelaConciliacaoFornecedor({
     setIdsSelecionados([]);
     setConfirmacaoDecisao(null);
     router.refresh();
+  };
+
+  /**
+   * Ação principal da etapa quando ainda há itens conciliados sem aprovação.
+   *
+   * Aprovar continua sendo um ato explícito do gestor — o rótulo do botão diz
+   * exatamente o que vai acontecer e com quantos itens. O que muda é que ele
+   * deixa de ser um passo escondido: antes, quem não descobrisse a ação em
+   * massa "Aprovar atualização" seguia para a Publicação com as mãos vazias.
+   */
+  const aprovarEContinuarParaPublicacao = async () => {
+    if (!aoAlterarDecisaoRascunhos || idsAguardandoAprovacao.length === 0) {
+      return;
+    }
+
+    setAprovandoParaPublicar(true);
+    try {
+      const resultado = await aoAlterarDecisaoRascunhos({
+        rascunhoIds: idsAguardandoAprovacao,
+        acao: "aprovar",
+      });
+
+      if (!resultado.sucesso) {
+        toast.error(
+          resultado.erro ?? "Não foi possível aprovar os itens para publicação.",
+        );
+        return;
+      }
+
+      toast.success(
+        resultado.mensagem ??
+          `${idsAguardandoAprovacao.length} item(ns) aprovado(s) para publicação.`,
+      );
+
+      if (hrefProximaEtapa) {
+        setNavegandoParaPublicacao(true);
+        router.push(hrefProximaEtapa);
+        return;
+      }
+
+      router.refresh();
+    } finally {
+      setAprovandoParaPublicar(false);
+    }
   };
 
   return (
@@ -2638,20 +2715,39 @@ export function TabelaConciliacaoFornecedor({
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        <p
-          className={`text-sm font-medium ${
-            possuiPendencias ? "text-amber-700" : "text-emerald-700"
-          }`}
-        >
-          {possuiPendencias
-            ? `Publicação bloqueada: existem ${totalPendencias} produtos com pendências obrigatórias.`
-            : "Todos os produtos estão prontos para publicação."}
-        </p>
+      <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p
+            className={`text-sm font-medium ${
+              possuiPendencias
+                ? "text-amber-700"
+                : portaoPublicacao.totalAprovados > 0
+                  ? "text-emerald-700"
+                  : "text-slate-800"
+            }`}
+          >
+            {possuiPendencias
+              ? `Publicação bloqueada: ${totalPendencias} produto${totalPendencias === 1 ? "" : "s"} com pendências obrigatórias.`
+              : idsAguardandoAprovacao.length > 0
+                ? `${idsAguardandoAprovacao.length} ${idsAguardandoAprovacao.length === 1 ? "item" : "itens"} conciliado${idsAguardandoAprovacao.length === 1 ? "" : "s"} aguardando aprovação.`
+                : portaoPublicacao.totalAprovados > 0
+                  ? `${portaoPublicacao.totalAprovados} ${portaoPublicacao.totalAprovados === 1 ? "item" : "itens"} aprovado${portaoPublicacao.totalAprovados === 1 ? "" : "s"} e pronto${portaoPublicacao.totalAprovados === 1 ? "" : "s"} para publicar.`
+                  : "Nada aprovado nesta etapa ainda."}
+          </p>
+          {/* O gestor precisa saber o que a próxima tela vai encontrar ANTES de
+              sair daqui — era exatamente isso que faltava. */}
+          {!possuiPendencias && idsAguardandoAprovacao.length > 0 ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Aprovar aplica o que está em “A publicar” ao produto real da loja.
+            </p>
+          ) : null}
+        </div>
+
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button asChild variant="outline">
             <Link href={hrefVoltar}>Voltar para vínculos</Link>
           </Button>
+
           {possuiPendencias || !hrefProximaEtapa ? (
             <div className="flex flex-col items-stretch gap-1 sm:items-end">
               <Button type="button" disabled>
@@ -2665,10 +2761,42 @@ export function TabelaConciliacaoFornecedor({
                 </p>
               ) : null}
             </div>
-          ) : (
-            <Button asChild>
-              <Link href={hrefProximaEtapa}>{textoAcaoPrincipal}</Link>
+          ) : podeAprovarEmLote ? (
+            <Button
+              type="button"
+              onClick={aprovarEContinuarParaPublicacao}
+              disabled={aprovandoParaPublicar || navegandoParaPublicacao}
+              aria-busy={aprovandoParaPublicar || navegandoParaPublicacao}
+            >
+              {aprovandoParaPublicar || navegandoParaPublicacao ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {navegandoParaPublicacao
+                    ? "Abrindo publicação…"
+                    : `Aprovando ${idsAguardandoAprovacao.length} ${idsAguardandoAprovacao.length === 1 ? "item" : "itens"}…`}
+                </>
+              ) : (
+                `Aprovar e continuar (${idsAguardandoAprovacao.length})`
+              )}
             </Button>
+          ) : portaoPublicacao.totalAprovados > 0 ? (
+            <Button asChild>
+              {/* `IndicadorAberturaImportacao` usa `useLinkStatus`: o spinner
+                  aparece no instante do clique, sem esperar o RSC responder. */}
+              <Link href={hrefProximaEtapa} prefetch={false}>
+                {textoAcaoPrincipal} ({portaoPublicacao.totalAprovados})
+                <IndicadorAberturaImportacao />
+              </Link>
+            </Button>
+          ) : (
+            <div className="flex flex-col items-stretch gap-1 sm:items-end">
+              <Button type="button" disabled>
+                Nada para publicar
+              </Button>
+              <p className="max-w-sm text-xs text-slate-500 sm:text-right">
+                Aprove ao menos um item para liberar a publicação.
+              </p>
+            </div>
           )}
         </div>
       </div>

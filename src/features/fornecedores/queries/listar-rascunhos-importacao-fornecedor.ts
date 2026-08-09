@@ -226,11 +226,16 @@ export async function listarRascunhosImportacaoFornecedor(
           ),
         );
 
-        return {
-          linhas: linhasRascunho,
-          variantesProdutosAtualizados:
+        // As duas leituras seguintes não dependem uma da outra — só dos ids que
+        // a primeira produziu. Elas estavam em propriedades de um object
+        // literal, e propriedades são avaliadas em ordem: cada `await` esperava
+        // o anterior. Com o driver HTTP da Neon (uma requisição por consulta),
+        // isso custava uma ida e volta inteira de rede à toa em toda abertura
+        // da Conciliação.
+        const [variantesProdutosAtualizados, vinculosAtivos] = await Promise.all(
+          [
             produtosAtualizadosIds.length > 0
-              ? await db
+              ? db
                   .select({
                     id: productVariantTable.id,
                     produtoId: productVariantTable.productId,
@@ -248,10 +253,9 @@ export async function listarRascunhosImportacaoFornecedor(
                       produtosAtualizadosIds,
                     ),
                   )
-              : [],
-          vinculosAtivos:
+              : Promise.resolve([]),
             fornecedoresIds.length > 0
-              ? await db
+              ? db
                   .select({
                     fornecedorId: fornecedorProdutoVinculosTable.fornecedorId,
                     codigoFornecedor:
@@ -267,7 +271,14 @@ export async function listarRascunhosImportacaoFornecedor(
                       eq(fornecedorProdutoVinculosTable.status, "ativo"),
                     ),
                   )
-              : [],
+              : Promise.resolve([]),
+          ],
+        );
+
+        return {
+          linhas: linhasRascunho,
+          variantesProdutosAtualizados,
+          vinculosAtivos,
         };
       },
     );

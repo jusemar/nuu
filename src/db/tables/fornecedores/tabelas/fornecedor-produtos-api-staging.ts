@@ -80,10 +80,20 @@ export const fornecedorProdutosApiStagingTable = pgTable(
     index("fornecedor_produtos_api_staging_grupo_fornecedor_idx").on(
       table.grupoFornecedor,
     ),
-    uniqueIndex("fornecedor_produtos_api_staging_integracao_codigo_unique").on(
-      table.integracaoApiId,
-      table.codigoFornecedor,
-    ),
+    // A execução faz parte da identidade da linha.
+    //
+    // Antes a chave era (integração, código) e existia UM retrato global por
+    // integração: buscar de novo o mesmo código sobrescrevia o retrato antigo,
+    // e por isso a API nunca teve ciclos independentes. Com a importação na
+    // chave, o mesmo `codigoFornecedor` pode existir em #101, #102 e #103 sem
+    // conflito — cada ciclo guarda o que a API devolveu naquele momento.
+    //
+    // As linhas legadas (sem `importacaoId`) ficam fora dessa garantia porque
+    // NULL é distinto de NULL em índice único no Postgres. É intencional: elas
+    // não são mais escritas por nenhum caminho do fluxo novo.
+    uniqueIndex(
+      "fornecedor_produtos_api_staging_integracao_importacao_codigo_unique",
+    ).on(table.integracaoApiId, table.importacaoId, table.codigoFornecedor),
   ],
 );
 

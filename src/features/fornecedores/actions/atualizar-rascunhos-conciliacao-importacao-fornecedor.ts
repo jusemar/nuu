@@ -7,8 +7,8 @@ import { z } from "zod";
 import { db } from "@/db/connection";
 import { produtoRascunhosTable } from "@/db/schema";
 import type { OrigemImportacaoFornecedor } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
-import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
+import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { ajustarPrecosProdutosRascunhosFornecedor } from "@/features/fornecedores/services/ajustar-precos-produtos-rascunhos-fornecedor.service";
 import { atualizarCamposProdutosRascunhosFornecedor } from "@/features/fornecedores/services/atualizar-campos-produtos-rascunhos-fornecedor.service";
 

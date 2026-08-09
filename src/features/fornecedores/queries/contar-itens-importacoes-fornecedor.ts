@@ -8,10 +8,9 @@ import {
   fornecedorProdutosStagingTable,
   produtoRascunhosTable,
 } from "@/db/schema";
-
 import {
-  type ContadoresImportacaoFornecedor,
   CONTADORES_IMPORTACAO_ZERADOS,
+  type ContadoresImportacaoFornecedor,
 } from "@/features/fornecedores/lib/estado-importacao-fornecedor";
 
 function chaveImportacaoDoRascunho() {

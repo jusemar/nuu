@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import { produtoRascunhosTable } from "@/db/schema";
-import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
+import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { publicarProdutoRascunhoFornecedor } from "@/features/fornecedores/services/publicar-produto-rascunho-fornecedor.service";
 
 const publicarProdutosImportacaoFornecedorSchema = z.object({

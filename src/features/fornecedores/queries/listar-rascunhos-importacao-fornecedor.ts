@@ -24,9 +24,9 @@ import {
   ORIGEM_IMPORTACAO_ARQUIVO,
   type OrigemImportacaoFornecedor,
 } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 import { buscarOrigemImportacaoFornecedor } from "./buscar-origem-importacao-fornecedor";
-import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 // A categoria e a marca do PRODUTO REAL precisam de alias: as tabelas base já
 // entram na consulta ligadas ao rascunho, e um item vinculado tem os dois lados

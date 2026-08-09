@@ -181,6 +181,8 @@ function montarItemConciliacaoAtualizacao(
       sku: rascunho.produtoAtualizadoSku,
       precoAtual: rascunho.precoAtualLoja,
       estoqueAtual: rascunho.estoqueAtualLoja,
+      modalidadeAtual: rascunho.modalidadeAtualLoja,
+      prazoAtual: rascunho.prazoAtualLoja,
     },
   };
 }

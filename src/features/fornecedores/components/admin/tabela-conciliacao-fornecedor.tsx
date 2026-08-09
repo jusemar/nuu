@@ -155,6 +155,8 @@ export type ItemConciliacaoFornecedor = {
     sku: string | null;
     precoAtual: string | null;
     estoqueAtual: number | null;
+    modalidadeAtual?: string | null;
+    prazoAtual?: string | null;
   } | null;
 };
 
@@ -274,6 +276,13 @@ function formatarSecoesLoja(secoes?: string[]) {
  *
  * Item NOVO não tem produto na loja para comparar, então mantém o par original.
  */
+const ROTULOS_MODALIDADE_LOJA: Record<string, string> = {
+  stock: "Estoque próprio",
+  pre_sale: "Pré-venda",
+  dropshipping: "Dropshipping",
+  order_basis: "Sob encomenda",
+};
+
 function resumirPrecosLinha(item: ItemConciliacaoFornecedor) {
   const precoAPublicar = formatarMoeda(
     item.produto.precoLoja ?? item.produto.preco,
@@ -919,11 +928,60 @@ function PainelDetalhesConciliacao({
                           : "Não recebido"}
                       </dd>
                     </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Modalidade atual
+                      </dt>
+                      <dd className="font-medium text-slate-900">
+                        {item.produtoAtualizado.modalidadeAtual
+                          ? (ROTULOS_MODALIDADE_LOJA[
+                              item.produtoAtualizado.modalidadeAtual
+                            ] ?? item.produtoAtualizado.modalidadeAtual)
+                          : "Não cadastrada"}
+                        {item.produtoAtualizado.prazoAtual
+                          ? ` · ${item.produtoAtualizado.prazoAtual}`
+                          : ""}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Modalidade a publicar
+                      </dt>
+                      <dd className="font-medium text-emerald-700">
+                        Estoque próprio · 1 dia útil
+                      </dd>
+                    </div>
                   </dl>
+
+                  {/* O resultado proposto: o que fica gravado se o gestor
+                      apenas aprovar, sem editar nada. */}
+                  <dl className="mt-4 grid gap-3 border-t border-blue-200 pt-4 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Preço a publicar
+                      </dt>
+                      <dd className="font-semibold text-emerald-700">
+                        {formatarMoeda(
+                          item.produto.precoLoja ?? item.produto.preco,
+                        ) ?? "Pendente"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">
+                        Estoque a publicar
+                      </dt>
+                      <dd className="font-semibold text-emerald-700">
+                        {typeof item.produto.estoque === "number"
+                          ? item.produto.estoque
+                          : "Mantém o atual"}
+                      </dd>
+                    </div>
+                  </dl>
+
                   <p className="mt-3 text-xs text-slate-500">
-                    Campos ausentes no arquivo não apagam o dado atual do
-                    produto — só o preço e o estoque recebidos são aplicados na
-                    Publicação.
+                    Aprovar sem editar aplica exatamente o que está em “a
+                    publicar”. Campos ausentes no arquivo mantêm o valor atual
+                    do produto.
                   </p>
                 </section>
               ) : null}

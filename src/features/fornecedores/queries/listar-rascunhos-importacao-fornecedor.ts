@@ -72,6 +72,9 @@ export type RascunhoImportacaoFornecedor = {
   marcaAtualLojaId: string | null;
   marcaAtualLojaNome: string | null;
   secoesAtuaisLoja: string[];
+  /** Modalidade e prazo do card principal de hoje, para comparar com o que será publicado. */
+  modalidadeAtualLoja: string | null;
+  prazoAtualLoja: string | null;
 };
 
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
@@ -134,6 +137,8 @@ export async function listarRascunhosImportacaoFornecedor(
             marcaAtualLojaId: productTable.marcaId,
             marcaAtualLojaNome: marcaLojaTable.nome,
             secoesAtuaisLoja: productTable.storeProductFlags,
+            modalidadeAtualLoja: productPricingTable.type,
+            prazoAtualLoja: productPricingTable.deliveryDays,
           })
           .from(produtoRascunhosTable)
           .leftJoin(

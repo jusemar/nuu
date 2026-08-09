@@ -58,6 +58,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { montarComparativoConciliacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/comparativo-conciliacao-fornecedor";
 import {
   calcularAjustePrecoRascunhoFornecedor,
   type OperacaoAjustePrecoRascunhoFornecedor,
@@ -318,6 +319,98 @@ function resumirPrecosLinha(item: ItemConciliacaoFornecedor) {
     },
     { rotulo: "Loja", valor: precoAPublicar ?? "Pendente", destaque: true },
   ];
+}
+
+/**
+ * Bloco de comparação do celular.
+ *
+ * Um card por campo, com os três valores empilhados e rotulados. Sem rolagem
+ * horizontal e sem depender de o gestor lembrar a ordem das colunas — no
+ * celular, três colunas de tabela empurram a comparação para fora da tela, e
+ * a comparação é a razão de existir desta etapa.
+ *
+ * A regra de o que comparar vive em `lib/conciliacao`; aqui só a apresentação.
+ */
+function ComparativoConciliacaoMobile({
+  item,
+}: {
+  item: ItemConciliacaoFornecedor;
+}) {
+  const atual = item.produtoAtualizado;
+  const campos = item.camposRascunho;
+  const linhas = montarComparativoConciliacaoFornecedor({
+    fornecedor: {
+      preco: item.produto.precoFornecedor ?? null,
+      estoque: item.produto.estoque ?? null,
+    },
+    lojaAtual: atual
+      ? {
+          preco: atual.precoAtual ?? null,
+          estoque: atual.estoqueAtual ?? null,
+          modalidade: atual.modalidadeAtual ?? null,
+          prazo: atual.prazoAtual ?? null,
+        }
+      : null,
+    aPublicar: {
+      preco: item.produto.precoLoja ?? item.produto.preco ?? null,
+      estoque: item.produto.estoque ?? null,
+      categoriaNome: campos?.categoriaNome ?? null,
+      marcaNome: campos?.marcaNome ?? null,
+      secoesLoja: campos?.secoesLoja ?? null,
+      modalidade: campos?.modalidadeComercial ?? null,
+      prazo: campos?.prazoEntrega ?? item.configuracaoPreco?.prazo ?? null,
+    },
+  });
+
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-semibold text-slate-700">
+        Fornecedor × Loja atual × A publicar
+      </p>
+      <dl className="grid gap-2">
+        {linhas.map((linha) => (
+          <div
+            key={linha.campo}
+            className={`rounded-md border p-2.5 ${
+              linha.muda
+                ? "border-blue-200 bg-blue-50/60"
+                : "border-slate-200 bg-white"
+            }`}
+          >
+            <dt className="text-xs font-semibold text-slate-900">
+              {linha.campo}
+            </dt>
+            <dd className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
+              <span className="min-w-0">
+                <span className="block text-[10px] tracking-wide text-slate-500 uppercase">
+                  Fornecedor
+                </span>
+                <span className="block break-words text-slate-700">
+                  {linha.fornecedor}
+                </span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[10px] tracking-wide text-slate-500 uppercase">
+                  Loja atual
+                </span>
+                <span className="block break-words text-slate-700">
+                  {linha.lojaAtual}
+                </span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[10px] tracking-wide text-blue-700 uppercase">
+                  A publicar
+                </span>
+                <span className="block break-words font-semibold text-slate-950">
+                  {linha.aPublicar}
+                </span>
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 }
 
 function calcularPrecoAjustadoPreview({
@@ -2339,7 +2432,7 @@ export function TabelaConciliacaoFornecedor({
               </Badge>
             </div>
             <div className="mt-3 grid gap-3 text-sm">
-              <div className="grid gap-2 rounded-md bg-slate-50 p-3 text-xs sm:grid-cols-2">
+              <div className="grid gap-3 rounded-md bg-slate-50 p-3 text-xs">
                 <p>
                   <span className="text-slate-500">Destino:</span>{" "}
                   <strong>
@@ -2348,32 +2441,11 @@ export function TabelaConciliacaoFornecedor({
                       : "Produto vinculado"}
                   </strong>
                 </p>
-                <p>
-                  <span className="text-slate-500">Marca:</span>{" "}
-                  <strong>
-                    {item.camposRascunho?.marcaNome ?? "Pendente"}
-                  </strong>
-                </p>
-                <p>
-                  <span className="text-slate-500">Categoria:</span>{" "}
-                  <strong>
-                    {item.camposRascunho?.categoriaNome ?? "Pendente"}
-                  </strong>
-                </p>
-                <p>
-                  <span className="text-slate-500">Seções:</span>{" "}
-                  <strong>
-                    {formatarSecoesLoja(item.camposRascunho?.secoesLoja)}
-                  </strong>
-                </p>
-                {resumirPrecosLinha(item).map((preco) => (
-                  <p key={preco.rotulo}>
-                    <span className="text-slate-500">{preco.rotulo}:</span>{" "}
-                    <strong>{preco.valor}</strong>
-                  </p>
-                ))}
+
+                <ComparativoConciliacaoMobile item={item} />
+
                 {item.status === "pendencia" ? (
-                  <div className="flex flex-wrap gap-1 sm:col-span-2">
+                  <div className="flex flex-wrap gap-1">
                     {item.pendenciasObrigatorias?.map((pendencia) => (
                       <Badge
                         key={pendencia}

@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  CheckCircle2,
   FilterX,
   RefreshCw,
   Search,
@@ -32,6 +31,7 @@ import type {
 import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
 import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
+import { PassosFluxoFornecedor } from "./compartilhados/passos-fluxo-fornecedor";
 import {
   type DadosTemporariosMapeamentoFornecedor,
   type OpcaoValorPadraoLoja,
@@ -144,14 +144,6 @@ const camposMapeamento = [
   ["preco_fornecedor", "Preço fornecedor"],
   ["estoque_fornecedor", "Estoque fornecedor"],
 ] satisfies Array<[CampoMapeamentoColunaFornecedor, string]>;
-
-const etapasFluxo = [
-  "Selecionar arquivo",
-  "Mapear colunas",
-  "Vinculação",
-  "Conciliação",
-  "Publicação",
-];
 
 function formatarData(valor: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -284,67 +276,6 @@ function CabecalhoExecutivo({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function StepperImportacao({ etapaAtual }: { etapaAtual: string }) {
-  const indiceAtual = Math.max(
-    1,
-    etapas.findIndex((etapa) => etapa.valor === etapaAtual) + 1,
-  );
-
-  return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white px-4 py-3">
-      <div className="flex min-w-max items-start">
-        {etapasFluxo.map((etapa, indice) => {
-          const atual = indice === indiceAtual;
-          const concluido = indice < indiceAtual;
-
-          return (
-            <div
-              key={etapa}
-              className="flex min-w-[140px] items-start last:min-w-[96px]"
-            >
-              <div className="flex min-w-0 flex-col items-center text-center">
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium shadow-sm ${
-                    atual
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : concluido
-                        ? "border-emerald-600 bg-emerald-600 text-white"
-                        : "border-slate-300 bg-white text-slate-400"
-                  }`}
-                >
-                  {concluido ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    indice + 1
-                  )}
-                </div>
-                <p
-                  className={`mt-1.5 max-w-[104px] text-[11px] leading-tight font-medium ${
-                    atual
-                      ? "text-slate-950"
-                      : concluido
-                        ? "text-slate-700"
-                        : "text-slate-400"
-                  }`}
-                >
-                  {etapa}
-                </p>
-              </div>
-              {indice < etapasFluxo.length - 1 ? (
-                <div
-                  className={`mt-3.5 h-0.5 flex-1 rounded-full ${
-                    concluido ? "bg-emerald-600" : "bg-slate-200"
-                  }`}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -596,7 +527,18 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
         revisaoImportacao={revisaoImportacao}
       />
 
-      <StepperImportacao etapaAtual={filtros.etapa} />
+      <PassosFluxoFornecedor
+        passoAtual={
+          filtros.etapa === "vinculacao"
+            ? "Vinculação"
+            : filtros.etapa === "revisao"
+              ? "Conciliação"
+              : "Mapeamento"
+        }
+        origem={{ tipo: "arquivo" }}
+        rotuloAquisicao="Selecionar arquivo"
+        fornecedor={importacao.nomeFornecedor}
+      />
 
       <Tabs value={filtros.etapa} className="gap-4">
         <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm">

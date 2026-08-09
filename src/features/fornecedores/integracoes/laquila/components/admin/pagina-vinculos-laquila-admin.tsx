@@ -36,6 +36,7 @@ import type {
   RascunhoConciliacaoLaquila,
   VinculoProdutoLaquila,
 } from "@/features/fornecedores/integracoes/laquila/queries";
+import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 
 type ProdutoSelecionadoMapeamentoLaquila = {
   cd_item: string;
@@ -573,6 +574,11 @@ export function PaginaVinculosLaquilaAdmin({
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
+      <PassosFluxoFornecedor
+        passoAtual="Vinculação"
+        origem={{ tipo: "api", provedor: "Laquila" }}
+        rotuloAquisicao="Buscar dados"
+      />
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">

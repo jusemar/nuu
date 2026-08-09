@@ -90,6 +90,14 @@ type ItemMenuAdmin = {
   label: string;
   href: string;
   icon: string;
+  /**
+   * Item que faz parte da organização prevista do menu, mas ainda não tem tela.
+   *
+   * Aparece esmaecido e sem link, com a etiqueta "Em breve". É a diferença
+   * entre mostrar o roteiro do produto e entregar um link que devolve 404 —
+   * o segundo destrói a confiança do gestor na navegação.
+   */
+  emBreve?: boolean;
 };
 
 type GrupoMenuAdmin = {
@@ -209,7 +217,7 @@ export const menuAdmin: EntradaMenuAdmin[] = [
     ],
   },
 
-  // Grupo: Fornecedores
+  // Grupo: Fornecedores — o cadastro e o catálogo de quem fornece.
   {
     id: "fornecedores",
     type: "group" as const,
@@ -217,21 +225,60 @@ export const menuAdmin: EntradaMenuAdmin[] = [
     icon: "Building2",
     items: [
       {
-        id: "fornecedores-cadastro",
-        label: "Fornecedores",
+        id: "fornecedores-visao-geral",
+        label: "Visão geral",
         href: "/admin/fornecedores",
         icon: "Building2",
       },
       {
-        id: "fornecedores-importacoes",
-        label: "Importações",
-        href: "/admin/fornecedores/importacoes",
+        id: "fornecedores-catalogos",
+        label: "Catálogos de fornecedores",
+        href: "/admin/fornecedores",
         icon: "FileSpreadsheet",
+        emBreve: true,
+      },
+      {
+        id: "fornecedores-produtos",
+        label: "Produtos de fornecedores",
+        href: "/admin/fornecedores",
+        icon: "Package",
+        emBreve: true,
+      },
+      {
+        id: "fornecedores-configuracoes",
+        label: "Configurações",
+        href: "/admin/fornecedores",
+        icon: "ShieldCheck",
+        emBreve: true,
       },
     ],
   },
 
-  // Grupo: Integrações
+  // Grupo: Importações — a entrada por ARQUIVO. A entrada por API vive em
+  // Integrações, mas as duas desembocam no mesmo processamento.
+  {
+    id: "importacoes",
+    type: "group" as const,
+    label: "Importações",
+    icon: "FileSpreadsheet",
+    items: [
+      {
+        id: "importacoes-arquivo-excel",
+        label: "Arquivo Excel",
+        href: "/admin/fornecedores/importacoes",
+        icon: "FileSpreadsheet",
+      },
+      {
+        id: "importacoes-historico",
+        label: "Histórico",
+        href: "/admin/fornecedores/importacoes",
+        icon: "RefreshCw",
+        emBreve: true,
+      },
+    ],
+  },
+
+  // Grupo: Integrações — origens externas de dados.
   {
     id: "integracoes",
     type: "group" as const,
@@ -249,6 +296,64 @@ export const menuAdmin: EntradaMenuAdmin[] = [
             label: "Laquila",
             href: "/admin/fornecedores/integracoes/laquila",
             icon: "Plug",
+          },
+        ],
+      },
+      {
+        id: "integracoes-marketplaces",
+        type: "subgroup" as const,
+        label: "Marketplaces",
+        icon: "ShoppingCart",
+        items: [
+          {
+            id: "integracoes-marketplaces-mercado-livre",
+            label: "Mercado Livre",
+            href: "/admin",
+            icon: "ShoppingCart",
+            emBreve: true,
+          },
+          {
+            id: "integracoes-marketplaces-shopee",
+            label: "Shopee",
+            href: "/admin",
+            icon: "ShoppingCart",
+            emBreve: true,
+          },
+          {
+            id: "integracoes-marketplaces-amazon",
+            label: "Amazon",
+            href: "/admin",
+            icon: "ShoppingCart",
+            emBreve: true,
+          },
+        ],
+      },
+      {
+        id: "integracoes-canais-venda",
+        type: "subgroup" as const,
+        label: "Canais de venda",
+        icon: "Megaphone",
+        items: [
+          {
+            id: "integracoes-canais-google-shopping",
+            label: "Google Shopping",
+            href: "/admin",
+            icon: "Megaphone",
+            emBreve: true,
+          },
+          {
+            id: "integracoes-canais-meta",
+            label: "Meta",
+            href: "/admin",
+            icon: "Megaphone",
+            emBreve: true,
+          },
+          {
+            id: "integracoes-canais-whatsapp",
+            label: "WhatsApp",
+            href: "/admin",
+            icon: "Megaphone",
+            emBreve: true,
           },
         ],
       },
@@ -380,6 +485,35 @@ export function AdminSidebar() {
   const renderItem = (item: ItemMenuAdmin, level: number = 0) => {
     const Icon = iconMap[item.icon];
     const active = isActive(item.href);
+
+    // Sem tela ainda: mostra o item no lugar certo da hierarquia, mas não
+    // navega. Melhor um "Em breve" honesto do que um clique que quebra.
+    if (item.emBreve) {
+      return (
+        <div
+          key={item.id}
+          aria-disabled="true"
+          className={`text-muted-foreground/50 flex min-h-10 cursor-default items-center gap-3 rounded-lg px-3 py-2 ${
+            isCollapsed && level === 0 ? "justify-center" : ""
+          } ${level > 0 ? "ml-4 text-sm" : ""}`}
+          title={
+            isCollapsed && level === 0
+              ? `${item.label} (em breve)`
+              : "Ainda não disponível"
+          }
+        >
+          {Icon && <Icon size={18} className="shrink-0" />}
+          {(!isCollapsed || level > 0) && (
+            <>
+              <span className="truncate font-medium">{item.label}</span>
+              <span className="border-border text-muted-foreground/70 ml-auto shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium">
+                Em breve
+              </span>
+            </>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link

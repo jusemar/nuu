@@ -18,6 +18,7 @@ import {
   type RegistroCombinacaoCategoriaFornecedor,
   TabelaMapeamentoCamposFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
+import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 
 const opcoesDestinoLaquila = [
   { valor: "codigo_fornecedor", label: "Código fornecedor" },
@@ -354,6 +355,11 @@ export function PaginaMapeamentoLaquilaAdmin({
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
+      <PassosFluxoFornecedor
+        passoAtual="Mapeamento"
+        origem={{ tipo: "api", provedor: "Laquila" }}
+        rotuloAquisicao="Buscar dados"
+      />
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">

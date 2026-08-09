@@ -35,6 +35,7 @@ import {
   rotulosTipoIntegracaoFornecedor,
 } from "../../services/fornecedores.service";
 import type { FornecedorComResumoImportacoes } from "../../types/fornecedores.types";
+import { IndicadorAberturaImportacao } from "./compartilhados/indicador-abertura-importacao";
 import { FormularioNovaImportacaoFornecedor } from "./formulario-nova-importacao-fornecedor";
 
 type ImportacaoFornecedorRecenteAdmin = {
@@ -385,7 +386,11 @@ export function PaginaListaImportacoesFornecedoresAdmin({
                         <Badge variant="outline" className={badge.classe}>
                           {badge.rotulo}
                         </Badge>
-                        <ChevronRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+                        {/* Responde ao clique no mesmo instante: abrir uma
+                            importação carrega staging, revisão e rascunhos, e
+                            até aqui o gestor não tinha sinal nenhum de que o
+                            sistema estava trabalhando. */}
+                        <IndicadorAberturaImportacao />
                       </div>
                     </Link>
                   );

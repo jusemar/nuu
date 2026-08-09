@@ -18,6 +18,7 @@ import {
   atualizarCamposRascunhosLaquila,
 } from "@/features/fornecedores/integracoes/laquila/actions";
 import type { RascunhoConciliacaoLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
+import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 
 type RascunhoConciliacaoLaquilaPersistido = {
   item: ItemVinculoFornecedor;
@@ -493,6 +494,11 @@ export function PaginaConciliacaoLaquilaAdmin({
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
+      <PassosFluxoFornecedor
+        passoAtual="Conciliação"
+        origem={{ tipo: "api", provedor: "Laquila" }}
+        rotuloAquisicao="Buscar dados"
+      />
       {!sessaoAtiva ? (
         <section className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-xs sm:flex-row sm:items-center sm:justify-between">
           <div>

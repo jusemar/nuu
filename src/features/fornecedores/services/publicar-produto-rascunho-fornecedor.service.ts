@@ -155,6 +155,11 @@ export async function publicarProdutoRascunhoFornecedor(
       produtoAtualizadoId: rascunho.produtoAtualizadoId,
       precoLoja: rascunho.precoLoja,
       estoqueFornecedor: rascunho.estoqueFornecedor,
+      // Só chegam preenchidos quando o gestor editou o campo na Conciliação —
+      // o rascunho de item vinculado nasce com os três vazios.
+      categoriaId: rascunho.categoriaId,
+      marcaId: rascunho.marcaId,
+      secoesLoja: extrairSecoesLojaRascunhoFornecedor(rascunho.dadosOrigemJson),
     });
   }
 
@@ -338,6 +343,18 @@ type RascunhoAtualizacaoProdutoVinculadoFornecedor = {
   produtoAtualizadoId: string;
   precoLoja: string | null;
   estoqueFornecedor: number | null;
+  /**
+   * Campos de catálogo que o gestor pode ter reescrito na Conciliação.
+   *
+   * `null` (ou lista vazia) significa "não alterar": o rascunho de um item
+   * vinculado nasce sem categoria, marca e seções, e só recebe valor quando
+   * alguém decide explicitamente mudá-los. É essa distinção que permite
+   * aplicar a decisão do gestor sem deixar o arquivo do fornecedor sobrescrever
+   * o catálogo por conta própria.
+   */
+  categoriaId: string | null;
+  marcaId: string | null;
+  secoesLoja: string[];
 };
 
 /**
@@ -527,6 +544,25 @@ async function publicarAtualizacaoProdutoVinculadoFornecedor(
         updatedAt: agora,
       })
       .where(eq(productVariantTable.id, identificacao.variante.id));
+
+    // Campos de catálogo: só entram quando o gestor decidiu mudá-los na
+    // Conciliação. Um rascunho de item vinculado nasce sem categoria, marca e
+    // seções, então "vazio" aqui significa literalmente "não alterar" — o
+    // arquivo do fornecedor continua sem poder reescrever o catálogo sozinho.
+    const catalogoParaAtualizar = {
+      ...(rascunho.categoriaId ? { categoryId: rascunho.categoriaId } : {}),
+      ...(rascunho.marcaId ? { marcaId: rascunho.marcaId } : {}),
+      ...(rascunho.secoesLoja.length > 0
+        ? { storeProductFlags: rascunho.secoesLoja }
+        : {}),
+    };
+
+    if (Object.keys(catalogoParaAtualizar).length > 0) {
+      await tx
+        .update(productTable)
+        .set({ ...catalogoParaAtualizar, updatedAt: agora })
+        .where(eq(productTable.id, produtoBloqueado.id));
+    }
 
     // Estado terminal do caminho "atualizar": some da Conciliação e da
     // Publicação sem depender do sinal de vínculo ativo, que aqui já existia.

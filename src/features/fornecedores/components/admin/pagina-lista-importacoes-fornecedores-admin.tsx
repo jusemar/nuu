@@ -6,6 +6,7 @@ import {
   Clock3,
   FileSpreadsheet,
   Filter,
+  Plug,
   Upload,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,6 +31,11 @@ import {
 } from "@/components/ui/sheet";
 
 import {
+  type ContadoresImportacaoFornecedor,
+  type EstadoImportacaoFornecedor,
+  ROTULOS_ESTADO_IMPORTACAO_FORNECEDOR,
+} from "../../lib/estado-importacao-fornecedor";
+import {
   ordenarFornecedoresPorStatusENome,
   rotulosStatusFornecedor,
   rotulosTipoIntegracaoFornecedor,
@@ -47,6 +53,14 @@ type ImportacaoFornecedorRecenteAdmin = {
   totalErros: number;
   status: string;
   criadoEm: Date;
+  /** Como os dados foram adquiridos. Depois disso, o fluxo é o mesmo. */
+  origem: "arquivo" | "api";
+  provedor: string | null;
+  /** Nome do arquivo quando arquivo; nome do provedor quando API. */
+  rotuloOrigem: string;
+  numeroControle: string;
+  contadores: ContadoresImportacaoFornecedor;
+  estado: EstadoImportacaoFornecedor;
 };
 
 type PaginacaoImportacoesRecentes = {
@@ -104,38 +118,24 @@ function formatarTempoRelativo(data: Date) {
   }).format(new Date(data));
 }
 
+/**
+ * Badge do ANDAMENTO da importação, derivado dos contadores dela.
+ *
+ * Substitui o rótulo que vinha só de `status`, que descreve a aquisição: uma
+ * importação podia aparecer como "OK" com dezenas de itens ainda esperando
+ * decisão. Aqui o gestor vê o que falta, não como o arquivo foi lido.
+ */
 function formatarBadgeImportacao(importacao: ImportacaoFornecedorRecenteAdmin) {
-  if (importacao.totalErros > 0) {
-    return {
-      rotulo: `${importacao.totalErros} avisos`,
-      classe: estilosStatusImportacao.avisos,
-    };
-  }
-
-  if (importacao.status === "em_homologacao") {
-    return {
-      rotulo: "Em homologação",
-      classe: estilosStatusImportacao.em_homologacao,
-    };
-  }
-
-  if (importacao.status === "em_staging") {
-    return {
-      rotulo: "Em staging",
-      classe: estilosStatusImportacao.em_staging,
-    };
-  }
-
-  if (importacao.status === "pendente") {
-    return {
-      rotulo: "Pendente",
-      classe: estilosStatusImportacao.pendente,
-    };
-  }
+  const classes: Record<EstadoImportacaoFornecedor, string> = {
+    com_erros: estilosStatusImportacao.avisos,
+    em_andamento: estilosStatusImportacao.em_staging,
+    parcialmente_processada: estilosStatusImportacao.em_homologacao,
+    concluida: estilosStatusImportacao.ok,
+  };
 
   return {
-    rotulo: "OK",
-    classe: estilosStatusImportacao.ok,
+    rotulo: ROTULOS_ESTADO_IMPORTACAO_FORNECEDOR[importacao.estado],
+    classe: classes[importacao.estado],
   };
 }
 
@@ -362,27 +362,57 @@ export function PaginaListaImportacoesFornecedoresAdmin({
                   return (
                     <Link
                       key={importacao.id}
-                      href={`/admin/fornecedores/importacoes/${importacao.id}`}
-                      className="group flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-slate-50/80"
+                      // Clicar abre AQUELA execução — nunca dispara uma nova
+                      // aquisição. A API entra por uma rota própria porque as
+                      // telas de mapeamento e vinculação dela leem o staging
+                      // de API; da Conciliação em diante o fluxo é o mesmo.
+                      href={
+                        importacao.origem === "api"
+                          ? `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/produtos`
+                          : `/admin/fornecedores/importacoes/${importacao.id}`
+                      }
+                      className="group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-slate-50/80 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <FileSpreadsheet className="h-4 w-4 text-slate-400" />
+                          {importacao.origem === "api" ? (
+                            <Plug className="h-4 w-4 shrink-0 text-slate-400" />
+                          ) : (
+                            <FileSpreadsheet className="h-4 w-4 shrink-0 text-slate-400" />
+                          )}
                           <span className="truncate text-sm font-semibold text-slate-950">
-                            {importacao.nomeArquivo ?? "Arquivo sem nome"}
+                            {importacao.rotuloOrigem}
                           </span>
+                          <Badge
+                            variant="outline"
+                            className="border-slate-200 bg-slate-50 text-[10px] text-slate-600"
+                          >
+                            {importacao.origem === "api" ? "API" : "Arquivo"}
+                          </Badge>
                         </div>
                         <p className="mt-1 truncate text-sm text-slate-600">
                           {importacao.nomeFornecedor}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {importacao.totalLinhas} linhas •{" "}
-                          {importacao.totalProcessadas} válidos •{" "}
-                          {importacao.totalErros} erros •{" "}
-                          {formatarTempoRelativo(importacao.criadoEm)}
+                          <span className="font-mono">
+                            #{importacao.numeroControle}
+                          </span>{" "}
+                          • {formatarTempoRelativo(importacao.criadoEm)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {importacao.contadores.total} itens •{" "}
+                          {importacao.contadores.publicados} publicados •{" "}
+                          {importacao.contadores.pendentes} pendentes •{" "}
+                          {importacao.contadores.ignorados} ignorados •{" "}
+                          {importacao.contadores.erros} erros
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
+                        {importacao.contadores.pendentes > 0 ? (
+                          <span className="text-xs font-medium text-slate-900">
+                            Continuar importação
+                          </span>
+                        ) : null}
                         <Badge variant="outline" className={badge.classe}>
                           {badge.rotulo}
                         </Badge>

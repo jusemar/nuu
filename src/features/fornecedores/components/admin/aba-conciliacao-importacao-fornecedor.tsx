@@ -16,6 +16,14 @@ type AbaConciliacaoImportacaoFornecedorProps = {
   rascunhos: RascunhoImportacaoFornecedor[];
   categoriasLoja: OpcaoValorPadraoLoja[];
   marcasLoja: Array<{ id: string; nome: string }>;
+  /**
+   * Navegação da etapa. O padrão são as rotas do fluxo por arquivo; a
+   * integração por API passa as dela, porque só o endereço muda — a
+   * experiência da Conciliação é a mesma para as duas origens.
+   */
+  hrefVoltar?: string;
+  hrefProximaEtapa?: string;
+  tipoOrigem?: "arquivo" | "api";
 };
 
 const ROTULOS_PENDENCIAS: Record<string, string> = {
@@ -273,6 +281,9 @@ export function AbaConciliacaoImportacaoFornecedor({
   rascunhos,
   categoriasLoja,
   marcasLoja,
+  hrefVoltar,
+  hrefProximaEtapa,
+  tipoOrigem = "arquivo",
 }: AbaConciliacaoImportacaoFornecedorProps) {
   if (rascunhos.length === 0) {
     return (
@@ -290,12 +301,18 @@ export function AbaConciliacaoImportacaoFornecedor({
 
   return (
     <TabelaConciliacaoFornecedor
-      tipoOrigem="arquivo"
+      tipoOrigem={tipoOrigem}
       fornecedor={fornecedor}
       titulo="Conciliação da importação"
       subtitulo="Revise os rascunhos criados antes de avançar no fluxo."
-      hrefVoltar={`/admin/fornecedores/importacoes/${importacaoId}?etapa=vinculacao`}
-      hrefProximaEtapa={`/admin/fornecedores/importacoes/${importacaoId}/publicacao`}
+      hrefVoltar={
+        hrefVoltar ??
+        `/admin/fornecedores/importacoes/${importacaoId}?etapa=vinculacao`
+      }
+      hrefProximaEtapa={
+        hrefProximaEtapa ??
+        `/admin/fornecedores/importacoes/${importacaoId}/publicacao`
+      }
       textoAcaoPrincipal="Continuar para publicação"
       itens={montarItensConciliacaoArquivo(rascunhos)}
       aoAjustarPrecosSelecionados={ajustarPrecosRascunhosImportacaoFornecedor.bind(

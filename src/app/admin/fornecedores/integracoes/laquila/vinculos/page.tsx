@@ -1,23 +1,22 @@
-import { PaginaVinculosLaquilaAdmin } from "@/features/fornecedores/integracoes/laquila/components/admin";
-import { buscarSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
-import {
-  listarRascunhosConciliacaoLaquila,
-  listarVinculosProdutosLaquila,
-} from "@/features/fornecedores/integracoes/laquila/queries";
+import { redirect } from "next/navigation";
 
+import { buscarUltimaImportacaoApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
+
+/**
+ * Rota antiga, mantida como redirecionamento.
+ *
+ * Ela existia quando a integração por API não tinha execução: havia um retrato
+ * global e uma tela só. Agora cada sincronização é uma importação com id
+ * próprio, então este endereço não identifica mais nada sozinho — ele leva o
+ * gestor à execução mais recente, ou à tela da integração quando ainda não
+ * existe nenhuma.
+ */
 export default async function Page() {
-  const [rascunhos, vinculos, sessao] = await Promise.all([
-    listarRascunhosConciliacaoLaquila(),
-    listarVinculosProdutosLaquila(),
-    buscarSessaoFornecedoresAdmin(),
-  ]);
+  const importacaoId = await buscarUltimaImportacaoApiLaquila();
 
-  return (
-    <PaginaVinculosLaquilaAdmin
-      rascunhosIniciais={rascunhos}
-      fornecedorId={vinculos.fornecedorId}
-      vinculosIniciais={vinculos.vinculos}
-      sessaoAtiva={Boolean(sessao?.user)}
-    />
+  redirect(
+    importacaoId
+      ? `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`
+      : "/admin/fornecedores/integracoes/laquila",
   );
 }

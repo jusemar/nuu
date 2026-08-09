@@ -1,29 +1,22 @@
-import { PaginaMapeamentoLaquilaAdmin } from "@/features/fornecedores/integracoes/laquila/components/admin";
-import { listarOpcoesMapeamentoFornecedor } from "@/features/fornecedores/queries";
+import { redirect } from "next/navigation";
 
-async function listarOpcoesMapeamentoLaquilaComFallback() {
-  try {
-    return await listarOpcoesMapeamentoFornecedor();
-  } catch (erro) {
-    console.error(
-      "Não foi possível carregar opções reais para o mapeamento Laquila.",
-      erro,
-    );
+import { buscarUltimaImportacaoApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
 
-    return {
-      categoriasLoja: [],
-      marcasLoja: [],
-    };
-  }
-}
-
+/**
+ * Rota antiga, mantida como redirecionamento.
+ *
+ * Ela existia quando a integração por API não tinha execução: havia um retrato
+ * global e uma tela só. Agora cada sincronização é uma importação com id
+ * próprio, então este endereço não identifica mais nada sozinho — ele leva o
+ * gestor à execução mais recente, ou à tela da integração quando ainda não
+ * existe nenhuma.
+ */
 export default async function Page() {
-  const opcoesMapeamento = await listarOpcoesMapeamentoLaquilaComFallback();
+  const importacaoId = await buscarUltimaImportacaoApiLaquila();
 
-  return (
-    <PaginaMapeamentoLaquilaAdmin
-      categoriasLoja={opcoesMapeamento.categoriasLoja}
-      marcasLoja={opcoesMapeamento.marcasLoja}
-    />
+  redirect(
+    importacaoId
+      ? `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/mapeamento`
+      : "/admin/fornecedores/integracoes/laquila",
   );
 }

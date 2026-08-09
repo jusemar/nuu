@@ -1,40 +1,22 @@
-import { PreviaProdutosLaquilaMock } from "@/features/fornecedores/integracoes/laquila/components/admin/previa-produtos-laquila-mock";
-import { listarProdutosRecebidosApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
-import { enriquecerTriagemProdutosLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
+import { redirect } from "next/navigation";
 
-type ProdutosLaquilaPageProps = {
-  searchParams?: Promise<{
-    atualizar?: string | string[];
-  }>;
-};
+import { buscarUltimaImportacaoApiLaquila } from "@/features/fornecedores/integracoes/laquila/queries";
 
-function obterParametroUnico(valor: string | string[] | undefined) {
-  return Array.isArray(valor) ? valor[0] : valor;
-}
+/**
+ * Rota antiga, mantida como redirecionamento.
+ *
+ * Ela existia quando a integração por API não tinha execução: havia um retrato
+ * global e uma tela só. Agora cada sincronização é uma importação com id
+ * próprio, então este endereço não identifica mais nada sozinho — ele leva o
+ * gestor à execução mais recente, ou à tela da integração quando ainda não
+ * existe nenhuma.
+ */
+export default async function Page() {
+  const importacaoId = await buscarUltimaImportacaoApiLaquila();
 
-export default async function Page({ searchParams }: ProdutosLaquilaPageProps) {
-  const parametros = await searchParams;
-  const atualizacaoForcada = obterParametroUnico(parametros?.atualizar) === "1";
-  const resultado = await listarProdutosRecebidosApiLaquila({
-    ignorarCache: atualizacaoForcada,
-  });
-  const produtosComTriagem = await enriquecerTriagemProdutosLaquila(
-    resultado.produtos,
-  );
-
-  return (
-    <PreviaProdutosLaquilaMock
-      produtos={produtosComTriagem}
-      erroRecebidos={resultado.erro}
-      tipoErroRecebidos={resultado.tipoErro}
-      totalRetornadoApi={resultado.totalRetornadoApi}
-      totalAposRecorte={resultado.totalAposRecorte}
-      cacheUsado={resultado.cacheUsado}
-      cacheExpiraEm={resultado.cacheExpiraEm}
-      consultadoEm={resultado.consultadoEm}
-      origemDados={resultado.origemDados}
-      avisoRecebidos={resultado.avisoRecebidos}
-      atualizacaoForcada={atualizacaoForcada}
-    />
+  redirect(
+    importacaoId
+      ? `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`
+      : "/admin/fornecedores/integracoes/laquila",
   );
 }

@@ -6,19 +6,19 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
+import {
+  type DadosTemporariosMapeamentoFornecedor,
+  type OpcaoValorPadraoLoja,
+  type OpcoesAcionamentoMapeamentoFornecedor,
+  type RegistroCombinacaoCategoriaFornecedor,
+  TabelaMapeamentoCamposFornecedor,
+} from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
 import {
   CHAVE_MAPEAMENTO_PADRAO_LAQUILA,
   CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
   CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
 } from "@/features/fornecedores/integracoes/laquila/constants";
-import {
-  type DadosTemporariosMapeamentoFornecedor,
-  type OpcoesAcionamentoMapeamentoFornecedor,
-  type OpcaoValorPadraoLoja,
-  type RegistroCombinacaoCategoriaFornecedor,
-  TabelaMapeamentoCamposFornecedor,
-} from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
-import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 
 const opcoesDestinoLaquila = [
   { valor: "codigo_fornecedor", label: "Código fornecedor" },
@@ -245,11 +245,14 @@ function obterAmostraCampo(
 }
 
 type PaginaMapeamentoLaquilaAdminProps = {
+  /** Execução a que este mapeamento pertence. Todo link daqui a carrega. */
+  importacaoId: string;
   categoriasLoja: OpcaoValorPadraoLoja[];
   marcasLoja: OpcaoValorPadraoLoja[];
 };
 
 export function PaginaMapeamentoLaquilaAdmin({
+  importacaoId,
   categoriasLoja,
   marcasLoja,
 }: PaginaMapeamentoLaquilaAdminProps) {
@@ -363,7 +366,7 @@ export function PaginaMapeamentoLaquilaAdmin({
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-            <Link href="/admin/fornecedores/integracoes/laquila/produtos">
+            <Link href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para recebidos
             </Link>
@@ -420,7 +423,7 @@ export function PaginaMapeamentoLaquilaAdmin({
         registrosCombinacaoCategoria={registrosCombinacaoCategoria}
         textoAcaoPrincipal="Continuar para vinculação"
         tipoBotaoAcaoPrincipal="button"
-        hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/vinculos"
+        hrefAcaoPrincipal={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`}
         aoAcionarPrincipal={salvarRegrasMapeamentoLaquila}
         textoRodape="Prévia visual. O mapeamento real será salvo em etapa posterior."
         estadoVazio="Nenhum campo da API disponível para mapear."

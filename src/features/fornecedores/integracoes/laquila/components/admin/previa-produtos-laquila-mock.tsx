@@ -4,9 +4,9 @@ import {
   AlertTriangle,
   ArrowLeft,
   Boxes,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
-  CheckCircle2,
   ChevronRight,
   Eye,
   MoveRight,
@@ -18,12 +18,6 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import type { ProdutoLaquilaMock } from "../../types/produto-laquila-mock.types";
-import type { TriagemProdutoRecebidoLaquila } from "../../types/produto-laquila-mock.types";
-import type {
-  ProdutoApiStagingLaquilaCatalogo,
-  ProgressoRecebidosApiLaquila,
-} from "../../queries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +27,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
 import {
   Dialog,
   DialogContent,
@@ -50,14 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -67,10 +52,23 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
+
+import type { ProdutoApiStagingLaquilaCatalogo } from "../../queries";
+import type { ProdutoLaquilaMock } from "../../types/produto-laquila-mock.types";
+import type { TriagemProdutoRecebidoLaquila } from "../../types/produto-laquila-mock.types";
 
 const ITENS_POR_PAGINA = 10;
 const OPCOES_ITENS_POR_PAGINA = [10, 20, 50, 100] as const;
@@ -88,27 +86,6 @@ function formatarHorarioCurto(valor?: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(data);
-}
-
-function formatarTempoConsulta(valor?: string) {
-  if (!valor) return "Dados carregados há poucos minutos";
-
-  const data = new Date(valor);
-
-  if (Number.isNaN(data.getTime())) {
-    return "Dados carregados há poucos minutos";
-  }
-
-  const minutos = Math.max(
-    0,
-    Math.floor((Date.now() - data.getTime()) / 60000),
-  );
-
-  if (minutos < 1) return "Dados carregados agora";
-  if (minutos === 1) return "Dados carregados há 1 min";
-  if (minutos < 60) return `Dados carregados há ${minutos} min`;
-
-  return `Dados carregados às ${formatarHorarioCurto(valor) ?? "--:--"}`;
 }
 
 type EstadoTriagemProdutoLaquila = TriagemProdutoRecebidoLaquila | "ignorado";
@@ -890,7 +867,8 @@ type PreviaProdutosLaquilaMockProps = {
   consultadoEm?: string;
   origemDados?: "api" | "cache" | "stale";
   avisoRecebidos?: string;
-  atualizacaoForcada?: boolean;
+  /** Execução dona destes dados. Todo link daqui em diante a carrega. */
+  importacaoId: string;
 };
 
 type DadosRecebidosLaquila = {
@@ -908,99 +886,6 @@ type DadosRecebidosLaquila = {
   avisoRecebidos?: string;
 };
 
-type EstadoAtualizacaoManual = {
-  carregando: boolean;
-  mensagem?: string;
-  tipo?: "info" | "sucesso" | "erro";
-};
-
-function obterTituloEtapaProgresso(
-  etapa: ProgressoRecebidosApiLaquila["etapaAtual"],
-) {
-  const titulos: Record<ProgressoRecebidosApiLaquila["etapaAtual"], string> = {
-    preparando: "Preparando consulta",
-    catalogo: "Catálogo de produtos",
-    preco_estoque: "Preço e estoque",
-    recorte: "Processando recorte",
-    concluido: "Concluído",
-    erro: "Atenção",
-  };
-
-  return titulos[etapa];
-}
-
-function obterPercentualProgresso(
-  progresso: ProgressoRecebidosApiLaquila | null,
-) {
-  if (!progresso || progresso.percentual === null) return null;
-
-  return Math.min(100, Math.max(0, Math.round(progresso.percentual)));
-}
-
-function obterOrigemProgressoInicial(
-  origem: DadosRecebidosLaquila["origemDados"],
-): ProgressoRecebidosApiLaquila["origemDados"] {
-  if (origem === "cache") return "cache_fresco";
-
-  return origem;
-}
-
-function BarraProgressoLaquila({
-  progresso,
-  mensagem,
-}: {
-  progresso: ProgressoRecebidosApiLaquila | null;
-  mensagem: string;
-}) {
-  const percentual = obterPercentualProgresso(progresso);
-  const etapa = progresso
-    ? obterTituloEtapaProgresso(progresso.etapaAtual)
-    : "Preparando consulta";
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-medium text-slate-950">{mensagem}</p>
-          <p className="text-xs text-slate-500">Etapa atual: {etapa}</p>
-        </div>
-        <span className="text-sm font-semibold text-slate-900">
-          {percentual === null ? "Processando" : `${percentual}%`}
-        </span>
-      </div>
-
-      <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-        <div
-          className={`h-full rounded-full bg-blue-600 transition-all duration-500 ${
-            percentual === null ? "w-1/3 animate-pulse" : ""
-          }`}
-          style={percentual === null ? undefined : { width: `${percentual}%` }}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-        {progresso?.paginaAtual !== undefined ? (
-          <span>
-            {progresso.paginaAtual === 1 ? "Página" : "Páginas"}{" "}
-            {progresso.paginaAtual}
-            {progresso.totalPaginasEstimado
-              ? progresso.totalPaginasExato
-                ? ` de ${progresso.totalPaginasEstimado}`
-                : ` de aproximadamente ${progresso.totalPaginasEstimado}`
-              : ""}
-            {progresso.paginaAtual === 1 ? " carregada" : " carregadas"}
-          </span>
-        ) : null}
-        <span>Produtos encontrados: {progresso?.totalBrutoCarregado ?? 0}</span>
-        <span>No recorte: {progresso?.totalAposRecorte ?? 0}</span>
-        <span>
-          Com preço/estoque: {progresso?.totalEnriquecidoComPrecoEstoque ?? 0}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function normalizarDadosRecebidosLaquila(
   dados: DadosRecebidosLaquila,
 ): DadosRecebidosLaquila {
@@ -1017,20 +902,6 @@ function normalizarDadosRecebidosLaquila(
   };
 }
 
-function obterClassesAvisoAtualizacaoManual(
-  tipo: EstadoAtualizacaoManual["tipo"],
-) {
-  if (tipo === "sucesso") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  }
-
-  if (tipo === "erro") {
-    return "border-amber-200 bg-amber-50 text-amber-900";
-  }
-
-  return "border-blue-200 bg-blue-50 text-blue-800";
-}
-
 export function PreviaProdutosLaquilaMock({
   produtos: produtosIniciais,
   erroRecebidos,
@@ -1042,7 +913,7 @@ export function PreviaProdutosLaquilaMock({
   consultadoEm,
   origemDados,
   avisoRecebidos,
-  atualizacaoForcada,
+  importacaoId,
 }: PreviaProdutosLaquilaMockProps) {
   const [dadosRecebidos, setDadosRecebidos] = useState<DadosRecebidosLaquila>(
     () =>
@@ -1059,12 +930,6 @@ export function PreviaProdutosLaquilaMock({
         avisoRecebidos,
       }),
   );
-  const [atualizacaoManual, setAtualizacaoManual] =
-    useState<EstadoAtualizacaoManual>({
-      carregando: false,
-    });
-  const [progressoAtualizacao, setProgressoAtualizacao] =
-    useState<ProgressoRecebidosApiLaquila | null>(null);
   const [busca, setBusca] = useState("");
   const [macroGrupo, setMacroGrupo] = useState("todos");
   const [grupo, setGrupo] = useState("todos");
@@ -1188,10 +1053,9 @@ export function PreviaProdutosLaquilaMock({
     subgrupo !== "todos" ||
     ncm !== "todos" ||
     triagem !== "todos";
-  const cacheExpiraEmFormatado = formatarHorarioCurto(
-    dadosRecebidos.cacheExpiraEm,
+  const consultadoEmFormatado = formatarHorarioCurto(
+    dadosRecebidos.consultadoEm,
   );
-  const textoCache = formatarTempoConsulta(dadosRecebidos.consultadoEm);
   const mensagemErroRecebidos =
     dadosRecebidos.avisoRecebidos ??
     (dadosRecebidos.tipoErroRecebidos === "configuracao"
@@ -1199,16 +1063,6 @@ export function PreviaProdutosLaquilaMock({
       : dadosRecebidos.tipoErroRecebidos === "api"
         ? "Falha ao consultar a API Laquila."
         : dadosRecebidos.erroRecebidos);
-
-  useEffect(() => {
-    if (!atualizacaoForcada) return;
-
-    const url = new URL(window.location.href);
-
-    url.searchParams.delete("atualizar");
-    url.searchParams.delete("t");
-    window.history.replaceState(null, "", url.toString());
-  }, [atualizacaoForcada]);
 
   useEffect(() => {
     try {
@@ -1278,50 +1132,6 @@ export function PreviaProdutosLaquilaMock({
     origemDados,
     avisoRecebidos,
   ]);
-
-  useEffect(() => {
-    if (!atualizacaoManual.carregando) return;
-
-    let ativo = true;
-
-    async function consultarProgresso() {
-      try {
-        const resposta = await fetch(
-          "/admin/fornecedores/integracoes/laquila/produtos/progresso",
-          { cache: "no-store" },
-        );
-
-        if (!resposta.ok) return;
-
-        const progresso =
-          (await resposta.json()) as ProgressoRecebidosApiLaquila;
-
-        if (ativo) {
-          setProgressoAtualizacao(progresso);
-        }
-      } catch {
-        // O progresso é auxiliar: falha aqui não deve interromper a atualização.
-      }
-    }
-
-    consultarProgresso();
-    const intervalo = window.setInterval(consultarProgresso, 1200);
-
-    return () => {
-      ativo = false;
-      window.clearInterval(intervalo);
-    };
-  }, [atualizacaoManual.carregando]);
-
-  useEffect(() => {
-    if (atualizacaoManual.carregando || !atualizacaoManual.mensagem) return;
-
-    const timeout = window.setTimeout(() => {
-      setProgressoAtualizacao(null);
-    }, 5000);
-
-    return () => window.clearTimeout(timeout);
-  }, [atualizacaoManual.carregando, atualizacaoManual.mensagem]);
 
   function alternarSelecao(id: string) {
     setSelecionados((atuais) =>
@@ -1459,85 +1269,6 @@ export function PreviaProdutosLaquilaMock({
     setPaginaAtual(1);
   }
 
-  async function atualizarAgora() {
-    if (atualizacaoManual.carregando) return;
-
-    const controlador = new AbortController();
-    const timeout = window.setTimeout(() => {
-      controlador.abort();
-    }, 95_000);
-
-    setAtualizacaoManual({
-      carregando: true,
-      tipo: "info",
-      mensagem: "Atualizando catálogo da Laquila em segundo plano...",
-    });
-    setProgressoAtualizacao({
-      emAndamento: true,
-      etapaAtual: "preparando",
-      mensagem: "Preparando consulta da Laquila.",
-      percentual: null,
-      totalBrutoCarregado: produtos.length,
-      totalAposRecorte: dadosRecebidos.totalAposRecorte ?? produtos.length,
-      totalEnriquecidoComPrecoEstoque: 0,
-      origemDados:
-        obterOrigemProgressoInicial(dadosRecebidos.origemDados) ??
-        "cache_fresco",
-      atualizadoEm: new Date().toISOString(),
-    });
-
-    try {
-      const resposta = await fetch(
-        "/admin/fornecedores/integracoes/laquila/produtos/atualizar",
-        {
-          method: "POST",
-          cache: "no-store",
-          signal: controlador.signal,
-        },
-      );
-
-      if (!resposta.ok) {
-        throw new Error("Não foi possível atualizar agora.");
-      }
-
-      const resultado = normalizarDadosRecebidosLaquila(
-        (await resposta.json()) as DadosRecebidosLaquila,
-      );
-      const devePreservarUltimoCatalogo =
-        resultado.avisoRecebidos || resultado.origemDados === "stale";
-
-      if (devePreservarUltimoCatalogo) {
-        setAtualizacaoManual({
-          carregando: false,
-          tipo: "erro",
-          mensagem:
-            resultado.avisoRecebidos ??
-            "Não foi possível atualizar agora. Mantivemos o último catálogo carregado.",
-        });
-        return;
-      }
-
-      setDadosRecebidos(resultado);
-      setAtualizacaoManual({
-        carregando: false,
-        tipo: "sucesso",
-        mensagem: "Catálogo atualizado agora.",
-      });
-    } catch (erro) {
-      const demorouDemais = erro instanceof Error && erro.name === "AbortError";
-
-      setAtualizacaoManual({
-        carregando: false,
-        tipo: "erro",
-        mensagem: demorouDemais
-          ? "A atualização demorou mais que o esperado. Mantivemos o último catálogo carregado."
-          : "Não foi possível atualizar agora. Mantivemos o último catálogo carregado.",
-      });
-    } finally {
-      window.clearTimeout(timeout);
-    }
-  }
-
   function irParaPagina(pagina: number) {
     setPaginaAtual(Math.min(Math.max(pagina, 1), totalPaginas));
   }
@@ -1557,7 +1288,10 @@ export function PreviaProdutosLaquilaMock({
             Recebidos da API — Laquila
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Dados crus recebidos da Laquila antes de virar produto da loja.
+            Dados crus desta sincronização, antes de virarem produto da loja.
+          </p>
+          <p className="mt-1 font-mono text-xs text-slate-400">
+            Importação {importacaoId.slice(0, 8)}
           </p>
         </div>
 
@@ -1578,21 +1312,15 @@ export function PreviaProdutosLaquilaMock({
               <p>{mensagemErroRecebidos}</p>
             </div>
             <Button
-              type="button"
+              asChild
               size="sm"
               variant="outline"
               className="w-full bg-white sm:w-auto"
-              onClick={atualizarAgora}
-              disabled={atualizacaoManual.carregando}
             >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 ${
-                  atualizacaoManual.carregando ? "animate-spin" : ""
-                }`}
-              />
-              {atualizacaoManual.carregando
-                ? "Atualizando..."
-                : "Tentar novamente"}
+              <Link href="/admin/fornecedores/integracoes/laquila">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Nova sincronização
+              </Link>
             </Button>
           </div>
         </section>
@@ -1608,76 +1336,30 @@ export function PreviaProdutosLaquilaMock({
             recorte
           </span>
           <span className="flex flex-wrap items-center gap-2">
-            {dadosRecebidos.origemDados === "stale" ? (
-              <Badge
-                variant="outline"
-                className="border-amber-200 bg-amber-50 text-amber-700"
-              >
-                Último resultado
-              </Badge>
-            ) : dadosRecebidos.cacheUsado ? (
-              <Badge
-                variant="outline"
-                className="border-blue-200 bg-blue-50 text-blue-700"
-              >
-                Cache temporário
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700"
-              >
-                Consulta atualizada
-              </Badge>
-            )}
-            <span>
-              {dadosRecebidos.cacheUsado
-                ? textoCache
-                : "Dados atualizados agora"}
-            </span>
-            {cacheExpiraEmFormatado ? (
-              <span>expira às {cacheExpiraEmFormatado}</span>
-            ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={atualizarAgora}
-              disabled={atualizacaoManual.carregando}
+            {/*
+              Estes dados são o retrato PERSISTIDO desta execução, não uma
+              consulta viva: reabrir a importação nunca chama a Laquila de novo.
+              Dado novo só chega por uma nova sincronização, que cria outro
+              ciclo e preserva este intacto.
+            */}
+            <Badge
+              variant="outline"
+              className="border-slate-200 bg-slate-50 text-slate-700"
             >
-              <RefreshCw
-                className={`mr-1.5 h-3.5 w-3.5 ${
-                  atualizacaoManual.carregando ? "animate-spin" : ""
-                }`}
-              />
-              {atualizacaoManual.carregando
-                ? "Atualizando..."
-                : "Atualizar agora"}
+              Dados desta execução
+            </Badge>
+            {consultadoEmFormatado ? (
+              <span>recebidos em {consultadoEmFormatado}</span>
+            ) : null}
+            <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+              <Link href="/admin/fornecedores/integracoes/laquila">
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Nova sincronização
+              </Link>
             </Button>
           </span>
         </section>
       )}
-
-      {atualizacaoManual.mensagem ? (
-        <section
-          className={`rounded-lg border p-3 text-sm shadow-xs ${obterClassesAvisoAtualizacaoManual(
-            atualizacaoManual.tipo,
-          )}`}
-        >
-          {atualizacaoManual.carregando ? (
-            <BarraProgressoLaquila
-              progresso={progressoAtualizacao}
-              mensagem={atualizacaoManual.mensagem}
-            />
-          ) : (
-            <div className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4 shrink-0" />
-              <p>{atualizacaoManual.mensagem}</p>
-            </div>
-          )}
-        </section>
-      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ResumoCard
@@ -1891,7 +1573,7 @@ export function PreviaProdutosLaquilaMock({
         {totalSelecionadosFluxo > 0 ? (
           <Button asChild size="sm" className="w-full sm:w-auto">
             <Link
-              href="/admin/fornecedores/integracoes/laquila/mapeamento"
+              href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/mapeamento`}
               onClick={salvarSelecaoParaMapeamento}
             >
               Continuar com {totalSelecionadosFluxo} produto

@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sheet";
 
 import type { ConfiguracaoLaquilaAdmin } from "../../types";
-
+import { BotaoNovaSincronizacaoLaquila } from "./botao-nova-sincronizacao-laquila";
 import { FormularioConfiguracaoLaquila } from "./formulario-configuracao-laquila";
 
 const metricasLaquila = [
@@ -126,14 +126,27 @@ const acessosRapidos = [
   },
 ];
 
+export type ExecucaoRecenteLaquila = {
+  id: string;
+  criadoEm: string;
+  status: string;
+  total: number;
+  pendentes: number;
+  publicados: number;
+  ignorados: number;
+};
+
 type PaginaIntegracaoLaquilaAdminProps = {
   configuracao: ConfiguracaoLaquilaAdmin | null;
+  execucoesRecentes: ExecucaoRecenteLaquila[];
 };
 
 export function PaginaIntegracaoLaquilaAdmin({
   configuracao,
+  execucoesRecentes,
 }: PaginaIntegracaoLaquilaAdminProps) {
   const conectado = Boolean(configuracao?.tokenConfigurado);
+  const ultimaExecucao = execucoesRecentes[0] ?? null;
   const ultimoTeste = configuracao?.ultimoTesteEm
     ? new Intl.DateTimeFormat("pt-BR", {
         dateStyle: "short",
@@ -360,11 +373,14 @@ export function PaginaIntegracaoLaquilaAdmin({
                 </>
               );
 
-              if (acesso.titulo === "Catálogo API") {
+              // "Catálogo API" só faz sentido dentro de uma execução: é lá que
+              // existem produtos recebidos. Sem nenhuma execução ainda, o
+              // acesso fica desabilitado como os demais.
+              if (acesso.titulo === "Catálogo API" && ultimaExecucao) {
                 return (
                   <Link
                     key={acesso.titulo}
-                    href="/admin/fornecedores/integracoes/laquila/produtos"
+                    href={`/admin/fornecedores/integracoes/laquila/importacoes/${ultimaExecucao.id}/produtos`}
                     prefetch={false}
                     className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
                   >
@@ -400,6 +416,85 @@ export function PaginaIntegracaoLaquilaAdmin({
         </Card>
       </section>
 
+      <section>
+        <Card className="rounded-lg py-0 shadow-xs">
+          <CardHeader className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base">Sincronizações</CardTitle>
+              <p className="text-sm text-slate-500">
+                Cada busca cria uma importação própria, com staging, conciliação
+                e histórico separados.
+              </p>
+            </div>
+            <BotaoNovaSincronizacaoLaquila
+              desabilitado={!conectado}
+              motivoDesabilitado="Configure e teste a conexão antes de buscar produtos."
+            />
+          </CardHeader>
+          <CardContent className="px-5 py-5">
+            {execucoesRecentes.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Nenhuma sincronização ainda. A primeira busca cria a importação
+                inicial desta integração.
+              </p>
+            ) : (
+              <ul className="grid gap-3">
+                {execucoesRecentes.map((execucao) => (
+                  <li key={execucao.id}>
+                    <Link
+                      href={`/admin/fornecedores/integracoes/laquila/importacoes/${execucao.id}/produtos`}
+                      prefetch={false}
+                      className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-slate-950">
+                          {new Intl.DateTimeFormat("pt-BR", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }).format(new Date(execucao.criadoEm))}
+                        </span>
+                        <span className="font-mono text-xs text-slate-400">
+                          {execucao.id.slice(0, 8)}
+                        </span>
+                      </span>
+
+                      <span className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                        <Badge
+                          variant="outline"
+                          className="border-slate-200 bg-slate-50"
+                        >
+                          {execucao.total} recebido
+                          {execucao.total === 1 ? "" : "s"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                        >
+                          {execucao.publicados} publicado
+                          {execucao.publicados === 1 ? "" : "s"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="border-amber-200 bg-amber-50 text-amber-800"
+                        >
+                          {execucao.pendentes} pendente
+                          {execucao.pendentes === 1 ? "" : "s"}
+                        </Badge>
+                        <span className="font-medium text-slate-900">
+                          {execucao.pendentes > 0
+                            ? "Continuar importação"
+                            : "Abrir importação"}
+                        </span>
+                        <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400" />
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 }

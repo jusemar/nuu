@@ -10,17 +10,12 @@ import {
   desfazerVinculoProdutoRecebidoFornecedor,
   salvarVinculoProdutoRecebidoFornecedor,
 } from "@/features/fornecedores/actions";
+import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 import {
   type ItemVinculoFornecedor,
   type RascunhoVinculoFornecedor,
   TabelaVinculosFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-vinculos-fornecedor";
-import type {
-  ConfiguracaoComercialMapeamentoFornecedor,
-  EstrategiaPrazoEntregaFornecedor,
-  ModalidadeComercialFornecedor,
-  ValoresPadraoRascunhoProdutoFornecedor,
-} from "@/features/fornecedores/types/mapeamento-fornecedor.types";
 import {
   buscarProdutosVinculoLaquila,
   removerRascunhoProdutoLaquila,
@@ -36,7 +31,12 @@ import type {
   RascunhoConciliacaoLaquila,
   VinculoProdutoLaquila,
 } from "@/features/fornecedores/integracoes/laquila/queries";
-import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
+import type {
+  ConfiguracaoComercialMapeamentoFornecedor,
+  EstrategiaPrazoEntregaFornecedor,
+  ModalidadeComercialFornecedor,
+  ValoresPadraoRascunhoProdutoFornecedor,
+} from "@/features/fornecedores/types/mapeamento-fornecedor.types";
 
 type ProdutoSelecionadoMapeamentoLaquila = {
   cd_item: string;
@@ -406,6 +406,12 @@ function montarRascunhoConciliacaoLaquila(rascunho: RascunhoVinculoFornecedor) {
 }
 
 type PaginaVinculosLaquilaAdminProps = {
+  /**
+   * Execução a que esta vinculação pertence. Os rascunhos salvos aqui nascem
+   * amarrados a ela; os VÍNCULOS, não — eles são permanentes do fornecedor e
+   * seguem valendo para as próximas execuções.
+   */
+  importacaoId: string;
   rascunhosIniciais: RascunhoConciliacaoLaquila[];
   fornecedorId: string | null;
   vinculosIniciais: VinculoProdutoLaquila[];
@@ -413,6 +419,7 @@ type PaginaVinculosLaquilaAdminProps = {
 };
 
 export function PaginaVinculosLaquilaAdmin({
+  importacaoId,
   rascunhosIniciais,
   fornecedorId,
   vinculosIniciais,
@@ -542,7 +549,10 @@ export function PaginaVinculosLaquilaAdmin({
             mensagem: "Salvando selecionados para vinculação...",
           });
 
-          salvarProdutosSelecionadosStagingLaquila({ produtos: dados }).then(
+          salvarProdutosSelecionadosStagingLaquila({
+            importacaoId,
+            produtos: dados,
+          }).then(
             (resultado) => {
               if (resultado.sucesso) {
                 setStatusStaging({
@@ -570,7 +580,15 @@ export function PaginaVinculosLaquilaAdmin({
     } finally {
       setSelecaoCarregada(true);
     }
-  }, [rascunhosPorCodigo, vinculosPorCodigo]);
+  }, [importacaoId, rascunhosPorCodigo, vinculosPorCodigo]);
+
+  /**
+   * Todo rascunho salvo aqui pertence a ESTA execução. Sem isso ele ficaria
+   * solto e a Conciliação da execução seguinte o trataria como dela.
+   */
+  function salvarRascunhoDaExecucao(entrada: { item: unknown; produto: unknown }) {
+    return salvarRascunhoProdutoLaquila({ ...entrada, importacaoId });
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
@@ -582,7 +600,7 @@ export function PaginaVinculosLaquilaAdmin({
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-            <Link href="/admin/fornecedores/integracoes/laquila/mapeamento">
+            <Link href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/mapeamento`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para mapeamento
             </Link>
@@ -617,7 +635,7 @@ export function PaginaVinculosLaquilaAdmin({
             </p>
           </div>
           <Button asChild size="sm" variant="outline" className="bg-white">
-            <Link href="/admin/login?redirect=/admin/fornecedores/integracoes/laquila/vinculos&erro=sessao_expirada">
+            <Link href={`/admin/login?redirect=/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos&erro=sessao_expirada`}>
               Entrar novamente
             </Link>
           </Button>
@@ -658,7 +676,7 @@ export function PaginaVinculosLaquilaAdmin({
             </div>
 
             <Button asChild variant="outline" className="bg-white">
-              <Link href="/admin/fornecedores/integracoes/laquila/produtos">
+              <Link href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`}>
                 Voltar para Recebidos da API
               </Link>
             </Button>
@@ -675,7 +693,7 @@ export function PaginaVinculosLaquilaAdmin({
           itens={itensSelecionados}
           produtosDaLoja={[]}
           textoAcaoPrincipal={`Continuar para Conciliação (${itensSelecionados.filter((item) => item.status === "rascunho" || item.rascunhoSalvo).length} rascunhos)`}
-          hrefAcaoPrincipal="/admin/fornecedores/integracoes/laquila/conciliacao"
+          hrefAcaoPrincipal={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/conciliacao`}
           totalRascunhosPersistidosInicial={rascunhosIniciais.length}
           aoBuscarProdutosLoja={buscarProdutosVinculoLaquila}
           aoVincularProdutoPersistido={vincularProduto}
@@ -683,7 +701,7 @@ export function PaginaVinculosLaquilaAdmin({
           valoresPadraoNovoProduto={valoresPadraoNovoProduto}
           obterValoresPadraoNovoProduto={obterValoresPadraoNovoProdutoItem}
           aoAlterarRascunhos={salvarRascunhosConciliacao}
-          aoSalvarRascunhoPersistido={salvarRascunhoProdutoLaquila}
+          aoSalvarRascunhoPersistido={salvarRascunhoDaExecucao}
           aoRemoverRascunhoPersistido={removerRascunhoProdutoLaquila}
         />
       ) : null}

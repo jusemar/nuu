@@ -1062,6 +1062,22 @@ const SECOES_LOJA_RASCUNHO = [
   { id: "bestseller", nome: "+ Vendidos" },
 ] as const;
 
+/** Tudo o que uma sessão de edição pode alterar, despachado junto. */
+export type LoteEdicaoConciliacaoFornecedor = {
+  preco: EntradaAjustarPrecosConciliacaoFornecedor | null;
+  campos: EntradaAtualizarCamposRascunhosFornecedor[];
+};
+
+/** Campos que a edição da Conciliação sabe alterar, individual ou em massa. */
+type CampoEdicaoConciliacao =
+  | "preco"
+  | "estoque"
+  | "categoria"
+  | "marca"
+  | "secoes_loja"
+  | "modalidade_comercial"
+  | "prazo_entrega";
+
 function ModalEdicaoRascunhos({
   aberto,
   itens,
@@ -1071,8 +1087,7 @@ function ModalEdicaoRascunhos({
   marcas,
   processando,
   aoAlterarAbertura,
-  aoAplicarCampos,
-  aoAplicarPreco,
+  aoAplicarLote,
 }: {
   aberto: boolean;
   itens: ItemConciliacaoFornecedor[];
@@ -1082,8 +1097,8 @@ function ModalEdicaoRascunhos({
   marcas: Array<{ id: string; nome: string }>;
   processando: boolean;
   aoAlterarAbertura: (aberto: boolean) => void;
-  aoAplicarCampos: (entrada: EntradaAtualizarCamposRascunhosFornecedor) => void;
-  aoAplicarPreco: (entrada: EntradaAjustarPrecosConciliacaoFornecedor) => void;
+  /** Recebe, de uma vez, tudo o que o gestor alterou nesta sessão de edição. */
+  aoAplicarLote: (lote: LoteEdicaoConciliacaoFornecedor) => void;
 }) {
   const [aba, setAba] = useState<
     "preco" | "estoque" | "comercial" | "classificacao"
@@ -1104,6 +1119,20 @@ function ModalEdicaoRascunhos({
   const [modalidade, setModalidade] =
     useState<ModalidadeComercialRascunho>("dropshipping");
   const [prazoEntrega, setPrazoEntrega] = useState("");
+  /**
+   * Campos que o gestor realmente mexeu nesta sessão de edição.
+   *
+   * É o coração da semântica "não alterar": um campo fora deste conjunto nunca
+   * entra no despacho, então cada produto preserva o valor individual que já
+   * tinha. Sem isso, abrir o modal com dois produtos de marcas diferentes e
+   * salvar acabaria igualando os dois pela marca que aparecia no formulário.
+   */
+  const [tocados, setTocados] = useState<Set<CampoEdicaoConciliacao>>(
+    () => new Set(),
+  );
+
+  const marcarTocado = (campo: CampoEdicaoConciliacao) =>
+    setTocados((atuais) => new Set(atuais).add(campo));
 
   useEffect(() => {
     if (!aberto) return;
@@ -1146,6 +1175,7 @@ function ModalEdicaoRascunhos({
       itemIndividual?.camposRascunho?.modalidadeComercial ?? "dropshipping",
     );
     setPrazoEntrega(itemIndividual?.camposRascunho?.prazoEntrega ?? "");
+    setTocados(new Set());
     setOperacaoPreco("aumentar_percentual");
     setValorPreco("10");
     setEstoqueInput(
@@ -1154,14 +1184,6 @@ function ModalEdicaoRascunhos({
         : "0",
     );
   }, [aberto, itemIndividual]);
-
-  // Edição de item vinculado troca as abas de catálogo (categoria, marca,
-  // seções) por Estoque: aquelas pertencem ao produto real, que este fluxo
-  // não altera.
-  const ehEdicaoDeAtualizacao = itemIndividual
-    ? itemIndividual.statusVinculacao === "vinculado"
-    : itens.length > 0 &&
-      itens.every((item) => item.statusVinculacao === "vinculado");
 
   const valorPrecoNumerico = Number(valorPreco.replace(",", "."));
   const previewPrecos = itens.slice(0, 5).map((item) => ({
@@ -1177,62 +1199,70 @@ function ModalEdicaoRascunhos({
   const estoqueNumerico = Number(estoqueInput);
   const podeAplicarEstoque =
     Number.isInteger(estoqueNumerico) && estoqueNumerico >= 0;
-  const podeAplicarComercial =
-    (campoComercial === "modalidade_comercial" && Boolean(modalidade)) ||
-    (campoComercial === "prazo_entrega" && Boolean(prazoEntrega.trim())) ||
-    (campoComercial === "secoes_loja" && secoesLoja.length > 0);
-  const podeAplicarClassificacao =
-    (campoClassificacao === "categoria" && Boolean(categoriaId)) ||
-    (campoClassificacao === "marca" && Boolean(marcaId));
+  // Um campo só bloqueia se o gestor mexeu nele e deixou valor inválido.
+  const invalidos: string[] = [];
+  if (tocados.has("preco") && !podeAplicarPreco) invalidos.push("preço");
+  if (tocados.has("estoque") && !podeAplicarEstoque) invalidos.push("estoque");
+  if (tocados.has("categoria") && !categoriaId) invalidos.push("categoria");
+  if (tocados.has("marca") && !marcaId) invalidos.push("marca");
+  if (tocados.has("secoes_loja") && secoesLoja.length === 0)
+    invalidos.push("seções");
+  if (tocados.has("prazo_entrega") && !prazoEntrega.trim())
+    invalidos.push("prazo");
+
   const podeAplicar =
-    rascunhoIds.length > 0 &&
-    (aba === "preco"
-      ? podeAplicarPreco
-      : aba === "estoque"
-        ? podeAplicarEstoque
-        : aba === "comercial"
-          ? podeAplicarComercial
-          : podeAplicarClassificacao);
+    rascunhoIds.length > 0 && tocados.size > 0 && invalidos.length === 0;
 
+  /**
+   * Uma única ação final: despacha de uma vez tudo o que foi tocado.
+   *
+   * Campos fora de `tocados` não entram no lote — é assim que cada produto
+   * mantém o valor individual que já tinha.
+   */
   const aplicar = () => {
-    if (aba === "preco") {
-      aoAplicarPreco({
-        rascunhoIds,
-        operacao: operacaoPreco,
-        valor: valorPrecoNumerico,
-      });
-      return;
-    }
+    const campos: EntradaAtualizarCamposRascunhosFornecedor[] = [];
 
-    if (aba === "estoque") {
-      aoAplicarCampos({
+    if (tocados.has("estoque")) {
+      campos.push({
         rascunhoIds,
         campo: "estoque",
         estoque: Math.trunc(estoqueNumerico),
       });
-      return;
     }
-
-    if (aba === "classificacao") {
-      aoAplicarCampos(
-        campoClassificacao === "categoria"
-          ? { rascunhoIds, campo: "categoria", categoriaId }
-          : { rascunhoIds, campo: "marca", marcaId },
-      );
-      return;
+    if (tocados.has("categoria")) {
+      campos.push({ rascunhoIds, campo: "categoria", categoriaId });
     }
-
-    if (campoComercial === "modalidade_comercial") {
-      aoAplicarCampos({ rascunhoIds, campo: campoComercial, modalidade });
-    } else if (campoComercial === "prazo_entrega") {
-      aoAplicarCampos({
+    if (tocados.has("marca")) {
+      campos.push({ rascunhoIds, campo: "marca", marcaId });
+    }
+    if (tocados.has("secoes_loja")) {
+      campos.push({ rascunhoIds, campo: "secoes_loja", secoesLoja });
+    }
+    if (tocados.has("modalidade_comercial")) {
+      campos.push({
         rascunhoIds,
-        campo: campoComercial,
+        campo: "modalidade_comercial",
+        modalidade,
+      });
+    }
+    if (tocados.has("prazo_entrega")) {
+      campos.push({
+        rascunhoIds,
+        campo: "prazo_entrega",
         prazoEntrega: prazoEntrega.trim(),
       });
-    } else {
-      aoAplicarCampos({ rascunhoIds, campo: campoComercial, secoesLoja });
     }
+
+    aoAplicarLote({
+      preco: tocados.has("preco")
+        ? {
+            rascunhoIds,
+            operacao: operacaoPreco,
+            valor: valorPrecoNumerico,
+          }
+        : null,
+      campos,
+    });
   };
 
   return (
@@ -1268,18 +1298,26 @@ function ModalEdicaoRascunhos({
           value={aba}
           onValueChange={(valor) => setAba(valor as typeof aba)}
         >
-          <TabsList
-            className={`grid h-auto w-full ${ehEdicaoDeAtualizacao ? "grid-cols-2" : "grid-cols-3"}`}
-          >
+          {/* Quatro abas para os dois caminhos. O que muda entre "criar" e
+              "atualizar" é o que a publicação faz com cada campo, não o que o
+              gestor pode revisar aqui. Grade de 2 colunas no celular para os
+              rótulos não espremerem. */}
+          {itens.length > 1 ? (
+            <p className="mb-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              Os {itens.length} itens podem ter valores diferentes entre si.
+              Campos que você não alterar aqui{" "}
+              <strong className="font-semibold">
+                permanecem como estão em cada produto
+              </strong>
+              .
+            </p>
+          ) : null}
+
+          <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
             <TabsTrigger value="preco">Preço</TabsTrigger>
-            {ehEdicaoDeAtualizacao ? (
-              <TabsTrigger value="estoque">Estoque</TabsTrigger>
-            ) : (
-              <>
-                <TabsTrigger value="comercial">Dados comerciais</TabsTrigger>
-                <TabsTrigger value="classificacao">Classificação</TabsTrigger>
-              </>
-            )}
+            <TabsTrigger value="estoque">Estoque</TabsTrigger>
+            <TabsTrigger value="classificacao">Classificação</TabsTrigger>
+            <TabsTrigger value="comercial">Comercial</TabsTrigger>
           </TabsList>
 
           <TabsContent value="preco" className="space-y-4 pt-2">
@@ -1295,7 +1333,10 @@ function ModalEdicaoRascunhos({
                 <button
                   key={valor}
                   type="button"
-                  onClick={() => setOperacaoPreco(valor)}
+                  onClick={() => {
+                    setOperacaoPreco(valor);
+                    marcarTocado("preco");
+                  }}
                   className={`rounded-md border p-3 text-left text-sm font-medium transition ${
                     operacaoPreco === valor
                       ? "border-slate-900 bg-slate-950 text-white"
@@ -1348,26 +1389,27 @@ function ModalEdicaoRascunhos({
             </div>
           </TabsContent>
 
-          {ehEdicaoDeAtualizacao ? (
-            <TabsContent value="estoque" className="space-y-4 pt-2">
-              <label className="block space-y-1.5 text-sm">
-                <span className="font-medium text-slate-700">
-                  Estoque a aplicar
-                </span>
-                <Input
-                  value={estoqueInput}
-                  onChange={(evento) => setEstoqueInput(evento.target.value)}
-                  inputMode="numeric"
-                  placeholder="0"
-                />
-              </label>
-              <p className="text-xs text-slate-500">
-                Este valor substitui o estoque recebido do fornecedor para o
-                item selecionado. Ele será aplicado ao produto real quando a
-                atualização for aprovada e publicada.
-              </p>
-            </TabsContent>
-          ) : null}
+          <TabsContent value="estoque" className="space-y-4 pt-2">
+            <label className="block space-y-1.5 text-sm">
+              <span className="font-medium text-slate-700">
+                Estoque a aplicar
+              </span>
+              <Input
+                value={estoqueInput}
+                onChange={(evento) => {
+                  setEstoqueInput(evento.target.value);
+                  marcarTocado("estoque");
+                }}
+                inputMode="numeric"
+                placeholder="0"
+              />
+            </label>
+            <p className="text-xs text-slate-500">
+              Este valor substitui o estoque recebido do fornecedor para o item
+              selecionado. Ele será aplicado ao produto real quando a
+              atualização for aprovada e publicada.
+            </p>
+          </TabsContent>
 
           <TabsContent value="comercial" className="space-y-4 pt-2">
             <label className="block space-y-1.5 text-sm">
@@ -1393,11 +1435,12 @@ function ModalEdicaoRascunhos({
                 <span className="font-medium text-slate-700">Modalidade</span>
                 <select
                   value={modalidade}
-                  onChange={(evento) =>
+                  onChange={(evento) => {
                     setModalidade(
                       evento.target.value as ModalidadeComercialRascunho,
-                    )
-                  }
+                    );
+                    marcarTocado("modalidade_comercial");
+                  }}
                   className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
                 >
                   <option value="stock">Estoque próprio</option>
@@ -1414,7 +1457,10 @@ function ModalEdicaoRascunhos({
                 </span>
                 <Input
                   value={prazoEntrega}
-                  onChange={(evento) => setPrazoEntrega(evento.target.value)}
+                  onChange={(evento) => {
+                    setPrazoEntrega(evento.target.value);
+                    marcarTocado("prazo_entrega");
+                  }}
                   placeholder="Ex.: 3 a 5 dias úteis"
                   maxLength={160}
                 />
@@ -1433,13 +1479,14 @@ function ModalEdicaoRascunhos({
                     >
                       <Checkbox
                         checked={secoesLoja.includes(secao.id)}
-                        onCheckedChange={(marcado) =>
+                        onCheckedChange={(marcado) => {
                           setSecoesLoja((atuais) =>
                             marcado === true
                               ? Array.from(new Set([...atuais, secao.id]))
                               : atuais.filter((id) => id !== secao.id),
-                          )
-                        }
+                          );
+                          marcarTocado("secoes_loja");
+                        }}
                       />
                       {secao.nome}
                     </label>
@@ -1470,7 +1517,10 @@ function ModalEdicaoRascunhos({
                 <span className="font-medium text-slate-700">Categoria</span>
                 <select
                   value={categoriaId}
-                  onChange={(evento) => setCategoriaId(evento.target.value)}
+                  onChange={(evento) => {
+                    setCategoriaId(evento.target.value);
+                    marcarTocado("categoria");
+                  }}
                   className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
                 >
                   <option value="">Selecione uma categoria</option>
@@ -1486,7 +1536,10 @@ function ModalEdicaoRascunhos({
                 <span className="font-medium text-slate-700">Marca</span>
                 <select
                   value={marcaId}
-                  onChange={(evento) => setMarcaId(evento.target.value)}
+                  onChange={(evento) => {
+                    setMarcaId(evento.target.value);
+                    marcarTocado("marca");
+                  }}
                   className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
                 >
                   <option value="">Selecione uma marca</option>
@@ -1635,48 +1688,46 @@ export function TabelaConciliacaoFornecedor({
       return atuais.filter((id) => !idsFiltrados.includes(id));
     });
   };
-  const aplicarAjustePreco = async (
-    entrada: EntradaAjustarPrecosConciliacaoFornecedor,
-  ) => {
-    if (!aoAjustarPrecosSelecionados) return;
-
+  const aplicarLoteEdicao = async (lote: LoteEdicaoConciliacaoFornecedor) => {
     setProcessandoCampos(true);
 
-    const resultado = await aoAjustarPrecosSelecionados(entrada);
+    try {
+      if (lote.preco && aoAjustarPrecosSelecionados) {
+        const resultado = await aoAjustarPrecosSelecionados(lote.preco);
+        if (!resultado.sucesso) {
+          toast.error(resultado.erro ?? "Não foi possível ajustar os preços.");
+          return;
+        }
+      }
 
-    setProcessandoCampos(false);
+      for (const entrada of lote.campos) {
+        if (!aoAtualizarCamposRascunhos) break;
+        const resultado = await aoAtualizarCamposRascunhos(entrada);
+        if (!resultado.sucesso) {
+          toast.error(
+            resultado.erro ?? "Não foi possível alterar os rascunhos.",
+          );
+          return;
+        }
+      }
 
-    if (resultado.sucesso) {
-      toast.success(resultado.mensagem ?? "Preço loja atualizado.");
+      const total = (lote.preco ? 1 : 0) + lote.campos.length;
+      if (total === 0) return;
+
+      toast.success(
+        total === 1
+          ? "Alteração aplicada."
+          : `${total} alterações aplicadas de uma vez.`,
+      );
       setIdsSelecionados([]);
       setItemEdicaoIndividual(null);
       setModalCamposAberto(false);
       router.refresh();
-      return;
+    } finally {
+      setProcessandoCampos(false);
     }
-
-    toast.error(resultado.erro ?? "Não foi possível ajustar os preços.");
   };
-  const atualizarCamposRascunhos = async (
-    entrada: EntradaAtualizarCamposRascunhosFornecedor,
-  ) => {
-    if (!aoAtualizarCamposRascunhos) return;
 
-    setProcessandoCampos(true);
-    const resultado = await aoAtualizarCamposRascunhos(entrada);
-    setProcessandoCampos(false);
-
-    if (!resultado.sucesso) {
-      toast.error(resultado.erro ?? "Não foi possível alterar os rascunhos.");
-      return;
-    }
-
-    toast.success(resultado.mensagem ?? "Rascunhos atualizados.");
-    setIdsSelecionados([]);
-    setItemEdicaoIndividual(null);
-    setModalCamposAberto(false);
-    router.refresh();
-  };
   const alterarDecisaoRascunhos = async () => {
     if (!aoAlterarDecisaoRascunhos || !confirmacaoDecisao) return;
 
@@ -2406,8 +2457,7 @@ export function TabelaConciliacaoFornecedor({
           setModalCamposAberto(aberto);
           if (!aberto) setItemEdicaoIndividual(null);
         }}
-        aoAplicarCampos={atualizarCamposRascunhos}
-        aoAplicarPreco={aplicarAjustePreco}
+        aoAplicarLote={aplicarLoteEdicao}
       />
 
       <Dialog

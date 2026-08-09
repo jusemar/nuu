@@ -58,6 +58,63 @@ function montarAlertas(rascunho: RascunhoImportacaoFornecedor) {
  * (o produto real já tem tudo isso) e carrega `produtoAtualizado` com o
  * retrato atual da loja, usado pela tabela para montar a comparação.
  */
+/**
+ * Motivos concretos no lugar de um badge "Alerta" sem explicação.
+ *
+ * Diferença entre fornecedor e loja NÃO é erro: a vinculação já estabeleceu que
+ * os dois representam o mesmo produto, e o gestor pode ter decidido manter o
+ * nome da loja de propósito. Por isso as divergências entram como informação
+ * ("Preço difere do atual"), e só falta de dado obrigatório vira pendência.
+ */
+function montarAlertasItemVinculado(
+  rascunho: RascunhoImportacaoFornecedor,
+  aguardandoAprovacao: boolean,
+) {
+  const alertas: string[] = [];
+
+  const precoRecebido = Number(rascunho.precoLoja);
+  const precoAtual = Number(rascunho.precoAtualLoja);
+  if (
+    Number.isFinite(precoRecebido) &&
+    Number.isFinite(precoAtual) &&
+    precoRecebido !== precoAtual
+  ) {
+    const sentido = precoRecebido > precoAtual ? "sobe" : "desce";
+    alertas.push(`Preço ${sentido} em relação ao atual da loja`);
+  }
+
+  if (
+    typeof rascunho.estoqueFornecedor === "number" &&
+    typeof rascunho.estoqueAtualLoja === "number" &&
+    rascunho.estoqueFornecedor !== rascunho.estoqueAtualLoja
+  ) {
+    alertas.push(
+      `Estoque muda de ${rascunho.estoqueAtualLoja} para ${rascunho.estoqueFornecedor}`,
+    );
+  }
+
+  // Categoria, marca e seções só aparecem quando o gestor as reescreveu nesta
+  // conciliação — é o único caso em que a publicação vai tocar no catálogo.
+  if (
+    rascunho.categoriaId &&
+    rascunho.categoriaId !== rascunho.categoriaAtualLojaId
+  ) {
+    alertas.push(`Categoria será alterada para ${rascunho.categoriaNome}`);
+  }
+  if (rascunho.marcaId && rascunho.marcaId !== rascunho.marcaAtualLojaId) {
+    alertas.push(`Marca será alterada para ${rascunho.marcaNome}`);
+  }
+  if (rascunho.secoesLoja.length > 0) {
+    alertas.push("Seções da loja serão alteradas");
+  }
+
+  if (aguardandoAprovacao) {
+    alertas.push("Aguardando aprovação para publicar");
+  }
+
+  return alertas;
+}
+
 function montarItemConciliacaoAtualizacao(
   rascunho: RascunhoImportacaoFornecedor,
 ): ItemConciliacaoFornecedor {
@@ -85,7 +142,7 @@ function montarItemConciliacaoAtualizacao(
           ? "pronto"
           : "alerta",
     pendenciasObrigatorias,
-    alertas: aguardandoAprovacao ? ["Aguardando aprovação para publicar"] : [],
+    alertas: montarAlertasItemVinculado(rascunho, aguardandoAprovacao),
     regrasObrigatorias: pendenciasObrigatorias.map((pendencia) => ({
       campo: pendencia,
       label: pendencia,

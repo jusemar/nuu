@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { dividirLotesPublicacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/lotes-publicacao-fornecedor";
 
 export type RascunhoPublicacaoFornecedor = {
   id: string;
@@ -62,13 +63,6 @@ type ProgressoPublicacaoFornecedor = {
   atual: string | null;
   falhas: Array<{ nome: string; erro: string }>;
 };
-
-/**
- * Acima deste tamanho, publicar de um em um custaria mais idas e voltas do que
- * o progresso detalhado vale. Lotes grandes vão inteiros, com progresso
- * indeterminado.
- */
-const LIMITE_PUBLICACAO_ITEM_A_ITEM = 25;
 
 type PaginaPublicacaoFornecedorAdminProps = {
   titulo: string;
@@ -150,10 +144,7 @@ export function PaginaPublicacaoFornecedorAdmin({
     });
 
     iniciarTransicao(async () => {
-      const lotes =
-        ids.length <= LIMITE_PUBLICACAO_ITEM_A_ITEM
-          ? ids.map((id) => [id])
-          : [ids];
+      const lotes = dividirLotesPublicacaoFornecedor(ids);
       const publicadosIds: string[] = [];
       const falhas: Array<{ nome: string; erro: string }> = [];
 

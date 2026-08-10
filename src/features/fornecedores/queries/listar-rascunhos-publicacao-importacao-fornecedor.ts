@@ -82,6 +82,34 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
             // O portão da etapa, aplicado no banco: só item aprovado chega aqui.
             eq(produtoRascunhosTable.status, "pronto_para_publicar"),
             sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
+            /**
+             * Item "criar produto novo" que já virou produto não volta para a
+             * fila.
+             *
+             * Antes da publicação passar a marcar `publicado` também no caminho
+             * "criar", o único sinal de que o item já tinha virado produto era
+             * o vínculo ativo. Rascunhos daquela época seguem `pronto_para_
+             * publicar` no banco — medido em desenvolvimento: 104 numa única
+             * importação, todos com vínculo ativo. Sem esta condição, a tela os
+             * ofereceria de novo e cada tentativa morreria em "Este rascunho já
+             * foi publicado".
+             *
+             * `NOT EXISTS` correlacionado resolve dentro da mesma consulta, sem
+             * ida e volta extra. O caminho "atualizar" fica de fora da regra de
+             * propósito: ele nasce com vínculo ativo desde a Vinculação, e é o
+             * `status` que diz se já foi publicado.
+             */
+            sql`(
+              ${produtoRascunhosTable.produtoAtualizadoId} is not null
+              or ${produtoRascunhosTable.fornecedorId} is null
+              or not exists (
+                select 1
+                  from fornecedor_produto_vinculos v
+                 where v.fornecedor_id = ${produtoRascunhosTable.fornecedorId}
+                   and v.codigo_fornecedor = ${produtoRascunhosTable.codigoFornecedor}
+                   and v.status = 'ativo'
+              )
+            )`,
           ),
         ),
   );

@@ -1,16 +1,6 @@
 import "server-only";
 
-import {
-  and,
-  asc,
-  count,
-  eq,
-  ilike,
-  isNotNull,
-  isNull,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -19,6 +9,7 @@ import {
   produtoRascunhosTable,
 } from "@/db/schema";
 import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
+import { calcularPaginacaoFornecedores } from "@/features/fornecedores/lib/paginacao-fornecedores";
 
 /**
  * Decisões tomadas nesta importação, agrupadas por linha de staging.
@@ -112,17 +103,14 @@ type FiltrosStagingImportacaoFornecedorAdmin = {
 };
 
 const limitesPermitidos = [25, 50, 100];
-const statusPermitidos = [
-  "aguardando_analise",
-  "localizado",
-  "nao_localizado",
-  "erro",
-  "rejeitado",
-  "aprovado",
-  "ignorado",
-] as const;
-
-type StatusStagingFiltro = (typeof statusPermitidos)[number];
+type StatusStagingFiltro =
+  | "aguardando_analise"
+  | "localizado"
+  | "nao_localizado"
+  | "erro"
+  | "rejeitado"
+  | "aprovado"
+  | "ignorado";
 
 function normalizarPagina(valor?: number) {
   return valor && valor > 0 ? valor : 1;
@@ -200,15 +188,15 @@ export async function listarStagingImportacaoFornecedorAdmin(
   // As duas consultas (página + contagem) ficam dentro da MESMA leitura protegida porque
   // precisam concordar entre si: repetir só a contagem poderia devolver um total que não
   // corresponde às linhas exibidas.
-  const [linhas, totalLinhas] = await executarLeituraFornecedores(
+  const { linhas, paginacao } = await executarLeituraFornecedores(
     {
       etapa: "vinculacao:listar-staging-paginado",
       importacaoId: filtros.importacaoId,
       mensagemAmigavel:
         "Não foi possível carregar os produtos desta importação agora. Tente novamente em alguns segundos.",
     },
-    () =>
-      Promise.all([
+    async () => {
+      const listarPagina = (offsetPagina: number) =>
         db
           .select({
             id: fornecedorProdutosStagingTable.id,
@@ -246,12 +234,18 @@ export async function listarStagingImportacaoFornecedorAdmin(
           )
           .leftJoin(
             decisoes,
-            eq(decisoes.stagingId, sql`${fornecedorProdutosStagingTable.id}::text`),
+            eq(
+              decisoes.stagingId,
+              sql`${fornecedorProdutosStagingTable.id}::text`,
+            ),
           )
           .where(condicoes)
           .orderBy(asc(fornecedorProdutosStagingTable.criadoEm))
           .limit(limite)
-          .offset(offset),
+          .offset(offsetPagina);
+
+      const [linhasIniciais, totalLinhas] = await Promise.all([
+        listarPagina(offset),
         db
           .select({ total: count() })
           .from(fornecedorProdutosStagingTable)
@@ -264,22 +258,36 @@ export async function listarStagingImportacaoFornecedorAdmin(
           )
           .leftJoin(
             decisoes,
-            eq(decisoes.stagingId, sql`${fornecedorProdutosStagingTable.id}::text`),
+            eq(
+              decisoes.stagingId,
+              sql`${fornecedorProdutosStagingTable.id}::text`,
+            ),
           )
           .where(condicoes),
-      ]),
-  );
+      ]);
 
-  const total = Number(totalLinhas[0]?.total ?? 0);
+      const total = Number(totalLinhas[0]?.total ?? 0);
+      const paginacao = calcularPaginacaoFornecedores({
+        pagina,
+        limite,
+        total,
+      });
+
+      // O caminho comum continua com página e total em paralelo. Só repetimos
+      // a página quando uma mutação encolheu a fila e tornou o offset da URL
+      // inválido; assim a tela recebe as linhas da última página real.
+      const linhas =
+        paginacao.offset === offset
+          ? linhasIniciais
+          : await listarPagina(paginacao.offset);
+
+      return { linhas, paginacao };
+    },
+  );
 
   return {
     linhas,
-    paginacao: {
-      pagina,
-      limite,
-      total,
-      totalPaginas: Math.max(1, Math.ceil(total / limite)),
-    },
+    paginacao,
   };
 }
 
@@ -328,7 +336,10 @@ export async function contarEstagiosVinculacaoFornecedor(
         .from(fornecedorProdutosStagingTable)
         .leftJoin(
           decisoes,
-          eq(decisoes.stagingId, sql`${fornecedorProdutosStagingTable.id}::text`),
+          eq(
+            decisoes.stagingId,
+            sql`${fornecedorProdutosStagingTable.id}::text`,
+          ),
         )
         .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId)),
   );

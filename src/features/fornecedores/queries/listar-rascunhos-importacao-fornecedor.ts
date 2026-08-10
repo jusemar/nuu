@@ -6,7 +6,6 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/connection";
 import {
   categoryTable,
-  fornecedorProdutoVinculosTable,
   marcaTable,
   productPricingTable,
   productTable,
@@ -169,10 +168,9 @@ export async function listarRascunhosImportacaoFornecedor(
       : []),
   );
 
-  // As duas consultas são dependentes (a segunda usa os fornecedores da primeira), então
-  // ficam juntas na mesma leitura protegida: uma retentativa refaz o par inteiro e a lista
-  // de "já publicados" nunca é aplicada sobre rascunhos de outra tentativa.
-  const { linhas, total, variantesProdutosAtualizados, vinculosAtivos } =
+  // Página, total e variantes ficam na mesma leitura protegida para que uma
+  // retentativa refaça o conjunto coerente inteiro.
+  const { linhas, paginacao, variantesProdutosAtualizados } =
     await executarLeituraFornecedores(
       {
         etapa: "conciliacao:listar-rascunhos",
@@ -181,94 +179,102 @@ export async function listarRascunhosImportacaoFornecedor(
           "Não foi possível carregar os itens da conciliação agora. Tente novamente em alguns segundos.",
       },
       async () => {
-        const linhasRascunho = await db
-          .select({
-            id: produtoRascunhosTable.id,
-            fornecedorId: produtoRascunhosTable.fornecedorId,
-            codigoFornecedor: produtoRascunhosTable.codigoFornecedor,
-            nome: produtoRascunhosTable.nome,
-            descricao: produtoRascunhosTable.descricao,
-            categoriaId: produtoRascunhosTable.categoriaId,
-            categoriaNome: categoryTable.name,
-            marcaId: produtoRascunhosTable.marcaId,
-            marcaNome: marcaTable.nome,
-            ean: produtoRascunhosTable.ean,
-            ncm: produtoRascunhosTable.ncm,
-            precoFornecedor: produtoRascunhosTable.precoFornecedor,
-            precoLoja: produtoRascunhosTable.precoLoja,
-            estoqueFornecedor: produtoRascunhosTable.estoqueFornecedor,
-            peso: produtoRascunhosTable.peso,
-            altura: produtoRascunhosTable.altura,
-            largura: produtoRascunhosTable.largura,
-            comprimento: produtoRascunhosTable.comprimento,
-            imagens: produtoRascunhosTable.imagens,
-            dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
-            status: produtoRascunhosTable.status,
-            produtoAtualizadoId: produtoRascunhosTable.produtoAtualizadoId,
-            produtoAtualizadoNome: productTable.name,
-            produtoAtualizadoSku: productTable.sku,
-            precoAtualLojaEmCentavos: productPricingTable.price,
-            categoriaAtualLojaId: productTable.categoryId,
-            categoriaAtualLojaNome: categoriaLojaTable.name,
-            marcaAtualLojaId: productTable.marcaId,
-            marcaAtualLojaNome: marcaLojaTable.nome,
-            secoesAtuaisLoja: productTable.storeProductFlags,
-            modalidadeAtualLoja: productPricingTable.type,
-            prazoAtualLoja: productPricingTable.deliveryDays,
-          })
-          .from(produtoRascunhosTable)
-          .leftJoin(
-            categoryTable,
-            eq(produtoRascunhosTable.categoriaId, categoryTable.id),
-          )
-          .leftJoin(
-            marcaTable,
-            eq(produtoRascunhosTable.marcaId, marcaTable.id),
-          )
-          // Os dois joins abaixo trazem o retrato ATUAL do produto real da loja,
-          // usado pela Conciliação para mostrar "o que está" × "o que chegou".
-          // São `leftJoin` de propósito: item "criar produto novo" não tem
-          // `produtoAtualizadoId` e simplesmente vem com esses campos nulos.
-          //
-          // O estoque atual NÃO entra por join: produto tem N variantes, e um
-          // join um-para-muitos repetiria o mesmo rascunho uma vez por variante,
-          // duplicando o item na tela da Conciliação. Ele é resolvido logo
-          // abaixo, em consulta separada, pela mesma regra estrita de variante
-          // técnica usada no resto do sistema.
-          .leftJoin(
-            productTable,
-            eq(productTable.id, produtoRascunhosTable.produtoAtualizadoId),
-          )
-          .leftJoin(
-            categoriaLojaTable,
-            eq(productTable.categoryId, categoriaLojaTable.id),
-          )
-          .leftJoin(marcaLojaTable, eq(productTable.marcaId, marcaLojaTable.id))
-          .leftJoin(
-            productPricingTable,
-            and(
-              eq(productPricingTable.productId, productTable.id),
-              eq(productPricingTable.isActive, true),
-              eq(productPricingTable.mainCardPrice, true),
-            ),
-          )
-          .where(condicoesFila)
-          .orderBy(asc(produtoRascunhosTable.criadoEm))
-          .limit(limite)
-          .offset(offset);
+        const listarPagina = (offsetPagina: number) =>
+          db
+            .select({
+              id: produtoRascunhosTable.id,
+              fornecedorId: produtoRascunhosTable.fornecedorId,
+              codigoFornecedor: produtoRascunhosTable.codigoFornecedor,
+              nome: produtoRascunhosTable.nome,
+              descricao: produtoRascunhosTable.descricao,
+              categoriaId: produtoRascunhosTable.categoriaId,
+              categoriaNome: categoryTable.name,
+              marcaId: produtoRascunhosTable.marcaId,
+              marcaNome: marcaTable.nome,
+              ean: produtoRascunhosTable.ean,
+              ncm: produtoRascunhosTable.ncm,
+              precoFornecedor: produtoRascunhosTable.precoFornecedor,
+              precoLoja: produtoRascunhosTable.precoLoja,
+              estoqueFornecedor: produtoRascunhosTable.estoqueFornecedor,
+              peso: produtoRascunhosTable.peso,
+              altura: produtoRascunhosTable.altura,
+              largura: produtoRascunhosTable.largura,
+              comprimento: produtoRascunhosTable.comprimento,
+              imagens: produtoRascunhosTable.imagens,
+              dadosOrigemJson: produtoRascunhosTable.dadosOrigemJson,
+              status: produtoRascunhosTable.status,
+              produtoAtualizadoId: produtoRascunhosTable.produtoAtualizadoId,
+              produtoAtualizadoNome: productTable.name,
+              produtoAtualizadoSku: productTable.sku,
+              precoAtualLojaEmCentavos: productPricingTable.price,
+              categoriaAtualLojaId: productTable.categoryId,
+              categoriaAtualLojaNome: categoriaLojaTable.name,
+              marcaAtualLojaId: productTable.marcaId,
+              marcaAtualLojaNome: marcaLojaTable.nome,
+              secoesAtuaisLoja: productTable.storeProductFlags,
+              modalidadeAtualLoja: productPricingTable.type,
+              prazoAtualLoja: productPricingTable.deliveryDays,
+            })
+            .from(produtoRascunhosTable)
+            .leftJoin(
+              categoryTable,
+              eq(produtoRascunhosTable.categoriaId, categoryTable.id),
+            )
+            .leftJoin(
+              marcaTable,
+              eq(produtoRascunhosTable.marcaId, marcaTable.id),
+            )
+            // Os dois joins abaixo trazem o retrato ATUAL do produto real da loja,
+            // usado pela Conciliação para mostrar "o que está" × "o que chegou".
+            // São `leftJoin` de propósito: item "criar produto novo" não tem
+            // `produtoAtualizadoId` e simplesmente vem com esses campos nulos.
+            //
+            // O estoque atual NÃO entra por join: produto tem N variantes, e um
+            // join um-para-muitos repetiria o mesmo rascunho uma vez por variante,
+            // duplicando o item na tela da Conciliação. Ele é resolvido logo
+            // abaixo, em consulta separada, pela mesma regra estrita de variante
+            // técnica usada no resto do sistema.
+            .leftJoin(
+              productTable,
+              eq(productTable.id, produtoRascunhosTable.produtoAtualizadoId),
+            )
+            .leftJoin(
+              categoriaLojaTable,
+              eq(productTable.categoryId, categoriaLojaTable.id),
+            )
+            .leftJoin(
+              marcaLojaTable,
+              eq(productTable.marcaId, marcaLojaTable.id),
+            )
+            .leftJoin(
+              productPricingTable,
+              and(
+                eq(productPricingTable.productId, productTable.id),
+                eq(productPricingTable.isActive, true),
+                eq(productPricingTable.mainCardPrice, true),
+              ),
+            )
+            .where(condicoesFila)
+            .orderBy(asc(produtoRascunhosTable.criadoEm))
+            .limit(limite)
+            .offset(offsetPagina);
 
-        const [{ total } = { total: 0 }] = await db
-          .select({ total: count() })
-          .from(produtoRascunhosTable)
-          .where(condicoesFila);
-
-        const fornecedoresIds = Array.from(
-          new Set(
-            linhasRascunho
-              .map((linha) => linha.fornecedorId)
-              .filter((id): id is string => Boolean(id)),
-          ),
-        );
+        const [linhasIniciais, [{ total } = { total: 0 }]] = await Promise.all([
+          listarPagina(offset),
+          db
+            .select({ total: count() })
+            .from(produtoRascunhosTable)
+            .where(condicoesFila),
+        ]);
+        const paginacao = calcularPaginacaoFornecedores({
+          pagina: opcoes?.pagina,
+          limite: opcoes?.limite,
+          total: Number(total),
+        });
+        const linhasRascunho =
+          paginacao.offset === offset
+            ? linhasIniciais
+            : await listarPagina(paginacao.offset);
 
         // Produtos reais referenciados pelos itens "atualizar" deste lote.
         const produtosAtualizadosIds = Array.from(
@@ -279,70 +285,37 @@ export async function listarRascunhosImportacaoFornecedor(
           ),
         );
 
-        // As duas leituras seguintes não dependem uma da outra — só dos ids que
-        // a primeira produziu. Elas estavam em propriedades de um object
-        // literal, e propriedades são avaliadas em ordem: cada `await` esperava
-        // o anterior. Com o driver HTTP da Neon (uma requisição por consulta),
-        // isso custava uma ida e volta inteira de rede à toa em toda abertura
-        // da Conciliação.
-        const [variantesProdutosAtualizados, vinculosAtivos] = await Promise.all(
-          [
-            produtosAtualizadosIds.length > 0
-              ? db
-                  .select({
-                    id: productVariantTable.id,
-                    produtoId: productVariantTable.productId,
-                    sku: productVariantTable.sku,
-                    atributos: productVariantTable.attributes,
-                    precoEmCentavos: productVariantTable.priceInCents,
-                    estoque: productVariantTable.stockQuantity,
-                    ativa: productVariantTable.isActive,
-                    principal: productVariantTable.isDefault,
-                  })
-                  .from(productVariantTable)
-                  .where(
-                    inArray(
-                      productVariantTable.productId,
-                      produtosAtualizadosIds,
-                    ),
-                  )
-              : Promise.resolve([]),
-            fornecedoresIds.length > 0
-              ? db
-                  .select({
-                    fornecedorId: fornecedorProdutoVinculosTable.fornecedorId,
-                    codigoFornecedor:
-                      fornecedorProdutoVinculosTable.codigoFornecedor,
-                  })
-                  .from(fornecedorProdutoVinculosTable)
-                  .where(
-                    and(
-                      inArray(
-                        fornecedorProdutoVinculosTable.fornecedorId,
-                        fornecedoresIds,
-                      ),
-                      eq(fornecedorProdutoVinculosTable.status, "ativo"),
-                    ),
-                  )
-              : Promise.resolve([]),
-          ],
-        );
+        // Busca somente as variantes dos produtos visíveis nesta página. A
+        // checagem de vínculos já faz parte de `condicoesFila`, no banco.
+        const variantesProdutosAtualizados =
+          produtosAtualizadosIds.length > 0
+            ? await db
+                .select({
+                  id: productVariantTable.id,
+                  produtoId: productVariantTable.productId,
+                  sku: productVariantTable.sku,
+                  atributos: productVariantTable.attributes,
+                  precoEmCentavos: productVariantTable.priceInCents,
+                  estoque: productVariantTable.stockQuantity,
+                  ativa: productVariantTable.isActive,
+                  principal: productVariantTable.isDefault,
+                })
+                .from(productVariantTable)
+                .where(
+                  inArray(
+                    productVariantTable.productId,
+                    produtosAtualizadosIds,
+                  ),
+                )
+            : [];
 
         return {
           linhas: linhasRascunho,
-          total: Number(total),
+          paginacao,
           variantesProdutosAtualizados,
-          vinculosAtivos,
         };
       },
     );
-
-  const chavesPublicadas = new Set(
-    vinculosAtivos.map(
-      (vinculo) =>
-        `${vinculo.fornecedorId}:${vinculo.codigoFornecedor?.trim() ?? ""}`,
-    ),
-  );
 
   // Agrupa as variantes por produto para resolver o estoque atual sem repetir
   // linhas de rascunho.
@@ -385,13 +358,8 @@ export async function listarRascunhosImportacaoFornecedor(
   // porque com paginação um filtro em JS entregaria páginas de tamanho
   // irregular e um total que não bate com a lista.
   return {
-    paginacao: calcularPaginacaoFornecedores({
-      pagina: opcoes?.pagina,
-      limite: opcoes?.limite,
-      total,
-    }),
-    itens: linhas
-    .map(
+    paginacao,
+    itens: linhas.map(
       ({
         dadosOrigemJson,
         precoAtualLojaEmCentavos,

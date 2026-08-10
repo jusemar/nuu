@@ -43,7 +43,10 @@ import { buscarOrigemImportacaoFornecedor } from "./buscar-origem-importacao-for
 export async function listarRascunhosPublicacaoImportacaoFornecedor(
   importacaoId: string,
   origemInformada?: OrigemImportacaoFornecedor,
-  paginacao?: { pagina?: number | string | null; limite?: number | string | null },
+  paginacao?: {
+    pagina?: number | string | null;
+    limite?: number | string | null;
+  },
 ): Promise<{
   rascunhos: RascunhoPublicacaoFornecedor[];
   paginacao: PaginacaoFornecedores;
@@ -54,7 +57,10 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
     ORIGEM_IMPORTACAO_ARQUIVO;
 
   const limite = normalizarLimiteFornecedores(paginacao?.limite);
-  const offset = offsetInicialFornecedores(paginacao?.pagina, paginacao?.limite);
+  const offset = offsetInicialFornecedores(
+    paginacao?.pagina,
+    paginacao?.limite,
+  );
 
   const condicoes = and(
     eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
@@ -91,15 +97,15 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
   // Página e contagem saem juntas na mesma leitura protegida: uma retentativa
   // que refizesse só a contagem devolveria um total que não corresponde às
   // linhas exibidas.
-  const [linhas, totalLinhas] = await executarLeituraFornecedores(
+  const { linhas, paginacaoFinal } = await executarLeituraFornecedores(
     {
       etapa: "publicacao:listar-rascunhos",
       importacaoId,
       mensagemAmigavel:
         "Não foi possível carregar os itens aprovados para publicação. Tente novamente em alguns segundos.",
     },
-    () =>
-      Promise.all([
+    async () => {
+      const listarPagina = (offsetPagina: number) =>
         db
           .select({
             id: produtoRascunhosTable.id,
@@ -119,7 +125,10 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
             categoryTable,
             eq(produtoRascunhosTable.categoriaId, categoryTable.id),
           )
-          .leftJoin(marcaTable, eq(produtoRascunhosTable.marcaId, marcaTable.id))
+          .leftJoin(
+            marcaTable,
+            eq(produtoRascunhosTable.marcaId, marcaTable.id),
+          )
           .leftJoin(
             productTable,
             eq(productTable.id, produtoRascunhosTable.produtoAtualizadoId),
@@ -127,21 +136,36 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
           .where(condicoes)
           .orderBy(asc(produtoRascunhosTable.criadoEm))
           .limit(limite)
-          .offset(offset),
+          .offset(offsetPagina);
+
+      const [linhasIniciais, totalLinhas] = await Promise.all([
+        listarPagina(offset),
         db
           .select({ total: count() })
           .from(produtoRascunhosTable)
           .where(condicoes),
-      ]),
-  );
+      ]);
+      const total = Number(totalLinhas[0]?.total ?? 0);
+      const paginacaoFinal = calcularPaginacaoFornecedores({
+        pagina: paginacao?.pagina,
+        limite: paginacao?.limite,
+        total,
+      });
+      const linhas =
+        paginacaoFinal.offset === offset
+          ? linhasIniciais
+          : await listarPagina(paginacaoFinal.offset);
 
-  const total = Number(totalLinhas[0]?.total ?? 0);
+      return { linhas, paginacaoFinal };
+    },
+  );
 
   return {
     rascunhos: linhas
       .filter(
         (linha) =>
-          Boolean(linha.fornecedorId) && Boolean(linha.codigoFornecedor?.trim()),
+          Boolean(linha.fornecedorId) &&
+          Boolean(linha.codigoFornecedor?.trim()),
       )
       .map((linha) => {
         const temPreco =
@@ -166,10 +190,6 @@ export async function listarRascunhosPublicacaoImportacaoFornecedor(
       }),
     // O clamp evita a "página vazia": publicar os itens da última página
     // encolhe o total, e o gestor voltaria para uma tela em branco.
-    paginacao: calcularPaginacaoFornecedores({
-      pagina: paginacao?.pagina,
-      limite: paginacao?.limite,
-      total,
-    }),
+    paginacao: paginacaoFinal,
   };
 }

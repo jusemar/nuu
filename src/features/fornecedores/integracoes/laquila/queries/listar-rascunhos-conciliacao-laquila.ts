@@ -56,7 +56,9 @@ export type RascunhoConciliacaoLaquila = {
  */
 export async function listarRascunhosConciliacaoLaquila(
   importacaoId: string,
+  codigosFornecedor?: string[],
 ): Promise<RascunhoConciliacaoLaquila[]> {
+  if (codigosFornecedor && codigosFornecedor.length === 0) return [];
   try {
     const linhas = await db
       .select({
@@ -98,6 +100,14 @@ export async function listarRascunhosConciliacaoLaquila(
             "pronto_para_publicar",
           ]),
           sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
+          ...(codigosFornecedor
+            ? [
+                inArray(
+                  produtoRascunhosTable.codigoFornecedor,
+                  codigosFornecedor,
+                ),
+              ]
+            : []),
         ),
       );
 

@@ -14,6 +14,7 @@ import {
   type RegistroCombinacaoCategoriaFornecedor,
   TabelaMapeamentoCamposFornecedor,
 } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
+import { salvarProdutosSelecionadosStagingLaquila } from "@/features/fornecedores/integracoes/laquila/actions";
 import {
   CHAVE_MAPEAMENTO_PADRAO_LAQUILA,
   CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
@@ -333,7 +334,7 @@ export function PaginaMapeamentoLaquilaAdmin({
 
   const possuiProdutosSelecionados = produtosSelecionados.length > 0;
 
-  function salvarRegrasMapeamentoLaquila(
+  async function salvarRegrasMapeamentoLaquila(
     dados: DadosTemporariosMapeamentoFornecedor,
     opcoes: OpcoesAcionamentoMapeamentoFornecedor,
   ) {
@@ -354,6 +355,17 @@ export function PaginaMapeamentoLaquilaAdmin({
         JSON.stringify(dadosComMetadados),
       );
     }
+
+    const resultado = await salvarProdutosSelecionadosStagingLaquila({
+      importacaoId,
+      produtos: produtosSelecionados,
+    });
+
+    if (!resultado.sucesso) {
+      throw new Error(
+        resultado.erro ?? "Não foi possível preparar a Vinculação.",
+      );
+    }
   }
 
   return (
@@ -366,7 +378,9 @@ export function PaginaMapeamentoLaquilaAdmin({
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-            <Link href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`}>
+            <Link
+              href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`}
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para recebidos
             </Link>

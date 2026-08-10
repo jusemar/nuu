@@ -168,7 +168,7 @@ export type TabelaMapeamentoCamposFornecedorProps = {
   aoAcionarPrincipal?: (
     dados: DadosTemporariosMapeamentoFornecedor,
     opcoes: OpcoesAcionamentoMapeamentoFornecedor,
-  ) => void;
+  ) => void | Promise<void>;
   textoRodape?: string;
   estadoVazio?: string;
 };
@@ -1458,8 +1458,8 @@ export function TabelaMapeamentoCamposFornecedor({
     };
   }
 
-  function acionarPrincipal() {
-    aoAcionarPrincipal?.(montarDadosTemporariosMapeamento(), {
+  async function acionarPrincipal() {
+    await aoAcionarPrincipal?.(montarDadosTemporariosMapeamento(), {
       salvarComoPadrao,
     });
 

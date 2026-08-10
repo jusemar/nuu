@@ -1,5 +1,9 @@
 export { buscarConfiguracaoLaquilaAdmin } from "./buscar-configuracao-laquila";
 export {
+  listarProdutosVinculacaoLaquila,
+  type ProdutoVinculacaoLaquila,
+} from "./listar-produtos-vinculacao-laquila";
+export {
   buscarImportacaoApiLaquila,
   buscarUltimaImportacaoApiLaquila,
   type ImportacaoApiLaquila,

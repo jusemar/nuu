@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -31,7 +31,9 @@ export type VinculoProdutoLaquila = {
  * execuções futuras. É a importação que é histórica, não o vínculo — por isso
  * a #102 reaproveita o que a #101 já vinculou em vez de vincular de novo.
  */
-export async function listarVinculosProdutosLaquila() {
+export async function listarVinculosProdutosLaquila(
+  codigosFornecedor?: string[],
+) {
   const [integracao] = await db
     .select({ fornecedorId: fornecedorIntegracoesApiTable.fornecedorId })
     .from(fornecedorIntegracoesApiTable)
@@ -42,6 +44,13 @@ export async function listarVinculosProdutosLaquila() {
 
   if (!integracao) {
     return { fornecedorId: null, vinculos: [] as VinculoProdutoLaquila[] };
+  }
+
+  if (codigosFornecedor && codigosFornecedor.length === 0) {
+    return {
+      fornecedorId: integracao.fornecedorId,
+      vinculos: [] as VinculoProdutoLaquila[],
+    };
   }
 
   const linhas = await db
@@ -72,6 +81,14 @@ export async function listarVinculosProdutosLaquila() {
           integracao.fornecedorId,
         ),
         eq(fornecedorProdutoVinculosTable.status, "ativo"),
+        ...(codigosFornecedor
+          ? [
+              inArray(
+                fornecedorProdutoVinculosTable.codigoFornecedor,
+                codigosFornecedor,
+              ),
+            ]
+          : []),
       ),
     );
 

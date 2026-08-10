@@ -4,8 +4,10 @@ import { AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PaginacaoAdmin } from "@/components/shared/paginacao-admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   desfazerVinculoProdutoRecebidoFornecedor,
   salvarVinculoProdutoRecebidoFornecedor,
@@ -19,18 +21,22 @@ import {
 import {
   buscarProdutosVinculoLaquila,
   removerRascunhoProdutoLaquila,
-  salvarProdutosSelecionadosStagingLaquila,
   salvarRascunhoProdutoLaquila,
 } from "@/features/fornecedores/integracoes/laquila/actions";
 import {
-  CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
   CHAVE_RASCUNHOS_CONCILIACAO_LAQUILA,
   CHAVE_REGRAS_MAPEAMENTO_LAQUILA,
 } from "@/features/fornecedores/integracoes/laquila/constants";
 import type {
+  ProdutoVinculacaoLaquila,
   RascunhoConciliacaoLaquila,
   VinculoProdutoLaquila,
 } from "@/features/fornecedores/integracoes/laquila/queries";
+import {
+  OPCOES_LIMITE_FORNECEDORES,
+  type PaginacaoFornecedores,
+} from "@/features/fornecedores/lib/paginacao-fornecedores";
+import type { EstagioVinculacaoFornecedor } from "@/features/fornecedores/queries/listar-staging-importacao-fornecedor-admin";
 import type {
   ConfiguracaoComercialMapeamentoFornecedor,
   EstrategiaPrazoEntregaFornecedor,
@@ -38,22 +44,7 @@ import type {
   ValoresPadraoRascunhoProdutoFornecedor,
 } from "@/features/fornecedores/types/mapeamento-fornecedor.types";
 
-type ProdutoSelecionadoMapeamentoLaquila = {
-  cd_item: string;
-  descricao: string;
-  cd_ean: string;
-  NCM: string;
-  ds_ggrupo: string;
-  ds_grupo: string;
-  ds_sgrupo: string;
-  lista_fotos: unknown;
-  vl_preco: string | number | null;
-  qt_saldo: string | number | null;
-  peso_bruto: string;
-  altura_caixa: string;
-  largura_caixa: string;
-  comprimento_caixa: string;
-};
+type ProdutoSelecionadoMapeamentoLaquila = ProdutoVinculacaoLaquila;
 
 type RegraMapeamentoLaquilaTemporaria = {
   campoDestino: string;
@@ -92,39 +83,6 @@ function obterTextoRegistro(registro: Record<string, unknown>, chave: string) {
   if (typeof valor === "number" && Number.isFinite(valor)) return String(valor);
 
   return "";
-}
-
-function normalizarProdutoSelecionado(
-  valor: unknown,
-): ProdutoSelecionadoMapeamentoLaquila | null {
-  if (!ehRegistro(valor)) return null;
-
-  const cdItem = obterTextoRegistro(valor, "cd_item");
-
-  if (!cdItem) return null;
-
-  return {
-    cd_item: cdItem,
-    descricao: obterTextoRegistro(valor, "descricao"),
-    cd_ean: obterTextoRegistro(valor, "cd_ean"),
-    NCM: obterTextoRegistro(valor, "NCM"),
-    ds_ggrupo: obterTextoRegistro(valor, "ds_ggrupo"),
-    ds_grupo: obterTextoRegistro(valor, "ds_grupo"),
-    ds_sgrupo: obterTextoRegistro(valor, "ds_sgrupo"),
-    lista_fotos: valor.lista_fotos,
-    vl_preco:
-      typeof valor.vl_preco === "string" || typeof valor.vl_preco === "number"
-        ? valor.vl_preco
-        : null,
-    qt_saldo:
-      typeof valor.qt_saldo === "string" || typeof valor.qt_saldo === "number"
-        ? valor.qt_saldo
-        : null,
-    peso_bruto: obterTextoRegistro(valor, "peso_bruto"),
-    altura_caixa: obterTextoRegistro(valor, "altura_caixa"),
-    largura_caixa: obterTextoRegistro(valor, "largura_caixa"),
-    comprimento_caixa: obterTextoRegistro(valor, "comprimento_caixa"),
-  };
 }
 
 function extrairImagens(valor: unknown) {
@@ -182,7 +140,20 @@ function converterItemVinculo(
         ds_sgrupo: produto.ds_sgrupo,
       },
     },
-    status: vinculo ? "vinculado" : rascunho ? "rascunho" : "aguardando",
+    status:
+      produto.estagio === "publicado"
+        ? "publicado"
+        : produto.estagio === "ignorado"
+          ? "ignorado"
+          : produto.estagio === "erro"
+            ? "erro"
+            : vinculo
+              ? "vinculado"
+              : rascunho
+                ? "rascunho"
+                : produto.estagio === "novo"
+                  ? "novo"
+                  : "aguardando",
     produtoLoja: vinculo
       ? { ...vinculo.produto, vinculoId: vinculo.vinculoId }
       : null,
@@ -416,6 +387,10 @@ type PaginaVinculosLaquilaAdminProps = {
   fornecedorId: string | null;
   vinculosIniciais: VinculoProdutoLaquila[];
   sessaoAtiva: boolean;
+  produtosIniciais: ProdutoVinculacaoLaquila[];
+  paginacao: PaginacaoFornecedores;
+  busca: string;
+  estagio?: EstagioVinculacaoFornecedor;
 };
 
 export function PaginaVinculosLaquilaAdmin({
@@ -424,16 +399,15 @@ export function PaginaVinculosLaquilaAdmin({
   fornecedorId,
   vinculosIniciais,
   sessaoAtiva,
+  produtosIniciais,
+  paginacao,
+  busca,
+  estagio,
 }: PaginaVinculosLaquilaAdminProps) {
   const [selecaoCarregada, setSelecaoCarregada] = useState(false);
   const [itensSelecionados, setItensSelecionados] = useState<
     ItemVinculoFornecedor[]
   >([]);
-  const [statusStaging, setStatusStaging] = useState<{
-    tipo: "salvando" | "sucesso" | "erro";
-    mensagem: string;
-    totalSalvo?: number;
-  } | null>(null);
   const [regrasMapeamento, setRegrasMapeamento] =
     useState<RegrasMapeamentoLaquilaTemporarias | null>(null);
   const valoresPadraoNovoProduto = useMemo(
@@ -514,79 +488,26 @@ export function PaginaVinculosLaquilaAdmin({
       }
     }
 
-    const selecaoSalva = window.sessionStorage.getItem(
-      CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA,
+    setItensSelecionados(
+      produtosIniciais.map((produto) =>
+        converterItemVinculo(
+          produto,
+          rascunhosPorCodigo.get(produto.cd_item.trim()),
+          vinculosPorCodigo.get(produto.cd_item.trim()),
+        ),
+      ),
     );
-
-    if (!selecaoSalva) {
-      setSelecaoCarregada(true);
-      return;
-    }
-
-    try {
-      const dados: unknown = JSON.parse(selecaoSalva);
-
-      if (Array.isArray(dados)) {
-        const produtosSelecionados = dados
-          .map(normalizarProdutoSelecionado)
-          .filter((produto): produto is ProdutoSelecionadoMapeamentoLaquila =>
-            Boolean(produto),
-          );
-
-        setItensSelecionados(
-          produtosSelecionados.map((produto) =>
-            converterItemVinculo(
-              produto,
-              rascunhosPorCodigo.get(produto.cd_item.trim()),
-              vinculosPorCodigo.get(produto.cd_item.trim()),
-            ),
-          ),
-        );
-
-        if (produtosSelecionados.length > 0) {
-          setStatusStaging({
-            tipo: "salvando",
-            mensagem: "Salvando selecionados para vinculação...",
-          });
-
-          salvarProdutosSelecionadosStagingLaquila({
-            importacaoId,
-            produtos: dados,
-          }).then(
-            (resultado) => {
-              if (resultado.sucesso) {
-                setStatusStaging({
-                  tipo: "sucesso",
-                  mensagem:
-                    resultado.mensagem ??
-                    "Produtos selecionados salvos para vinculação.",
-                  totalSalvo: resultado.totalSalvo,
-                });
-                return;
-              }
-
-              setStatusStaging({
-                tipo: "erro",
-                mensagem:
-                  resultado.erro ??
-                  "Não foi possível salvar os selecionados no staging.",
-              });
-            },
-          );
-        }
-      }
-    } catch {
-      setItensSelecionados([]);
-    } finally {
-      setSelecaoCarregada(true);
-    }
-  }, [importacaoId, rascunhosPorCodigo, vinculosPorCodigo]);
+    setSelecaoCarregada(true);
+  }, [produtosIniciais, rascunhosPorCodigo, vinculosPorCodigo]);
 
   /**
    * Todo rascunho salvo aqui pertence a ESTA execução. Sem isso ele ficaria
    * solto e a Conciliação da execução seguinte o trataria como dela.
    */
-  function salvarRascunhoDaExecucao(entrada: { item: unknown; produto: unknown }) {
+  function salvarRascunhoDaExecucao(entrada: {
+    item: unknown;
+    produto: unknown;
+  }) {
     return salvarRascunhoProdutoLaquila({ ...entrada, importacaoId });
   }
 
@@ -600,7 +521,9 @@ export function PaginaVinculosLaquilaAdmin({
       <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-            <Link href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/mapeamento`}>
+            <Link
+              href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/mapeamento`}
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar para mapeamento
             </Link>
@@ -635,25 +558,12 @@ export function PaginaVinculosLaquilaAdmin({
             </p>
           </div>
           <Button asChild size="sm" variant="outline" className="bg-white">
-            <Link href={`/admin/login?redirect=/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos&erro=sessao_expirada`}>
+            <Link
+              href={`/admin/login?redirect=/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos&erro=sessao_expirada`}
+            >
               Entrar novamente
             </Link>
           </Button>
-        </section>
-      ) : null}
-
-      {statusStaging ? (
-        <section
-          className={
-            statusStaging.tipo === "erro"
-              ? "rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 shadow-xs"
-              : "rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-xs"
-          }
-        >
-          {statusStaging.mensagem}
-          {typeof statusStaging.totalSalvo === "number"
-            ? ` ${statusStaging.totalSalvo} item${statusStaging.totalSalvo === 1 ? "" : "s"}.`
-            : ""}
         </section>
       ) : null}
 
@@ -676,13 +586,46 @@ export function PaginaVinculosLaquilaAdmin({
             </div>
 
             <Button asChild variant="outline" className="bg-white">
-              <Link href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`}>
+              <Link
+                href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/produtos`}
+              >
                 Voltar para Recebidos da API
               </Link>
             </Button>
           </div>
         </section>
       ) : null}
+
+      <form
+        action={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`}
+        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:grid-cols-[1fr_220px_auto]"
+      >
+        <input type="hidden" name="pagina" value="1" />
+        <input type="hidden" name="limite" value={paginacao.limite} />
+        <Input
+          name="busca"
+          defaultValue={busca}
+          placeholder="Buscar produto ou código"
+        />
+        <select
+          name="estagio"
+          defaultValue={estagio ?? ""}
+          className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">Todos os estágios</option>
+          <option value="pendente">Pendentes</option>
+          <option value="novo">Novos</option>
+          <option value="vinculado">Vinculados</option>
+          <option value="publicado">Publicados</option>
+          <option value="ignorado">Ignorados</option>
+        </select>
+        <Button type="submit" variant="outline">
+          Filtrar
+        </Button>
+        <p className="text-xs text-slate-500 sm:col-span-3">
+          “Selecionar todos” seleciona somente os itens visíveis desta página.
+        </p>
+      </form>
 
       {itensSelecionados.length > 0 ? (
         <TabelaVinculosFornecedor
@@ -705,6 +648,23 @@ export function PaginaVinculosLaquilaAdmin({
           aoRemoverRascunhoPersistido={removerRascunhoProdutoLaquila}
         />
       ) : null}
+
+      <PaginacaoAdmin
+        pagina={paginacao.pagina}
+        totalPaginas={paginacao.totalPaginas}
+        total={paginacao.total}
+        limite={paginacao.limite}
+        opcoesLimite={OPCOES_LIMITE_FORNECEDORES}
+        montarHref={(mudancas) => {
+          const parametros = new URLSearchParams();
+          parametros.set("pagina", String(mudancas.pagina ?? paginacao.pagina));
+          parametros.set("limite", String(mudancas.limite ?? paginacao.limite));
+          if (busca) parametros.set("busca", busca);
+          if (estagio) parametros.set("estagio", estagio);
+          return `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos?${parametros.toString()}`;
+        }}
+        rotuloItens="produtos"
+      />
     </main>
   );
 }

@@ -5,7 +5,11 @@ import { buscarImportacaoApiLaquila } from "@/features/fornecedores/integracoes/
 import { ORIGEM_IMPORTACAO_API_LAQUILA } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
 import { buscarSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { listarOpcoesMapeamentoFornecedor } from "@/features/fornecedores/queries/listar-opcoes-mapeamento-fornecedor";
-import { listarRascunhosImportacaoFornecedor } from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
+import {
+  type FiltroConciliacaoFornecedor,
+  FILTROS_CONCILIACAO_FORNECEDOR,
+  listarRascunhosImportacaoFornecedor,
+} from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
 
 type ConciliacaoImportacaoLaquilaPageProps = {
   params: Promise<{ id: string }>;
@@ -13,6 +17,7 @@ type ConciliacaoImportacaoLaquilaPageProps = {
     pagina?: string;
     limite?: string;
     busca?: string;
+    filtro?: string;
   }>;
 };
 
@@ -21,7 +26,12 @@ export default async function Page({
   searchParams,
 }: ConciliacaoImportacaoLaquilaPageProps) {
   const { id } = await params;
-  const { pagina, limite, busca } = await searchParams;
+  const { pagina, limite, busca, filtro } = await searchParams;
+  const filtroNormalizado = FILTROS_CONCILIACAO_FORNECEDOR.includes(
+    filtro as FiltroConciliacaoFornecedor,
+  )
+    ? (filtro as FiltroConciliacaoFornecedor)
+    : "todos";
   const importacao = await buscarImportacaoApiLaquila(id);
 
   if (!importacao) notFound();
@@ -32,7 +42,7 @@ export default async function Page({
     listarRascunhosImportacaoFornecedor(
       importacao.id,
       ORIGEM_IMPORTACAO_API_LAQUILA,
-      { pagina, limite, busca },
+      { pagina, limite, busca, filtro: filtroNormalizado },
     ),
     buscarSessaoFornecedoresAdmin(),
     listarOpcoesMapeamentoFornecedor(),
@@ -45,6 +55,8 @@ export default async function Page({
       rascunhos={rascunhos.itens}
       paginacao={rascunhos.paginacao}
       busca={busca ?? ""}
+      filtro={filtroNormalizado}
+      resumo={rascunhos.resumo}
       sessaoAtiva={Boolean(sessao?.user)}
       categoriasLoja={opcoesLoja.categoriasLoja}
       marcasLoja={opcoesLoja.marcasLoja}

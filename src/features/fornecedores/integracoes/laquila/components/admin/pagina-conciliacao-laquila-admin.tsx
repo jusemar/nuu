@@ -6,7 +6,11 @@ import { AbaConciliacaoImportacaoFornecedor } from "@/features/fornecedores/comp
 import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 import type { OpcaoValorPadraoLoja } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
 import type { PaginacaoFornecedores } from "@/features/fornecedores/lib/paginacao-fornecedores";
-import type { RascunhoImportacaoFornecedor } from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
+import type {
+  FiltroConciliacaoFornecedor,
+  RascunhoImportacaoFornecedor,
+  ResumoConciliacaoFornecedor,
+} from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
 
 type PaginaConciliacaoLaquilaAdminProps = {
   importacaoId: string;
@@ -17,6 +21,8 @@ type PaginaConciliacaoLaquilaAdminProps = {
   marcasLoja: Array<{ id: string; nome: string }>;
   paginacao: PaginacaoFornecedores;
   busca: string;
+  filtro: FiltroConciliacaoFornecedor;
+  resumo: ResumoConciliacaoFornecedor;
 };
 
 /**
@@ -38,6 +44,8 @@ export function PaginaConciliacaoLaquilaAdmin({
   marcasLoja,
   paginacao,
   busca,
+  filtro,
+  resumo,
 }: PaginaConciliacaoLaquilaAdminProps) {
   const hrefVinculos = `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`;
 
@@ -70,7 +78,7 @@ export function PaginaConciliacaoLaquilaAdmin({
         </section>
       ) : null}
 
-      {rascunhos.length === 0 ? (
+      {resumo.todos === 0 ? (
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-xs">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-3">
@@ -106,6 +114,22 @@ export function PaginaConciliacaoLaquilaAdmin({
           marcasLoja={marcasLoja}
           tipoOrigem="api"
           paginacao={paginacao}
+          resumo={resumo}
+          filtro={filtro}
+          busca={busca}
+          navegacaoFiltros={{
+            hrefAtual: `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/conciliacao?${new URLSearchParams(
+              {
+                pagina: String(paginacao.pagina),
+                limite: String(paginacao.limite),
+                ...(busca ? { busca } : {}),
+                ...(filtro !== "todos" ? { filtro } : {}),
+              },
+            ).toString()}`,
+            parametroPagina: "pagina",
+            parametroBusca: "busca",
+            parametroFiltro: "filtro",
+          }}
           montarHrefPagina={(mudancas) => {
             const parametros = new URLSearchParams();
             parametros.set(
@@ -117,6 +141,7 @@ export function PaginaConciliacaoLaquilaAdmin({
               String(mudancas.limite ?? paginacao.limite),
             );
             if (busca) parametros.set("busca", busca);
+            if (filtro !== "todos") parametros.set("filtro", filtro);
             return `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/conciliacao?${parametros.toString()}`;
           }}
           hrefVoltar={hrefVinculos}

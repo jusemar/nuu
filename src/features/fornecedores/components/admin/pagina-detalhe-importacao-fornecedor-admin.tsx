@@ -1,9 +1,4 @@
-import {
-  ArrowLeft,
-  FilterX,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { ArrowLeft, FilterX, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +17,11 @@ import {
   aplicarMapeamentoColunasFornecedorAction,
 } from "../../actions";
 import type { PaginacaoFornecedores } from "../../lib/paginacao-fornecedores";
-import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
+import type {
+  FiltroConciliacaoFornecedor,
+  RascunhoImportacaoFornecedor,
+  ResumoConciliacaoFornecedor,
+} from "../../queries/listar-rascunhos-importacao-fornecedor";
 import type { ContadoresEstagioVinculacaoFornecedor } from "../../queries/listar-staging-importacao-fornecedor-admin";
 import type { ResumoRevisaoImportacaoFornecedor } from "../../queries/resumir-revisao-importacao-fornecedor";
 import type {
@@ -97,6 +96,8 @@ type FiltrosFornecedor = {
   buscaRevisao?: string;
   categoriaRevisao?: string;
   marcaRevisao?: string;
+  buscaConciliacao?: string;
+  filtroConciliacao?: FiltroConciliacaoFornecedor;
   codigoFornecedor?: string;
   categoriaFornecedor?: string;
   marcaFornecedor?: string;
@@ -131,6 +132,8 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   /** Totais por estágio da importação inteira, para o resumo da Vinculação. */
   contadoresEstagio: ContadoresEstagioVinculacaoFornecedor;
   paginacaoConciliacao: PaginacaoFornecedores;
+  resumoConciliacao: ResumoConciliacaoFornecedor;
+  filtroConciliacao: FiltroConciliacaoFornecedor;
   buscaConciliacao: string;
 };
 
@@ -187,19 +190,11 @@ function ResumoCompacto({
     ["Produtos OK", resumoRevisao.totalProdutosOK],
   ];
   const indicadoresRevisao = [
-    [
-      "Sem categoria",
-      resumoRevisao.totalSemCategoria,
-      "destructive",
-    ],
+    ["Sem categoria", resumoRevisao.totalSemCategoria, "destructive"],
     ["Sem marca", resumoRevisao.totalSemMarca, "destructive"],
     ["Sem código", resumoRevisao.totalSemCodigo, "destructive"],
     ["Sem nome", resumoRevisao.totalSemNome, "destructive"],
-    [
-      "Preço inválido",
-      resumoRevisao.totalPrecoInvalido,
-      "destructive",
-    ],
+    ["Preço inválido", resumoRevisao.totalPrecoInvalido, "destructive"],
     ["Produtos OK", resumoRevisao.totalProdutosOK, "default"],
   ] as const;
 
@@ -489,6 +484,8 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   rascunhosImportacao,
   contadoresEstagio,
   paginacaoConciliacao,
+  resumoConciliacao,
+  filtroConciliacao,
   buscaConciliacao,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
   // Categorias e marcas chegam prontas do banco (`SELECT DISTINCT`). Este
@@ -573,6 +570,21 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
           fornecedor={importacao.nomeFornecedor}
           rascunhos={rascunhosImportacao}
           paginacao={paginacaoConciliacao}
+          resumo={resumoConciliacao}
+          filtro={filtroConciliacao}
+          busca={buscaConciliacao}
+          navegacaoFiltros={{
+            hrefAtual: montarUrl(importacao.id, filtros, {
+              etapa: "revisao",
+              paginaConciliacao: paginacaoConciliacao.pagina,
+              limiteConciliacao: paginacaoConciliacao.limite,
+              buscaConciliacao,
+              filtroConciliacao,
+            }),
+            parametroPagina: "paginaConciliacao",
+            parametroBusca: "buscaConciliacao",
+            parametroFiltro: "filtroConciliacao",
+          }}
           montarHrefPagina={(mudancas) =>
             montarUrl(importacao.id, filtros, {
               etapa: "revisao",

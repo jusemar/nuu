@@ -67,6 +67,10 @@ import {
 import { montarComparativoConciliacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/comparativo-conciliacao-fornecedor";
 import type { ModalidadeComercialRascunho } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { avaliarPortaoPublicacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/portao-publicacao-fornecedor";
+import type {
+  FiltroConciliacaoFornecedor,
+  ResumoConciliacaoFornecedor,
+} from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
 
 export type TipoOrigemConciliacaoFornecedor = "arquivo" | "api";
 
@@ -202,6 +206,15 @@ type TabelaConciliacaoFornecedorProps = {
   textoAcaoIndisponivel?: string;
   mensagemAcaoIndisponivel?: string;
   itens: ItemConciliacaoFornecedor[];
+  resumoGlobal: ResumoConciliacaoFornecedor;
+  filtroAtivo: FiltroConciliacaoFornecedor;
+  buscaInicial: string;
+  navegacaoFiltros: {
+    hrefAtual: string;
+    parametroPagina: string;
+    parametroBusca: string;
+    parametroFiltro: string;
+  };
   aoAjustarPrecosSelecionados?: (
     entrada: EntradaAjustarPrecosConciliacaoFornecedor,
   ) => Promise<ResultadoAcaoConciliacaoFornecedor>;
@@ -227,14 +240,6 @@ export type ResultadoAcaoConciliacaoFornecedor = {
   erro?: string;
   precosAtualizados?: Array<{ rascunhoId: string; precoLoja: string }>;
 };
-
-type FiltroConciliacaoFornecedor =
-  | "todos"
-  | "novos"
-  | "vinculados"
-  | "pendencias"
-  | "alertas"
-  | "prontos";
 
 function formatarMoeda(valor?: string | null) {
   if (!valor) return null;
@@ -404,7 +409,7 @@ function ComparativoConciliacaoMobile({
                 <span className="block text-[10px] tracking-wide text-blue-700 uppercase">
                   A publicar
                 </span>
-                <span className="block break-words font-semibold text-slate-950">
+                <span className="block font-semibold break-words text-slate-950">
                   {linha.aPublicar}
                 </span>
               </span>
@@ -574,44 +579,6 @@ function resumoPendenciaPrincipal(item: ItemConciliacaoFornecedor) {
     return `${regrasPendentes[0].label} pendente`;
 
   return "Revisar pendência";
-}
-
-function calcularResumo(itens: ItemConciliacaoFornecedor[]) {
-  return {
-    prontos: itens.filter((item) => item.status === "pronto").length,
-    pendencias: itens.filter((item) => item.status === "pendencia").length,
-    alertas: itens.filter((item) => item.status === "alerta").length,
-    ignorados: itens.filter((item) => item.status === "ignorado").length,
-  };
-}
-
-function deveExibirItem(
-  item: ItemConciliacaoFornecedor,
-  filtro: FiltroConciliacaoFornecedor,
-) {
-  if (filtro === "todos") return true;
-  if (filtro === "novos") return item.statusVinculacao === "novo";
-  if (filtro === "vinculados") return item.statusVinculacao === "vinculado";
-  if (filtro === "pendencias") return item.status === "pendencia";
-  if (filtro === "alertas") return item.status === "alerta";
-  return item.status === "pronto";
-}
-
-function deveExibirPorBusca(item: ItemConciliacaoFornecedor, busca: string) {
-  const termo = busca.trim().toLowerCase();
-
-  if (!termo) return true;
-
-  return [
-    item.produto.nome,
-    item.produto.codigo,
-    item.produto.complemento,
-    rotuloAcaoPrevista(item.acaoPrevista),
-    rotuloStatus(item.status),
-    rotuloStatusVinculacao(item.statusVinculacao),
-  ]
-    .filter(Boolean)
-    .some((valor) => valor?.toLowerCase().includes(termo));
 }
 
 function obterRegrasQueExigemAcao(item: ItemConciliacaoFornecedor) {
@@ -1741,6 +1708,10 @@ export function TabelaConciliacaoFornecedor({
   textoAcaoIndisponivel = "Publicação bloqueada",
   mensagemAcaoIndisponivel,
   itens,
+  resumoGlobal,
+  filtroAtivo,
+  buscaInicial,
+  navegacaoFiltros,
   aoAjustarPrecosSelecionados,
   aoAtualizarCamposRascunhos,
   aoAlterarDecisaoRascunhos,
@@ -1748,8 +1719,7 @@ export function TabelaConciliacaoFornecedor({
   marcasLoja = [],
 }: TabelaConciliacaoFornecedorProps) {
   const router = useRouter();
-  const [filtro, setFiltro] = useState<FiltroConciliacaoFornecedor>("todos");
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useState(buscaInicial);
   const [itemDetalhes, setItemDetalhes] =
     useState<ItemConciliacaoFornecedor | null>(null);
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
@@ -1762,16 +1732,8 @@ export function TabelaConciliacaoFornecedor({
     acao: "ignorar" | "desfazer" | "aprovar";
     ids: string[];
   } | null>(null);
-  const resumo = useMemo(() => calcularResumo(itens), [itens]);
-  const itensFiltrados = useMemo(
-    () =>
-      itens.filter(
-        (item) =>
-          deveExibirItem(item, filtro) && deveExibirPorBusca(item, busca),
-      ),
-    [busca, filtro, itens],
-  );
-  const totalPendencias = resumo.pendencias;
+  const itensFiltrados = itens;
+  const totalPendencias = resumoGlobal.pendencias;
   const possuiPendencias = totalPendencias > 0;
   /**
    * Estado REAL do portão para a Publicação.
@@ -1838,26 +1800,51 @@ export function TabelaConciliacaoFornecedor({
     label: string;
     total: number;
   }> = [
-    { valor: "todos", label: "Todos", total: itens.length },
+    { valor: "todos", label: "Todos", total: resumoGlobal.todos },
     {
       valor: "novos",
       label: "Novos",
-      total: itens.filter((item) => item.statusVinculacao === "novo").length,
+      total: resumoGlobal.novos,
     },
     {
       valor: "vinculados",
       label: "Vinculados com alteração",
-      total: itens.filter((item) => item.statusVinculacao === "vinculado")
-        .length,
+      total: resumoGlobal.vinculados,
     },
     {
       valor: "pendencias",
       label: "Pendências obrigatórias",
-      total: resumo.pendencias,
+      total: resumoGlobal.pendencias,
     },
-    { valor: "alertas", label: "Alertas", total: resumo.alertas },
-    { valor: "prontos", label: "Prontos", total: resumo.prontos },
+    { valor: "alertas", label: "Alertas", total: resumoGlobal.alertas },
+    { valor: "prontos", label: "Prontos", total: resumoGlobal.prontos },
   ];
+
+  function montarHrefFiltros({
+    filtro = filtroAtivo,
+    busca = buscaInicial,
+  }: {
+    filtro?: FiltroConciliacaoFornecedor;
+    busca?: string;
+  }) {
+    const [caminho, consulta = ""] = navegacaoFiltros.hrefAtual.split("?");
+    const parametros = new URLSearchParams(consulta);
+    parametros.set(navegacaoFiltros.parametroPagina, "1");
+
+    if (filtro === "todos") parametros.delete(navegacaoFiltros.parametroFiltro);
+    else parametros.set(navegacaoFiltros.parametroFiltro, filtro);
+
+    if (busca.trim())
+      parametros.set(navegacaoFiltros.parametroBusca, busca.trim());
+    else parametros.delete(navegacaoFiltros.parametroBusca);
+
+    return `${caminho}?${parametros.toString()}`;
+  }
+
+  useEffect(() => {
+    setBusca(buscaInicial);
+    setIdsSelecionados([]);
+  }, [buscaInicial, filtroAtivo, itens]);
   const alternarSelecaoItem = (id: string, selecionado: boolean) => {
     setIdsSelecionados((atuais) =>
       selecionado
@@ -1955,7 +1942,8 @@ export function TabelaConciliacaoFornecedor({
 
       if (!resultado.sucesso) {
         toast.error(
-          resultado.erro ?? "Não foi possível aprovar os itens para publicação.",
+          resultado.erro ??
+            "Não foi possível aprovar os itens para publicação.",
         );
         return;
       }
@@ -2005,7 +1993,7 @@ export function TabelaConciliacaoFornecedor({
             </div>
             <div>
               <p className="text-xs text-slate-500">Itens recebidos</p>
-              <p className="font-medium text-slate-900">{itens.length}</p>
+              <p className="font-medium text-slate-900">{resumoGlobal.todos}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Status da etapa</p>
@@ -2025,7 +2013,7 @@ export function TabelaConciliacaoFornecedor({
                 Prontos para publicar
               </p>
               <p className="mt-1 text-2xl font-semibold text-slate-950">
-                {resumo.prontos}
+                {resumoGlobal.prontos}
               </p>
             </div>
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -2038,7 +2026,7 @@ export function TabelaConciliacaoFornecedor({
                 Pendências obrigatórias
               </p>
               <p className="mt-1 text-2xl font-semibold text-amber-950">
-                {resumo.pendencias}
+                {resumoGlobal.pendencias}
               </p>
             </div>
             <FileWarning className="h-5 w-5 text-amber-600" />
@@ -2049,7 +2037,7 @@ export function TabelaConciliacaoFornecedor({
             <div>
               <p className="text-xs font-medium text-slate-500">Alertas</p>
               <p className="mt-1 text-2xl font-semibold text-slate-950">
-                {resumo.alertas}
+                {resumoGlobal.alertas}
               </p>
             </div>
             <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -2062,10 +2050,7 @@ export function TabelaConciliacaoFornecedor({
                 Novos produtos
               </p>
               <p className="mt-1 text-2xl font-semibold text-slate-950">
-                {
-                  itens.filter((item) => item.statusVinculacao === "novo")
-                    .length
-                }
+                {resumoGlobal.novos}
               </p>
             </div>
             <PackageCheck className="h-5 w-5 text-slate-500" />
@@ -2075,12 +2060,12 @@ export function TabelaConciliacaoFornecedor({
 
       <div className="flex gap-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-2">
         {filtros.map((item) => (
-          <button
+          <Link
             key={item.valor}
-            type="button"
-            onClick={() => setFiltro(item.valor)}
+            href={montarHrefFiltros({ filtro: item.valor })}
+            aria-current={filtroAtivo === item.valor ? "page" : undefined}
             className={`inline-flex min-w-max items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
-              filtro === item.valor
+              filtroAtivo === item.valor
                 ? "bg-slate-950 text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100"
             }`}
@@ -2088,27 +2073,41 @@ export function TabelaConciliacaoFornecedor({
             {item.label}
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
-                filtro === item.valor
+                filtroAtivo === item.valor
                   ? "bg-white/15 text-white"
                   : "bg-slate-100 text-slate-500"
               }`}
             >
               {item.total}
             </span>
-          </button>
+          </Link>
         ))}
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
-        <label className="relative block">
-          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={busca}
-            onChange={(evento) => setBusca(evento.target.value)}
-            placeholder="Buscar por produto, código ou status"
-            className="h-10 pl-9"
-          />
-        </label>
+        <form
+          className="flex gap-2"
+          onSubmit={(evento) => {
+            evento.preventDefault();
+            router.push(montarHrefFiltros({ busca }));
+          }}
+        >
+          <label className="relative block flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={busca}
+              onChange={(evento) => setBusca(evento.target.value)}
+              placeholder="Buscar por produto ou código"
+              className="h-10 pl-9"
+            />
+          </label>
+          <Button type="submit" variant="outline">
+            Buscar
+          </Button>
+        </form>
+        <p className="mt-2 text-xs text-slate-500">
+          “Selecionar todos” seleciona somente os itens visíveis desta página.
+        </p>
       </div>
 
       {totalSelecionados > 0 ? (

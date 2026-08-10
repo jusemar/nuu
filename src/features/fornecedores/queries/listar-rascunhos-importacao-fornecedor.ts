@@ -88,6 +88,27 @@ export type RascunhoImportacaoFornecedor = {
   prazoAtualLoja: string | null;
 };
 
+export const FILTROS_CONCILIACAO_FORNECEDOR = [
+  "todos",
+  "novos",
+  "vinculados",
+  "pendencias",
+  "alertas",
+  "prontos",
+] as const;
+
+export type FiltroConciliacaoFornecedor =
+  (typeof FILTROS_CONCILIACAO_FORNECEDOR)[number];
+
+export type ResumoConciliacaoFornecedor = {
+  todos: number;
+  novos: number;
+  vinculados: number;
+  pendencias: number;
+  alertas: number;
+  prontos: number;
+};
+
 function ehRegistro(valor: unknown): valor is Record<string, unknown> {
   return typeof valor === "object" && valor !== null && !Array.isArray(valor);
 }
@@ -116,10 +137,12 @@ export async function listarRascunhosImportacaoFornecedor(
     pagina?: number | string | null;
     limite?: number | string | null;
     busca?: string;
+    filtro?: FiltroConciliacaoFornecedor;
   },
 ): Promise<{
   itens: RascunhoImportacaoFornecedor[];
   paginacao: PaginacaoFornecedores;
+  resumo: ResumoConciliacaoFornecedor;
 }> {
   const origem =
     origemInformada ??
@@ -138,7 +161,7 @@ export async function listarRascunhosImportacaoFornecedor(
    * filtro removeria algumas, entregando páginas de tamanho irregular e um
    * total que não bate com a lista.
    */
-  const condicoesFila = and(
+  const condicoesBase = and(
     eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
     eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
     inArray(produtoRascunhosTable.status, [
@@ -158,6 +181,52 @@ export async function listarRascunhosImportacaoFornecedor(
            and v.status = 'ativo'
       )
     )`,
+  );
+
+  // Mesmas regras que montam os estados visuais da Conciliação, expressas uma
+  // única vez para servirem à página, aos filtros e aos cards globais.
+  const ehAtualizacao = sql<boolean>`${produtoRascunhosTable.produtoAtualizadoId} is not null`;
+  const precoInvalido = sql<boolean>`${produtoRascunhosTable.precoLoja} is null or ${produtoRascunhosTable.precoLoja} <= 0`;
+  const secoesAusentes = sql<boolean>`not exists (
+    select 1
+      from jsonb_array_elements_text(coalesce(${produtoRascunhosTable.dadosOrigemJson}->'secoesLoja', ${produtoRascunhosTable.dadosOrigemJson}->'produtoRascunho'->'storeProductFlags', '[]'::jsonb)) as secao(valor)
+     where secao.valor in ('general', 'new', 'sale', 'featured', 'bestseller')
+  )`;
+  const modalidadeAusente = sql<boolean>`coalesce(${produtoRascunhosTable.dadosOrigemJson}->'configuracaoComercial'->>'modalidade', '') not in ('stock', 'pre_sale', 'dropshipping', 'order_basis')`;
+  const prazoAusente = sql<boolean>`coalesce(${produtoRascunhosTable.dadosOrigemJson}->'configuracaoComercial'->'prazoEntrega'->>'estrategia', 'conciliacao') <> 'ignorar' and btrim(coalesce(${produtoRascunhosTable.dadosOrigemJson}->'configuracaoComercial'->'prazoEntrega'->>'valorPadraoTexto', '')) = ''`;
+  const possuiPendencia = sql<boolean>`case
+    when ${ehAtualizacao} then ${precoInvalido}
+    else btrim(${produtoRascunhosTable.nome}) = ''
+      or ${produtoRascunhosTable.categoriaId} is null
+      or ${produtoRascunhosTable.marcaId} is null
+      or ${precoInvalido}
+      or ${secoesAusentes}
+      or ${modalidadeAusente}
+      or (${prazoAusente})
+  end`;
+  const possuiAlertaNovo = sql<boolean>`${produtoRascunhosTable.ncm} is null or ${produtoRascunhosTable.ncm} = '' or ${produtoRascunhosTable.ean} is null or ${produtoRascunhosTable.ean} = '' or coalesce(jsonb_array_length(coalesce(${produtoRascunhosTable.imagens}, '[]'::jsonb)), 0) = 0`;
+  const ehPronto = sql<boolean>`not (${possuiPendencia}) and (
+    ${produtoRascunhosTable.status} = 'pronto_para_publicar'
+    or (not (${ehAtualizacao}) and not (${possuiAlertaNovo}))
+  )`;
+  const possuiAlerta = sql<boolean>`not (${possuiPendencia}) and not (${ehPronto})`;
+  const filtro = opcoes?.filtro ?? "todos";
+  const condicaoFiltro =
+    filtro === "novos"
+      ? sql`${produtoRascunhosTable.produtoAtualizadoId} is null`
+      : filtro === "vinculados"
+        ? sql`${produtoRascunhosTable.produtoAtualizadoId} is not null`
+        : filtro === "pendencias"
+          ? possuiPendencia
+          : filtro === "alertas"
+            ? possuiAlerta
+            : filtro === "prontos"
+              ? ehPronto
+              : undefined;
+
+  const condicoesFila = and(
+    condicoesBase,
+    condicaoFiltro,
     ...(termoBusca
       ? [
           or(
@@ -168,9 +237,9 @@ export async function listarRascunhosImportacaoFornecedor(
       : []),
   );
 
-  // Página, total e variantes ficam na mesma leitura protegida para que uma
+  // Página, total, resumo global e variantes ficam na mesma leitura protegida para que uma
   // retentativa refaça o conjunto coerente inteiro.
-  const { linhas, paginacao, variantesProdutosAtualizados } =
+  const { linhas, paginacao, resumo, variantesProdutosAtualizados } =
     await executarLeituraFornecedores(
       {
         etapa: "conciliacao:listar-rascunhos",
@@ -259,13 +328,25 @@ export async function listarRascunhosImportacaoFornecedor(
             .limit(limite)
             .offset(offsetPagina);
 
-        const [linhasIniciais, [{ total } = { total: 0 }]] = await Promise.all([
-          listarPagina(offset),
-          db
-            .select({ total: count() })
-            .from(produtoRascunhosTable)
-            .where(condicoesFila),
-        ]);
+        const [linhasIniciais, [{ total } = { total: 0 }], [resumoGlobal]] =
+          await Promise.all([
+            listarPagina(offset),
+            db
+              .select({ total: count() })
+              .from(produtoRascunhosTable)
+              .where(condicoesFila),
+            db
+              .select({
+                todos: count(),
+                novos: sql<number>`count(*) filter (where not (${ehAtualizacao}))`,
+                vinculados: sql<number>`count(*) filter (where ${ehAtualizacao})`,
+                pendencias: sql<number>`count(*) filter (where ${possuiPendencia})`,
+                alertas: sql<number>`count(*) filter (where ${possuiAlerta})`,
+                prontos: sql<number>`count(*) filter (where ${ehPronto})`,
+              })
+              .from(produtoRascunhosTable)
+              .where(condicoesBase),
+          ]);
         const paginacao = calcularPaginacaoFornecedores({
           pagina: opcoes?.pagina,
           limite: opcoes?.limite,
@@ -312,6 +393,14 @@ export async function listarRascunhosImportacaoFornecedor(
         return {
           linhas: linhasRascunho,
           paginacao,
+          resumo: {
+            todos: Number(resumoGlobal?.todos ?? 0),
+            novos: Number(resumoGlobal?.novos ?? 0),
+            vinculados: Number(resumoGlobal?.vinculados ?? 0),
+            pendencias: Number(resumoGlobal?.pendencias ?? 0),
+            alertas: Number(resumoGlobal?.alertas ?? 0),
+            prontos: Number(resumoGlobal?.prontos ?? 0),
+          },
           variantesProdutosAtualizados,
         };
       },
@@ -359,6 +448,7 @@ export async function listarRascunhosImportacaoFornecedor(
   // irregular e um total que não bate com a lista.
   return {
     paginacao,
+    resumo,
     itens: linhas.map(
       ({
         dadosOrigemJson,

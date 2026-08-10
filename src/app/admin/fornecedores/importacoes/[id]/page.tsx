@@ -15,6 +15,10 @@ import {
   listarStagingImportacaoFornecedorAdmin,
 } from "@/features/fornecedores/queries";
 import {
+  type FiltroConciliacaoFornecedor,
+  FILTROS_CONCILIACAO_FORNECEDOR,
+} from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
+import {
   contarEstagiosVinculacaoFornecedor,
   type EstagioVinculacaoFornecedor,
 } from "@/features/fornecedores/queries/listar-staging-importacao-fornecedor-admin";
@@ -22,7 +26,6 @@ import {
   listarValoresDistintosStagingFornecedor,
   resumirRevisaoImportacaoFornecedor,
 } from "@/features/fornecedores/queries/resumir-revisao-importacao-fornecedor";
-
 
 type ImportacaoFornecedorDetalhePageProps = {
   params: Promise<{ id: string }>;
@@ -41,6 +44,7 @@ type ImportacaoFornecedorDetalhePageProps = {
     paginaConciliacao?: string;
     limiteConciliacao?: string;
     buscaConciliacao?: string;
+    filtroConciliacao?: string;
     paginaRevisao?: string;
     limite?: string;
     limiteRevisao?: string;
@@ -85,7 +89,6 @@ function normalizarStatus(
     : undefined;
 }
 
-
 async function listarOpcoesMapeamentoFornecedorComFallback() {
   try {
     return await listarOpcoesMapeamentoFornecedor();
@@ -115,6 +118,11 @@ export default async function Page({
   const pagina = normalizarPaginaFornecedores(parametros.pagina);
   const limiteRevisao = numeroParametro(parametros.limiteRevisao, 10);
   const paginaRevisao = numeroParametro(parametros.paginaRevisao, 1);
+  const filtroConciliacao = FILTROS_CONCILIACAO_FORNECEDOR.includes(
+    parametros.filtroConciliacao as FiltroConciliacaoFornecedor,
+  )
+    ? (parametros.filtroConciliacao as FiltroConciliacaoFornecedor)
+    : "todos";
 
   const importacoes = await listarImportacoesFornecedoresAdmin();
   const importacao = importacoes.find((item) => item.id === id);
@@ -129,6 +137,8 @@ export default async function Page({
     buscaRevisao: parametros.buscaRevisao ?? "",
     categoriaRevisao: parametros.categoriaRevisao ?? "",
     marcaRevisao: parametros.marcaRevisao ?? "",
+    buscaConciliacao: parametros.buscaConciliacao ?? "",
+    filtroConciliacao,
     codigoFornecedor: parametros.codigoFornecedor ?? "",
     categoriaFornecedor: parametros.categoriaFornecedor ?? "",
     marcaFornecedor: parametros.marcaFornecedor ?? "",
@@ -162,41 +172,85 @@ export default async function Page({
     opcoesMapeamento,
     rascunhosImportacao,
   ] = await Promise.all([
-    contarEstagiosVinculacaoFornecedor(id),
-    listarStagingImportacaoFornecedorAdmin({
-      importacaoId: id,
-      busca: filtros.busca,
-      codigoFornecedor: filtros.codigoFornecedor,
-      categoriaFornecedor: filtros.categoriaFornecedor,
-      marcaFornecedor: filtros.marcaFornecedor,
-      status: filtros.status,
-      estagio: (filtros.estagio ||
-        undefined) as EstagioVinculacaoFornecedor | undefined,
-      pagina,
-      limite,
-    }),
+    etapa === "vinculacao"
+      ? contarEstagiosVinculacaoFornecedor(id)
+      : Promise.resolve({
+          todos: 0,
+          vinculados: 0,
+          pendentes: 0,
+          novos: 0,
+          ignorados: 0,
+          publicados: 0,
+          erros: 0,
+        }),
+    etapa === "vinculacao"
+      ? listarStagingImportacaoFornecedorAdmin({
+          importacaoId: id,
+          busca: filtros.busca,
+          codigoFornecedor: filtros.codigoFornecedor,
+          categoriaFornecedor: filtros.categoriaFornecedor,
+          marcaFornecedor: filtros.marcaFornecedor,
+          status: filtros.status,
+          estagio: (filtros.estagio || undefined) as
+            | EstagioVinculacaoFornecedor
+            | undefined,
+          pagina,
+          limite,
+        })
+      : Promise.resolve({
+          linhas: [],
+          paginacao: {
+            pagina: 1,
+            limite,
+            total: 0,
+            totalPaginas: 1,
+            offset: 0,
+          },
+        }),
     precisaDasLinhasCompletas
       ? listarStagingImportacaoFornecedor(id)
       : Promise.resolve([]),
-    filtros.vincularStagingId
+    etapa === "vinculacao" && filtros.vincularStagingId
       ? buscarProdutosParaVinculoFornecedor({
           busca: filtros.buscaProduto,
         })
       : [],
     resumirRevisaoImportacaoFornecedor(id),
-    listarValoresDistintosStagingFornecedor(id),
+    etapa === "vinculacao"
+      ? listarValoresDistintosStagingFornecedor(id)
+      : Promise.resolve({ categorias: [], marcas: [] }),
     listarOpcoesMapeamentoFornecedorComFallback(),
     // A origem sai da importação já carregada acima: evita uma consulta
     // redundante e, com ela, mais um ponto de falha no recarregamento da tela.
-    listarRascunhosImportacaoFornecedor(
-      id,
-      origemDaImportacaoFornecedor(importacao),
-      {
-        pagina: parametros.paginaConciliacao,
-        limite: parametros.limiteConciliacao,
-        busca: parametros.buscaConciliacao,
-      },
-    ),
+    etapa === "revisao"
+      ? listarRascunhosImportacaoFornecedor(
+          id,
+          origemDaImportacaoFornecedor(importacao),
+          {
+            pagina: parametros.paginaConciliacao,
+            limite: parametros.limiteConciliacao,
+            busca: parametros.buscaConciliacao,
+            filtro: filtroConciliacao,
+          },
+        )
+      : Promise.resolve({
+          itens: [],
+          paginacao: {
+            pagina: 1,
+            limite: normalizarLimiteFornecedores(parametros.limiteConciliacao),
+            total: 0,
+            totalPaginas: 1,
+            offset: 0,
+          },
+          resumo: {
+            todos: 0,
+            novos: 0,
+            vinculados: 0,
+            pendencias: 0,
+            alertas: 0,
+            prontos: 0,
+          },
+        }),
   ]);
 
   return (
@@ -214,6 +268,8 @@ export default async function Page({
       categoriasLoja={opcoesMapeamento.categoriasLoja}
       rascunhosImportacao={rascunhosImportacao.itens}
       paginacaoConciliacao={rascunhosImportacao.paginacao}
+      resumoConciliacao={rascunhosImportacao.resumo}
+      filtroConciliacao={filtroConciliacao}
       buscaConciliacao={parametros.buscaConciliacao ?? ""}
       contadoresEstagio={contadoresEstagio}
     />

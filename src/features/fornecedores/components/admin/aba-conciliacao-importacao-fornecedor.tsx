@@ -1,4 +1,5 @@
 import { PaginacaoAdmin } from "@/components/shared/paginacao-admin";
+import { classificarSituacaoConciliacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/classificar-situacao-conciliacao-fornecedor";
 import {
   OPCOES_LIMITE_FORNECEDORES,
   type PaginacaoFornecedores,
@@ -9,7 +10,11 @@ import {
   ajustarPrecosRascunhosImportacaoFornecedor,
   atualizarCamposRascunhosImportacaoFornecedor,
 } from "../../actions/atualizar-rascunhos-conciliacao-importacao-fornecedor";
-import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
+import type {
+  FiltroConciliacaoFornecedor,
+  RascunhoImportacaoFornecedor,
+  ResumoConciliacaoFornecedor,
+} from "../../queries/listar-rascunhos-importacao-fornecedor";
 import {
   type ItemConciliacaoFornecedor,
   TabelaConciliacaoFornecedor,
@@ -32,6 +37,15 @@ type AbaConciliacaoImportacaoFornecedorProps = {
   tipoOrigem?: "arquivo" | "api";
   /** Paginação da fila ativa, calculada no servidor. */
   paginacao: PaginacaoFornecedores;
+  resumo: ResumoConciliacaoFornecedor;
+  filtro: FiltroConciliacaoFornecedor;
+  busca: string;
+  navegacaoFiltros: {
+    hrefAtual: string;
+    parametroPagina: string;
+    parametroBusca: string;
+    parametroFiltro: string;
+  };
   montarHrefPagina: (mudancas: { pagina?: number; limite?: number }) => string;
 };
 
@@ -152,12 +166,12 @@ function montarItemConciliacaoAtualizacao(
     },
     acaoPrevista: "atualizar",
     statusVinculacao: "vinculado",
-    status:
-      pendenciasObrigatorias.length > 0
-        ? "pendencia"
-        : rascunho.status === "pronto_para_publicar"
-          ? "pronto"
-          : "alerta",
+    status: classificarSituacaoConciliacaoFornecedor({
+      atualizacao: true,
+      possuiPendencia: pendenciasObrigatorias.length > 0,
+      possuiAlertaNovo: false,
+      status: rascunho.status,
+    }),
     pendenciasObrigatorias,
     alertas: montarAlertasItemVinculado(rascunho, aguardandoAprovacao),
     regrasObrigatorias: pendenciasObrigatorias.map((pendencia) => ({
@@ -234,14 +248,12 @@ function montarItensConciliacaoArquivo(
       },
       acaoPrevista: "criar",
       statusVinculacao: "novo",
-      status:
-        pendenciasObrigatorias.length > 0
-          ? "pendencia"
-          : rascunho.status === "pronto_para_publicar"
-            ? "pronto"
-            : alertas.length > 0
-              ? "alerta"
-              : "pronto",
+      status: classificarSituacaoConciliacaoFornecedor({
+        atualizacao: false,
+        possuiPendencia: pendenciasObrigatorias.length > 0,
+        possuiAlertaNovo: alertas.length > 0,
+        status: rascunho.status,
+      }),
       pendenciasObrigatorias,
       alertas,
       regrasObrigatorias: pendenciasObrigatorias.map((pendencia) => ({
@@ -294,54 +306,48 @@ export function AbaConciliacaoImportacaoFornecedor({
   hrefProximaEtapa,
   tipoOrigem = "arquivo",
   paginacao,
+  resumo,
+  filtro,
+  busca,
+  navegacaoFiltros,
   montarHrefPagina,
 }: AbaConciliacaoImportacaoFornecedorProps) {
-  if (rascunhos.length === 0) {
-    return (
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-xs">
-        <p className="font-medium text-slate-900">
-          Nenhum item selecionado para conciliação ainda.
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          Volte para Vinculação, selecione os itens vinculados ou marcados como
-          novos e clique em &quot;Continuar para conciliação&quot;.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
-    <TabelaConciliacaoFornecedor
-      tipoOrigem={tipoOrigem}
-      fornecedor={fornecedor}
-      titulo="Conciliação da importação"
-      subtitulo="Revise os rascunhos criados antes de avançar no fluxo."
-      hrefVoltar={
-        hrefVoltar ??
-        `/admin/fornecedores/importacoes/${importacaoId}?etapa=vinculacao`
-      }
-      hrefProximaEtapa={
-        hrefProximaEtapa ??
-        `/admin/fornecedores/importacoes/${importacaoId}/publicacao`
-      }
-      textoAcaoPrincipal="Continuar para publicação"
-      itens={montarItensConciliacaoArquivo(rascunhos)}
-      aoAjustarPrecosSelecionados={ajustarPrecosRascunhosImportacaoFornecedor.bind(
-        null,
-        importacaoId,
-      )}
-      aoAtualizarCamposRascunhos={atualizarCamposRascunhosImportacaoFornecedor.bind(
-        null,
-        importacaoId,
-      )}
-      aoAlterarDecisaoRascunhos={alterarDecisaoRascunhosImportacaoFornecedor.bind(
-        null,
-        importacaoId,
-      )}
-      categoriasLoja={categoriasLoja}
-      marcasLoja={marcasLoja}
-    />
+      <TabelaConciliacaoFornecedor
+        tipoOrigem={tipoOrigem}
+        fornecedor={fornecedor}
+        titulo="Conciliação da importação"
+        subtitulo="Revise os rascunhos criados antes de avançar no fluxo."
+        hrefVoltar={
+          hrefVoltar ??
+          `/admin/fornecedores/importacoes/${importacaoId}?etapa=vinculacao`
+        }
+        hrefProximaEtapa={
+          hrefProximaEtapa ??
+          `/admin/fornecedores/importacoes/${importacaoId}/publicacao`
+        }
+        textoAcaoPrincipal="Continuar para publicação"
+        itens={montarItensConciliacaoArquivo(rascunhos)}
+        resumoGlobal={resumo}
+        filtroAtivo={filtro}
+        buscaInicial={busca}
+        navegacaoFiltros={navegacaoFiltros}
+        aoAjustarPrecosSelecionados={ajustarPrecosRascunhosImportacaoFornecedor.bind(
+          null,
+          importacaoId,
+        )}
+        aoAtualizarCamposRascunhos={atualizarCamposRascunhosImportacaoFornecedor.bind(
+          null,
+          importacaoId,
+        )}
+        aoAlterarDecisaoRascunhos={alterarDecisaoRascunhosImportacaoFornecedor.bind(
+          null,
+          importacaoId,
+        )}
+        categoriasLoja={categoriasLoja}
+        marcasLoja={marcasLoja}
+      />
 
       <PaginacaoAdmin
         pagina={paginacao.pagina}

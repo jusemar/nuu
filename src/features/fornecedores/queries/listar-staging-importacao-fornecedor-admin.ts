@@ -8,38 +8,94 @@ import {
   ilike,
   isNotNull,
   isNull,
-  not,
   or,
   sql,
 } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { fornecedorProdutosStagingTable, productTable } from "@/db/schema";
+import {
+  fornecedorProdutosStagingTable,
+  productTable,
+  produtoRascunhosTable,
+} from "@/db/schema";
 import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 /**
- * "Este item já concluiu a Publicação NESTA importação?"
+ * Decisões tomadas nesta importação, agrupadas por linha de staging.
  *
- * Vínculo permanente e status da importação são coisas diferentes, e a tela
- * confundia as duas: um produto já publicado continuava exibido como
- * "Vinculado", porque o único sinal consultado era `produto_localizado_id` —
- * que aponta para o produto real e permanece para sempre, inclusive nas
- * próximas importações.
+ * Vínculo permanente e estágio da importação são coisas diferentes: um produto
+ * publicado continua vinculado para sempre, inclusive nas próximas execuções.
+ * O que muda entre etapas está no RASCUNHO desta importação — e é ele que
+ * responde "já publicou aqui?" e "o gestor mandou criar produto novo aqui?".
  *
- * O estágio do item dentro DESTA execução está no rascunho dela: `publicado` já
- * existe em `produto_rascunho_status`, então não há enum novo. O `stagingId` e
- * o `importacaoId` gravados em `dados_origem_json` amarram o rascunho à linha
- * de staging certa — é isso que impede a publicação de uma importação de mudar
- * o status exibido em outra.
+ * Vem como subconsulta agrupada, e não como `exists` correlacionado, por uma
+ * razão medida: com `exists` dentro do `case`, o Postgres reavaliava a
+ * expressão inteira uma vez por linha e por contador — 685 linhas × 6 baldes,
+ * 171 mil buffers e 655 ms POR contador, ~4,6 s na tela. Agrupado, os rascunhos
+ * da importação são lidos uma vez só.
  */
-function publicadoNestaImportacaoSql(importacaoId: string) {
-  return sql<boolean>`exists (
-    select 1
-      from produto_rascunhos pr
-     where pr.dados_origem_json->'origemFluxoFornecedor'->>'stagingId' = ${fornecedorProdutosStagingTable.id}::text
-       and pr.dados_origem_json->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}
-       and pr.status = 'publicado'
-  )`;
+function decisoesDaImportacao(importacaoId: string) {
+  return db
+    .select({
+      stagingId:
+        sql<string>`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'stagingId'`.as(
+          "staging_id",
+        ),
+      publicado:
+        sql<boolean>`bool_or(${produtoRascunhosTable.status} = 'publicado')`.as(
+          "publicado",
+        ),
+      marcadoComoNovo:
+        sql<boolean>`bool_or(${produtoRascunhosTable.produtoAtualizadoId} is null and ${produtoRascunhosTable.status} <> 'publicado')`.as(
+          "marcado_como_novo",
+        ),
+    })
+    .from(produtoRascunhosTable)
+    .where(
+      sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
+    )
+    .groupBy(
+      sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'stagingId'`,
+    )
+    .as("decisoes_da_importacao");
+}
+
+type DecisoesDaImportacao = ReturnType<typeof decisoesDaImportacao>;
+
+export const ESTAGIOS_VINCULACAO_FORNECEDOR = [
+  "publicado",
+  "vinculado",
+  "novo",
+  "pendente",
+  "ignorado",
+  "erro",
+] as const;
+
+export type EstagioVinculacaoFornecedor =
+  (typeof ESTAGIOS_VINCULACAO_FORNECEDOR)[number];
+
+/**
+ * Estágio do item, como UMA expressão SQL.
+ *
+ * Fonte única: o mesmo `CASE` filtra a listagem e alimenta os contadores. Antes
+ * havia seis predicados soltos repetidos entre o `where` e o `count filter`, e
+ * qualquer ajuste em um sem o outro produzia o sintoma clássico — "o contador
+ * diz 42, a lista mostra 44".
+ *
+ * A ordem é a regra de negócio: terminais primeiro (publicado, ignorado),
+ * depois falha de leitura, depois decisão explícita do gestor, depois vínculo,
+ * e por fim "ninguém decidiu ainda". É a mesma ordem de
+ * `lib/estagio-item-importacao-fornecedor`, que a testa.
+ */
+function estagioSql(decisoes: DecisoesDaImportacao) {
+  return sql<EstagioVinculacaoFornecedor>`case
+    when coalesce(${decisoes.publicado}, false) then 'publicado'
+    when ${fornecedorProdutosStagingTable.status} = 'ignorado' then 'ignorado'
+    when ${fornecedorProdutosStagingTable.status} in ('erro', 'rejeitado') then 'erro'
+    when coalesce(${decisoes.marcadoComoNovo}, false) then 'novo'
+    when ${fornecedorProdutosStagingTable.produtoLocalizadoId} is not null then 'vinculado'
+    else 'pendente'
+  end`;
 }
 
 type FiltrosStagingImportacaoFornecedorAdmin = {
@@ -49,11 +105,8 @@ type FiltrosStagingImportacaoFornecedorAdmin = {
   categoriaFornecedor?: string;
   marcaFornecedor?: string;
   status?: StatusStagingFiltro;
-  /**
-   * `publicado` é estágio da importação, não presença de vínculo — por isso
-   * entra aqui junto de `vinculado`, e não no filtro de status do staging.
-   */
-  vinculo?: "vinculado" | "nao_vinculado" | "publicado";
+  /** Estágio do item nesta importação. Substituiu o antigo filtro `vinculo`. */
+  estagio?: EstagioVinculacaoFornecedor;
   pagina?: number;
   limite?: number;
 };
@@ -79,7 +132,10 @@ function normalizarLimite(valor?: number) {
   return valor && limitesPermitidos.includes(valor) ? valor : 25;
 }
 
-function montarCondicoes(filtros: FiltrosStagingImportacaoFornecedorAdmin) {
+function montarCondicoes(
+  filtros: FiltrosStagingImportacaoFornecedorAdmin,
+  decisoes: DecisoesDaImportacao,
+) {
   const condicoes = [
     eq(fornecedorProdutosStagingTable.importacaoId, filtros.importacaoId),
   ];
@@ -124,22 +180,9 @@ function montarCondicoes(filtros: FiltrosStagingImportacaoFornecedorAdmin) {
     condicoes.push(eq(fornecedorProdutosStagingTable.status, filtros.status));
   }
 
-  // "Vinculados" passa a significar "vinculado e ainda NÃO publicado nesta
-  // importação": depois de publicado o item mudou de estágio, e continuar
-  // listando-o ali faria o gestor procurar trabalho onde não há mais.
-  if (filtros.vinculo === "vinculado") {
-    condicoes.push(
-      isNotNull(fornecedorProdutosStagingTable.produtoLocalizadoId),
-      not(publicadoNestaImportacaoSql(filtros.importacaoId)),
-    );
-  }
-
-  if (filtros.vinculo === "nao_vinculado") {
-    condicoes.push(isNull(fornecedorProdutosStagingTable.produtoLocalizadoId));
-  }
-
-  if (filtros.vinculo === "publicado") {
-    condicoes.push(publicadoNestaImportacaoSql(filtros.importacaoId));
+  // Um filtro só, a partir da MESMA expressão que alimenta os contadores.
+  if (filtros.estagio) {
+    condicoes.push(sql`${estagioSql(decisoes)} = ${filtros.estagio}`);
   }
 
   return and(...condicoes);
@@ -151,7 +194,8 @@ export async function listarStagingImportacaoFornecedorAdmin(
   const pagina = normalizarPagina(filtros.pagina);
   const limite = normalizarLimite(filtros.limite);
   const offset = (pagina - 1) * limite;
-  const condicoes = montarCondicoes(filtros);
+  const decisoes = decisoesDaImportacao(filtros.importacaoId);
+  const condicoes = montarCondicoes(filtros, decisoes);
 
   // As duas consultas (página + contagem) ficam dentro da MESMA leitura protegida porque
   // precisam concordar entre si: repetir só a contagem poderia devolver um total que não
@@ -190,9 +234,7 @@ export async function listarStagingImportacaoFornecedorAdmin(
             atualizadoEm: fornecedorProdutosStagingTable.atualizadoEm,
             produtoVinculadoNome: productTable.name,
             produtoVinculadoSku: productTable.sku,
-            publicadoNestaImportacao: publicadoNestaImportacaoSql(
-              filtros.importacaoId,
-            ),
+            estagio: estagioSql(decisoes),
           })
           .from(fornecedorProdutosStagingTable)
           .leftJoin(
@@ -201,6 +243,10 @@ export async function listarStagingImportacaoFornecedorAdmin(
               productTable.id,
               fornecedorProdutosStagingTable.produtoLocalizadoId,
             ),
+          )
+          .leftJoin(
+            decisoes,
+            eq(decisoes.stagingId, sql`${fornecedorProdutosStagingTable.id}::text`),
           )
           .where(condicoes)
           .orderBy(asc(fornecedorProdutosStagingTable.criadoEm))
@@ -215,6 +261,10 @@ export async function listarStagingImportacaoFornecedorAdmin(
               productTable.id,
               fornecedorProdutosStagingTable.produtoLocalizadoId,
             ),
+          )
+          .leftJoin(
+            decisoes,
+            eq(decisoes.stagingId, sql`${fornecedorProdutosStagingTable.id}::text`),
           )
           .where(condicoes),
       ]),
@@ -254,7 +304,8 @@ export type ContadoresEstagioVinculacaoFornecedor = {
 export async function contarEstagiosVinculacaoFornecedor(
   importacaoId: string,
 ): Promise<ContadoresEstagioVinculacaoFornecedor> {
-  const publicado = publicadoNestaImportacaoSql(importacaoId);
+  const decisoes = decisoesDaImportacao(importacaoId);
+  const estagio = estagioSql(decisoes);
 
   const [linha] = await executarLeituraFornecedores(
     {
@@ -267,14 +318,18 @@ export async function contarEstagiosVinculacaoFornecedor(
       db
         .select({
           todos: count(),
-          publicados: sql<number>`count(*) filter (where ${publicado})`,
-          ignorados: sql<number>`count(*) filter (where not ${publicado} and ${fornecedorProdutosStagingTable.status} = 'ignorado')`,
-          erros: sql<number>`count(*) filter (where not ${publicado} and ${fornecedorProdutosStagingTable.status} in ('erro','rejeitado'))`,
-          novos: sql<number>`count(*) filter (where not ${publicado} and ${fornecedorProdutosStagingTable.status} not in ('ignorado','erro','rejeitado') and ${fornecedorProdutosStagingTable.criterioLocalizacao} = 'novo_produto_fornecedor')`,
-          vinculados: sql<number>`count(*) filter (where not ${publicado} and ${fornecedorProdutosStagingTable.status} not in ('ignorado','erro','rejeitado') and coalesce(${fornecedorProdutosStagingTable.criterioLocalizacao}, '') <> 'novo_produto_fornecedor' and ${fornecedorProdutosStagingTable.produtoLocalizadoId} is not null)`,
-          pendentes: sql<number>`count(*) filter (where not ${publicado} and ${fornecedorProdutosStagingTable.status} not in ('ignorado','erro','rejeitado') and coalesce(${fornecedorProdutosStagingTable.criterioLocalizacao}, '') <> 'novo_produto_fornecedor' and ${fornecedorProdutosStagingTable.produtoLocalizadoId} is null)`,
+          publicados: sql<number>`count(*) filter (where ${estagio} = 'publicado')`,
+          ignorados: sql<number>`count(*) filter (where ${estagio} = 'ignorado')`,
+          erros: sql<number>`count(*) filter (where ${estagio} = 'erro')`,
+          novos: sql<number>`count(*) filter (where ${estagio} = 'novo')`,
+          vinculados: sql<number>`count(*) filter (where ${estagio} = 'vinculado')`,
+          pendentes: sql<number>`count(*) filter (where ${estagio} = 'pendente')`,
         })
         .from(fornecedorProdutosStagingTable)
+        .leftJoin(
+          decisoes,
+          eq(decisoes.stagingId, sql`${fornecedorProdutosStagingTable.id}::text`),
+        )
         .where(eq(fornecedorProdutosStagingTable.importacaoId, importacaoId)),
   );
 

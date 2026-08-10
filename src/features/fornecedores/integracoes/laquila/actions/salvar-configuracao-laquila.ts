@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
-import { fornecedorIntegracoesApiTable, fornecedoresTable } from "@/db/schema";
+import { fornecedoresTable,fornecedorIntegracoesApiTable } from "@/db/schema";
 
 import {
   FORNECEDOR_LAQUILA_NOME,

@@ -2,8 +2,8 @@ import "server-only";
 
 import { desc, eq } from "drizzle-orm";
 
-import { fornecedorIntegracoesApiTable, fornecedoresTable } from "@/db/schema";
 import { db } from "@/db/connection";
+import { fornecedoresTable,fornecedorIntegracoesApiTable } from "@/db/schema";
 
 import {
   FORNECEDOR_LAQUILA_NOME,

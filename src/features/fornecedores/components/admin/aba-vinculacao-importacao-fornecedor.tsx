@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 
+import { PaginacaoAdmin } from "@/components/shared/paginacao-admin";
+import { OPCOES_LIMITE_FORNECEDORES } from "@/features/fornecedores/lib/paginacao-fornecedores";
+
 import { alterarTriagemProdutosStagingFornecedorAction } from "../../actions/alterar-triagem-produtos-staging-fornecedor";
 import { confirmarItensVinculacaoFornecedorAction } from "../../actions/confirmar-itens-vinculacao-fornecedor";
 import { removerRascunhoProdutoImportacaoFornecedor } from "../../actions/remover-rascunho-produto-importacao-fornecedor";
@@ -34,8 +37,11 @@ type LinhaVinculacaoFornecedor = {
   produtoVinculadoNome: string | null;
   produtoVinculadoSku: string | null;
   status: string;
-  /** Concluiu a Publicação NESTA importação. Vem derivado do rascunho. */
-  publicadoNestaImportacao?: boolean;
+  /**
+   * Estágio do item nesta importação, já derivado no banco pela mesma
+   * expressão que alimenta os contadores. A tela não recalcula nada.
+   */
+  estagio?: string;
   errosValidacao: Array<{ codigo: string; mensagem: string; campo?: string }>;
   dadosBrutos: Record<string, string | number | boolean | Date | null>;
 };
@@ -54,7 +60,7 @@ type FiltrosFornecedor = {
   categoriaFornecedor?: string;
   marcaFornecedor?: string;
   status?: string;
-  vinculo?: string;
+  estagio?: string;
   pagina: number;
   limite: number;
   vincularStagingId?: string;
@@ -78,21 +84,27 @@ function possuiProdutoRealVinculado(linha: LinhaVinculacaoFornecedor) {
 }
 
 /**
- * A regra vive em `lib/estagio-item-importacao-fornecedor`, onde é testada.
- * Aqui só se traduz o estágio para o vocabulário visual da tabela — que chama
- * "aguardando" o que o domínio chama "pendente".
+ * Traduz o estágio (vindo do banco) para o vocabulário visual da tabela, que
+ * chama "aguardando" o que o domínio chama "pendente".
+ *
+ * O fallback só existe para linhas que cheguem sem o campo; a regra canônica
+ * está em `lib/estagio-item-importacao-fornecedor`, testada.
  */
 function obterStatusVisual(
   linha: LinhaVinculacaoFornecedor,
 ): ItemVinculoFornecedor["status"] {
-  const estagio = derivarEstagioItemImportacaoFornecedor({
-    statusStaging: linha.status,
-    criterioLocalizacao: linha.criterioLocalizacao,
-    possuiProdutoVinculado: possuiProdutoRealVinculado(linha),
-    publicadoNestaImportacao: Boolean(linha.publicadoNestaImportacao),
-  });
+  const estagio =
+    linha.estagio ??
+    derivarEstagioItemImportacaoFornecedor({
+      statusStaging: linha.status,
+      possuiProdutoVinculado: possuiProdutoRealVinculado(linha),
+      marcadoComoNovo: false,
+      publicadoNestaImportacao: false,
+    });
 
-  return estagio === "pendente" ? "aguardando" : estagio;
+  return estagio === "pendente"
+    ? "aguardando"
+    : (estagio as ItemVinculoFornecedor["status"]);
 }
 
 function lerCampoBruto(
@@ -280,55 +292,87 @@ export function AbaVinculacaoImportacaoFornecedor({
     label: string;
     valor: number;
     classe: string;
-    /** Filtro do servidor que isola este estágio, quando existir. */
-    vinculo?: string;
+    /** Estágio isolado por este chip no servidor. */
+    estagio: string;
   }> = [
     {
-      chave: "publicados",
-      label: "Publicados",
-      valor: contadoresEstagio.publicados,
-      classe: "border-violet-200 bg-violet-50 text-violet-700",
-      vinculo: "publicado",
+      chave: "pendentes",
+      label: "Pendentes",
+      valor: contadoresEstagio.pendentes,
+      classe: "border-amber-200 bg-amber-50 text-amber-800",
+      estagio: "pendente",
     },
     {
       chave: "vinculados",
       label: "Vinculados",
       valor: contadoresEstagio.vinculados,
       classe: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      vinculo: "vinculado",
+      estagio: "vinculado",
     },
     {
       chave: "novos",
       label: "Novos",
       valor: contadoresEstagio.novos,
       classe: "border-blue-200 bg-blue-50 text-blue-700",
+      estagio: "novo",
     },
     {
-      chave: "pendentes",
-      label: "Pendentes",
-      valor: contadoresEstagio.pendentes,
-      classe: "border-amber-200 bg-amber-50 text-amber-800",
+      chave: "publicados",
+      label: "Publicados",
+      valor: contadoresEstagio.publicados,
+      classe: "border-violet-200 bg-violet-50 text-violet-700",
+      estagio: "publicado",
     },
     {
       chave: "ignorados",
       label: "Ignorados",
       valor: contadoresEstagio.ignorados,
       classe: "border-slate-200 bg-slate-100 text-slate-600",
+      estagio: "ignorado",
     },
     {
       chave: "erros",
       label: "Erros",
       valor: contadoresEstagio.erros,
+      estagio: "erro",
       classe: "border-red-200 bg-red-50 text-red-700",
     },
   ];
 
-  function hrefEstagio(vinculo?: string) {
-    const parametros = new URLSearchParams({
+  /**
+   * Endereço de um estágio. Trocar de filtro sempre volta para a página 1 —
+   * continuar na página 12 depois de filtrar deixaria a tela vazia sem
+   * explicação.
+   */
+  function hrefEstagio(estagio?: string) {
+    return montarHrefVinculacao({ estagio: estagio ?? "", pagina: 1 });
+  }
+
+  /** Preserva TODOS os filtros ativos ao mudar de página ou de limite. */
+  function montarHrefVinculacao(mudancas: {
+    pagina?: number;
+    limite?: number;
+    estagio?: string;
+  }) {
+    const parametros = new URLSearchParams();
+    const dados: Record<string, string | number | undefined> = {
       etapa: "vinculacao",
-      limite: String(filtros.limite),
+      busca: filtros.busca,
+      codigoFornecedor: filtros.codigoFornecedor,
+      categoriaFornecedor: filtros.categoriaFornecedor,
+      marcaFornecedor: filtros.marcaFornecedor,
+      status: filtros.status,
+      estagio: filtros.estagio,
+      pagina: filtros.pagina,
+      limite: filtros.limite,
+      ...mudancas,
+    };
+
+    Object.entries(dados).forEach(([chave, valor]) => {
+      if (valor !== undefined && valor !== "") {
+        parametros.set(chave, String(valor));
+      }
     });
-    if (vinculo) parametros.set("vinculo", vinculo);
 
     return `/admin/fornecedores/importacoes/${importacaoId}?${parametros.toString()}`;
   }
@@ -340,25 +384,23 @@ export function AbaVinculacaoImportacaoFornecedor({
           <span className="text-sm font-semibold text-slate-950">
             {contadoresEstagio.todos} itens nesta importação
           </span>
-          {resumoEstagios.map((estagio) =>
-            estagio.vinculo ? (
-              <Link
-                key={estagio.chave}
-                href={hrefEstagio(estagio.vinculo)}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-95 ${estagio.classe}`}
-              >
-                {estagio.valor} {estagio.label}
-              </Link>
-            ) : (
-              <span
-                key={estagio.chave}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${estagio.classe}`}
-              >
-                {estagio.valor} {estagio.label}
-              </span>
-            ),
-          )}
-          {filtros.vinculo ? (
+          {resumoEstagios.map((estagio) => (
+            <Link
+              key={estagio.chave}
+              href={hrefEstagio(estagio.estagio)}
+              aria-current={
+                filtros.estagio === estagio.estagio ? "true" : undefined
+              }
+              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-95 ${estagio.classe} ${
+                filtros.estagio === estagio.estagio
+                  ? "ring-2 ring-slate-900 ring-offset-1"
+                  : ""
+              }`}
+            >
+              {estagio.valor} {estagio.label}
+            </Link>
+          ))}
+          {filtros.estagio ? (
             <Link
               href={hrefEstagio()}
               className="text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-950"
@@ -403,10 +445,19 @@ export function AbaVinculacaoImportacaoFornecedor({
         }
       />
 
-      <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500">
-        Página {paginacao.pagina} de {paginacao.totalPaginas} ·{" "}
-        {paginacao.total} itens
-      </div>
+      {/*
+        A barra que faltava. A consulta já paginava em 25, mas a tela só
+        imprimia "Página 1 de 28" como texto — não havia como chegar à página 2.
+      */}
+      <PaginacaoAdmin
+        pagina={paginacao.pagina}
+        totalPaginas={paginacao.totalPaginas}
+        total={paginacao.total}
+        limite={paginacao.limite}
+        opcoesLimite={OPCOES_LIMITE_FORNECEDORES}
+        montarHref={montarHrefVinculacao}
+        rotuloItens="produtos"
+      />
     </section>
   );
 }

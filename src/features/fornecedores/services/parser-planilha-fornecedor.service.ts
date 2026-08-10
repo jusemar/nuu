@@ -6,8 +6,8 @@ import type {
   LinhaPlanilhaFornecedor,
   MapeamentoColunaFornecedor,
   OrigemMapeamentoColunaFornecedor,
-  ResultadoParserFornecedor,
   ResultadoDeteccaoColunaFornecedor,
+  ResultadoParserFornecedor,
 } from "../types/fornecedores.types";
 
 type LinhaBruta = Array<string | number | boolean | Date | null | undefined>;

@@ -224,10 +224,19 @@ export type StagingFornecedorComImportacao = DadosFornecedorProdutoStaging & {
   nomeFornecedor: string;
 };
 
+/**
+ * Por que a análise (não) encontrou o produto. É DIAGNÓSTICO, não decisão.
+ *
+ * `novo_produto_fornecedor` continua no tipo porque existe gravado em linhas
+ * antigas, mas nada novo é escrito com ele: a análise passou a usar
+ * `sem_vinculo_encontrado`, e "criar produto novo" é decisão do gestor,
+ * registrada no rascunho.
+ */
 export type CriterioLocalizacaoProdutoFornecedor =
   | "vinculo_fornecedor"
   | "vinculo_manual_fornecedor"
   | "sem_codigo_fornecedor"
+  | "sem_vinculo_encontrado"
   | "novo_produto_fornecedor"
   | "nao_localizado";
 

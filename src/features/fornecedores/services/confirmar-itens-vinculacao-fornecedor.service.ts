@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -80,6 +80,15 @@ export async function confirmarItensVinculacaoFornecedor(
                 criterioLocalizacao:
                   fornecedorProdutosStagingTable.criterioLocalizacao,
                 status: fornecedorProdutosStagingTable.status,
+                // Decisão explícita "criar produto novo": existe rascunho de
+                // criação desta importação para esta linha de staging.
+                marcadoComoNovo: sql<boolean>`exists (
+                  select 1
+                    from produto_rascunhos pr
+                   where pr.dados_origem_json->'origemFluxoFornecedor'->>'stagingId' = ${fornecedorProdutosStagingTable.id}::text
+                     and pr.dados_origem_json->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}
+                     and pr.produto_atualizado_id is null
+                )`,
               })
               .from(fornecedorProdutosStagingTable)
               .where(
@@ -112,7 +121,11 @@ export async function confirmarItensVinculacaoFornecedor(
     }
 
     const vinculado = Boolean(linha.produtoLocalizadoId);
-    const novo = linha.criterioLocalizacao === "novo_produto_fornecedor";
+    // "Novo" é decisão do gestor, registrada como rascunho de criação — e não
+    // o diagnóstico que a análise automática grava em massa. Antes, com o
+    // critério fazendo esse papel, TODA linha sem vínculo entrava aqui como
+    // "já processada" e a barreira de item sem decisão nunca disparava.
+    const novo = Boolean(linha.marcadoComoNovo);
 
     if (!vinculado && !novo) {
       naoElegiveis.push({

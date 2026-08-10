@@ -9,7 +9,7 @@ export {
 export {
   buscarProdutosParaVinculoFornecedor,
   listarFornecedoresAdmin,
-  listarImportacoesFornecedoresAdmin,
   listarImportacoesFornecedor,
+  listarImportacoesFornecedoresAdmin,
   listarStagingImportacaoFornecedor,
 } from "./queries";

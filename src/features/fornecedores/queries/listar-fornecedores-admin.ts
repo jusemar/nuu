@@ -4,8 +4,8 @@ import { asc, count, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
-  fornecedorIntegracoesApiTable,
   fornecedoresTable,
+  fornecedorIntegracoesApiTable,
   importacoesFornecedorTable,
 } from "@/db/schema";
 

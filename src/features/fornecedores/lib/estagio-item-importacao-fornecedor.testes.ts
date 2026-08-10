@@ -9,7 +9,7 @@ import {
 /** Item vinculado a um produto real, ainda não publicado neste ciclo. */
 const vinculado = {
   statusStaging: "localizado",
-  criterioLocalizacao: null,
+  marcadoComoNovo: false,
   possuiProdutoVinculado: true,
   publicadoNestaImportacao: false,
 };
@@ -64,10 +64,10 @@ test("publicado vence ignorado: o ciclo terminou publicando", () => {
   assert.equal(estagio, "publicado");
 });
 
-test("marcado como novo produto aparece como novo, não como pendente", () => {
+test("marcado explicitamente como novo aparece como novo", () => {
   const estagio = derivarEstagioItemImportacaoFornecedor({
     statusStaging: "nao_localizado",
-    criterioLocalizacao: "novo_produto_fornecedor",
+    marcadoComoNovo: true,
     possuiProdutoVinculado: false,
     publicadoNestaImportacao: false,
   });
@@ -75,11 +75,17 @@ test("marcado como novo produto aparece como novo, não como pendente", () => {
   assert.equal(estagio, "novo");
 });
 
-test("sem vínculo e sem decisão fica pendente", () => {
+/**
+ * Regressão da classificação que o gestor apontou: a análise automática marca
+ * em massa toda linha sem vínculo, e isso NÃO é decisão de quem opera. Sem
+ * decisão, o item tem que aparecer como pendente — senão o balde "Pendentes"
+ * fica permanentemente vazio e o gestor não sabe o que falta fazer.
+ */
+test("não localizado pela análise, sem decisão do gestor, fica PENDENTE", () => {
   assert.equal(
     derivarEstagioItemImportacaoFornecedor({
       statusStaging: "nao_localizado",
-      criterioLocalizacao: null,
+      marcadoComoNovo: false,
       possuiProdutoVinculado: false,
       publicadoNestaImportacao: false,
     }),

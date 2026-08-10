@@ -18,7 +18,7 @@ export type EstagioItemImportacaoFornecedor =
   | "ignorado"
   /** A aquisição não conseguiu processar a linha. */
   | "erro"
-  /** Marcado para virar produto novo. */
+  /** O gestor marcou explicitamente para criar produto novo. */
   | "novo"
   /** Associado a um produto real, mas o ciclo ainda não terminou. */
   | "vinculado"
@@ -28,8 +28,15 @@ export type EstagioItemImportacaoFornecedor =
 export type EntradaEstagioItemImportacaoFornecedor = {
   /** Status da linha de staging desta importação. */
   statusStaging: string;
-  /** `novo_produto_fornecedor` marca o item para criação. */
-  criterioLocalizacao?: string | null;
+  /**
+   * O gestor marcou este item para virar produto novo — sinalizado pelo
+   * RASCUNHO DE CRIAÇÃO desta importação.
+   *
+   * Não confundir com `criterio_localizacao = 'novo_produto_fornecedor'`, que a
+   * análise grava em massa para toda linha sem vínculo. Aquilo descreve por que
+   * o produto não foi encontrado, não uma decisão de quem opera.
+   */
+  marcadoComoNovo: boolean;
   /** Produto real encontrado — o vínculo, que é permanente. */
   possuiProdutoVinculado: boolean;
   /** O rascunho DESTA importação chegou a `publicado`. */
@@ -51,7 +58,7 @@ export function derivarEstagioItemImportacaoFornecedor(
   if (entrada.statusStaging === "erro" || entrada.statusStaging === "rejeitado") {
     return "erro";
   }
-  if (entrada.criterioLocalizacao === "novo_produto_fornecedor") return "novo";
+  if (entrada.marcadoComoNovo) return "novo";
   if (entrada.possuiProdutoVinculado) return "vinculado";
 
   return "pendente";

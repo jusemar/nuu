@@ -5,7 +5,6 @@ import { fornecedorProdutoVinculosTable } from "@/db/schema";
 
 import { alterarStatusVinculoProdutoFornecedorSchema } from "../schemas/fornecedores.schema";
 import type { ResultadoSalvarVinculoProdutoFornecedorManual } from "../types/fornecedores.types";
-
 import { salvarVinculoProdutoFornecedorManual } from "./salvar-vinculo-produto-fornecedor-manual.service";
 
 export async function alterarStatusVinculoProdutoFornecedor(

@@ -2,8 +2,8 @@ import { and, eq, isNull, ne } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
-  fornecedorProdutoVinculosTable,
   fornecedoresTable,
+  fornecedorProdutoVinculosTable,
   productTable,
 } from "@/db/schema";
 

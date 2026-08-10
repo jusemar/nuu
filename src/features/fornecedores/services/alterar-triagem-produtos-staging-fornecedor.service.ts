@@ -24,7 +24,7 @@ export async function alterarTriagemProdutosStagingFornecedor(
               CASE
                 WHEN ${fornecedorProdutosStagingTable.produtoLocalizadoId} IS NOT NULL
                   THEN 'localizado'::fornecedor_produto_staging_status
-                WHEN ${fornecedorProdutosStagingTable.criterioLocalizacao} = 'novo_produto_fornecedor'
+                WHEN ${fornecedorProdutosStagingTable.criterioLocalizacao} IN ('sem_vinculo_encontrado', 'novo_produto_fornecedor')
                   THEN 'nao_localizado'::fornecedor_produto_staging_status
                 ELSE 'aguardando_analise'::fornecedor_produto_staging_status
               END

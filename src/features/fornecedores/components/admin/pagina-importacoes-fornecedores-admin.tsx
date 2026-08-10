@@ -9,11 +9,6 @@ import {
 import Link from "next/link";
 import { Fragment } from "react";
 
-import {
-  analisarImportacaoFornecedor,
-  salvarAjustePrecoImportacao,
-  vincularProdutoFornecedor,
-} from "../../actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +27,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import {
+  analisarImportacaoFornecedor,
+  salvarAjustePrecoImportacao,
+  vincularProdutoFornecedor,
+} from "../../actions";
 import { importarPlanilhaFornecedor } from "../../actions";
 import {
   ordenarFornecedoresPorStatusENome,

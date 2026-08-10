@@ -1,12 +1,12 @@
 export {
   ambientesIntegracaoLaquila,
-  consultarProdutosLaquilaSchema,
-  configuracaoLaquilaSchema,
-  normalizarFormularioConfiguracaoLaquila,
-  salvarProdutosSelecionadosStagingLaquilaSchema,
-  testarConexaoLaquilaSchema,
-  type ConsultarProdutosLaquilaSchema,
   type ConfiguracaoLaquilaSchema,
+  configuracaoLaquilaSchema,
+  type ConsultarProdutosLaquilaSchema,
+  consultarProdutosLaquilaSchema,
+  normalizarFormularioConfiguracaoLaquila,
   type SalvarProdutosSelecionadosStagingLaquilaSchema,
+  salvarProdutosSelecionadosStagingLaquilaSchema,
   type TestarConexaoLaquilaSchema,
+  testarConexaoLaquilaSchema,
 } from "./laquila.schema";

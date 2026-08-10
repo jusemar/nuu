@@ -1,6 +1,6 @@
 import {
-  type ProductFormData,
   initialProductData,
+  type ProductFormData,
 } from "@/app/admin/products/new/data/product-form-data";
 import type {
   DadosFornecedorParaRascunhoProduto,

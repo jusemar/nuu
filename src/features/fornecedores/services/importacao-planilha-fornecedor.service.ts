@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
-  fornecedorMapeamentosColunasTable,
   fornecedoresTable,
+  fornecedorMapeamentosColunasTable,
   importacoesFornecedorTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";

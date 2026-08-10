@@ -2,9 +2,9 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
-  fornecedorProdutoVinculosTable,
-  fornecedorProdutosStagingTable,
   fornecedoresTable,
+  fornecedorProdutosStagingTable,
+  fornecedorProdutoVinculosTable,
   importacoesFornecedorTable,
   productTable,
 } from "@/db/schema";

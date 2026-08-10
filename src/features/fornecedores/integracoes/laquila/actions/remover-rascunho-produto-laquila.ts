@@ -4,8 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { produtoRascunhosTable } from "@/db/schema";
 import { db } from "@/db/connection";
+import { produtoRascunhosTable } from "@/db/schema";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import { PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";

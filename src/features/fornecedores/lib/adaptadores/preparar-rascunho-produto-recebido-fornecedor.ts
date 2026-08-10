@@ -1,9 +1,9 @@
-import { listarPendenciasRascunhoFornecedor } from "../conciliacao/configuracao-rascunho-fornecedor";
 import type {
   ProdutoRascunhoFornecedorPreparado,
   ProdutoRecebidoFornecedor,
   ValoresPreparacaoRascunhoFornecedor,
 } from "../../types/produto-recebido-fornecedor.types";
+import { listarPendenciasRascunhoFornecedor } from "../conciliacao/configuracao-rascunho-fornecedor";
 
 const SECOES_LOJA_VALIDAS = new Set([
   "general",

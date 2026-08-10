@@ -34,7 +34,7 @@ type LinhaNaoLocalizadaParaAtualizacao = {
   id: string;
   criterioLocalizacao: Extract<
     CriterioLocalizacaoProdutoFornecedor,
-    "sem_codigo_fornecedor" | "novo_produto_fornecedor" | "nao_localizado"
+    "sem_codigo_fornecedor" | "sem_vinculo_encontrado" | "nao_localizado"
   >;
 };
 
@@ -187,9 +187,18 @@ export async function analisarProdutosImportadosFornecedor(
   const linhasNaoLocalizadas = linhasValidasParaAnalise
     .filter((linha) => !idsLocalizados.has(linha.id))
     .map<LinhaNaoLocalizadaParaAtualizacao>((linha) => {
+      /**
+       * Diagnóstico da ANÁLISE, não decisão do gestor.
+       *
+       * Aqui se gravava `novo_produto_fornecedor` para toda linha sem vínculo —
+       * e a tela lia isso como "o gestor marcou para criar produto novo". O
+       * efeito: 632 itens jamais tocados apareciam como "Novos" e o balde
+       * "Pendentes" ficava permanentemente vazio. Decisão de criar produto novo
+       * é registrada no RASCUNHO, que só nasce de uma ação na tela.
+       */
       const criterioLocalizacao: LinhaNaoLocalizadaParaAtualizacao["criterioLocalizacao"] =
         linha.codigoFornecedor?.trim()
-          ? "novo_produto_fornecedor"
+          ? "sem_vinculo_encontrado"
           : "sem_codigo_fornecedor";
 
       return {

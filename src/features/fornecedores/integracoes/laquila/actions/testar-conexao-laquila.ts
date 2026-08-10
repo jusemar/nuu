@@ -8,9 +8,9 @@ import { fornecedorIntegracoesApiTable } from "@/db/schema";
 
 import { METODOS_LAQUILA } from "../constants";
 import {
-  TIMEOUT_TESTE_CONEXAO_LAQUILA_MS,
   criarClienteLaquila,
   testarConexaoTransportadorasLaquila,
+  TIMEOUT_TESTE_CONEXAO_LAQUILA_MS,
 } from "../lib/cliente-laquila";
 import { descriptografarTokenLaquila } from "../lib/mascarar-segredos-laquila";
 import { registrarLogIntegracaoFornecedorApi } from "../lib/registrar-log-integracao-fornecedor-api";

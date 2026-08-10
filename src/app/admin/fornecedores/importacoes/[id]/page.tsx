@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { PaginaDetalheImportacaoFornecedorAdmin } from "@/features/fornecedores/components/admin/pagina-detalhe-importacao-fornecedor-admin";
 import { origemDaImportacaoFornecedor } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
 import {
+  normalizarLimiteFornecedores,
+  normalizarPaginaFornecedores,
+} from "@/features/fornecedores/lib/paginacao-fornecedores";
+import {
   buscarProdutosParaVinculoFornecedor,
   listarImportacoesFornecedoresAdmin,
   listarOpcoesMapeamentoFornecedor,
@@ -10,8 +14,15 @@ import {
   listarStagingImportacaoFornecedor,
   listarStagingImportacaoFornecedorAdmin,
 } from "@/features/fornecedores/queries";
-import { contarEstagiosVinculacaoFornecedor } from "@/features/fornecedores/queries/listar-staging-importacao-fornecedor-admin";
-import { analisarRevisaoImportacaoFornecedor } from "@/features/fornecedores/services/analise-revisao-importacao.service";
+import {
+  contarEstagiosVinculacaoFornecedor,
+  type EstagioVinculacaoFornecedor,
+} from "@/features/fornecedores/queries/listar-staging-importacao-fornecedor-admin";
+import {
+  listarValoresDistintosStagingFornecedor,
+  resumirRevisaoImportacaoFornecedor,
+} from "@/features/fornecedores/queries/resumir-revisao-importacao-fornecedor";
+
 
 type ImportacaoFornecedorDetalhePageProps = {
   params: Promise<{ id: string }>;
@@ -25,7 +36,7 @@ type ImportacaoFornecedorDetalhePageProps = {
     categoriaFornecedor?: string;
     marcaFornecedor?: string;
     status?: string;
-    vinculo?: string;
+    estagio?: string;
     pagina?: string;
     paginaRevisao?: string;
     limite?: string;
@@ -37,9 +48,15 @@ type ImportacaoFornecedorDetalhePageProps = {
 };
 
 const etapasPermitidas = ["mapeamento", "vinculacao", "revisao"];
-// `publicado` é estágio da importação, e não presença de vínculo — por isso
-// entra aqui, ao lado de `vinculado`.
-const vinculosPermitidos = ["vinculado", "nao_vinculado", "publicado"];
+/** Os seis estágios que um item pode ter dentro de uma importação. */
+const estagiosPermitidos = [
+  "publicado",
+  "vinculado",
+  "novo",
+  "pendente",
+  "ignorado",
+  "erro",
+] as const;
 const statusPermitidos = [
   "aguardando_analise",
   "localizado",
@@ -65,13 +82,6 @@ function normalizarStatus(
     : undefined;
 }
 
-function normalizarTexto(valor: string | null | undefined) {
-  return (valor ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
-}
 
 async function listarOpcoesMapeamentoFornecedorComFallback() {
   try {
@@ -98,8 +108,8 @@ export default async function Page({
   const etapa = etapasPermitidas.includes(parametros.etapa ?? "")
     ? (parametros.etapa as string)
     : "mapeamento";
-  const limite = numeroParametro(parametros.limite, 25);
-  const pagina = numeroParametro(parametros.pagina, 1);
+  const limite = normalizarLimiteFornecedores(parametros.limite);
+  const pagina = normalizarPaginaFornecedores(parametros.pagina);
   const limiteRevisao = numeroParametro(parametros.limiteRevisao, 10);
   const paginaRevisao = numeroParametro(parametros.paginaRevisao, 1);
 
@@ -120,8 +130,10 @@ export default async function Page({
     categoriaFornecedor: parametros.categoriaFornecedor ?? "",
     marcaFornecedor: parametros.marcaFornecedor ?? "",
     status: normalizarStatus(parametros.status),
-    vinculo: vinculosPermitidos.includes(parametros.vinculo ?? "")
-      ? parametros.vinculo
+    estagio: (estagiosPermitidos as readonly string[]).includes(
+      parametros.estagio ?? "",
+    )
+      ? (parametros.estagio as string)
       : "",
     pagina,
     limite,
@@ -132,12 +144,18 @@ export default async function Page({
     buscaProduto: parametros.buscaProduto ?? "",
   };
 
+  // `todasLinhas` (685 linhas com jsonb) só é carregada no Mapeamento, a única
+  // etapa que realmente precisa de todas. Vinculação e Conciliação usam a
+  // página paginada e os agregados.
+  const precisaDasLinhasCompletas = etapa === "mapeamento";
+
   const [
     contadoresEstagio,
     stagingPaginado,
     todasLinhas,
     produtosParaVinculo,
-    revisao,
+    resumoRevisao,
+    valoresDistintos,
     opcoesMapeamento,
     rascunhosImportacao,
   ] = await Promise.all([
@@ -149,22 +167,21 @@ export default async function Page({
       categoriaFornecedor: filtros.categoriaFornecedor,
       marcaFornecedor: filtros.marcaFornecedor,
       status: filtros.status,
-      vinculo:
-        filtros.vinculo === "vinculado" ||
-        filtros.vinculo === "nao_vinculado" ||
-        filtros.vinculo === "publicado"
-          ? filtros.vinculo
-          : undefined,
+      estagio: (filtros.estagio ||
+        undefined) as EstagioVinculacaoFornecedor | undefined,
       pagina,
       limite,
     }),
-    listarStagingImportacaoFornecedor(id),
+    precisaDasLinhasCompletas
+      ? listarStagingImportacaoFornecedor(id)
+      : Promise.resolve([]),
     filtros.vincularStagingId
       ? buscarProdutosParaVinculoFornecedor({
           busca: filtros.buscaProduto,
         })
       : [],
-    analisarRevisaoImportacaoFornecedor(id),
+    resumirRevisaoImportacaoFornecedor(id),
+    listarValoresDistintosStagingFornecedor(id),
     listarOpcoesMapeamentoFornecedorComFallback(),
     // A origem sai da importação já carregada acima: evita uma consulta
     // redundante e, com ela, mais um ponto de falha no recarregamento da tela.
@@ -174,64 +191,17 @@ export default async function Page({
     ),
   ]);
 
-  const termoCategoriaRevisao = normalizarTexto(filtros.categoriaRevisao);
-  const termoMarcaRevisao = normalizarTexto(filtros.marcaRevisao);
-  const revisaoFiltrada = revisao.itens.filter((item) => {
-    const categoria = normalizarTexto(item.categoriaFornecedor);
-    const marca = normalizarTexto(item.marcaFornecedor);
-
-    if (termoCategoriaRevisao && categoria !== termoCategoriaRevisao) {
-      return false;
-    }
-
-    if (termoMarcaRevisao && marca !== termoMarcaRevisao) {
-      return false;
-    }
-
-    return true;
-  });
-
-  const categoriasRevisao = Array.from(
-    new Set(
-      todasLinhas
-        .map((item) => item.categoriaFornecedor?.trim())
-        .filter((valor): valor is string => Boolean(valor)),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  const marcasRevisao = Array.from(
-    new Set(
-      todasLinhas
-        .map((item) => item.marcaFornecedor?.trim())
-        .filter((valor): valor is string => Boolean(valor)),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-  const totalRevisao = revisaoFiltrada.length;
-  const totalPaginasRevisao = Math.max(
-    1,
-    Math.ceil(totalRevisao / filtros.limiteRevisao),
-  );
-  const paginaRevisaoAjustada = Math.min(
-    filtros.paginaRevisao,
-    totalPaginasRevisao,
-  );
   return (
     <PaginaDetalheImportacaoFornecedorAdmin
       importacao={importacao}
       linhas={stagingPaginado.linhas}
       todasLinhas={todasLinhas}
       paginacao={stagingPaginado.paginacao}
+      resumoRevisao={resumoRevisao}
+      categorias={valoresDistintos.categorias}
+      marcas={valoresDistintos.marcas}
       filtros={filtros}
       produtosParaVinculo={produtosParaVinculo}
-      revisaoImportacao={revisao}
-      revisaoItens={revisaoFiltrada}
-      revisaoTotal={totalRevisao}
-      revisaoPagina={paginaRevisaoAjustada}
-      revisaoTotalPaginas={totalPaginasRevisao}
-      categorias={categoriasRevisao}
-      marcas={marcasRevisao}
-      categoriaRevisao={filtros.categoriaRevisao}
-      marcaRevisao={filtros.marcaRevisao}
       marcasAtivas={opcoesMapeamento.marcasLoja}
       categoriasLoja={opcoesMapeamento.categoriasLoja}
       rascunhosImportacao={rascunhosImportacao}

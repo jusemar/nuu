@@ -23,11 +23,11 @@ import {
 } from "../../actions";
 import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
 import type { ContadoresEstagioVinculacaoFornecedor } from "../../queries/listar-staging-importacao-fornecedor-admin";
+import type { ResumoRevisaoImportacaoFornecedor } from "../../queries/resumir-revisao-importacao-fornecedor";
 import type {
   CampoMapeamentoColunaFornecedor,
   ColunaPlanilhaFornecedor,
   ProdutoParaVinculoFornecedor,
-  ResultadoRevisaoImportacaoFornecedor,
 } from "../../types/fornecedores.types";
 import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
@@ -100,7 +100,7 @@ type FiltrosFornecedor = {
   categoriaFornecedor?: string;
   marcaFornecedor?: string;
   status?: string;
-  vinculo?: string;
+  estagio?: string;
   pagina: number;
   limite: number;
   paginaRevisao: number;
@@ -117,15 +117,13 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   paginacao: PaginacaoFornecedor;
   filtros: FiltrosFornecedor;
   produtosParaVinculo: ProdutoParaVinculoFornecedor[];
-  revisaoImportacao: ResultadoRevisaoImportacaoFornecedor;
-  revisaoItens: ResultadoRevisaoImportacaoFornecedor["itens"];
-  revisaoTotal: number;
-  revisaoPagina: number;
-  revisaoTotalPaginas: number;
+  /**
+   * Resumo agregado no banco. Antes vinha do resultado completo da revisão,
+   * que carregava as 685 linhas para contar oito números.
+   */
+  resumoRevisao: ResumoRevisaoImportacaoFornecedor;
   categorias: string[];
   marcas: string[];
-  categoriaRevisao: string;
-  marcaRevisao: string;
   marcasAtivas: Array<{ id: string; nome: string }>;
   categoriasLoja: OpcaoValorPadraoLoja[];
   rascunhosImportacao: RascunhoImportacaoFornecedor[];
@@ -174,32 +172,32 @@ function montarUrl(
 
 function ResumoCompacto({
   importacao,
-  revisaoImportacao,
+  resumoRevisao,
 }: {
   importacao: ImportacaoFornecedorAdmin;
-  revisaoImportacao: ResultadoRevisaoImportacaoFornecedor;
+  resumoRevisao: ResumoRevisaoImportacaoFornecedor;
 }) {
   const cards = [
     ["Total importado", importacao.totalLinhas],
     ["Processados", importacao.totalProcessadas],
     ["Erros", importacao.totalErros],
-    ["Produtos OK", revisaoImportacao.resumo.totalProdutosOK],
+    ["Produtos OK", resumoRevisao.totalProdutosOK],
   ];
   const indicadoresRevisao = [
     [
       "Sem categoria",
-      revisaoImportacao.resumo.totalSemCategoria,
+      resumoRevisao.totalSemCategoria,
       "destructive",
     ],
-    ["Sem marca", revisaoImportacao.resumo.totalSemMarca, "destructive"],
-    ["Sem código", revisaoImportacao.resumo.totalSemCodigo, "destructive"],
-    ["Sem nome", revisaoImportacao.resumo.totalSemNome, "destructive"],
+    ["Sem marca", resumoRevisao.totalSemMarca, "destructive"],
+    ["Sem código", resumoRevisao.totalSemCodigo, "destructive"],
+    ["Sem nome", resumoRevisao.totalSemNome, "destructive"],
     [
       "Preço inválido",
-      revisaoImportacao.resumo.totalPrecoInvalido,
+      resumoRevisao.totalPrecoInvalido,
       "destructive",
     ],
-    ["Produtos OK", revisaoImportacao.resumo.totalProdutosOK, "default"],
+    ["Produtos OK", resumoRevisao.totalProdutosOK, "default"],
   ] as const;
 
   return (
@@ -432,15 +430,21 @@ function BarraFiltros({
         ))}
       </select>
       <select
-        name="vinculo"
-        defaultValue={filtros.vinculo}
+        name="estagio"
+        defaultValue={filtros.estagio}
         className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
       >
-        <option value="">Vínculo</option>
+        <option value="">Estágio</option>
+        <option value="pendente">Pendente</option>
         <option value="vinculado">Vinculado</option>
-        <option value="nao_vinculado">Não vinculado</option>
+        <option value="novo">Novo</option>
         <option value="publicado">Publicado</option>
+        <option value="ignorado">Ignorado</option>
+        <option value="erro">Com erro</option>
       </select>
+      {/* Trocar o limite volta para a página 1: manter a página 12 ao sair de
+          25 para 100 por página levaria o gestor a um trecho que ele não pediu. */}
+      <input type="hidden" name="pagina" value={1} />
       <select
         name="limite"
         defaultValue={filtros.limite}
@@ -474,26 +478,17 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   paginacao,
   filtros,
   produtosParaVinculo,
-  revisaoImportacao,
+  resumoRevisao,
+  categorias,
+  marcas,
   marcasAtivas,
   categoriasLoja,
   rascunhosImportacao,
   contadoresEstagio,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
-  const categorias = Array.from(
-    new Set(
-      todasLinhas
-        .map((linha) => linha.categoriaFornecedor?.trim())
-        .filter((categoria): categoria is string => Boolean(categoria)),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  const marcas = Array.from(
-    new Set(
-      todasLinhas
-        .map((linha) => linha.marcaFornecedor?.trim())
-        .filter((marca): marca is string => Boolean(marca)),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  // Categorias e marcas chegam prontas do banco (`SELECT DISTINCT`). Este
+  // cálculo existia aqui e TAMBÉM na página, os dois varrendo as 685 linhas
+  // carregadas só para isso.
   return (
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -527,10 +522,7 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
 
       <CabecalhoExecutivo importacao={importacao} />
 
-      <ResumoCompacto
-        importacao={importacao}
-        revisaoImportacao={revisaoImportacao}
-      />
+      <ResumoCompacto importacao={importacao} resumoRevisao={resumoRevisao} />
 
       <PassosFluxoFornecedor
         passoAtual={

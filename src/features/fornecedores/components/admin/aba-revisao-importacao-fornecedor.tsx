@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -17,7 +17,7 @@ import {
   Tag,
   Type,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { createCategory } from "@/actions/admin/categories/create";
@@ -42,9 +42,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { categoryKeys } from "@/features/admin/categories/hooks/query-keys";
+import { criarMarca } from "@/features/admin/marcas/services/marcaService";
 import { CategoryTreeSelector } from "@/features/admin/products/components/CategoryTreeSelector";
 import { MarcaPopoverSelector } from "@/features/admin/products/components/MarcaPopoverSelector";
-import { criarMarca } from "@/features/admin/marcas/services/marcaService";
+
 import { atualizarRevisaoImportacaoFornecedorAction } from "../../actions";
 
 type MarcaAtiva = {

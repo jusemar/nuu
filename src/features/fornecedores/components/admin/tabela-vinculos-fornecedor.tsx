@@ -178,13 +178,6 @@ type EstadoItemVinculoFornecedor = {
   rascunhoSalvo?: RascunhoSalvoVinculoFornecedor | null;
 };
 
-type FiltroVinculoFornecedor =
-  | "todos"
-  | "vinculados"
-  | "pendentes"
-  | "novos"
-  | "ignorados"
-  | "publicados";
 
 export type RascunhoProdutoFornecedorVisual = {
   produto: ProductFormData;
@@ -313,15 +306,6 @@ function classeStatus(status: StatusVinculoFornecedorVisual) {
   return classes[status];
 }
 
-function obterFiltroStatus(status: StatusVinculoFornecedorVisual) {
-  // Publicado vem antes: é estágio final e não deve cair em "vinculados".
-  if (status === "publicado") return "publicados";
-  if (status === "vinculado") return "vinculados";
-  if (status === "ignorado") return "ignorados";
-  if (status === "novo" || status === "rascunho") return "novos";
-
-  return "pendentes";
-}
 
 function combinaBuscaVinculo(
   item: ItemVinculoFornecedor,
@@ -755,7 +739,6 @@ export function TabelaVinculosFornecedor({
   const [produtoSelecionadoVinculo, setProdutoSelecionadoVinculo] =
     useState<ProdutoLojaParaVinculoFornecedor | null>(null);
   const [idsSelecionados, setIdsSelecionados] = useState<string[]>([]);
-  const [filtro, setFiltro] = useState<FiltroVinculoFornecedor>("todos");
   const [buscaTabela, setBuscaTabela] = useState("");
   const [rascunhos, setRascunhos] = useState<
     Record<string, RascunhoProdutoFornecedorVisual>
@@ -1242,33 +1225,13 @@ export function TabelaVinculosFornecedor({
         : "Arquivo";
   const totalSelecionados = idsSelecionados.length;
   const termoBusca = buscaTabela.trim().toLowerCase();
+  // O servidor já entrega a página filtrada por estágio; aqui sobra apenas a
+  // busca rápida dentro do que está na tela.
   const itensFiltrados = itens.filter((item) => {
     const estado = estados[item.id] ?? estadosIniciais[item.id];
-    const filtroStatus = obterFiltroStatus(estado.status);
-    const passaFiltro = filtro === "todos" || filtro === filtroStatus;
 
-    return passaFiltro && combinaBuscaVinculo(item, estado, termoBusca);
+    return combinaBuscaVinculo(item, estado, termoBusca);
   });
-  const contadores = itens.reduce(
-    (totais, item) => {
-      const estado = estados[item.id] ?? estadosIniciais[item.id];
-      const filtroStatus = obterFiltroStatus(estado.status);
-
-      return {
-        ...totais,
-        todos: totais.todos + 1,
-        [filtroStatus]: totais[filtroStatus] + 1,
-      };
-    },
-    {
-      todos: 0,
-      vinculados: 0,
-      pendentes: 0,
-      novos: 0,
-      ignorados: 0,
-      publicados: 0,
-    } satisfies Record<FiltroVinculoFornecedor, number>,
-  );
   const totalRascunhosSalvos =
     totalRascunhosPersistidos ??
     itens.filter((item) => {
@@ -1286,18 +1249,6 @@ export function TabelaVinculosFornecedor({
   const todosSelecionados =
     itensFiltrados.length > 0 &&
     itensFiltrados.every((item) => idsSelecionados.includes(item.id));
-  const filtrosVinculo: Array<{
-    chave: FiltroVinculoFornecedor;
-    label: string;
-  }> = [
-    { chave: "todos", label: "Todos" },
-    { chave: "vinculados", label: "Vinculados" },
-    { chave: "pendentes", label: "Pendentes" },
-    { chave: "novos", label: "Novos" },
-    { chave: "ignorados", label: "Ignorados" },
-    { chave: "publicados", label: "Publicados" },
-  ];
-
   return (
     <section className="space-y-4">
       {totalRascunhosSalvos > 0 ? (
@@ -1317,28 +1268,14 @@ export function TabelaVinculosFornecedor({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex w-full gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-1 lg:w-auto">
-          {filtrosVinculo.map((itemFiltro) => (
-            <button
-              key={itemFiltro.chave}
-              type="button"
-              onClick={() => setFiltro(itemFiltro.chave)}
-              className={cn(
-                "flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition",
-                filtro === itemFiltro.chave
-                  ? "bg-white text-slate-950 shadow-xs"
-                  : "hover:bg-white/70 hover:text-slate-900",
-              )}
-            >
-              {itemFiltro.label}
-              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
-                {contadores[itemFiltro.chave]}
-              </span>
-            </button>
-          ))}
-        </div>
-
+      {/*
+        Os chips de estágio saíram daqui.
+        Eles filtravam e contavam apenas as linhas da PÁGINA carregada (25 de
+        685), então diziam "Vinculados 10" quando a importação tinha 42. O
+        filtro por estágio agora é do servidor, com contagem da importação
+        inteira, no resumo logo acima desta tabela.
+      */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
         <div className="relative w-full lg:max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input

@@ -12,8 +12,8 @@ import {
   type ItemSaldoPrecoLaquilaApi,
 } from "../lib/cliente-laquila";
 import { normalizarSaldosPrecosLaquila } from "../lib/normalizar-saldo-preco-laquila";
-import type { ProdutoApiStagingLaquilaCatalogo } from "./listar-produtos-api-staging-laquila";
 import { buscarConfiguracaoLaquilaAdmin } from "./buscar-configuracao-laquila";
+import type { ProdutoApiStagingLaquilaCatalogo } from "./listar-produtos-api-staging-laquila";
 
 const ITENS_POR_PAGINA_API_LAQUILA = 100;
 const ITENS_POR_PAGINA_SALDO_PRECO_LAQUILA = 10000;

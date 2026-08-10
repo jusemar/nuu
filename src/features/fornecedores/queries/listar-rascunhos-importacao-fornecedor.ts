@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { db } from "@/db/connection";
@@ -24,6 +24,12 @@ import {
   ORIGEM_IMPORTACAO_ARQUIVO,
   type OrigemImportacaoFornecedor,
 } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
+import {
+  calcularPaginacaoFornecedores,
+  normalizarLimiteFornecedores,
+  offsetInicialFornecedores,
+  type PaginacaoFornecedores,
+} from "@/features/fornecedores/lib/paginacao-fornecedores";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 import { buscarOrigemImportacaoFornecedor } from "./buscar-origem-importacao-fornecedor";
@@ -107,16 +113,66 @@ function extrairStagingId(dadosOrigemJson: unknown) {
 export async function listarRascunhosImportacaoFornecedor(
   importacaoId: string,
   origemInformada?: OrigemImportacaoFornecedor,
-): Promise<RascunhoImportacaoFornecedor[]> {
+  opcoes?: {
+    pagina?: number | string | null;
+    limite?: number | string | null;
+    busca?: string;
+  },
+): Promise<{
+  itens: RascunhoImportacaoFornecedor[];
+  paginacao: PaginacaoFornecedores;
+}> {
   const origem =
     origemInformada ??
     (await buscarOrigemImportacaoFornecedor(importacaoId)) ??
     ORIGEM_IMPORTACAO_ARQUIVO;
 
+  const limite = normalizarLimiteFornecedores(opcoes?.limite);
+  const offset = offsetInicialFornecedores(opcoes?.pagina, opcoes?.limite);
+  const termoBusca = opcoes?.busca?.trim();
+
+  /**
+   * Fila ativa da Conciliação, no SQL.
+   *
+   * O recorte "item criar que já virou produto" era feito em JavaScript depois
+   * da leitura. Com paginação isso quebraria: a página traria 25 linhas e o
+   * filtro removeria algumas, entregando páginas de tamanho irregular e um
+   * total que não bate com a lista.
+   */
+  const condicoesFila = and(
+    eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
+    eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
+    inArray(produtoRascunhosTable.status, [
+      "rascunho",
+      "pendente_conciliacao",
+      "pronto_para_publicar",
+    ]),
+    sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
+    sql`(
+      ${produtoRascunhosTable.produtoAtualizadoId} is not null
+      or ${produtoRascunhosTable.fornecedorId} is null
+      or not exists (
+        select 1
+          from fornecedor_produto_vinculos v
+         where v.fornecedor_id = ${produtoRascunhosTable.fornecedorId}
+           and v.codigo_fornecedor = btrim(${produtoRascunhosTable.codigoFornecedor})
+           and v.status = 'ativo'
+      )
+    )`,
+    ...(termoBusca
+      ? [
+          or(
+            ilike(produtoRascunhosTable.nome, `%${termoBusca}%`),
+            ilike(produtoRascunhosTable.codigoFornecedor, `%${termoBusca}%`),
+          )!,
+        ]
+      : []),
+  );
+
   // As duas consultas são dependentes (a segunda usa os fornecedores da primeira), então
   // ficam juntas na mesma leitura protegida: uma retentativa refaz o par inteiro e a lista
   // de "já publicados" nunca é aplicada sobre rascunhos de outra tentativa.
-  const { linhas, variantesProdutosAtualizados, vinculosAtivos } =
+  const { linhas, total, variantesProdutosAtualizados, vinculosAtivos } =
     await executarLeituraFornecedores(
       {
         etapa: "conciliacao:listar-rascunhos",
@@ -196,18 +252,15 @@ export async function listarRascunhosImportacaoFornecedor(
               eq(productPricingTable.mainCardPrice, true),
             ),
           )
-          .where(
-            and(
-              eq(produtoRascunhosTable.origemTipo, origem.origemTipo),
-              eq(produtoRascunhosTable.origemProvedor, origem.origemProvedor),
-              inArray(produtoRascunhosTable.status, [
-                "rascunho",
-                "pendente_conciliacao",
-                "pronto_para_publicar",
-              ]),
-              sql`${produtoRascunhosTable.dadosOrigemJson}->'origemFluxoFornecedor'->>'importacaoId' = ${importacaoId}`,
-            ),
-          );
+          .where(condicoesFila)
+          .orderBy(asc(produtoRascunhosTable.criadoEm))
+          .limit(limite)
+          .offset(offset);
+
+        const [{ total } = { total: 0 }] = await db
+          .select({ total: count() })
+          .from(produtoRascunhosTable)
+          .where(condicoesFila);
 
         const fornecedoresIds = Array.from(
           new Set(
@@ -277,6 +330,7 @@ export async function listarRascunhosImportacaoFornecedor(
 
         return {
           linhas: linhasRascunho,
+          total: Number(total),
           variantesProdutosAtualizados,
           vinculosAtivos,
         };
@@ -327,21 +381,16 @@ export async function listarRascunhosImportacaoFornecedor(
       : null;
   }
 
-  return linhas
-    .filter((linha) => {
-      // O sinal implícito "vínculo ativo = já publicado" só vale para itens
-      // "criar produto novo". Itens "atualizar" já nascem com vínculo ativo
-      // desde a Vinculação — isso não significa que este lote já foi
-      // publicado, então não devem ser excluídos por esse motivo.
-      if (linha.produtoAtualizadoId) return true;
-
-      return (
-        !linha.fornecedorId ||
-        !chavesPublicadas.has(
-          `${linha.fornecedorId}:${linha.codigoFornecedor?.trim() ?? ""}`,
-        )
-      );
-    })
+  // O recorte de "já publicado" agora acontece no SQL (ver `condicoesFila`),
+  // porque com paginação um filtro em JS entregaria páginas de tamanho
+  // irregular e um total que não bate com a lista.
+  return {
+    paginacao: calcularPaginacaoFornecedores({
+      pagina: opcoes?.pagina,
+      limite: opcoes?.limite,
+      total,
+    }),
+    itens: linhas
     .map(
       ({
         dadosOrigemJson,
@@ -384,5 +433,6 @@ export async function listarRascunhosImportacaoFornecedor(
           secoesAtuaisLoja: secoesAtuaisLoja ?? [],
         };
       },
-    );
+    ),
+  };
 }

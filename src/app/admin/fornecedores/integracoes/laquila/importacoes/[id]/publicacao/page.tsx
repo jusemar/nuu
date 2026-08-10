@@ -9,6 +9,7 @@ import { listarRascunhosPublicacaoImportacaoFornecedor } from "@/features/fornec
 
 type PublicacaoImportacaoLaquilaPageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ pagina?: string; limite?: string }>;
 };
 
 /**
@@ -20,8 +21,10 @@ type PublicacaoImportacaoLaquilaPageProps = {
  */
 export default async function Page({
   params,
+  searchParams,
 }: PublicacaoImportacaoLaquilaPageProps) {
   const { id } = await params;
+  const { pagina, limite } = await searchParams;
   // A sessão não depende da importação: as duas leituras saem juntas.
   const [importacao, sessao] = await Promise.all([
     buscarImportacaoApiLaquila(id),
@@ -32,9 +35,10 @@ export default async function Page({
 
   // A origem já é conhecida (esta rota só abre importação de API da Laquila),
   // então a query dos rascunhos não gasta uma ida ao banco para descobri-la.
-  const rascunhos = await listarRascunhosPublicacaoImportacaoFornecedor(
+  const resultado = await listarRascunhosPublicacaoImportacaoFornecedor(
     importacao.id,
     ORIGEM_IMPORTACAO_API_LAQUILA,
+    { pagina, limite },
   );
 
   return (
@@ -42,7 +46,20 @@ export default async function Page({
       titulo="Publicação da importação"
       subtitulo={`Revise e confirme os produtos de ${importacao.nomeFornecedor} que entrarão no catálogo da loja.`}
       hrefVoltar={`/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/conciliacao`}
-      rascunhosIniciais={rascunhos}
+      rascunhosIniciais={resultado.rascunhos}
+      paginacao={resultado.paginacao}
+      montarHrefPagina={(mudancas) => {
+        const parametros = new URLSearchParams();
+        parametros.set(
+          "pagina",
+          String(mudancas.pagina ?? resultado.paginacao.pagina),
+        );
+        parametros.set(
+          "limite",
+          String(mudancas.limite ?? resultado.paginacao.limite),
+        );
+        return `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/publicacao?${parametros.toString()}`;
+      }}
       sessaoAtiva={Boolean(sessao?.user)}
       acaoPublicar={publicarProdutosImportacaoFornecedor.bind(
         null,

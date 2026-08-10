@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AbaConciliacaoImportacaoFornecedor } from "@/features/fornecedores/components/admin/aba-conciliacao-importacao-fornecedor";
 import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 import type { OpcaoValorPadraoLoja } from "@/features/fornecedores/components/admin/tabela-mapeamento-campos-fornecedor";
+import type { PaginacaoFornecedores } from "@/features/fornecedores/lib/paginacao-fornecedores";
 import type { RascunhoImportacaoFornecedor } from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
 
 type PaginaConciliacaoLaquilaAdminProps = {
@@ -14,6 +15,8 @@ type PaginaConciliacaoLaquilaAdminProps = {
   sessaoAtiva: boolean;
   categoriasLoja: OpcaoValorPadraoLoja[];
   marcasLoja: Array<{ id: string; nome: string }>;
+  paginacao: PaginacaoFornecedores;
+  busca: string;
 };
 
 /**
@@ -33,6 +36,8 @@ export function PaginaConciliacaoLaquilaAdmin({
   sessaoAtiva,
   categoriasLoja,
   marcasLoja,
+  paginacao,
+  busca,
 }: PaginaConciliacaoLaquilaAdminProps) {
   const hrefVinculos = `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`;
 
@@ -100,6 +105,20 @@ export function PaginaConciliacaoLaquilaAdmin({
           categoriasLoja={categoriasLoja}
           marcasLoja={marcasLoja}
           tipoOrigem="api"
+          paginacao={paginacao}
+          montarHrefPagina={(mudancas) => {
+            const parametros = new URLSearchParams();
+            parametros.set(
+              "pagina",
+              String(mudancas.pagina ?? paginacao.pagina),
+            );
+            parametros.set(
+              "limite",
+              String(mudancas.limite ?? paginacao.limite),
+            );
+            if (busca) parametros.set("busca", busca);
+            return `/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/conciliacao?${parametros.toString()}`;
+          }}
           hrefVoltar={hrefVinculos}
           hrefProximaEtapa={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/publicacao`}
         />

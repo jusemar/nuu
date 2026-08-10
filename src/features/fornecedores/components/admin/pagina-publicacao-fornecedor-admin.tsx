@@ -8,9 +8,11 @@ import {
   PackageCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { PaginacaoAdmin } from "@/components/shared/paginacao-admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +25,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { dividirLotesPublicacaoFornecedor } from "@/features/fornecedores/lib/conciliacao/lotes-publicacao-fornecedor";
+import {
+  OPCOES_LIMITE_FORNECEDORES,
+  type PaginacaoFornecedores,
+} from "@/features/fornecedores/lib/paginacao-fornecedores";
 
 export type RascunhoPublicacaoFornecedor = {
   id: string;
@@ -69,6 +75,11 @@ type PaginaPublicacaoFornecedorAdminProps = {
   subtitulo: string;
   hrefVoltar: string;
   rascunhosIniciais: RascunhoPublicacaoFornecedor[];
+  paginacao: PaginacaoFornecedores;
+  montarHrefPagina: (mudancas: {
+    pagina?: number;
+    limite?: number;
+  }) => string;
   sessaoAtiva: boolean;
   acaoPublicar: (entrada: {
     rascunhoIds: string[];
@@ -88,9 +99,12 @@ export function PaginaPublicacaoFornecedorAdmin({
   subtitulo,
   hrefVoltar,
   rascunhosIniciais,
+  paginacao,
+  montarHrefPagina,
   sessaoAtiva,
   acaoPublicar,
 }: PaginaPublicacaoFornecedorAdminProps) {
+  const router = useRouter();
   const [rascunhos, setRascunhos] = useState(rascunhosIniciais);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [confirmacao, setConfirmacao] = useState<string[]>([]);
@@ -100,6 +114,14 @@ export function PaginaPublicacaoFornecedorAdmin({
   const [falhasPersistentes, setFalhasPersistentes] = useState<
     Array<{ nome: string; erro: string }>
   >([]);
+  // Trocar de página troca a lista: sem isso o estado local seguraria os itens
+  // da página anterior, e a seleção atravessaria páginas — exatamente o que
+  // não pode acontecer, já que publicar age sobre o que está selecionado.
+  useEffect(() => {
+    setRascunhos(rascunhosIniciais);
+    setSelecionados([]);
+  }, [rascunhosIniciais]);
+
   const prontos = useMemo(
     () => rascunhos.filter((rascunho) => rascunho.pronto),
     [rascunhos],
@@ -191,6 +213,11 @@ export function PaginaPublicacaoFornecedorAdmin({
       }
 
       setProgresso(null);
+
+      // O servidor refaz a conta e faz o clamp da página: publicar os itens da
+      // última página encolhe o total, e sem isso o gestor cairia numa tela
+      // vazia sem entender o motivo.
+      if (publicadosIds.length > 0) router.refresh();
 
       if (publicadosIds.length > 0 && falhas.length === 0) {
         toast.success(
@@ -351,7 +378,7 @@ export function PaginaPublicacaoFornecedorAdmin({
                   marcado === true ? prontos.map((item) => item.id) : [],
                 )
               }
-              aria-label="Selecionar todos os produtos prontos"
+              aria-label={`Selecionar os ${prontos.length} produtos prontos desta página`}
             />
             <span>Produto</span>
             <span>Preço</span>

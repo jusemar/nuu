@@ -1,3 +1,9 @@
+import { PaginacaoAdmin } from "@/components/shared/paginacao-admin";
+import {
+  OPCOES_LIMITE_FORNECEDORES,
+  type PaginacaoFornecedores,
+} from "@/features/fornecedores/lib/paginacao-fornecedores";
+
 import { alterarDecisaoRascunhosImportacaoFornecedor } from "../../actions/alterar-decisao-rascunhos-importacao-fornecedor";
 import {
   ajustarPrecosRascunhosImportacaoFornecedor,
@@ -24,6 +30,9 @@ type AbaConciliacaoImportacaoFornecedorProps = {
   hrefVoltar?: string;
   hrefProximaEtapa?: string;
   tipoOrigem?: "arquivo" | "api";
+  /** Paginação da fila ativa, calculada no servidor. */
+  paginacao: PaginacaoFornecedores;
+  montarHrefPagina: (mudancas: { pagina?: number; limite?: number }) => string;
 };
 
 const ROTULOS_PENDENCIAS: Record<string, string> = {
@@ -284,6 +293,8 @@ export function AbaConciliacaoImportacaoFornecedor({
   hrefVoltar,
   hrefProximaEtapa,
   tipoOrigem = "arquivo",
+  paginacao,
+  montarHrefPagina,
 }: AbaConciliacaoImportacaoFornecedorProps) {
   if (rascunhos.length === 0) {
     return (
@@ -300,6 +311,7 @@ export function AbaConciliacaoImportacaoFornecedor({
   }
 
   return (
+    <div className="space-y-3">
     <TabelaConciliacaoFornecedor
       tipoOrigem={tipoOrigem}
       fornecedor={fornecedor}
@@ -330,5 +342,16 @@ export function AbaConciliacaoImportacaoFornecedor({
       categoriasLoja={categoriasLoja}
       marcasLoja={marcasLoja}
     />
+
+      <PaginacaoAdmin
+        pagina={paginacao.pagina}
+        totalPaginas={paginacao.totalPaginas}
+        total={paginacao.total}
+        limite={paginacao.limite}
+        opcoesLimite={OPCOES_LIMITE_FORNECEDORES}
+        montarHref={montarHrefPagina}
+        rotuloItens="itens na fila"
+      />
+    </div>
   );
 }

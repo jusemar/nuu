@@ -21,6 +21,7 @@ import {
   analisarImportacaoFornecedor,
   aplicarMapeamentoColunasFornecedorAction,
 } from "../../actions";
+import type { PaginacaoFornecedores } from "../../lib/paginacao-fornecedores";
 import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
 import type { ContadoresEstagioVinculacaoFornecedor } from "../../queries/listar-staging-importacao-fornecedor-admin";
 import type { ResumoRevisaoImportacaoFornecedor } from "../../queries/resumir-revisao-importacao-fornecedor";
@@ -129,6 +130,8 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   rascunhosImportacao: RascunhoImportacaoFornecedor[];
   /** Totais por estágio da importação inteira, para o resumo da Vinculação. */
   contadoresEstagio: ContadoresEstagioVinculacaoFornecedor;
+  paginacaoConciliacao: PaginacaoFornecedores;
+  buscaConciliacao: string;
 };
 
 const etapas = [
@@ -485,6 +488,8 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   categoriasLoja,
   rascunhosImportacao,
   contadoresEstagio,
+  paginacaoConciliacao,
+  buscaConciliacao,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
   // Categorias e marcas chegam prontas do banco (`SELECT DISTINCT`). Este
   // cálculo existia aqui e TAMBÉM na página, os dois varrendo as 685 linhas
@@ -567,6 +572,15 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
           importacaoId={importacao.id}
           fornecedor={importacao.nomeFornecedor}
           rascunhos={rascunhosImportacao}
+          paginacao={paginacaoConciliacao}
+          montarHrefPagina={(mudancas) =>
+            montarUrl(importacao.id, filtros, {
+              etapa: "revisao",
+              paginaConciliacao: mudancas.pagina ?? paginacaoConciliacao.pagina,
+              limiteConciliacao: mudancas.limite ?? paginacaoConciliacao.limite,
+              buscaConciliacao,
+            })
+          }
           categoriasLoja={categoriasLoja}
           marcasLoja={marcasAtivas}
         />

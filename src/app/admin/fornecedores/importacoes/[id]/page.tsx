@@ -38,6 +38,9 @@ type ImportacaoFornecedorDetalhePageProps = {
     status?: string;
     estagio?: string;
     pagina?: string;
+    paginaConciliacao?: string;
+    limiteConciliacao?: string;
+    buscaConciliacao?: string;
     paginaRevisao?: string;
     limite?: string;
     limiteRevisao?: string;
@@ -188,6 +191,11 @@ export default async function Page({
     listarRascunhosImportacaoFornecedor(
       id,
       origemDaImportacaoFornecedor(importacao),
+      {
+        pagina: parametros.paginaConciliacao,
+        limite: parametros.limiteConciliacao,
+        busca: parametros.buscaConciliacao,
+      },
     ),
   ]);
 
@@ -204,7 +212,9 @@ export default async function Page({
       produtosParaVinculo={produtosParaVinculo}
       marcasAtivas={opcoesMapeamento.marcasLoja}
       categoriasLoja={opcoesMapeamento.categoriasLoja}
-      rascunhosImportacao={rascunhosImportacao}
+      rascunhosImportacao={rascunhosImportacao.itens}
+      paginacaoConciliacao={rascunhosImportacao.paginacao}
+      buscaConciliacao={parametros.buscaConciliacao ?? ""}
       contadoresEstagio={contadoresEstagio}
     />
   );

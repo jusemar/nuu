@@ -140,10 +140,14 @@ function PrevisaoEntregaPropriaPdp({
   fallback: string;
 }) {
   const promessa = resultado?.found ? resultado.promessaEntrega : null;
+  const textoPdp = (promessa?.texto ?? fallback).replace(
+    /^Entrega\b/,
+    "Receba",
+  );
 
   return (
     <div className="text-text-hint text-[11px] leading-snug">
-      <p>{promessa?.texto ?? fallback}</p>
+      <p>{textoPdp}</p>
       {promessa?.observacaoPagamento ? (
         <p className="mt-0.5">{promessa.observacaoPagamento}</p>
       ) : null}

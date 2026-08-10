@@ -268,7 +268,169 @@ export function ProdutoEntregaPropriaPrecos({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="space-y-3 lg:hidden">
+        {value.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white px-4 py-7 text-center">
+            <p className="font-medium text-gray-700">
+              Nenhum preco de entrega propria configurado
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Sem preco para um destino, a loja exibira Consulte o vendedor.
+            </p>
+          </div>
+        ) : (
+          value.map((item, index) => {
+            const destino = destinosPorChave.get(
+              destinoKey(item.destinationType, item.destinationId),
+            );
+
+            return (
+              <article
+                key={destinoKey(item.destinationType, item.destinationId)}
+                className="space-y-5 rounded-lg border border-gray-200 bg-white p-4"
+              >
+                <div>
+                  <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">
+                    Destino
+                  </p>
+                  <p className="mt-1 font-medium text-gray-900">
+                    {destino?.label ?? "Destino removido"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatarTipo(item.destinationType)}
+                    {destino ? ` - ${destino.city}/${destino.state}` : ""}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor={`frete-${index}`}>
+                      Valor do frete (R$)
+                    </Label>
+                    <Input
+                      id={`frete-${index}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.shippingPrice / 100}
+                      onChange={(event) =>
+                        handlePriceChange(index, event.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700">Prazo</p>
+                    <p className="flex min-h-10 items-center text-sm text-gray-700">
+                      {item.deliveryDeadline || (
+                        <span className="text-gray-400">Padrao</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 border-t border-gray-100 pt-4">
+                  <div className="flex min-h-10 items-center justify-between gap-3">
+                    <Label htmlFor={`entrega-programada-${index}`}>
+                      Entrega programada
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`entrega-programada-${index}`}
+                        aria-label={`Ativar entrega programada para ${destino?.label ?? "destino"}`}
+                        checked={item.scheduledDeliveryActive ?? false}
+                        onCheckedChange={(checked) =>
+                          handleProgramadaChange(index, {
+                            scheduledDeliveryActive: checked,
+                          })
+                        }
+                      />
+                      <span className="min-w-12 text-sm font-medium text-gray-700">
+                        {item.scheduledDeliveryActive ? "Ativa" : "Inativa"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {item.scheduledDeliveryActive ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor={`dias-programada-${index}`}>
+                          Dias corridos
+                        </Label>
+                        <Input
+                          id={`dias-programada-${index}`}
+                          type="number"
+                          min="0"
+                          value={item.scheduledDeliveryMinDays ?? 0}
+                          onChange={(event) =>
+                            handleProgramadaChange(index, {
+                              scheduledDeliveryMinDays: Math.max(
+                                0,
+                                Number(event.target.value) || 0,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`valor-programada-${index}`}>
+                          Valor (R$)
+                        </Label>
+                        <Input
+                          id={`valor-programada-${index}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={(item.scheduledDeliveryPrice ?? 0) / 100}
+                          onChange={(event) =>
+                            handleProgramadaChange(index, {
+                              scheduledDeliveryPrice: Math.round(
+                                (Number(event.target.value.replace(",", ".")) ||
+                                  0) * 100,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+                  <div className="flex min-h-10 items-center gap-2">
+                    <Switch
+                      id={`status-destino-${index}`}
+                      aria-label={`Alterar status de ${destino?.label ?? "destino"}`}
+                      checked={item.isActive ?? true}
+                      onCheckedChange={() => handleToggle(index)}
+                    />
+                    <Label htmlFor={`status-destino-${index}`}>Status</Label>
+                    <Badge
+                      variant={
+                        (item.isActive ?? true) ? "default" : "secondary"
+                      }
+                    >
+                      {(item.isActive ?? true) ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-10 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => handleRemove(index)}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    Remover
+                  </Button>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white lg:block">
         <Table>
           <TableHeader className="bg-gray-50">
             <TableRow>
@@ -325,9 +487,7 @@ export function ProdutoEntregaPropriaPrecos({
                             }
                           />
                           <span className="text-xs font-medium">
-                            {item.scheduledDeliveryActive
-                              ? "Ativa"
-                              : "Inativa"}
+                            {item.scheduledDeliveryActive ? "Ativa" : "Inativa"}
                           </span>
                         </div>
                         {item.scheduledDeliveryActive ? (
@@ -356,9 +516,7 @@ export function ProdutoEntregaPropriaPrecos({
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                value={
-                                  (item.scheduledDeliveryPrice ?? 0) / 100
-                                }
+                                value={(item.scheduledDeliveryPrice ?? 0) / 100}
                                 onChange={(event) =>
                                   handleProgramadaChange(index, {
                                     scheduledDeliveryPrice: Math.round(

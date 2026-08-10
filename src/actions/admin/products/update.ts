@@ -27,6 +27,7 @@ import {
   erroEhTransitorioDeBanco,
 } from "@/features/products/lib/classificar-erro-banco";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
+import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
 
 function revalidatePathSeguro(path: string, recurso: string) {
   try {
@@ -49,6 +50,8 @@ type CodigoErroAtualizacaoProduto =
   | "CATEGORIA_INATIVA"
   | "BANCO_INDISPONIVEL"
   | "ERRO_INTERNO";
+
+class ErroEstoqueProdutoSimples extends Error {}
 
 function falha(codigo: CodigoErroAtualizacaoProduto, message: string) {
   return { success: false as const, codigo, message };
@@ -106,6 +109,11 @@ function dadosBasicosSaoValidos(id: string, data: UpdateProductData) {
     data.storeProductFlags.some((flag) => typeof flag !== "string")
   )
     return false;
+  if (
+    data.estoqueProdutoSimples !== undefined &&
+    normalizarEstoqueProdutoSimples(data.estoqueProdutoSimples) === null
+  )
+    return false;
 
   return true;
 }
@@ -139,6 +147,7 @@ interface UpdateProductData {
   productType?: string;
   productCode?: string;
   ncmCode?: string;
+  estoqueProdutoSimples?: number;
   metaTitle?: string;
   metaDescription?: string;
   canonicalUrl?: string;
@@ -378,7 +387,8 @@ export async function updateProduct(id: string, data: UpdateProductData) {
         varianteTecnicaConfiavelId &&
         (data.sku !== undefined ||
           data.name !== undefined ||
-          data.dimensoesFreteExterno !== undefined)
+          data.dimensoesFreteExterno !== undefined ||
+          data.estoqueProdutoSimples !== undefined)
       ) {
         await tx
           .update(productVariantTable)
@@ -399,9 +409,24 @@ export async function updateProduct(id: string, data: UpdateProductData) {
                 data.dimensoesFreteExterno.comprimentoEmCm,
               ),
             }),
+            ...(data.estoqueProdutoSimples !== undefined && {
+              stockQuantity: normalizarEstoqueProdutoSimples(
+                data.estoqueProdutoSimples,
+              )!,
+            }),
             updatedAt: new Date(),
           })
           .where(eq(productVariantTable.id, varianteTecnicaConfiavelId));
+      }
+
+      if (
+        tipoProdutoFinal === "simple" &&
+        data.estoqueProdutoSimples !== undefined &&
+        !varianteTecnicaConfiavelId
+      ) {
+        throw new ErroEstoqueProdutoSimples(
+          "A variante técnica do produto simples está inconsistente.",
+        );
       }
 
       if (data.pricing?.modalities !== undefined) {
@@ -530,6 +555,13 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       return falha(
         "BANCO_INDISPONIVEL",
         "Não foi possível conectar ao banco de dados. Tente novamente em alguns instantes.",
+      );
+    }
+
+    if (error instanceof ErroEstoqueProdutoSimples) {
+      return falha(
+        "DADOS_INVALIDOS",
+        "Não foi possível atualizar o estoque porque a variante interna deste produto está inconsistente.",
       );
     }
 

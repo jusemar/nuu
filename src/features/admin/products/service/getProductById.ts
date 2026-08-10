@@ -23,6 +23,7 @@ import {
 } from "@/db/schema";
 import { eq, asc, inArray } from "drizzle-orm";
 import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 function obterDetalhesErro(error: unknown) {
   if (error instanceof Error) {
@@ -292,6 +293,22 @@ export async function getProductById(id: string) {
       };
     });
 
+    const varianteTecnicaProdutoSimples =
+      product.productKind === "simple"
+        ? identificarVarianteTecnicaProdutoSimples({
+            skuProduto: product.sku,
+            variantes: variants.map((variant) => ({
+              id: variant.id,
+              sku: variant.sku,
+              atributos: variant.attributes,
+              precoEmCentavos: variant.priceInCents,
+              estoque: variant.stockQuantity,
+              ativa: variant.isActive,
+              principal: variant.isDefault,
+            })),
+          })
+        : null;
+
     const precosEntregaPropria = await listarPrecosEntregaPropriaProduto(id);
 
     // Montar o objeto de modalidades no formato que o frontend espera
@@ -398,6 +415,13 @@ export async function getProductById(id: string) {
         ),
         attributes,
         variants: variantsWithClassifications,
+        estoqueProdutoSimples:
+          varianteTecnicaProdutoSimples?.situacao === "confiavel"
+            ? varianteTecnicaProdutoSimples.variante.estoque
+            : null,
+        estoqueProdutoSimplesIndisponivel:
+          varianteTecnicaProdutoSimples !== null &&
+          varianteTecnicaProdutoSimples.situacao !== "confiavel",
         // Dados de retirada local
         allowsPickup: product.allowsPickup,
         allowsOwnDelivery: product.allowsOwnDelivery,

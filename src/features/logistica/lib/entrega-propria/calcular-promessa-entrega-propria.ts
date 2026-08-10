@@ -1,4 +1,11 @@
-export const TIMEZONE_ENTREGA_PROPRIA = "America/Sao_Paulo";
+import {
+  buscarProximaDataAtendida,
+  normalizarDiasAtendidos,
+  obterPartesDataEntregaPropria,
+  TIMEZONE_ENTREGA_PROPRIA,
+} from "./calendario-entrega-propria";
+
+export { TIMEZONE_ENTREGA_PROPRIA } from "./calendario-entrega-propria";
 
 export type AgendaEntregaPropria = {
   ativa: boolean;
@@ -19,55 +26,6 @@ export type PromessaEntregaPropria = {
   calculadoEm: string;
   feriadosConsiderados: boolean;
 };
-
-type PartesDataLocal = {
-  ano: number;
-  mes: number;
-  dia: number;
-  hora: number;
-  minuto: number;
-};
-
-function obterPartesNoTimezone(data: Date): PartesDataLocal {
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE_ENTREGA_PROPRIA,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(data);
-  const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
-    Number(partes.find((parte) => parte.type === tipo)?.value ?? 0);
-
-  return {
-    ano: valor("year"),
-    mes: valor("month"),
-    dia: valor("day"),
-    hora: valor("hour"),
-    minuto: valor("minute"),
-  };
-}
-
-function dataIso(ano: number, mes: number, dia: number) {
-  return `${ano.toString().padStart(4, "0")}-${mes
-    .toString()
-    .padStart(2, "0")}-${dia.toString().padStart(2, "0")}`;
-}
-
-function adicionarDias(
-  data: Pick<PartesDataLocal, "ano" | "mes" | "dia">,
-  dias: number,
-) {
-  const resultado = new Date(Date.UTC(data.ano, data.mes - 1, data.dia + dias));
-  return {
-    ano: resultado.getUTCFullYear(),
-    mes: resultado.getUTCMonth() + 1,
-    dia: resultado.getUTCDate(),
-    diaDaSemana: resultado.getUTCDay(),
-  };
-}
 
 function horarioValido(valor: string | null | undefined) {
   return Boolean(valor && /^([01]\d|2[0-3]):[0-5]\d$/.test(valor));
@@ -106,9 +64,7 @@ export function calcularPromessaEntregaPropria({
   dataReferencia?: Date;
   feriados?: string[];
 }): PromessaEntregaPropria | null {
-  const dias = [...new Set(agenda?.diasDaSemana ?? [])]
-    .filter((dia) => Number.isInteger(dia) && dia >= 0 && dia <= 6)
-    .sort((a, b) => a - b);
+  const dias = normalizarDiasAtendidos(agenda?.diasDaSemana ?? []);
 
   if (
     !agenda?.ativa ||
@@ -118,40 +74,38 @@ export function calcularPromessaEntregaPropria({
     return null;
   }
 
-  const local = obterPartesNoTimezone(dataReferencia);
+  const local = obterPartesDataEntregaPropria(dataReferencia);
   const minutosAtuais = local.hora * 60 + local.minuto;
   const minutosCorte = minutosDoHorario(agenda.horarioCorte!);
-  const feriadosConfigurados = new Set(feriados);
+  const candidata = buscarProximaDataAtendida({
+    dataInicial: local,
+    diferencaInicial: 0,
+    diasAtendidos: dias,
+    datasBloqueadas: feriados,
+    bloquearHoje: minutosAtuais >= minutosCorte,
+  });
 
-  for (let diferenca = 0; diferenca <= 14; diferenca += 1) {
-    const candidata = adicionarDias(local, diferenca);
-    const iso = dataIso(candidata.ano, candidata.mes, candidata.dia);
-    const atendida = dias.includes(candidata.diaDaSemana);
-    const passouDoCorteHoje = diferenca === 0 && minutosAtuais >= minutosCorte;
-
-    if (atendida && !passouDoCorteHoje && !feriadosConfigurados.has(iso)) {
-      return {
-        dataPrometida: iso,
-        texto: formatarTextoPromessa(diferenca, candidata),
-        observacaoPagamento:
-          diferenca === 0
-            ? `Para pedidos com pagamento aprovado até ${agenda.horarioCorte}.`
-            : null,
-        diasConfigurados: dias,
-        horarioCorteAplicado: agenda.horarioCorte!,
-        periodoEntrega:
-          horarioValido(agenda.periodoInicio) &&
-          horarioValido(agenda.periodoFim)
-            ? {
-                inicio: agenda.periodoInicio!,
-                fim: agenda.periodoFim!,
-              }
-            : null,
-        timezone: TIMEZONE_ENTREGA_PROPRIA,
-        calculadoEm: dataReferencia.toISOString(),
-        feriadosConsiderados: feriados.length > 0,
-      };
-    }
+  if (candidata) {
+    return {
+      dataPrometida: candidata.dataIso,
+      texto: formatarTextoPromessa(candidata.diferencaEmDias, candidata.data),
+      observacaoPagamento:
+        candidata.diferencaEmDias === 0
+          ? `Para pedidos com pagamento aprovado até ${agenda.horarioCorte}.`
+          : null,
+      diasConfigurados: dias,
+      horarioCorteAplicado: agenda.horarioCorte!,
+      periodoEntrega:
+        horarioValido(agenda.periodoInicio) && horarioValido(agenda.periodoFim)
+          ? {
+              inicio: agenda.periodoInicio!,
+              fim: agenda.periodoFim!,
+            }
+          : null,
+      timezone: TIMEZONE_ENTREGA_PROPRIA,
+      calculadoEm: dataReferencia.toISOString(),
+      feriadosConsiderados: feriados.length > 0,
+    };
   }
 
   return null;

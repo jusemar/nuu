@@ -40,6 +40,10 @@ export interface ProductFormData {
   productType: string;
   productCode: string;
   ncmCode: string;
+  /** Estoque da variante técnica; usado exclusivamente por produto simples. */
+  estoqueProdutoSimples: number;
+  /** Protege produtos legados cuja variante técnica não pode ser identificada. */
+  estoqueProdutoSimplesIndisponivel?: boolean;
   images: UploadedImage[];
 
   // Dados de outras abas (serão preenchidos depois)
@@ -126,6 +130,7 @@ export const initialProductData: ProductFormData = {
   productType: "",
   productCode: "",
   ncmCode: "",
+  estoqueProdutoSimples: 0,
   images: [],
   metaTitle: "",
   metaDescription: "",

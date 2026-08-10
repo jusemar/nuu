@@ -65,6 +65,7 @@ export default function EditProductPage() {
       !carregamentoInicialAplicadoRef.current
     ) {
       const product = productResponse.data;
+      const estoqueProdutoSimples = product.estoqueProdutoSimples;
       // Função para mapear modalidades do banco para estrutura do frontend
       const mapModalitiesFromDB = (dbModalities: any) => {
         return {
@@ -142,6 +143,15 @@ export default function EditProductPage() {
         productType: product.productType || "",
         productCode: product.productCode || "",
         ncmCode: product.ncmCode || "",
+        estoqueProdutoSimples:
+          typeof estoqueProdutoSimples === "number" &&
+          Number.isSafeInteger(estoqueProdutoSimples) &&
+          estoqueProdutoSimples >= 0
+            ? estoqueProdutoSimples
+            : 0,
+        estoqueProdutoSimplesIndisponivel: Boolean(
+          product.estoqueProdutoSimplesIndisponivel,
+        ),
 
         // SEO (campos que estavam faltando)
         metaTitle: product.metaTitle || "",

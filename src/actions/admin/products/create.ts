@@ -20,6 +20,7 @@ import type {
   ProductVariantFormInput,
 } from "@/features/products";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
 
 function revalidateAdminProductsPath() {
   try {
@@ -54,6 +55,7 @@ interface CreateProductData {
   productKind?: ProductKind;
   productCode?: string;
   ncmCode?: string;
+  estoqueProdutoSimples?: number;
   collection?: string;
   tags?: string[];
   storeProductFlags?: string[];
@@ -131,6 +133,22 @@ export async function createProduct(data: CreateProductData) {
   let produtoCriadoId: string | null = null;
 
   try {
+    const estoqueProdutoSimples = normalizarEstoqueProdutoSimples(
+      data.estoqueProdutoSimples ??
+        data.varianteTecnicaProdutoSimples?.estoque ??
+        0,
+    );
+
+    if (
+      (data.productKind ?? "simple") === "simple" &&
+      estoqueProdutoSimples === null
+    ) {
+      return {
+        success: false,
+        error: "Informe um estoque inteiro igual ou maior que zero.",
+      };
+    }
+
     const marcaPadrao = await buscarMarcaPadrao();
     const marcaSelecionada = data.brandId
       ? await buscarMarcaPorId(data.brandId)
@@ -261,7 +279,8 @@ export async function createProduct(data: CreateProductData) {
           name: data.name,
           attributes: {},
           priceInCents: precoTecnico,
-          stockQuantity: data.varianteTecnicaProdutoSimples?.estoque ?? 0,
+          // Produto simples mantém o estoque exclusivamente na variante técnica.
+          stockQuantity: estoqueProdutoSimples ?? 0,
           weightInGrams: converterPesoEmGramas(
             data.dimensoesFreteExterno?.pesoEmKg,
           ),

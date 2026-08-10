@@ -60,6 +60,10 @@ const DAY_NAMES = [
   "Sábado",
 ];
 
+// Enquanto não existe calendário próprio da Entrega Própria no banco, as duas
+// modalidades recebem exatamente a mesma lista operacional de bloqueios.
+const DATAS_BLOQUEADAS_ENTREGA_PROPRIA: string[] = [];
+
 function formatCepDisplay(cep: string): string {
   const clean = cep.replace(/\D/g, "");
   if (clean.length !== 8) return cep;
@@ -312,8 +316,7 @@ async function calcularPromessaDaRegiao(regiaoId: number) {
       periodoInicio: regiao.periodoEntregaInicio,
       periodoFim: regiao.periodoEntregaFim,
     },
-    // A função aceita feriados; a tabela existente ainda não integra este fluxo.
-    feriados: [],
+    feriados: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
   });
 }
 
@@ -344,6 +347,7 @@ async function calcularProgramadaDaRegra(
       horarioCorte: regiao.horarioCorte,
     },
     prazoMinimoEmDiasCorridos: regra.scheduledDeliveryMinDays,
+    datasBloqueadas: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
   });
 
   return promessa
@@ -789,7 +793,7 @@ export async function getProductsOwnDeliveryForecasts(
           periodoInicio: regiao.periodoEntregaInicio,
           periodoFim: regiao.periodoEntregaFim,
         },
-        feriados: [],
+        feriados: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
       }),
     ]),
   );

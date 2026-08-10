@@ -64,6 +64,8 @@ interface BasicTabProps {
     productType: string;
     productCode: string;
     ncmCode: string;
+    estoqueProdutoSimples: number;
+    estoqueProdutoSimplesIndisponivel?: boolean;
     images?: UploadedImage[];
     cardShortText: string;
     storeProductFlags: string[];
@@ -425,7 +427,38 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                     </div>
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="estoque-produto-simples">Estoque</Label>
+                    <Input
+                      id="estoque-produto-simples"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={data.estoqueProdutoSimples}
+                      disabled={data.estoqueProdutoSimplesIndisponivel}
+                      onChange={(event) => {
+                        const estoque = Number(event.target.value);
+
+                        if (Number.isSafeInteger(estoque) && estoque >= 0) {
+                          onChange({ estoqueProdutoSimples: estoque });
+                        }
+                      }}
+                      aria-describedby="ajuda-estoque-produto-simples"
+                    />
+                    <p
+                      id="ajuda-estoque-produto-simples"
+                      className="text-xs text-slate-600"
+                    >
+                      {data.estoqueProdutoSimplesIndisponivel
+                        ? "O estoque não pode ser alterado porque a variante interna deste produto está inconsistente."
+                        : "Controlado pela variante interna deste produto simples. Aceita zero."}
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

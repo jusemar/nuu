@@ -2,6 +2,11 @@ import {
   type AgendaEntregaPropria,
   TIMEZONE_ENTREGA_PROPRIA,
 } from "./calcular-promessa-entrega-propria";
+import {
+  buscarProximaDataAtendida,
+  normalizarDiasAtendidos,
+  obterPartesDataEntregaPropria,
+} from "./calendario-entrega-propria";
 
 export type PromessaEntregaProgramada = {
   dataPrometida: string;
@@ -11,38 +16,6 @@ export type PromessaEntregaProgramada = {
   timezone: typeof TIMEZONE_ENTREGA_PROPRIA;
   calculadoEm: string;
 };
-
-function obterDataLocal(data: Date) {
-  const partes = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIMEZONE_ENTREGA_PROPRIA,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(data);
-  const obter = (tipo: Intl.DateTimeFormatPartTypes) =>
-    Number(partes.find((parte) => parte.type === tipo)?.value ?? 0);
-
-  return { ano: obter("year"), mes: obter("month"), dia: obter("day") };
-}
-
-function adicionarDias(
-  data: { ano: number; mes: number; dia: number },
-  dias: number,
-) {
-  const resultado = new Date(Date.UTC(data.ano, data.mes - 1, data.dia + dias));
-  return {
-    ano: resultado.getUTCFullYear(),
-    mes: resultado.getUTCMonth() + 1,
-    dia: resultado.getUTCDate(),
-    diaDaSemana: resultado.getUTCDay(),
-  };
-}
-
-function formatarIso(data: { ano: number; mes: number; dia: number }) {
-  return `${data.ano.toString().padStart(4, "0")}-${data.mes
-    .toString()
-    .padStart(2, "0")}-${data.dia.toString().padStart(2, "0")}`;
-}
 
 function formatarTexto(diferencaEmDias: number, data: Date) {
   if (diferencaEmDias <= 7) {
@@ -68,29 +41,32 @@ export function calcularPromessaEntregaProgramada({
   agenda,
   prazoMinimoEmDiasCorridos,
   dataReferencia = new Date(),
+  datasBloqueadas = [],
 }: {
   agenda: AgendaEntregaPropria | null | undefined;
   prazoMinimoEmDiasCorridos: number;
   dataReferencia?: Date;
+  datasBloqueadas?: string[];
 }): PromessaEntregaProgramada | null {
-  const dias = [...new Set(agenda?.diasDaSemana ?? [])]
-    .filter((dia) => Number.isInteger(dia) && dia >= 0 && dia <= 6)
-    .sort((a, b) => a - b);
+  const dias = normalizarDiasAtendidos(agenda?.diasDaSemana ?? []);
   const prazo = Math.max(0, Math.trunc(prazoMinimoEmDiasCorridos));
 
   if (!agenda?.ativa || dias.length === 0) return null;
 
-  const hoje = obterDataLocal(dataReferencia);
-  for (let diferenca = prazo; diferenca <= prazo + 14; diferenca += 1) {
-    const candidata = adicionarDias(hoje, diferenca);
-    if (!dias.includes(candidata.diaDaSemana)) continue;
-
+  const hoje = obterPartesDataEntregaPropria(dataReferencia);
+  const candidata = buscarProximaDataAtendida({
+    dataInicial: hoje,
+    diferencaInicial: prazo,
+    diasAtendidos: dias,
+    datasBloqueadas,
+  });
+  if (candidata) {
     const dataUtc = new Date(
-      Date.UTC(candidata.ano, candidata.mes - 1, candidata.dia),
+      Date.UTC(candidata.data.ano, candidata.data.mes - 1, candidata.data.dia),
     );
     return {
-      dataPrometida: formatarIso(candidata),
-      texto: formatarTexto(diferenca, dataUtc),
+      dataPrometida: candidata.dataIso,
+      texto: formatarTexto(candidata.diferencaEmDias, dataUtc),
       prazoMinimoEmDiasCorridos: prazo,
       diasConfigurados: dias,
       timezone: TIMEZONE_ENTREGA_PROPRIA,

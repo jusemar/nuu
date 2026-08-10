@@ -39,20 +39,9 @@ export default async function PublicacaoImportacaoFornecedorPage({
       titulo="Publicação da importação"
       subtitulo={`Revise e confirme os produtos de ${importacao.nomeFornecedor} que entrarão no catálogo da loja.`}
       hrefVoltar={`/admin/fornecedores/importacoes/${id}?etapa=revisao`}
+      hrefBasePaginacao={`/admin/fornecedores/importacoes/${id}/publicacao`}
       rascunhosIniciais={resultado.rascunhos}
       paginacao={resultado.paginacao}
-      montarHrefPagina={(mudancas) => {
-        const parametros = new URLSearchParams();
-        parametros.set(
-          "pagina",
-          String(mudancas.pagina ?? resultado.paginacao.pagina),
-        );
-        parametros.set(
-          "limite",
-          String(mudancas.limite ?? resultado.paginacao.limite),
-        );
-        return `/admin/fornecedores/importacoes/${id}/publicacao?${parametros.toString()}`;
-      }}
       sessaoAtiva={Boolean(sessao?.user)}
       acaoPublicar={publicarProdutosImportacaoFornecedor.bind(null, id)}
     />

@@ -74,12 +74,9 @@ type PaginaPublicacaoFornecedorAdminProps = {
   titulo: string;
   subtitulo: string;
   hrefVoltar: string;
+  hrefBasePaginacao: string;
   rascunhosIniciais: RascunhoPublicacaoFornecedor[];
   paginacao: PaginacaoFornecedores;
-  montarHrefPagina: (mudancas: {
-    pagina?: number;
-    limite?: number;
-  }) => string;
   sessaoAtiva: boolean;
   acaoPublicar: (entrada: {
     rascunhoIds: string[];
@@ -98,9 +95,9 @@ export function PaginaPublicacaoFornecedorAdmin({
   titulo,
   subtitulo,
   hrefVoltar,
+  hrefBasePaginacao,
   rascunhosIniciais,
   paginacao,
-  montarHrefPagina,
   sessaoAtiva,
   acaoPublicar,
 }: PaginaPublicacaoFornecedorAdminProps) {
@@ -131,6 +128,14 @@ export function PaginaPublicacaoFornecedorAdmin({
   );
   const todosProntosSelecionados =
     prontos.length > 0 && selecionadosProntos.length === prontos.length;
+
+  function montarHrefPagina(mudancas: { pagina?: number; limite?: number }) {
+    const parametros = new URLSearchParams();
+    parametros.set("pagina", String(mudancas.pagina ?? paginacao.pagina));
+    parametros.set("limite", String(mudancas.limite ?? paginacao.limite));
+
+    return `${hrefBasePaginacao}?${parametros.toString()}`;
+  }
 
   function alternarSelecionado(id: string, marcado: boolean) {
     setSelecionados((atuais) =>
@@ -172,9 +177,7 @@ export function PaginaPublicacaoFornecedorAdmin({
 
       for (const lote of lotes) {
         setProgresso((atual) =>
-          atual
-            ? { ...atual, atual: nomePorId.get(lote[0]) ?? null }
-            : atual,
+          atual ? { ...atual, atual: nomePorId.get(lote[0]) ?? null } : atual,
         );
 
         const resultado = await acaoPublicar({ rascunhoIds: lote });
@@ -468,6 +471,16 @@ export function PaginaPublicacaoFornecedorAdmin({
           </div>
         </section>
       )}
+
+      <PaginacaoAdmin
+        pagina={paginacao.pagina}
+        totalPaginas={paginacao.totalPaginas}
+        total={paginacao.total}
+        limite={paginacao.limite}
+        opcoesLimite={OPCOES_LIMITE_FORNECEDORES}
+        montarHref={montarHrefPagina}
+        rotuloItens="produtos prontos"
+      />
 
       <Dialog
         open={confirmacao.length > 0}

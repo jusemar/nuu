@@ -46,20 +46,9 @@ export default async function Page({
       titulo="Publicação da importação"
       subtitulo={`Revise e confirme os produtos de ${importacao.nomeFornecedor} que entrarão no catálogo da loja.`}
       hrefVoltar={`/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/conciliacao`}
+      hrefBasePaginacao={`/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/publicacao`}
       rascunhosIniciais={resultado.rascunhos}
       paginacao={resultado.paginacao}
-      montarHrefPagina={(mudancas) => {
-        const parametros = new URLSearchParams();
-        parametros.set(
-          "pagina",
-          String(mudancas.pagina ?? resultado.paginacao.pagina),
-        );
-        parametros.set(
-          "limite",
-          String(mudancas.limite ?? resultado.paginacao.limite),
-        );
-        return `/admin/fornecedores/integracoes/laquila/importacoes/${importacao.id}/publicacao?${parametros.toString()}`;
-      }}
       sessaoAtiva={Boolean(sessao?.user)}
       acaoPublicar={publicarProdutosImportacaoFornecedor.bind(
         null,

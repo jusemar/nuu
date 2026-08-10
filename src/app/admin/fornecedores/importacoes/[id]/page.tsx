@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PaginaDetalheImportacaoFornecedorAdmin } from "@/features/fornecedores/components/admin/pagina-detalhe-importacao-fornecedor-admin";
+import { origemDaImportacaoFornecedor } from "@/features/fornecedores/lib/origem-importacao-fornecedor";
 import {
   buscarProdutosParaVinculoFornecedor,
   listarImportacoesFornecedoresAdmin,
@@ -9,6 +10,7 @@ import {
   listarStagingImportacaoFornecedor,
   listarStagingImportacaoFornecedorAdmin,
 } from "@/features/fornecedores/queries";
+import { contarEstagiosVinculacaoFornecedor } from "@/features/fornecedores/queries/listar-staging-importacao-fornecedor-admin";
 import { analisarRevisaoImportacaoFornecedor } from "@/features/fornecedores/services/analise-revisao-importacao.service";
 
 type ImportacaoFornecedorDetalhePageProps = {
@@ -35,7 +37,9 @@ type ImportacaoFornecedorDetalhePageProps = {
 };
 
 const etapasPermitidas = ["mapeamento", "vinculacao", "revisao"];
-const vinculosPermitidos = ["vinculado", "nao_vinculado"];
+// `publicado` é estágio da importação, e não presença de vínculo — por isso
+// entra aqui, ao lado de `vinculado`.
+const vinculosPermitidos = ["vinculado", "nao_vinculado", "publicado"];
 const statusPermitidos = [
   "aguardando_analise",
   "localizado",
@@ -129,6 +133,7 @@ export default async function Page({
   };
 
   const [
+    contadoresEstagio,
     stagingPaginado,
     todasLinhas,
     produtosParaVinculo,
@@ -136,6 +141,7 @@ export default async function Page({
     opcoesMapeamento,
     rascunhosImportacao,
   ] = await Promise.all([
+    contarEstagiosVinculacaoFornecedor(id),
     listarStagingImportacaoFornecedorAdmin({
       importacaoId: id,
       busca: filtros.busca,
@@ -144,7 +150,9 @@ export default async function Page({
       marcaFornecedor: filtros.marcaFornecedor,
       status: filtros.status,
       vinculo:
-        filtros.vinculo === "vinculado" || filtros.vinculo === "nao_vinculado"
+        filtros.vinculo === "vinculado" ||
+        filtros.vinculo === "nao_vinculado" ||
+        filtros.vinculo === "publicado"
           ? filtros.vinculo
           : undefined,
       pagina,
@@ -158,7 +166,12 @@ export default async function Page({
       : [],
     analisarRevisaoImportacaoFornecedor(id),
     listarOpcoesMapeamentoFornecedorComFallback(),
-    listarRascunhosImportacaoFornecedor(id),
+    // A origem sai da importação já carregada acima: evita uma consulta
+    // redundante e, com ela, mais um ponto de falha no recarregamento da tela.
+    listarRascunhosImportacaoFornecedor(
+      id,
+      origemDaImportacaoFornecedor(importacao),
+    ),
   ]);
 
   const termoCategoriaRevisao = normalizarTexto(filtros.categoriaRevisao);
@@ -222,6 +235,7 @@ export default async function Page({
       marcasAtivas={opcoesMapeamento.marcasLoja}
       categoriasLoja={opcoesMapeamento.categoriasLoja}
       rascunhosImportacao={rascunhosImportacao}
+      contadoresEstagio={contadoresEstagio}
     />
   );
 }

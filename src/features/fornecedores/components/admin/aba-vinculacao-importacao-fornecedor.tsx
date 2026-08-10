@@ -1,12 +1,16 @@
 "use client";
 
+import Link from "next/link";
+
 import { alterarTriagemProdutosStagingFornecedorAction } from "../../actions/alterar-triagem-produtos-staging-fornecedor";
 import { confirmarItensVinculacaoFornecedorAction } from "../../actions/confirmar-itens-vinculacao-fornecedor";
 import { removerRascunhoProdutoImportacaoFornecedor } from "../../actions/remover-rascunho-produto-importacao-fornecedor";
 import { salvarRascunhoProdutoImportacaoFornecedor } from "../../actions/salvar-rascunho-produto-importacao-fornecedor";
 import { vincularProdutoFornecedor } from "../../actions/vincular-produto-fornecedor";
 import { extrairConfiguracaoComercialRascunhoFornecedor } from "../../lib/conciliacao/configuracao-rascunho-fornecedor";
+import { derivarEstagioItemImportacaoFornecedor } from "../../lib/estagio-item-importacao-fornecedor";
 import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
+import type { ContadoresEstagioVinculacaoFornecedor } from "../../queries/listar-staging-importacao-fornecedor-admin";
 import type { ProdutoParaVinculoFornecedor } from "../../types/fornecedores.types";
 import type { ValoresPadraoRascunhoProdutoFornecedor } from "../../types/mapeamento-fornecedor.types";
 import {
@@ -30,6 +34,8 @@ type LinhaVinculacaoFornecedor = {
   produtoVinculadoNome: string | null;
   produtoVinculadoSku: string | null;
   status: string;
+  /** Concluiu a Publicação NESTA importação. Vem derivado do rascunho. */
+  publicadoNestaImportacao?: boolean;
   errosValidacao: Array<{ codigo: string; mensagem: string; campo?: string }>;
   dadosBrutos: Record<string, string | number | boolean | Date | null>;
 };
@@ -63,21 +69,30 @@ type AbaVinculacaoImportacaoFornecedorProps = {
   produtosParaVinculo: ProdutoParaVinculoFornecedor[];
   configuracaoFluxoJson: Record<string, unknown>;
   rascunhos: RascunhoImportacaoFornecedor[];
+  /** Totais da importação INTEIRA, não só da página aberta. */
+  contadoresEstagio: ContadoresEstagioVinculacaoFornecedor;
 };
 
 function possuiProdutoRealVinculado(linha: LinhaVinculacaoFornecedor) {
   return Boolean(linha.produtoLocalizadoId && linha.produtoVinculadoNome);
 }
 
+/**
+ * A regra vive em `lib/estagio-item-importacao-fornecedor`, onde é testada.
+ * Aqui só se traduz o estágio para o vocabulário visual da tabela — que chama
+ * "aguardando" o que o domínio chama "pendente".
+ */
 function obterStatusVisual(
   linha: LinhaVinculacaoFornecedor,
 ): ItemVinculoFornecedor["status"] {
-  if (linha.status === "erro" || linha.status === "rejeitado") return "erro";
-  if (linha.status === "ignorado") return "ignorado";
-  if (linha.criterioLocalizacao === "novo_produto_fornecedor") return "novo";
-  if (possuiProdutoRealVinculado(linha)) return "vinculado";
+  const estagio = derivarEstagioItemImportacaoFornecedor({
+    statusStaging: linha.status,
+    criterioLocalizacao: linha.criterioLocalizacao,
+    possuiProdutoVinculado: possuiProdutoRealVinculado(linha),
+    publicadoNestaImportacao: Boolean(linha.publicadoNestaImportacao),
+  });
 
-  return "aguardando";
+  return estagio === "pendente" ? "aguardando" : estagio;
 }
 
 function lerCampoBruto(
@@ -239,6 +254,7 @@ export function AbaVinculacaoImportacaoFornecedor({
   produtosParaVinculo,
   configuracaoFluxoJson,
   rascunhos,
+  contadoresEstagio,
 }: AbaVinculacaoImportacaoFornecedorProps) {
   const itens = montarItensVinculacaoArquivo(linhas, rascunhos);
   const produtosDaLoja = montarProdutosDaLoja(produtosParaVinculo);
@@ -251,8 +267,108 @@ export function AbaVinculacaoImportacaoFornecedor({
     limite: String(filtros.limite),
   });
 
+  /**
+   * Resumo da importação inteira.
+   *
+   * Os números dos filtros da tabela contam só as linhas carregadas na página
+   * (25 de 685), então não respondem "como está esta importação". Este resumo
+   * vem do banco e cobre todos os itens — e é aqui que "Publicado" aparece
+   * separado de "Vinculado".
+   */
+  const resumoEstagios: Array<{
+    chave: string;
+    label: string;
+    valor: number;
+    classe: string;
+    /** Filtro do servidor que isola este estágio, quando existir. */
+    vinculo?: string;
+  }> = [
+    {
+      chave: "publicados",
+      label: "Publicados",
+      valor: contadoresEstagio.publicados,
+      classe: "border-violet-200 bg-violet-50 text-violet-700",
+      vinculo: "publicado",
+    },
+    {
+      chave: "vinculados",
+      label: "Vinculados",
+      valor: contadoresEstagio.vinculados,
+      classe: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      vinculo: "vinculado",
+    },
+    {
+      chave: "novos",
+      label: "Novos",
+      valor: contadoresEstagio.novos,
+      classe: "border-blue-200 bg-blue-50 text-blue-700",
+    },
+    {
+      chave: "pendentes",
+      label: "Pendentes",
+      valor: contadoresEstagio.pendentes,
+      classe: "border-amber-200 bg-amber-50 text-amber-800",
+    },
+    {
+      chave: "ignorados",
+      label: "Ignorados",
+      valor: contadoresEstagio.ignorados,
+      classe: "border-slate-200 bg-slate-100 text-slate-600",
+    },
+    {
+      chave: "erros",
+      label: "Erros",
+      valor: contadoresEstagio.erros,
+      classe: "border-red-200 bg-red-50 text-red-700",
+    },
+  ];
+
+  function hrefEstagio(vinculo?: string) {
+    const parametros = new URLSearchParams({
+      etapa: "vinculacao",
+      limite: String(filtros.limite),
+    });
+    if (vinculo) parametros.set("vinculo", vinculo);
+
+    return `/admin/fornecedores/importacoes/${importacaoId}?${parametros.toString()}`;
+  }
+
   return (
     <section className="space-y-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:p-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-sm font-semibold text-slate-950">
+            {contadoresEstagio.todos} itens nesta importação
+          </span>
+          {resumoEstagios.map((estagio) =>
+            estagio.vinculo ? (
+              <Link
+                key={estagio.chave}
+                href={hrefEstagio(estagio.vinculo)}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:brightness-95 ${estagio.classe}`}
+              >
+                {estagio.valor} {estagio.label}
+              </Link>
+            ) : (
+              <span
+                key={estagio.chave}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${estagio.classe}`}
+              >
+                {estagio.valor} {estagio.label}
+              </span>
+            ),
+          )}
+          {filtros.vinculo ? (
+            <Link
+              href={hrefEstagio()}
+              className="text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-950"
+            >
+              limpar filtro
+            </Link>
+          ) : null}
+        </div>
+      </div>
+
       <TabelaVinculosFornecedor
         tipoOrigem="arquivo"
         titulo="Vinculação de produtos"

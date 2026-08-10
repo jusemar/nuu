@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Link2,
+  Loader2,
   Pencil,
   RotateCcw,
   Search,
@@ -41,6 +42,8 @@ import { ModalRascunhoProdutoFornecedor } from "./modal-rascunho-produto-fornece
 
 export type StatusVinculoFornecedorVisual =
   | "vinculado"
+  /** Concluiu a Publicação NESTA importação. Estágio final do ciclo. */
+  | "publicado"
   | "aguardando"
   | "novo"
   | "rascunho"
@@ -180,7 +183,8 @@ type FiltroVinculoFornecedor =
   | "vinculados"
   | "pendentes"
   | "novos"
-  | "ignorados";
+  | "ignorados"
+  | "publicados";
 
 export type RascunhoProdutoFornecedorVisual = {
   produto: ProductFormData;
@@ -195,6 +199,13 @@ export type RascunhoVinculoFornecedor = RascunhoProdutoFornecedorVisual & {
 function normalizarEstadoInicial(
   item: ItemVinculoFornecedor,
 ): EstadoItemVinculoFornecedor {
+  // Publicado é terminal e ganha de qualquer outro sinal: o vínculo com o
+  // produto real continua existindo, mas o estágio do item nesta importação
+  // já acabou.
+  if (item.status === "publicado") {
+    return { status: "publicado", produtoLoja: item.produtoLoja ?? null };
+  }
+
   if (item.produtoLoja && item.status === "vinculado") {
     return {
       status: "vinculado",
@@ -276,6 +287,7 @@ function ImagemProdutoRecebidoFornecedor({
 function rotuloStatus(status: StatusVinculoFornecedorVisual) {
   const rotulos: Record<StatusVinculoFornecedorVisual, string> = {
     vinculado: "Vinculado",
+    publicado: "Publicado",
     aguardando: "Pendente",
     novo: "Novo",
     rascunho: "Novo produto",
@@ -289,6 +301,8 @@ function rotuloStatus(status: StatusVinculoFornecedorVisual) {
 function classeStatus(status: StatusVinculoFornecedorVisual) {
   const classes: Record<StatusVinculoFornecedorVisual, string> = {
     vinculado: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    // Estágio final: tom próprio, para não se confundir com "vinculado".
+    publicado: "border-violet-200 bg-violet-50 text-violet-700",
     aguardando: "border-amber-200 bg-amber-50 text-amber-700",
     novo: "border-blue-200 bg-blue-50 text-blue-700",
     rascunho: "border-blue-200 bg-blue-50 text-blue-700",
@@ -300,6 +314,8 @@ function classeStatus(status: StatusVinculoFornecedorVisual) {
 }
 
 function obterFiltroStatus(status: StatusVinculoFornecedorVisual) {
+  // Publicado vem antes: é estágio final e não deve cair em "vinculados".
+  if (status === "publicado") return "publicados";
   if (status === "vinculado") return "vinculados";
   if (status === "ignorado") return "ignorados";
   if (status === "novo" || status === "rascunho") return "novos";
@@ -750,6 +766,13 @@ export function TabelaVinculosFornecedor({
   const [mensagemRascunho, setMensagemRascunho] = useState<string | null>(null);
   const [confirmandoVinculo, setConfirmandoVinculo] = useState(false);
   const [criandoRascunhosEmMassa, setCriandoRascunhosEmMassa] = useState(false);
+  /**
+   * Quantos itens estão sendo ignorados AGORA.
+   *
+   * O botão não tinha estado próprio: clicar não mudava nada na tela até a
+   * escrita voltar, então o gestor clicava de novo achando que não pegou.
+   */
+  const [totalIgnorando, setTotalIgnorando] = useState(0);
   const [confirmandoSelecao, setConfirmandoSelecao] = useState(false);
   const [totalRascunhosPersistidos, setTotalRascunhosPersistidos] = useState(
     totalRascunhosPersistidosInicial,
@@ -1104,15 +1127,24 @@ export function TabelaVinculosFornecedor({
   }
 
   async function ignorarItens(itemIds: string[]) {
-    if (!(await persistirTriagem(itemIds, "ignorar"))) return false;
+    if (itemIds.length === 0 || totalIgnorando > 0) return false;
 
-    setEstados((atuais) => ({
-      ...atuais,
-      ...Object.fromEntries(
-        itemIds.map((id) => [id, { status: "ignorado", produtoLoja: null }]),
-      ),
-    }));
-    return true;
+    setTotalIgnorando(itemIds.length);
+    try {
+      // Falha real preserva a seleção: o gestor tenta de novo sem remontar a
+      // escolha que acabou de fazer.
+      if (!(await persistirTriagem(itemIds, "ignorar"))) return false;
+
+      setEstados((atuais) => ({
+        ...atuais,
+        ...Object.fromEntries(
+          itemIds.map((id) => [id, { status: "ignorado", produtoLoja: null }]),
+        ),
+      }));
+      return true;
+    } finally {
+      setTotalIgnorando(0);
+    }
   }
 
   async function ignorarSelecionados() {
@@ -1234,6 +1266,7 @@ export function TabelaVinculosFornecedor({
       pendentes: 0,
       novos: 0,
       ignorados: 0,
+      publicados: 0,
     } satisfies Record<FiltroVinculoFornecedor, number>,
   );
   const totalRascunhosSalvos =
@@ -1262,6 +1295,7 @@ export function TabelaVinculosFornecedor({
     { chave: "pendentes", label: "Pendentes" },
     { chave: "novos", label: "Novos" },
     { chave: "ignorados", label: "Ignorados" },
+    { chave: "publicados", label: "Publicados" },
   ];
 
   return (
@@ -1353,10 +1387,19 @@ export function TabelaVinculosFornecedor({
                 type="button"
                 size="sm"
                 variant="outline"
-                disabled={criandoRascunhosEmMassa}
+                disabled={criandoRascunhosEmMassa || totalIgnorando > 0}
+                aria-busy={totalIgnorando > 0}
                 onClick={ignorarSelecionados}
               >
-                Ignorar
+                {totalIgnorando > 0 ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Ignorando {totalIgnorando}{" "}
+                    {totalIgnorando === 1 ? "produto" : "produtos"}…
+                  </>
+                ) : (
+                  "Ignorar"
+                )}
               </Button>
               <Button
                 type="button"

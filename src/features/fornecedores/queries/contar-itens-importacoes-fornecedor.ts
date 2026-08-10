@@ -16,6 +16,7 @@ import {
   chaveImportacaoRascunhoFornecedor,
   filtrarRascunhosPorImportacoesFornecedor,
 } from "@/features/fornecedores/lib/filtro-importacoes-rascunhos-fornecedor";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 /**
  * Contadores de CADA importação, sem misturar execuções.
@@ -35,7 +36,17 @@ export async function contarItensImportacoesFornecedor(
     return new Map<string, ContadoresImportacaoFornecedor>();
   }
 
-  const [stagingArquivo, stagingApi, rascunhos] = await Promise.all([
+  // As tres leituras vao juntas na MESMA leitura protegida: uma oscilacao de
+  // conexao aqui derrubaria a lista de importacoes inteira, e os tres conjuntos
+  // precisam concordar entre si para os contadores fecharem.
+  const [stagingArquivo, stagingApi, rascunhos] = await executarLeituraFornecedores(
+    {
+      etapa: "importacoes:contar-itens",
+      mensagemAmigavel:
+        "Não foi possível calcular os contadores das importações agora. Tente novamente em alguns segundos.",
+    },
+    () =>
+      Promise.all([
     db
       .select({
         importacaoId: fornecedorProdutosStagingTable.importacaoId,
@@ -76,7 +87,8 @@ export async function contarItensImportacoesFornecedor(
         chaveImportacaoRascunhoFornecedor(),
         produtoRascunhosTable.status,
       ),
-  ]);
+      ]),
+  );
 
   return agregarContadoresImportacoesFornecedor({
     importacaoIds,

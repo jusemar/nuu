@@ -22,6 +22,7 @@ import {
   aplicarMapeamentoColunasFornecedorAction,
 } from "../../actions";
 import type { RascunhoImportacaoFornecedor } from "../../queries/listar-rascunhos-importacao-fornecedor";
+import type { ContadoresEstagioVinculacaoFornecedor } from "../../queries/listar-staging-importacao-fornecedor-admin";
 import type {
   CampoMapeamentoColunaFornecedor,
   ColunaPlanilhaFornecedor,
@@ -128,6 +129,8 @@ type PaginaDetalheImportacaoFornecedorAdminProps = {
   marcasAtivas: Array<{ id: string; nome: string }>;
   categoriasLoja: OpcaoValorPadraoLoja[];
   rascunhosImportacao: RascunhoImportacaoFornecedor[];
+  /** Totais por estágio da importação inteira, para o resumo da Vinculação. */
+  contadoresEstagio: ContadoresEstagioVinculacaoFornecedor;
 };
 
 const etapas = [
@@ -436,6 +439,7 @@ function BarraFiltros({
         <option value="">Vínculo</option>
         <option value="vinculado">Vinculado</option>
         <option value="nao_vinculado">Não vinculado</option>
+        <option value="publicado">Publicado</option>
       </select>
       <select
         name="limite"
@@ -474,6 +478,7 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   marcasAtivas,
   categoriasLoja,
   rascunhosImportacao,
+  contadoresEstagio,
 }: PaginaDetalheImportacaoFornecedorAdminProps) {
   const categorias = Array.from(
     new Set(
@@ -591,6 +596,7 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
           produtosParaVinculo={produtosParaVinculo}
           configuracaoFluxoJson={importacao.configuracaoFluxoJson}
           rascunhos={rascunhosImportacao}
+          contadoresEstagio={contadoresEstagio}
         />
       )}
     </main>

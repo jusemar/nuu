@@ -4,6 +4,7 @@ import { desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedoresTable, importacoesFornecedorTable } from "@/db/schema";
+import { executarLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
 import { derivarEstadoImportacaoFornecedor } from "../lib/estado-importacao-fornecedor";
 import { contarItensImportacoesFornecedor } from "./contar-itens-importacoes-fornecedor";
@@ -30,7 +31,16 @@ export async function listarImportacoesRecentesFornecedoresAdmin(
   const limite = normalizarLimite(entrada.limite);
   const offset = (pagina - 1) * limite;
 
-  const [itens, total, totaisStatus] = await Promise.all([
+  // Entrada da tela de Importações: sem retentativa, uma oscilação de conexão
+  // derruba a lista inteira em vez de tentar de novo.
+  const [itens, total, totaisStatus] = await executarLeituraFornecedores(
+    {
+      etapa: "importacoes:listar-recentes",
+      mensagemAmigavel:
+        "Não foi possível carregar as importações recentes agora. Tente novamente em alguns segundos.",
+    },
+    () =>
+      Promise.all([
     db
       .select({
         id: importacoesFornecedorTable.id,
@@ -63,7 +73,8 @@ export async function listarImportacoesRecentesFornecedoresAdmin(
       })
       .from(importacoesFornecedorTable)
       .groupBy(importacoesFornecedorTable.status),
-  ]);
+      ]),
+  );
 
   // Cada importação carrega os SEUS números. Antes a tela só tinha os totais
   // gravados na própria linha (linhas do arquivo, erros da leitura), que não

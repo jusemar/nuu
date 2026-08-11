@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  Archive,
-  FolderPlus,
-  Plus,
-  Send,
-} from "lucide-react";
+import { Archive, FolderPlus, Plus, Send } from "lucide-react";
 import { type ReactNode, useTransition } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,13 +105,17 @@ export function PaginaTestes({
   laboratorio: ReactNode;
 }) {
   const [pendente, iniciar] = useTransition();
-  const executar = (acao: () => Promise<unknown>) =>
+  const executar = (acao: () => Promise<unknown>, mensagem?: string) =>
     iniciar(() => {
-      void acao().catch((erro) =>
-        window.alert(
-          erro instanceof Error ? erro.message : "Operação não concluída",
-        ),
-      );
+      void acao()
+        .then(() => {
+          if (mensagem) toast.success(mensagem);
+        })
+        .catch((erro) =>
+          toast.error(
+            erro instanceof Error ? erro.message : "Operação não concluída",
+          ),
+        );
     });
   const criar = () => {
     const nome = window.prompt("Nome do caso");
@@ -152,24 +152,29 @@ export function PaginaTestes({
       versao.criterios[0],
     );
     if (!criterio) return;
-    executar(() =>
-      atualizarRascunhoCasoTeste({
-        versaoId: versao.id,
-        atualizadoEmEsperado: versao.atualizadoEm,
-        conteudo: {
-          entradaControlada: versao.entradaControlada,
-          contextoSimulado: versao.contextoSimulado,
-          expectativas: versao.expectativas,
-          ferramentasPermitidas: versao.ferramentasPermitidas,
-          ferramentasProibidas: versao.ferramentasProibidas,
-          efeitosEsperados: "nenhum",
-          criterios: [criterio],
-          dadosOrigem: versao.dadosOrigem,
-          justificativaSnapshot: versao.justificativaSnapshot,
-          autorizacaoSnapshotConfirmada:
-            versao.dadosOrigem === "snapshot_anonimizado",
-        },
-      }),
+    executar(
+      () =>
+        atualizarRascunhoCasoTeste({
+          versaoId: versao.id,
+          atualizadoEmEsperado: versao.atualizadoEm,
+          conteudo: {
+            entradaControlada: versao.entradaControlada,
+            contextoSimulado: versao.contextoSimulado,
+            expectativas: {
+              ...versao.expectativas,
+              comportamentoEsperado: criterio,
+            },
+            ferramentasPermitidas: versao.ferramentasPermitidas,
+            ferramentasProibidas: versao.ferramentasProibidas,
+            efeitosEsperados: "nenhum",
+            criterios: [criterio],
+            dadosOrigem: versao.dadosOrigem,
+            justificativaSnapshot: versao.justificativaSnapshot,
+            autorizacaoSnapshotConfirmada:
+              versao.dadosOrigem === "snapshot_anonimizado",
+          },
+        }),
+      "Rascunho do caso atualizado.",
     );
   };
   return (

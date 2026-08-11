@@ -81,6 +81,7 @@ export async function listarConhecimentosAdmin(entrada: unknown) {
         .select({
           estado: atendimentoIaDocumentoVersoesTable.estado,
           id: atendimentoIaDocumentoVersoesTable.id,
+          revisadoEm: atendimentoIaDocumentoVersoesTable.revisadoEm,
           atualizadoEm: atendimentoIaDocumentoVersoesTable.atualizadoEm,
           statusIndexacao: atendimentoIaDocumentoVersoesTable.statusIndexacao,
           titulo: atendimentoIaDocumentoVersoesTable.titulo,
@@ -111,6 +112,7 @@ export async function listarConhecimentosAdmin(entrada: unknown) {
         fragmentos: fragmentos.total,
         indexacao: versao?.statusIndexacao ?? null,
         publicado: versao?.estado === "publicado",
+        revisadoEm: versao?.revisadoEm?.toISOString() ?? null,
         titulo:
           documento.tituloAdministrativo ??
           versao?.titulo ??

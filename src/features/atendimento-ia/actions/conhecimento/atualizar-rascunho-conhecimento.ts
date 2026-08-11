@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
+import { compararTimestampSerializado } from "../../lib/admin/concorrencia/comparar-timestamp-serializado";
 import { montarConteudoCanonicoConhecimento } from "../../lib/admin/conhecimento/montar-conteudo-canonico-conhecimento";
 import { registrarAuditoriaPermissaoAtendimentoIa } from "../../lib/admin/permissoes/auditoria-permissoes";
 import { exigirCapacidadeAtendimentoIa } from "../../queries/admin/permissoes/buscar-acesso-atendimento-ia";
@@ -65,7 +66,7 @@ export async function atualizarRascunhoConhecimento(entrada: unknown) {
         and(
           eq(atendimentoIaDocumentoVersoesTable.id, dados.versaoId),
           eq(atendimentoIaDocumentoVersoesTable.estado, "rascunho"),
-          eq(
+          compararTimestampSerializado(
             atendimentoIaDocumentoVersoesTable.atualizadoEm,
             dados.atualizadoEmEsperado,
           ),

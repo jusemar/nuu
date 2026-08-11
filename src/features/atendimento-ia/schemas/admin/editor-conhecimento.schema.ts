@@ -73,3 +73,9 @@ export const enviarRevisaoConhecimentoSchema = z
     versaoId: z.string().uuid(),
   })
   .strict();
+export const revisarConhecimentoSchema = enviarRevisaoConhecimentoSchema
+  .extend({
+    decisao: z.enum(["aprovada", "reprovada"]),
+    motivo: z.string().trim().min(5).max(1_000),
+  })
+  .strict();

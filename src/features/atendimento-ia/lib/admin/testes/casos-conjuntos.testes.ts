@@ -127,6 +127,33 @@ test("actions são isoladas, auditadas e não executam OpenAI ou ferramentas", a
     assert.doesNotMatch(codigo, /openai|responses\.create|executarFerramenta/i);
   }
 });
+test("edição de rascunho preserva concorrência serializada e atualiza o critério canônico", async () => {
+  const [acao, pagina] = await Promise.all([
+    readFile(
+      new URL(
+        "../../../actions/testes/atualizar-rascunho-caso-teste.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../../../components/admin/testes/pagina-testes.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(acao, /compararTimestampSerializado/);
+  assert.doesNotMatch(
+    acao,
+    /eq\(\s*atendimentoIaCasoTesteVersoesTable\.atualizadoEm/,
+  );
+  assert.match(pagina, /comportamentoEsperado:\s*criterio/);
+  assert.match(pagina, /criterios:\s*\[criterio\]/);
+  assert.match(pagina, /Rascunho do caso atualizado\./);
+});
 test("migration cria somente as quatro tabelas do bloco", async () => {
   const sql = await readFile(
     new URL(

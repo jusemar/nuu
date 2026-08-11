@@ -48,6 +48,7 @@ function Lista({
   podeEscrever,
   podePublicar,
   podeRestaurar,
+  podeRevisar,
   elegibilidades,
 }: {
   itens: ConhecimentoInstitucionalDto[];
@@ -55,6 +56,7 @@ function Lista({
   podeEscrever: boolean;
   podePublicar: boolean;
   podeRestaurar: boolean;
+  podeRevisar: boolean;
   elegibilidades: Record<string, ResumoElegibilidadeDto | null>;
 }) {
   if (!itens.length)
@@ -122,6 +124,8 @@ function Lista({
                       elegibilidades[item.versaoAtualId ?? ""]?.hashAvaliado ??
                       null
                     }
+                    podeRevisar={podeRevisar}
+                    revisadoEm={item.revisadoEm}
                   />
                   {historicos[item.id]?.[0]?.conteudoEstruturado &&
                   item.versaoAtualId &&
@@ -211,6 +215,7 @@ export function PaginaConhecimentos({
   podeEscrever,
   podePublicar,
   podeRestaurar,
+  podeRevisar,
   elegibilidades,
   comportamentos,
 }: {
@@ -219,6 +224,7 @@ export function PaginaConhecimentos({
   podeEscrever: boolean;
   podePublicar: boolean;
   podeRestaurar: boolean;
+  podeRevisar: boolean;
   elegibilidades: Record<string, ResumoElegibilidadeDto | null>;
   comportamentos: Parameters<typeof PainelComportamentos>[0]["itens"];
 }) {
@@ -259,6 +265,7 @@ export function PaginaConhecimentos({
             podeEscrever={podeEscrever}
             podePublicar={podePublicar}
             podeRestaurar={podeRestaurar}
+            podeRevisar={podeRevisar}
             elegibilidades={elegibilidades}
           />
         </TabsContent>
@@ -273,6 +280,7 @@ export function PaginaConhecimentos({
             podeEscrever={podeEscrever}
             podePublicar={podePublicar}
             podeRestaurar={podeRestaurar}
+            podeRevisar={podeRevisar}
             elegibilidades={elegibilidades}
           />
         </TabsContent>
@@ -294,6 +302,7 @@ export function PaginaConhecimentos({
             podeEscrever={podeEscrever}
             podePublicar={podePublicar}
             podeRestaurar={podeRestaurar}
+            podeRevisar={podeRevisar}
             elegibilidades={elegibilidades}
           />
         </TabsContent>

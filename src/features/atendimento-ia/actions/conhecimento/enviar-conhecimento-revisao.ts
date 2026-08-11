@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { atendimentoIaDocumentoVersoesTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
+import { compararTimestampSerializado } from "../../lib/admin/concorrencia/comparar-timestamp-serializado";
 import { registrarAuditoriaPermissaoAtendimentoIa } from "../../lib/admin/permissoes/auditoria-permissoes";
 import { exigirCapacidadeAtendimentoIa } from "../../queries/admin/permissoes/buscar-acesso-atendimento-ia";
 import { enviarRevisaoConhecimentoSchema } from "../../schemas/admin/editor-conhecimento.schema";
@@ -28,7 +29,7 @@ export async function enviarConhecimentoRevisao(entrada: unknown) {
         and(
           eq(atendimentoIaDocumentoVersoesTable.id, dados.versaoId),
           eq(atendimentoIaDocumentoVersoesTable.estado, "rascunho"),
-          eq(
+          compararTimestampSerializado(
             atendimentoIaDocumentoVersoesTable.atualizadoEm,
             dados.atualizadoEmEsperado,
           ),

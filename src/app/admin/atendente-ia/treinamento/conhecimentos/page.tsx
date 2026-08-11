@@ -80,6 +80,7 @@ export default async function ConhecimentosAtendenteIaPage({
       podeEscrever={acesso.capacidades.includes("rascunhos_escrita")}
       podePublicar={acesso.papel === "gestor_principal"}
       podeRestaurar={acesso.capacidades.includes("restauracoes_escrita")}
+      podeRevisar={acesso.capacidades.includes("revisoes_decisao")}
       elegibilidades={elegibilidades}
     />
   );

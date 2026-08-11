@@ -120,6 +120,7 @@ test("actions exigem capacidade, auditam, concorrem e não indexam", () => {
     "atualizar-rascunho-conhecimento.ts",
     "arquivar-conhecimento.ts",
     "enviar-conhecimento-revisao.ts",
+    "revisar-conhecimento.ts",
   ].map((arquivo) =>
     readFileSync(
       new URL(`../../../actions/conhecimento/${arquivo}`, import.meta.url),
@@ -133,6 +134,11 @@ test("actions exigem capacidade, auditam, concorrem e não indexam", () => {
   }
   assert.match(fontes[2], /atualizadoEmEsperado/);
   assert.match(fontes[4], /atualizadoEmEsperado/);
+  assert.match(fontes[4], /compararTimestampSerializado/);
+  assert.match(fontes[5], /revisoes_decisao/);
+  assert.match(fontes[5], /podeAutorDecidir/);
+  assert.match(fontes[5], /compararTimestampSerializado/);
+  assert.match(fontes[5], /atendimento_ia_conhecimento_revisado/);
 });
 
 test("migration é retrocompatível e não remove dados", () => {

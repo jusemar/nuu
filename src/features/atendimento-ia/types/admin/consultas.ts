@@ -16,6 +16,7 @@ export type ConhecimentoInstitucionalDto = {
   indexacao: string | null;
   origem: string;
   publicado: boolean;
+  revisadoEm: string | null;
   situacao: "ativa" | "arquivada";
   titulo: string;
   tipoConhecimento: "institucional" | "pergunta_resposta";

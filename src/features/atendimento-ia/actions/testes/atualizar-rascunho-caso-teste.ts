@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { dbTransacional } from "@/db/transaction";
 
+import { compararTimestampSerializado } from "../../lib/admin/concorrencia/comparar-timestamp-serializado";
 import { registrarAuditoriaPermissaoAtendimentoIa } from "../../lib/admin/permissoes/auditoria-permissoes";
 import { exigirCapacidadeAtendimentoIa } from "../../queries/admin/permissoes/buscar-acesso-atendimento-ia";
 import { atualizarRascunhoCasoTesteSchema } from "../../schemas/admin/caso-teste.schema";
@@ -30,7 +31,7 @@ export async function atualizarRascunhoCasoTeste(entrada: unknown) {
         and(
           eq(atendimentoIaCasoTesteVersoesTable.id, d.versaoId),
           eq(atendimentoIaCasoTesteVersoesTable.estado, "rascunho"),
-          eq(
+          compararTimestampSerializado(
             atendimentoIaCasoTesteVersoesTable.atualizadoEm,
             d.atualizadoEmEsperado,
           ),

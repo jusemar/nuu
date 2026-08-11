@@ -12,6 +12,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { BannerInstitucionalProduto } from "@/features/banners-home/components/store/banner-institucional-produto";
+import { buscarBannerHomeAtivoPorPosicao } from "@/features/banners-home/queries/buscar-banners-home-ativos";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { avaliarSeloPagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-pdp";
 import {
@@ -166,27 +168,33 @@ export default async function ProductPage({ params }: PageProps) {
         precoBaseEmCentavos: variant.priceInCents,
       })),
   );
-  const [breadcrumbCategorias, configuracaoLoja, produtosRelacionados, selo] =
-    await Promise.all([
-      buscarBreadcrumbCategoriaPorId(product.categoryId),
-      buscarConfiguracaoLoja(),
-      buscarProdutosRelacionadosPdp({
-        produtoId: product.id,
-        categoriaId: product.categoryId,
-        marcaId: product.marcaId,
-      }),
-      // Calculado no servidor e descido como prop: a PDP não busca nada no cliente e não
-      // reimplementa regra nenhuma — quem decide é o motor central.
-      avaliarSeloPagamentoNaEntregaPdp({
-        produtoId: product.id,
-        // Sem variante: a PDP abre na visão do produto, e a variante escolhida é estado do
-        // cliente. `null` faz o motor herdar a decisão do produto, que é o comportamento
-        // correto para uma informação genérica da página.
-        varianteId: null,
-        modalidadeComercial: pricing[0]?.type ?? null,
-        permiteEntregaPropria: Boolean(product.allowsOwnDelivery),
-      }),
-    ]);
+  const [
+    breadcrumbCategorias,
+    configuracaoLoja,
+    produtosRelacionados,
+    selo,
+    bannerInstitucionalProduto,
+  ] = await Promise.all([
+    buscarBreadcrumbCategoriaPorId(product.categoryId),
+    buscarConfiguracaoLoja(),
+    buscarProdutosRelacionadosPdp({
+      produtoId: product.id,
+      categoriaId: product.categoryId,
+      marcaId: product.marcaId,
+    }),
+    // Calculado no servidor e descido como prop: a PDP não busca nada no cliente e não
+    // reimplementa regra nenhuma — quem decide é o motor central.
+    avaliarSeloPagamentoNaEntregaPdp({
+      produtoId: product.id,
+      // Sem variante: a PDP abre na visão do produto, e a variante escolhida é estado do
+      // cliente. `null` faz o motor herdar a decisão do produto, que é o comportamento
+      // correto para uma informação genérica da página.
+      varianteId: null,
+      modalidadeComercial: pricing[0]?.type ?? null,
+      permiteEntregaPropria: Boolean(product.allowsOwnDelivery),
+    }),
+    buscarBannerHomeAtivoPorPosicao("produto_institucional"),
+  ]);
 
   // 4. Passa os dados REAIS para o componente client renderizar
   return (
@@ -198,6 +206,11 @@ export default async function ProductPage({ params }: PageProps) {
       precosCalculadosPorVariante={precosCalculadosPorVariante}
       produtosRelacionados={produtosRelacionados}
       servicosComPagamentoNaEntrega={selo.servicosComPagamentoNaEntrega}
+      bannerInstitucionalProduto={
+        bannerInstitucionalProduto ? (
+          <BannerInstitucionalProduto banner={bannerInstitucionalProduto} />
+        ) : null
+      }
     />
   );
 }

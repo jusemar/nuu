@@ -1,13 +1,14 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+
 import { eq, inArray, or, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import {
-  productAttributeTable,
   categoryTable,
+  productAttributeTable,
   productDeliveryMethodsTable,
   productGalleryImagesTable,
   productImageTable,
@@ -25,6 +26,7 @@ import { dbTransacional } from "@/db/transaction";
 import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-acesso-admin";
 import { gerarSkuDisponivel } from "@/features/products/lib/gerar-sku-disponivel";
 import { buildVariantSku } from "@/features/products/lib/variant-editor";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 const produtoIdSchema = z.string().uuid();
 
@@ -189,7 +191,62 @@ export async function duplicarProdutoAdmin(produtoId: string) {
         .from(productVariantTable)
         .where(eq(productVariantTable.productId, produtoOriginal.id));
       const varianteNovaPorAntiga = new Map<string, string>();
-      if (variantes.length > 0) {
+
+      if (produtoOriginal.productKind === "simple") {
+        const identificacao = identificarVarianteTecnicaProdutoSimples({
+          skuProduto: produtoOriginal.sku,
+          variantes: variantes.map((variante) => ({
+            id: variante.id,
+            sku: variante.sku,
+            atributos: variante.attributes,
+            precoEmCentavos: variante.priceInCents,
+            estoque: variante.stockQuantity,
+            ativa: variante.isActive,
+            principal: variante.isDefault,
+          })),
+        });
+
+        if (identificacao.situacao !== "confiavel") {
+          throw new ErroDuplicacaoProduto(
+            "Não foi possível duplicar este produto simples porque seu registro interno precisa ser corrigido antes.",
+          );
+        }
+
+        const varianteOriginal = variantes.find(
+          (variante) => variante.id === identificacao.variante.id,
+        );
+        if (!varianteOriginal) {
+          throw new ErroDuplicacaoProduto(
+            "Não foi possível preparar a variante interna do produto duplicado.",
+          );
+        }
+
+        const novoId = randomUUID();
+        // Produto simples possui uma única variante interna. Ela precisa usar
+        // exatamente o SKU do produto, nunca o sufixo das variantes comerciais.
+        await tx.insert(productVariantTable).values({
+          id: novoId,
+          productId: novoProdutoId,
+          sku: novoSku,
+          name: varianteOriginal.name,
+          attributes: {},
+          priceInCents: varianteOriginal.priceInCents,
+          comparePriceInCents: varianteOriginal.comparePriceInCents,
+          costPriceInCents: varianteOriginal.costPriceInCents,
+          stockQuantity: varianteOriginal.stockQuantity,
+          weightInGrams: varianteOriginal.weightInGrams,
+          lengthInCm: varianteOriginal.lengthInCm,
+          widthInCm: varianteOriginal.widthInCm,
+          heightInCm: varianteOriginal.heightInCm,
+          aceitaPagamentoNaEntrega: varianteOriginal.aceitaPagamentoNaEntrega,
+          isActive: true,
+          isDefault: true,
+          imageUrl: varianteOriginal.imageUrl,
+          createdAt: agora,
+          updatedAt: agora,
+        });
+        varianteNovaPorAntiga.set(varianteOriginal.id, novoId);
+      } else if (variantes.length > 0) {
         const skusReservados = new Set<string>([novoSku]);
         const variantesComNovosIds = [];
         for (let indice = 0; indice < variantes.length; indice += 1) {
@@ -236,6 +293,7 @@ export async function duplicarProdutoAdmin(produtoId: string) {
             lengthInCm: variante.lengthInCm,
             widthInCm: variante.widthInCm,
             heightInCm: variante.heightInCm,
+            aceitaPagamentoNaEntrega: variante.aceitaPagamentoNaEntrega,
             isActive: variante.isActive,
             isDefault: variante.isDefault,
             imageUrl: variante.imageUrl,

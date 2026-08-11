@@ -85,9 +85,8 @@ export function resolverDisponibilidadeCompraPdp({
     return {
       estado: "indisponivel",
       estoqueMaximo: 0,
-      motivo:
-        varianteTecnicaProdutoSimples?.motivo ||
-        "Este produto está sem estoque interno confiável.",
+      // A estrutura interna nunca é um detalhe útil para o cliente.
+      motivo: "Este produto está indisponível no momento.",
     };
   }
 

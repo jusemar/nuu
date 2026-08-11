@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 
+import { BannerInstitucionalProduto } from "@/features/banners-home/components/store/banner-institucional-produto";
+import { buscarBannerHomeAtivoPorPosicao } from "@/features/banners-home/queries/buscar-banners-home-ativos";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import {
   calcularPrecosProduto,
@@ -75,6 +77,7 @@ export default async function PaginaPreVisualizacaoProduto({
     breadcrumbCategorias,
     configuracaoLoja,
     produtosRelacionados,
+    bannerInstitucionalProduto,
   ] = await Promise.all([
     calcularPrecosProduto(
       precos.map((preco) => ({
@@ -99,6 +102,7 @@ export default async function PaginaPreVisualizacaoProduto({
       categoriaId: produto.categoryId,
       marcaId: produto.marcaId,
     }),
+    buscarBannerHomeAtivoPorPosicao("produto_institucional"),
   ]);
 
   return (
@@ -111,6 +115,11 @@ export default async function PaginaPreVisualizacaoProduto({
         precosCalculadosPorVariante={precosPorVariante}
         modoPreVisualizacao
         produtosRelacionados={produtosRelacionados}
+        bannerInstitucionalProduto={
+          bannerInstitucionalProduto ? (
+            <BannerInstitucionalProduto banner={bannerInstitucionalProduto} />
+          ) : null
+        }
       />
     </div>
   );

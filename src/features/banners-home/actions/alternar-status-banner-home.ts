@@ -21,7 +21,8 @@ export async function alternarStatusBannerHome(data: unknown) {
       throw new Error("Banner não encontrado.");
     }
 
-    if (ativo && banner.posicao === "secundario_direito") {
+    // Apenas o banner principal aceita vários itens ativos no carrossel.
+    if (ativo && banner.posicao !== "principal_esquerdo") {
       await tx
         .update(bannersHomeTable)
         .set({ ativo: false, updatedAt: agora })
@@ -41,6 +42,7 @@ export async function alternarStatusBannerHome(data: unknown) {
   });
 
   revalidatePath("/");
+  revalidatePath("/product/[slug]", "page");
   revalidatePath("/admin/configuracoes/banners-home");
   return { success: true };
 }

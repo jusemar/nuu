@@ -110,6 +110,7 @@ interface ProductDetailProps {
    */
   servicosComPagamentoNaEntrega?: string[];
   produtosRelacionados?: ProdutoRelacionadoPdp[];
+  bannerInstitucionalProduto?: ReactNode;
 }
 
 // ==========================================
@@ -125,6 +126,7 @@ export function ProductDetail({
   conteudoComplementar,
   servicosComPagamentoNaEntrega = [],
   produtosRelacionados,
+  bannerInstitucionalProduto,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
@@ -459,6 +461,7 @@ export function ProductDetail({
   if (modoPreVisualizacao) {
     return (
       <PaginaProdutoAprovada
+        bannerInstitucionalProduto={bannerInstitucionalProduto}
         produtoId={product.id}
         produtoSlug={product.slug}
         nomeProduto={product.name}
@@ -585,6 +588,7 @@ export function ProductDetail({
 
   return (
     <PaginaProdutoAprovada
+      bannerInstitucionalProduto={bannerInstitucionalProduto}
       produtoId={product.id}
       produtoSlug={product.slug}
       nomeProduto={product.name}

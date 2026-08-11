@@ -1,12 +1,19 @@
 import type { BannerHome } from "@/db/schema";
 
-export type PosicaoBannerHome = "principal_esquerdo" | "secundario_direito";
+export type PosicaoBannerHome =
+  | "principal_esquerdo"
+  | "secundario_direito"
+  | "novidades_secundario_esquerdo"
+  | "novidades_secundario_direito"
+  | "produto_institucional";
 export type TipoBannerHome = "svg" | "imagem";
 export type TipoDestaqueBannerHome =
   | "promocao"
   | "oferta"
   | "lancamento"
-  | "institucional";
+  | "institucional"
+  | "informativo"
+  | "minimalista";
 export type ModeloSvgBannerHome =
   | "ondas_comerciais"
   | "formas_promocionais"
@@ -34,4 +41,7 @@ export type BannerHomeDados = BannerHome;
 export type BannersHomeAtivos = {
   principalEsquerdo: BannerHomeDados[];
   secundarioDireito: BannerHomeDados | null;
+  novidadesSecundarioEsquerdo: BannerHomeDados | null;
+  novidadesSecundarioDireito: BannerHomeDados | null;
+  produtoInstitucional: BannerHomeDados | null;
 };

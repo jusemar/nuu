@@ -134,6 +134,27 @@
       "when": 1786300793466,
       "tag": "0018_productive_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786377600000,
+      "tag": "0019_banners_secundarios_novidades",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786417898617,
+      "tag": "0020_banners_pdp_editor_avancado",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786418011373,
+      "tag": "0021_registrar_banner_pdp_existente",
+      "breakpoints": true
     }
   ]
 }

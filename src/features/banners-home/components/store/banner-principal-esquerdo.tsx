@@ -1,9 +1,9 @@
-import type { BannerHomeDados } from "../../types/banners-home.types";
 import {
   classesVariacaoPrincipal,
   FundoSvgBannerHome,
   normalizarVariacaoVisualBannerHome,
 } from "../../lib/modelos-banners-home";
+import type { BannerHomeDados } from "../../types/banners-home.types";
 import { BannerImagemHome } from "./banner-imagem-home";
 
 type BannerPrincipalEsquerdoProps = {
@@ -42,6 +42,10 @@ export function BannerPrincipalEsquerdo({
   return (
     <div
       className={`relative h-full min-h-[220px] overflow-hidden rounded-xl ${classes.fundo}`}
+      style={{
+        background: banner.corFundo ?? undefined,
+        color: banner.corTexto ?? undefined,
+      }}
     >
       <div className="pointer-events-none absolute inset-0 text-white">
         <FundoSvgBannerHome modelo={banner.modeloSvg} />
@@ -51,6 +55,10 @@ export function BannerPrincipalEsquerdo({
         {banner.subtitulo && (
           <div
             className={`mb-2 inline-flex w-fit items-center rounded px-2.5 py-1 text-[10px] font-extrabold tracking-[0.1em] uppercase ${classes.selo}`}
+            style={{
+              backgroundColor: banner.corDestaque ?? undefined,
+              color: banner.corTexto ?? undefined,
+            }}
           >
             {banner.subtitulo}
           </div>
@@ -58,6 +66,7 @@ export function BannerPrincipalEsquerdo({
 
         <h2
           className={`font-sora mb-1 text-2xl leading-tight font-black md:text-[28px] ${classes.titulo}`}
+          style={{ color: banner.corTexto ?? undefined }}
         >
           {titulo}
         </h2>
@@ -66,6 +75,7 @@ export function BannerPrincipalEsquerdo({
           <div className="mb-2 flex items-end gap-2">
             <span
               className={`font-sora text-2xl leading-none font-black md:text-3xl ${classes.preco}`}
+              style={{ color: banner.corDestaque ?? undefined }}
             >
               {banner.precoChamada}
             </span>
@@ -78,6 +88,7 @@ export function BannerPrincipalEsquerdo({
               <span
                 key={item}
                 className={`rounded border px-2 py-1 text-[10px] font-bold ${classes.detalhe}`}
+                style={{ color: banner.corTexto ?? undefined }}
               >
                 {item}
               </span>
@@ -89,6 +100,7 @@ export function BannerPrincipalEsquerdo({
           <a
             href={banner.linkBotao ?? "#"}
             className={`inline-flex w-fit items-center rounded-md px-4 py-2 text-sm font-bold transition-opacity hover:opacity-90 ${classes.botao}`}
+            style={{ backgroundColor: banner.corDestaque ?? undefined }}
           >
             {banner.textoBotao}
           </a>

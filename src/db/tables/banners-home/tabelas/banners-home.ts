@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -9,7 +10,6 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 import {
   bannerHomeDestaqueEnum,
@@ -22,9 +22,13 @@ export const bannersHomeTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     posicao: bannerHomePosicaoEnum("posicao").notNull(),
+    nome: text("nome"),
     tipoBanner: bannerHomeTipoEnum("tipo_banner").notNull().default("svg"),
     modeloSvg: text("modelo_svg").notNull(),
     variacaoVisual: text("variacao_visual").notNull().default("azul_ambar"),
+    corFundo: text("cor_fundo"),
+    corTexto: text("cor_texto"),
+    corDestaque: text("cor_destaque"),
     titulo: text("titulo"),
     subtitulo: text("subtitulo"),
     textoApoio: text("texto_apoio"),
@@ -41,6 +45,8 @@ export const bannersHomeTable = pgTable(
       .notNull()
       .default("oferta"),
     ativo: boolean("ativo").notNull().default(false),
+    dataInicio: timestamp("data_inicio", { withTimezone: true, mode: "date" }),
+    dataFim: timestamp("data_fim", { withTimezone: true, mode: "date" }),
     ordem: integer("ordem").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
@@ -53,10 +59,11 @@ export const bannersHomeTable = pgTable(
     index("banners_home_posicao_idx").on(table.posicao),
     index("banners_home_ativo_idx").on(table.ativo),
     index("banners_home_ordem_idx").on(table.ordem),
-    uniqueIndex("banners_home_um_secundario_ativo_idx")
+    // Toda posição fixa aceita um único banner ativo; só a principal é carrossel.
+    uniqueIndex("banners_home_uma_posicao_fixa_ativa_idx")
       .on(table.posicao)
       .where(
-        sql`${table.ativo} = true and ${table.posicao} = 'secundario_direito'`,
+        sql`${table.ativo} = true and ${table.posicao} <> 'principal_esquerdo'`,
       ),
   ],
 );

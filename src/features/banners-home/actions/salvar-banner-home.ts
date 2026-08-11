@@ -10,6 +10,7 @@ import { salvarBannerHomeSchema } from "../schemas/banner-home.schema";
 
 function revalidarBannersHome() {
   revalidatePath("/");
+  revalidatePath("/product/[slug]", "page");
   revalidatePath("/admin/configuracoes/banners-home");
 }
 
@@ -18,7 +19,8 @@ export async function salvarBannerHome(data: unknown) {
   const agora = new Date();
 
   await dbTransacional.transaction(async (tx) => {
-    if (dados.ativo && dados.posicao === "secundario_direito") {
+    // Apenas o banner principal forma carrossel; todas as demais posições são únicas.
+    if (dados.ativo && dados.posicao !== "principal_esquerdo") {
       const condicaoMesmaPosicao = dados.id
         ? and(
             eq(bannersHomeTable.posicao, dados.posicao),
@@ -38,9 +40,13 @@ export async function salvarBannerHome(data: unknown) {
 
     const valores = {
       posicao: dados.posicao,
+      nome: dados.nome,
       tipoBanner: dados.tipoBanner,
       modeloSvg: dados.modeloSvg,
       variacaoVisual: dados.variacaoVisual,
+      corFundo: dados.corFundo,
+      corTexto: dados.corTexto,
+      corDestaque: dados.corDestaque,
       titulo: dados.titulo,
       subtitulo: dados.subtitulo,
       textoApoio: dados.textoApoio,
@@ -55,6 +61,8 @@ export async function salvarBannerHome(data: unknown) {
       metadataImagem: dados.metadataImagem ?? null,
       tipoDestaque: dados.tipoDestaque,
       ativo: dados.ativo,
+      dataInicio: dados.dataInicio ?? null,
+      dataFim: dados.dataFim ?? null,
       ordem: dados.ordem,
       updatedAt: agora,
     };

@@ -9,10 +9,18 @@ const textoOpcionalSchema = z
 export const salvarBannerHomeSchema = z
   .object({
     id: z.string().uuid().optional(),
-    posicao: z.enum(["principal_esquerdo", "secundario_direito"], {
-      error: "Escolha a posição onde este banner será exibido na Home.",
-    }),
+    posicao: z.enum(
+      [
+        "principal_esquerdo",
+        "secundario_direito",
+        "novidades_secundario_esquerdo",
+        "novidades_secundario_direito",
+        "produto_institucional",
+      ],
+      { error: "Escolha a posição onde este banner será exibido na Home." },
+    ),
     tipoBanner: z.enum(["svg", "imagem"]).default("svg"),
+    nome: textoOpcionalSchema,
     ativo: z.boolean().default(false),
     titulo: textoOpcionalSchema,
     subtitulo: textoOpcionalSchema,
@@ -38,16 +46,39 @@ export const salvarBannerHomeSchema = z
       })
       .nullable()
       .optional(),
-    tipoDestaque: z.enum(["promocao", "oferta", "lancamento", "institucional"]),
+    tipoDestaque: z.enum([
+      "promocao",
+      "oferta",
+      "lancamento",
+      "institucional",
+      "informativo",
+      "minimalista",
+    ]),
     modeloSvg: z.enum([
       "ondas_comerciais",
       "formas_promocionais",
       "linhas_institucionais",
     ]),
     variacaoVisual: z.enum(["azul_ambar", "verde", "grafite"]),
+    corFundo: textoOpcionalSchema,
+    corTexto: textoOpcionalSchema,
+    corDestaque: textoOpcionalSchema,
+    dataInicio: z.coerce.date().nullable().optional(),
+    dataFim: z.coerce.date().nullable().optional(),
     ordem: z.coerce.number().int().min(0).default(0),
   })
   .superRefine((dados, contexto) => {
+    if (
+      dados.dataInicio &&
+      dados.dataFim &&
+      dados.dataFim <= dados.dataInicio
+    ) {
+      contexto.addIssue({
+        code: "custom",
+        path: ["dataFim"],
+        message: "A data final deve ser posterior à data inicial.",
+      });
+    }
     if (dados.tipoBanner === "svg" && !dados.titulo) {
       contexto.addIssue({
         code: "custom",

@@ -16,6 +16,7 @@ export async function removerBannerHome(id: unknown) {
     .where(eq(bannersHomeTable.id, bannerId));
 
   revalidatePath("/");
+  revalidatePath("/product/[slug]", "page");
   revalidatePath("/admin/configuracoes/banners-home");
   return { success: true };
 }

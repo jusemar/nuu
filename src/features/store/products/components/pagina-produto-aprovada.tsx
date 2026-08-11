@@ -32,6 +32,7 @@ type PropriedadesPaginaProdutoAprovada = {
   produtosRelacionados?: ProdutoRelacionadoPdp[];
   /** Mantém os marcadores exclusivos do laboratório fora da PDP pública. */
   modoPreVisualizacao?: boolean;
+  bannerInstitucionalProduto?: ReactNode;
 };
 
 /**
@@ -55,6 +56,7 @@ export function PaginaProdutoAprovada({
   modalPagamento,
   produtosRelacionados = [],
   modoPreVisualizacao = false,
+  bannerInstitucionalProduto,
 }: PropriedadesPaginaProdutoAprovada) {
   return (
     <div
@@ -112,7 +114,7 @@ export function PaginaProdutoAprovada({
             nomeProduto={nomeProduto}
             imagemProduto={imagemProduto}
           />
-          <BannerInstitucionalPrevisualizacao />
+          {bannerInstitucionalProduto ?? <BannerInstitucionalPrevisualizacao />}
           <ProdutosRelacionadosPrevisualizacao
             produtos={produtosRelacionados}
           />

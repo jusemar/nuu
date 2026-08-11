@@ -13,15 +13,30 @@ export const POSICOES_BANNER_HOME: Array<{
 }> = [
   {
     valor: "principal_esquerdo",
-    rotulo: "Banner principal esquerdo",
+    rotulo: "Banner principal",
     descricao:
       "Maior área de destaque da Home, ideal para campanhas principais.",
   },
   {
     valor: "secundario_direito",
-    rotulo: "Banner secundário direito",
+    rotulo: "Banner complementar superior",
     descricao:
       "Área menor, ideal para ofertas rápidas, cupons ou chamadas complementares.",
+  },
+  {
+    valor: "novidades_secundario_esquerdo",
+    rotulo: "Banner secundário esquerdo",
+    descricao: "Primeiro banner menor, ao lado da seção Novidades.",
+  },
+  {
+    valor: "novidades_secundario_direito",
+    rotulo: "Banner secundário direito",
+    descricao: "Segundo banner menor, ao lado da seção Novidades.",
+  },
+  {
+    valor: "produto_institucional",
+    rotulo: "Banner institucional PDP",
+    descricao: "Campanha institucional exibida na página de produto.",
   },
 ];
 
@@ -33,6 +48,8 @@ export const TIPOS_DESTAQUE_BANNER_HOME: Array<{
   { valor: "oferta", rotulo: "Oferta" },
   { valor: "lancamento", rotulo: "Lançamento" },
   { valor: "institucional", rotulo: "Institucional" },
+  { valor: "informativo", rotulo: "Informativo" },
+  { valor: "minimalista", rotulo: "Minimalista" },
 ];
 
 export const TIPOS_BANNER_HOME: Array<{
@@ -102,6 +119,36 @@ export const REGRAS_IMAGEM_BANNER_HOME = {
       proporcaoRecomendadaMaxima: 3.4,
       texto:
         "Use uma imagem horizontal com pelo menos 300px de largura e 220px de altura.",
+    },
+    novidades_secundario_esquerdo: {
+      larguraRecomendada: 900,
+      alturaRecomendada: 420,
+      larguraMinima: 300,
+      alturaMinima: 150,
+      proporcaoRecomendadaMinima: 1.1,
+      proporcaoRecomendadaMaxima: 4,
+      texto:
+        "Use uma imagem horizontal com pelo menos 300px de largura e 150px de altura.",
+    },
+    novidades_secundario_direito: {
+      larguraRecomendada: 900,
+      alturaRecomendada: 420,
+      larguraMinima: 300,
+      alturaMinima: 150,
+      proporcaoRecomendadaMinima: 1.1,
+      proporcaoRecomendadaMaxima: 4,
+      texto:
+        "Use uma imagem horizontal com pelo menos 300px de largura e 150px de altura.",
+    },
+    produto_institucional: {
+      larguraRecomendada: 1400,
+      alturaRecomendada: 360,
+      larguraMinima: 640,
+      alturaMinima: 180,
+      proporcaoRecomendadaMinima: 2.2,
+      proporcaoRecomendadaMaxima: 6,
+      texto:
+        "Use uma imagem horizontal com pelo menos 640px de largura e 180px de altura.",
     },
   },
 } as const;

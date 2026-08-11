@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImageIcon, Loader2, Upload, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import type {
 } from "../../types/banners-home.types";
 
 type UploadImagemBannerHomeProps = {
+  titulo?: string;
   posicao: PosicaoBannerHome;
   imagemUrl: string;
   imagemAlt: string;
@@ -54,6 +55,7 @@ async function enviarImagemBannerHome(arquivo: File) {
 }
 
 export function UploadImagemBannerHome({
+  titulo = "Imagem do banner",
   posicao,
   imagemUrl,
   imagemAlt,
@@ -149,7 +151,7 @@ export function UploadImagemBannerHome({
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-slate-950">Imagem do banner</p>
+        <p className="text-sm font-semibold text-slate-950">{titulo}</p>
         <p className="text-xs leading-5 text-slate-500">{regras.texto}</p>
         <p className="text-xs leading-5 text-slate-500">
           Formatos aceitos: PNG, JPG, WEBP. Máximo de 5MB. Não há altura fixa
@@ -207,7 +209,9 @@ export function UploadImagemBannerHome({
               "relative bg-slate-200",
               posicao === "principal_esquerdo"
                 ? "aspect-[16/6]"
-                : "aspect-[16/8]",
+                : posicao === "secundario_direito"
+                  ? "aspect-[16/8]"
+                  : "aspect-[2/1]",
             )}
             style={
               metadataImagem
@@ -217,6 +221,8 @@ export function UploadImagemBannerHome({
                 : undefined
             }
           >
+            {/* Blob local e URL recém-enviada precisam ser exibidos antes do save. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrl}
               alt={imagemAlt || "Preview do banner"}

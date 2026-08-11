@@ -13,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 // ==========================================
 // BUSCAR PRODUTO POR SLUG (dados reais)
@@ -52,7 +53,30 @@ export async function getProductBySlug(slug: string) {
     });
 
     // Apenas a ausência real do registro segue para o notFound() da página.
-    return product ? { ...product, brand: product.marca?.nome ?? null } : null;
+    if (!product) return null;
+
+    if (product.productKind === "simple") {
+      const identificacao = identificarVarianteTecnicaProdutoSimples({
+        skuProduto: product.sku,
+        variantes: product.variants.map((variante) => ({
+          id: variante.id,
+          sku: variante.sku,
+          atributos: variante.attributes,
+          precoEmCentavos: variante.priceInCents,
+          estoque: variante.stockQuantity,
+          ativa: variante.isActive,
+          principal: variante.isDefault,
+        })),
+      });
+
+      if (identificacao.situacao !== "confiavel") {
+        console.error("[pdp:variante-tecnica-inconsistente]", {
+          situacao: identificacao.situacao,
+        });
+      }
+    }
+
+    return { ...product, brand: product.marca?.nome ?? null };
   } catch (error) {
     const codigo = crypto.randomUUID();
     const tipo =

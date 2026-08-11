@@ -1,5 +1,3 @@
-import { BadgePercent, Truck } from "lucide-react";
-
 import { Footer } from "@/components/common/footer";
 import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
@@ -11,6 +9,7 @@ import { getCategories } from "@/data/categories/get";
 import { CampoMensagemAtendente } from "@/features/atendimento-ia";
 import {
   AreaBannersHome,
+  BannersSecundariosNovidades,
   buscarBannersHomeAtivos,
 } from "@/features/banners-home";
 import { CategorySelector } from "@/features/category-selector/components/CategorySkeleton";
@@ -19,29 +18,6 @@ import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home"
 import FeaturedProductsCarousel from "@/features/featured-products-carousel/components/FeaturedProductsCarousel";
 import { Header } from "@/features/header";
 import { ProductGridWithLoadMore } from "@/features/product-grid-with-load-more/components/ProductGridWithLoadMore";
-
-// Mini banners laterais seguem o header: azul como identidade e âmbar só comercial.
-const SIDE_BANNERS = [
-  {
-    Icone: Truck,
-    title: "Frete Grátis",
-    subtitle: "Acima de R$ 299",
-    description: "Entregas em todo o Brasil",
-    className: "border-primary/15 bg-primary text-primary-foreground",
-    iconClassName: "bg-white/12 text-white",
-    subtitleClassName: "text-blue-100",
-  },
-  {
-    Icone: BadgePercent,
-    title: "Primeira Compra",
-    subtitle: "10% de desconto",
-    description: "Use o cupom PRIMEIRA10 no checkout",
-    className:
-      "border-accent-brand/30 bg-accent-brand-light text-accent-foreground",
-    iconClassName: "bg-accent-brand text-white",
-    subtitleClassName: "text-accent-dark",
-  },
-];
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
@@ -104,36 +80,7 @@ const Home = async () => {
               <FeaturedProductsCarousel />
             </Card>
 
-            {/* Mini banners — design system */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              {SIDE_BANNERS.map((banner) => (
-                <div
-                  key={banner.title}
-                  className={`shadow-elevation hover:shadow-elevation-lg flex min-h-[150px] flex-col justify-center rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 sm:min-h-[170px] lg:min-h-0 lg:flex-1 ${banner.className}`}
-                >
-                  <div className="mb-3 flex items-center gap-3">
-                    <div
-                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${banner.iconClassName}`}
-                    >
-                      <banner.Icone className="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <p className="text-sm leading-tight font-semibold">
-                        {banner.title}
-                      </p>
-                      <p
-                        className={`mt-0.5 text-xs font-medium ${banner.subtitleClassName}`}
-                      >
-                        {banner.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs leading-relaxed opacity-75">
-                    {banner.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <BannersSecundariosNovidades banners={bannersHome} />
           </div>
         </Secao>
 

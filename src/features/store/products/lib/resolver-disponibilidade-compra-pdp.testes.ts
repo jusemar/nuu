@@ -80,6 +80,26 @@ test("bloqueia estoque próprio simples sem saldo", () => {
   assert.equal(resultado.estado, "indisponivel");
 });
 
+test("não expõe detalhes internos quando a variante técnica está inconsistente", () => {
+  const resultado = resolverDisponibilidadeCompraPdp({
+    tipoProduto: "simple",
+    modalidade: { ...modalidade!, type: "stock" },
+    precoCalculado: precoValido,
+    varianteSelecionada: null,
+    possuiVariantesPublicas: false,
+    varianteTecnicaProdutoSimples: {
+      situacao: "sku_inconsistente",
+      motivo: "O SKU da variante técnica difere do SKU do produto simples.",
+    },
+  });
+
+  assert.deepEqual(resultado, {
+    estado: "indisponivel",
+    estoqueMaximo: 0,
+    motivo: "Este produto está indisponível no momento.",
+  });
+});
+
 test("solicita seleção antes de liberar produto variável", () => {
   const resultado = resolverDisponibilidadeCompraPdp({
     tipoProduto: "variable",

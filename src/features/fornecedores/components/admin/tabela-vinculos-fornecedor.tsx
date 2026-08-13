@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 
 import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
 import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
+import { SelecaoPaginaFornecedor } from "./compartilhados/selecao-pagina-fornecedor";
 import { ModalRascunhoProdutoFornecedor } from "./modal-rascunho-produto-fornecedor";
 
 export type StatusVinculoFornecedorVisual =
@@ -1247,8 +1248,11 @@ export function TabelaVinculosFornecedor({
   const todosSelecionados =
     itensFiltrados.length > 0 &&
     itensFiltrados.every((item) => idsSelecionados.includes(item.id));
+  const totalSelecionadosVisiveis = itensFiltrados.filter((item) =>
+    idsSelecionados.includes(item.id),
+  ).length;
   return (
-    <section className="space-y-4">
+    <section className="max-w-full min-w-0 space-y-4 overflow-x-clip">
       {totalRascunhosSalvos > 0 ? (
         <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50/70 p-4 text-blue-950 shadow-xs sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -1573,7 +1577,14 @@ export function TabelaVinculosFornecedor({
         </div>
       </div>
 
-      <div className="grid gap-3 md:hidden">
+      <SelecaoPaginaFornecedor
+        total={itensFiltrados.length}
+        selecionados={totalSelecionadosVisiveis}
+        aoAlterar={alternarTodos}
+        className="md:hidden"
+      />
+
+      <div className="grid max-w-full min-w-0 gap-3 md:hidden">
         {itensFiltrados.map((item) => {
           const estado = estados[item.id] ?? estadosIniciais[item.id];
           const rascunhoCriado =
@@ -1593,11 +1604,11 @@ export function TabelaVinculosFornecedor({
             <article
               key={item.id}
               className={cn(
-                "rounded-lg border border-slate-200 bg-white p-3 shadow-xs",
+                "max-w-full min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-xs",
                 estado.status === "ignorado" && "bg-slate-50/70 opacity-75",
               )}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-start gap-3">
                 <div className="flex min-w-0 gap-3">
                   <CheckboxFornecedor
                     checked={idsSelecionados.includes(item.id)}
@@ -1635,7 +1646,10 @@ export function TabelaVinculosFornecedor({
                 </div>
                 <Badge
                   variant="outline"
-                  className={classeStatus(estado.status)}
+                  className={cn(
+                    "ml-auto max-w-full shrink-0",
+                    classeStatus(estado.status),
+                  )}
                 >
                   {rotuloStatus(estado.status)}
                 </Badge>

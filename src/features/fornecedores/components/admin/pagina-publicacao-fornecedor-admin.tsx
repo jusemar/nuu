@@ -30,6 +30,7 @@ import {
 } from "@/features/fornecedores/lib/paginacao-fornecedores";
 
 import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
+import { SelecaoPaginaFornecedor } from "./compartilhados/selecao-pagina-fornecedor";
 
 export type RascunhoPublicacaoFornecedor = {
   id: string;
@@ -60,6 +61,10 @@ type ResultadoPublicacaoFornecedor = {
   mensagem?: string;
   erro?: string;
   publicados: ItemPublicadoFornecedor[];
+  quantidadeSolicitada: number;
+  quantidadePublicada: number;
+  quantidadeNaoPublicada: number;
+  naoPublicados: Array<{ rascunhoId: string; erro: string }>;
 };
 
 /** Progresso real da publicação, item a item. */
@@ -190,7 +195,11 @@ export function PaginaPublicacaoFornecedorAdmin({
             if (idsDoLote.includes(id)) continue;
             falhas.push({
               nome: nomePorId.get(id) ?? "Produto",
-              erro: resultado.erro ?? "Não foi possível publicar este item.",
+              erro:
+                resultado.naoPublicados.find((item) => item.rascunhoId === id)
+                  ?.erro ??
+                resultado.erro ??
+                "Não foi possível publicar este item.",
             });
           }
         }
@@ -226,27 +235,29 @@ export function PaginaPublicacaoFornecedorAdmin({
       if (publicadosIds.length > 0 && falhas.length === 0) {
         toast.success(
           publicadosIds.length === 1
-            ? "Produto publicado e já atualizado na loja."
-            : `${publicadosIds.length} produtos publicados e já atualizados na loja.`,
+            ? "1 produto publicado com sucesso."
+            : `${publicadosIds.length} produtos publicados com sucesso.`,
         );
         return;
       }
 
       if (publicadosIds.length > 0) {
         toast.warning(
-          `${publicadosIds.length} publicado(s), ${falhas.length} com problema.`,
+          `${publicadosIds.length} produto${publicadosIds.length === 1 ? "" : "s"} publicado${publicadosIds.length === 1 ? "" : "s"} com sucesso. ${falhas.length} produto${falhas.length === 1 ? " requer" : "s requerem"} atenção.`,
         );
         setFalhasPersistentes(falhas);
         return;
       }
 
-      toast.error(falhas[0]?.erro ?? "Não foi possível concluir a publicação.");
+      toast.error(
+        `Nenhum produto foi publicado. Revise os ${falhas.length} produto${falhas.length === 1 ? "" : "s"} com pendências.`,
+      );
       setFalhasPersistentes(falhas);
     });
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 overflow-x-clip p-4 sm:p-6">
       <header className="flex flex-col gap-4 rounded-lg border bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link
@@ -346,7 +357,7 @@ export function PaginaPublicacaoFornecedorAdmin({
           </div>
         </section>
       ) : (
-        <section className="overflow-hidden rounded-lg border bg-white shadow-xs">
+        <section className="max-w-full min-w-0 overflow-hidden rounded-lg border bg-white shadow-xs">
           {selecionadosProntos.length > 0 ? (
             <div className="flex flex-col gap-3 border-b bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-medium text-slate-700">
@@ -374,6 +385,15 @@ export function PaginaPublicacaoFornecedorAdmin({
             </div>
           ) : null}
 
+          <SelecaoPaginaFornecedor
+            total={prontos.length}
+            selecionados={selecionadosProntos.length}
+            aoAlterar={(marcado) =>
+              setSelecionados(marcado ? prontos.map((item) => item.id) : [])
+            }
+            className="mx-4 mt-4 md:hidden"
+          />
+
           <div className="hidden grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] items-center gap-4 border-b bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 uppercase md:grid">
             <CheckboxFornecedor
               checked={todosProntosSelecionados}
@@ -394,7 +414,7 @@ export function PaginaPublicacaoFornecedorAdmin({
             {rascunhos.map((rascunho) => (
               <article
                 key={rascunho.id}
-                className="grid gap-4 p-4 md:grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] md:items-center"
+                className="grid max-w-full min-w-0 gap-4 overflow-hidden p-4 md:grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] md:items-center"
               >
                 <CheckboxFornecedor
                   checked={selecionados.includes(rascunho.id)}
@@ -405,8 +425,8 @@ export function PaginaPublicacaoFornecedorAdmin({
                   aria-label={`Selecionar ${rascunho.nome}`}
                 />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-semibold text-slate-950">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <p className="min-w-0 font-semibold break-words text-slate-950">
                       {rascunho.nome}
                     </p>
                     {/* Deixa explícito, antes de confirmar, se o item cria um

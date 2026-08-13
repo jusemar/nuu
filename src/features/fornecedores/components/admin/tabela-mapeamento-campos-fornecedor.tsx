@@ -255,7 +255,7 @@ function IndicadorConfianca({ valor }: { valor?: number }) {
   const confianca = limitarConfianca(valor);
 
   return (
-    <div className="min-w-[120px] space-y-1.5">
+    <div className="w-full min-w-0 space-y-1.5 sm:min-w-[120px]">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-slate-600">
           {obterTextoConfianca(confianca)}
@@ -937,7 +937,7 @@ function SecaoCamposSemOrigem({
               <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
                 Campo da loja
               </p>
-              <p className="mt-1 truncate text-sm font-semibold text-slate-950">
+              <p className="mt-1 break-words text-sm font-semibold text-slate-950 lg:truncate">
                 {campo.label}
               </p>
               <p
@@ -1028,27 +1028,27 @@ function LinhaMobile({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 shadow-xs ${
+      className={`w-full min-w-0 rounded-xl border p-3 shadow-xs ${
         linha.obrigatorioSemOrigem
           ? "border-amber-200 bg-amber-50/40"
           : "border-slate-200 bg-white"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
             {labelPrimeiraColuna}
           </p>
-          <p className="mt-1 truncate text-sm font-semibold text-slate-950">
+          <p className="mt-1 break-words text-sm font-semibold text-slate-950">
             {linha.nomeOrigem}
           </p>
         </div>
       </div>
-      <div className="mt-3 rounded-lg bg-slate-50 p-2">
+      <div className="mt-3 min-w-0 rounded-lg bg-slate-50 p-2">
         <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
           {labelAmostra}
         </p>
-        <p className="mt-1 truncate text-sm text-slate-800">
+        <p className="mt-1 break-words text-sm text-slate-800">
           {linha.amostra || "-"}
         </p>
       </div>
@@ -1058,7 +1058,7 @@ function LinhaMobile({
             <select
               value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}
               disabled
-              className="h-10 rounded-lg border border-blue-100 bg-blue-50 px-3 text-sm font-medium text-blue-900 shadow-xs"
+              className="h-10 w-full min-w-0 rounded-lg border border-blue-100 bg-blue-50 px-3 text-sm font-medium text-blue-900 shadow-xs"
             >
               <option value={VALOR_DESTINO_COMBINAR_CAMPOS_CATEGORIA}>
                 Combinar campos
@@ -1500,7 +1500,7 @@ export function TabelaMapeamentoCamposFornecedor({
   return (
     <form
       action={action ? enviarMapeamento : undefined}
-      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
+      className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs"
     >
       {camposOcultos.map((campo) => (
         <input
@@ -1890,14 +1890,17 @@ export function TabelaMapeamentoCamposFornecedor({
         {aoAcionarPrincipal ? (
           <Button
             type="button"
-            className="h-10 min-w-[210px] gap-2"
+            className="h-10 w-full min-w-0 gap-2 sm:w-auto sm:min-w-[210px]"
             onClick={acionarPrincipal}
           >
             {textoAcaoPrincipal}
             <ArrowRight className="h-4 w-4" />
           </Button>
         ) : hrefAcaoPrincipal ? (
-          <Button asChild className="h-10 min-w-[210px] gap-2">
+          <Button
+            asChild
+            className="h-10 w-full min-w-0 gap-2 sm:w-auto sm:min-w-[210px]"
+          >
             <a href={hrefAcaoPrincipal}>
               {textoAcaoPrincipal}
               <ArrowRight className="h-4 w-4" />
@@ -1910,7 +1913,7 @@ export function TabelaMapeamentoCamposFornecedor({
           // cliques repetidos — senão o mapeamento é aplicado duas vezes.
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             <BotaoSubmitComEstado
-              className="h-10 min-w-[210px] gap-2"
+              className="h-10 w-full min-w-0 gap-2 sm:w-auto sm:min-w-[210px]"
               textoProcessando="Aplicando mapeamento…"
             >
               {textoAcaoPrincipal}
@@ -1932,7 +1935,7 @@ export function TabelaMapeamentoCamposFornecedor({
         ) : (
           <Button
             type={tipoBotaoAcaoPrincipal}
-            className="h-10 min-w-[210px] gap-2"
+            className="h-10 w-full min-w-0 gap-2 sm:w-auto sm:min-w-[210px]"
           >
             {textoAcaoPrincipal}
             <ArrowRight className="h-4 w-4" />

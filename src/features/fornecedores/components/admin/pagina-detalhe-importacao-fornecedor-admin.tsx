@@ -246,10 +246,10 @@ function CabecalhoExecutivo({
           <p className="text-xs text-slate-500">
             Fornecedores &gt; Importações
           </p>
-          <h1 className="truncate text-2xl font-semibold text-slate-950">
+          <h1 className="break-words text-2xl font-semibold text-slate-950 md:truncate">
             Importação #{importacao.id.slice(0, 8)}
           </h1>
-          <p className="truncate text-sm text-slate-600">
+          <p className="break-words text-sm text-slate-600 md:truncate">
             {importacao.nomeArquivo ?? "arquivo sem nome"}
           </p>
         </div>
@@ -509,7 +509,7 @@ export function PaginaDetalheImportacaoFornecedorAdmin({
   // cálculo existia aqui e TAMBÉM na página, os dois varrendo as 685 linhas
   // carregadas só para isso.
   return (
-    <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 p-4 md:p-6">
+    <main className="mx-auto flex w-full max-w-[1600px] min-w-0 flex-col gap-4 px-px py-4 sm:px-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="mb-1 px-0">

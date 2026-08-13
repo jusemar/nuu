@@ -392,7 +392,7 @@ function ComparativoConciliacaoMobile({
             <dt className="text-xs font-semibold text-slate-900">
               {linha.campo}
             </dt>
-            <dd className="mt-1.5 grid grid-cols-3 gap-2 text-xs">
+            <dd className="mt-1.5 grid gap-2 text-xs sm:grid-cols-3">
               <span className="min-w-0">
                 <span className="block text-[10px] tracking-wide text-slate-500 uppercase">
                   Fornecedor
@@ -2507,7 +2507,7 @@ export function TabelaConciliacaoFornecedor({
         {itensFiltrados.map((item) => (
           <article
             key={item.id}
-            className="max-w-full min-w-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-xs"
+            className="max-w-full min-w-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:p-4"
             onClick={() => setItemDetalhes(item)}
           >
             <div className="flex min-w-0 flex-wrap items-start gap-3">
@@ -2522,17 +2522,17 @@ export function TabelaConciliacaoFornecedor({
                   onClick={(evento) => evento.stopPropagation()}
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-950">
+                  <p className="break-words text-sm font-semibold text-slate-950">
                     {nomeProdutoLegivel(item.produto.nome)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 break-words text-xs text-slate-500">
                     {resumoProduto(item)}
                   </p>
                 </div>
               </div>
               <Badge
                 variant="outline"
-                className={`ml-auto max-w-full shrink-0 ${classeSituacao(item)}`}
+                className={`max-w-full shrink-0 sm:ml-auto ${classeSituacao(item)}`}
               >
                 {rotuloSituacao(item)}
               </Badge>

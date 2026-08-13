@@ -257,7 +257,7 @@ export function PaginaPublicacaoFornecedorAdmin({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 overflow-x-clip p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 overflow-x-clip px-px py-4 sm:p-6">
       <header className="flex flex-col gap-4 rounded-lg border bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link
@@ -298,7 +298,7 @@ export function PaginaPublicacaoFornecedorAdmin({
                   : `Publicando ${Math.min(progresso.concluidos + 1, progresso.total)} de ${progresso.total} produtos…`}
               </p>
               {progresso.atual ? (
-                <p className="mt-0.5 truncate text-xs text-blue-800">
+                <p className="mt-0.5 break-words text-xs text-blue-800">
                   {progresso.atual}
                 </p>
               ) : null}
@@ -414,7 +414,7 @@ export function PaginaPublicacaoFornecedorAdmin({
             {rascunhos.map((rascunho) => (
               <article
                 key={rascunho.id}
-                className="grid max-w-full min-w-0 gap-4 overflow-hidden p-4 md:grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] md:items-center"
+                className="grid max-w-full min-w-0 gap-3 overflow-hidden p-3 sm:p-4 md:grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] md:items-center md:gap-4"
               >
                 <CheckboxFornecedor
                   checked={selecionados.includes(rascunho.id)}
@@ -444,11 +444,11 @@ export function PaginaPublicacaoFornecedorAdmin({
                         : "Criar produto"}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 break-words text-xs text-slate-500">
                     Código fornecedor:{" "}
                     {rascunho.codigoFornecedor ?? "Não informado"}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 break-words text-xs text-slate-500">
                     {rascunho.produtoAtualizadoId
                       ? `Produto na loja: ${rascunho.produtoAtualizadoNome ?? "-"}`
                       : `${rascunho.categoriaNome ?? "Sem categoria"} · ${rascunho.marcaNome ?? "Sem marca"}`}
@@ -470,7 +470,7 @@ export function PaginaPublicacaoFornecedorAdmin({
                       >
                         Bloqueado
                       </Badge>
-                      <p className="text-xs text-amber-700">
+                      <p className="break-words text-xs text-amber-700">
                         {rascunho.pendencias.join(", ")}
                       </p>
                     </div>

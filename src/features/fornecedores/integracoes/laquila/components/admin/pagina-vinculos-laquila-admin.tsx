@@ -513,7 +513,7 @@ export function PaginaVinculosLaquilaAdmin({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-5 px-px py-4 sm:p-6">
       <PassosFluxoFornecedor
         passoAtual="Vinculação"
         origem={{ tipo: "api", provedor: "Laquila" }}

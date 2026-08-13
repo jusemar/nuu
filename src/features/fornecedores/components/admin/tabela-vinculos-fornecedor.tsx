@@ -1626,7 +1626,7 @@ export function TabelaVinculosFornecedor({
                     <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
                       {labelProdutoRecebido}
                     </p>
-                    <p className="mt-1 truncate text-sm font-semibold text-slate-950">
+                    <p className="mt-1 break-words text-sm font-semibold text-slate-950">
                       {item.produtoRecebido.nome}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
@@ -1638,7 +1638,7 @@ export function TabelaVinculosFornecedor({
                       </p>
                     ) : null}
                     {item.produtoRecebido.complemento ? (
-                      <p className="mt-1 truncate text-xs text-slate-400">
+                      <p className="mt-1 break-words text-xs text-slate-400">
                         {item.produtoRecebido.complemento}
                       </p>
                     ) : null}
@@ -1647,7 +1647,7 @@ export function TabelaVinculosFornecedor({
                 <Badge
                   variant="outline"
                   className={cn(
-                    "ml-auto max-w-full shrink-0",
+                    "max-w-full shrink-0 sm:ml-auto",
                     classeStatus(estado.status),
                   )}
                 >

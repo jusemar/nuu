@@ -74,6 +74,7 @@ import type {
 
 import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
 import { PainelFiltrosResponsivo } from "./compartilhados/painel-filtros-responsivo";
+import { SelecaoPaginaFornecedor } from "./compartilhados/selecao-pagina-fornecedor";
 
 export type TipoOrigemConciliacaoFornecedor = "arquivo" | "api";
 
@@ -1969,7 +1970,7 @@ export function TabelaConciliacaoFornecedor({
   };
 
   return (
-    <section className="space-y-4">
+    <section className="max-w-full min-w-0 space-y-4 overflow-x-clip">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -2130,7 +2131,7 @@ export function TabelaConciliacaoFornecedor({
       </PainelFiltrosResponsivo>
 
       {totalSelecionados > 0 ? (
-        <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium">
             {totalSelecionados} linha{totalSelecionados === 1 ? "" : "s"}{" "}
             selecionada{totalSelecionados === 1 ? "" : "s"}
@@ -2495,14 +2496,21 @@ export function TabelaConciliacaoFornecedor({
         </Table>
       </div>
 
-      <div className="grid gap-3 lg:hidden">
+      <SelecaoPaginaFornecedor
+        total={idsFiltrados.length}
+        selecionados={totalSelecionadosVisiveis}
+        aoAlterar={alternarSelecaoVisivel}
+        className="lg:hidden"
+      />
+
+      <div className="grid max-w-full min-w-0 gap-3 lg:hidden">
         {itensFiltrados.map((item) => (
           <article
             key={item.id}
-            className="cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-xs"
+            className="max-w-full min-w-0 cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-xs"
             onClick={() => setItemDetalhes(item)}
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-wrap items-start gap-3">
               <div className="flex min-w-0 gap-3">
                 <CheckboxFornecedor
                   checked={idsSelecionados.includes(item.id)}
@@ -2522,7 +2530,10 @@ export function TabelaConciliacaoFornecedor({
                   </p>
                 </div>
               </div>
-              <Badge variant="outline" className={classeSituacao(item)}>
+              <Badge
+                variant="outline"
+                className={`ml-auto max-w-full shrink-0 ${classeSituacao(item)}`}
+              >
                 {rotuloSituacao(item)}
               </Badge>
             </div>
@@ -2733,7 +2744,7 @@ export function TabelaConciliacaoFornecedor({
         </DialogContent>
       </Dialog>
 
-      <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p
             className={`text-sm font-medium ${

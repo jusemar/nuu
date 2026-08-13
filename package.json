@@ -12,8 +12,9 @@
     "start": "bash scripts/executar-next-com-lock.sh start",
     "lint": "next lint",
     "manutencao:medidas-produtos": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/preencher-medidas-produtos-fisicos.ts",
-    "migrations:descartaveis": "AMBIENTE_BANCO=descartavel tsx scripts/executar-migrations-descartaveis.ts",
-    "migrations:desenvolvimento": "AMBIENTE_BANCO=desenvolvimento tsx scripts/aplicar-migrations-desenvolvimento.ts",
+    "migrations:pre-validar": "tsx scripts/validar-e-aplicar-migrations.ts --pre-validar",
+    "migrations:validar-apenas": "tsx scripts/validar-e-aplicar-migrations.ts --somente-validar",
+    "migrations:validar": "tsx scripts/validar-e-aplicar-migrations.ts",
     "migrations:producao": "AMBIENTE_BANCO=producao tsx scripts/aplicar-migration-producao.ts",
     "corrigir:criterio-localizacao": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/corrigir-criterio-localizacao-fornecedores.ts"
   },

@@ -21,7 +21,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -64,6 +63,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CheckboxFornecedor } from "@/features/fornecedores/components/admin/compartilhados/checkbox-fornecedor";
+import { PainelFiltrosResponsivo } from "@/features/fornecedores/components/admin/compartilhados/painel-filtros-responsivo";
 import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
 
 import type { ProdutoApiStagingLaquilaCatalogo } from "../../queries";
@@ -572,7 +573,7 @@ function ProdutoMobileCard({
       }`}
     >
       <div className="flex gap-3">
-        <Checkbox
+        <CheckboxFornecedor
           checked={selecionado}
           onCheckedChange={() => alternarSelecao(produto.id)}
           aria-label={`Selecionar ${produto.nome}`}
@@ -1053,6 +1054,14 @@ export function PreviaProdutosLaquilaMock({
     subgrupo !== "todos" ||
     ncm !== "todos" ||
     triagem !== "todos";
+  const quantidadeFiltrosAtivos = [
+    busca.trim(),
+    macroGrupo !== "todos" ? macroGrupo : "",
+    grupo !== "todos" ? grupo : "",
+    subgrupo !== "todos" ? subgrupo : "",
+    ncm !== "todos" ? ncm : "",
+    triagem !== "todos" ? triagem : "",
+  ].filter(Boolean).length;
   const consultadoEmFormatado = formatarHorarioCurto(
     dadosRecebidos.consultadoEm,
   );
@@ -1351,7 +1360,12 @@ export function PreviaProdutosLaquilaMock({
             {consultadoEmFormatado ? (
               <span>recebidos em {consultadoEmFormatado}</span>
             ) : null}
-            <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+            >
               <Link href="/admin/fornecedores/integracoes/laquila">
                 <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                 Nova sincronização
@@ -1388,8 +1402,8 @@ export function PreviaProdutosLaquilaMock({
         />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:p-4">
-        <div className="flex flex-col gap-3">
+      <PainelFiltrosResponsivo quantidadeAtivos={quantidadeFiltrosAtivos}>
+        <div className="flex flex-col gap-3 border-t border-slate-100 p-3 sm:p-4 md:border-t-0">
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -1518,7 +1532,7 @@ export function PreviaProdutosLaquilaMock({
             </Select>
           </div>
         </div>
-      </section>
+      </PainelFiltrosResponsivo>
 
       {selecionados.length > 0 ? (
         <section className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-950 p-3 text-white shadow-xs sm:flex-row sm:items-center sm:justify-between">
@@ -1620,7 +1634,7 @@ export function PreviaProdutosLaquilaMock({
                 <TableHeader>
                   <TableRow className="bg-slate-50/70">
                     <TableHead className="w-10">
-                      <Checkbox
+                      <CheckboxFornecedor
                         checked={estadoSelecaoCabecalho}
                         onCheckedChange={alternarTodosVisiveis}
                         aria-label="Selecionar produtos visíveis"
@@ -1661,7 +1675,7 @@ export function PreviaProdutosLaquilaMock({
                         }
                       >
                         <TableCell>
-                          <Checkbox
+                          <CheckboxFornecedor
                             checked={selecionados.includes(produto.id)}
                             onCheckedChange={() => alternarSelecao(produto.id)}
                             aria-label={`Selecionar ${produto.nome}`}

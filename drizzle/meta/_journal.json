@@ -155,6 +155,20 @@
       "when": 1786418011373,
       "tag": "0021_registrar_banner_pdp_existente",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786478413512,
+      "tag": "0022_nomes_administrativos_banners_existentes",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786482506460,
+      "tag": "0023_venda_cruzada_produtos",
+      "breakpoints": true
     }
   ]
 }

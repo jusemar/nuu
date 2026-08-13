@@ -2,6 +2,11 @@
 
 Data da validação: 30 de julho de 2026.
 
+> Registro histórico. Desde 12 de agosto de 2026, as branches permanentes descritas abaixo
+> não fazem parte do fluxo operacional. Migrations são validadas por uma única branch
+> temporária criada automaticamente a partir do desenvolvimento, com um banco clonado e um
+> banco vazio, e removida pelo ID ao final.
+
 ## Sequência final
 
 A sequência ativa fica isolada em `drizzle/` e contém somente:

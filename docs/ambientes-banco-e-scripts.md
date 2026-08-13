@@ -9,22 +9,24 @@ escrita por comando dedicado, com autorização explícita.
 
 ## 1. Os ambientes
 
-| Ambiente | Branch Neon | Endpoint | Para que serve |
-|---|---|---|---|
-| `desenvolvimento` | `desenvolvimento-local` | `ep-quiet-bar-acb7yly2` | Tudo que se roda na máquina: `npm run dev`, seeds, importações, manutenção |
-| `descartavel` | `baseline-adocao-clone` / `baseline-criacao-vazia` | `ep-rapid-voice-acecqcwd` / `ep-calm-sunset-acbm8l2l` | Validar migrations antes de qualquer outra coisa |
-| `producao` | `production` | `ep-proud-bonus-acy2bafx` | Só a aplicação publicada. Nenhum script local escreve aqui |
+| Ambiente          | Branch Neon                                                | Endpoint                  | Para que serve                                                             |
+| ----------------- | ---------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| `desenvolvimento` | `desenvolvimento-local`                                    | `ep-quiet-bar-acb7yly2`   | Tudo que se roda na máquina: `npm run dev`, seeds, importações, manutenção |
+| temporário        | criado automaticamente a partir de `desenvolvimento-local` | criado automaticamente    | Validar clone e cadeia completa; expira e é removido ao final              |
+| `producao`        | `production`                                               | `ep-proud-bonus-acy2bafx` | Só a aplicação publicada. Nenhum script local escreve aqui                 |
 
 ---
 
 ## 2. Qual arquivo de ambiente cada comando usa
 
-| Comando | Arquivo lido | Destino |
-|---|---|---|
-| `npm run dev` / `build` / `start` | `.env.local` (precedência do Next), completado por `.env` | desenvolvimento |
-| `npm run seed:*`, `import:*`, `manutencao:*` | `.env.desenvolvimento.local` para o banco; `.env.local` + `.env` para as demais variáveis | desenvolvimento |
-| `npm run migrations:descartaveis` | `.env.baseline-clone.local` e `.env.baseline-vazio.local` | descartável |
-| `npx drizzle-kit generate` / `migrate` | `DATABASE_URL_MIGRACOES` informada na própria linha de comando | o que for informado |
+| Comando                                      | Arquivo lido                                                                              | Destino                                               |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `npm run dev` / `build` / `start`            | `.env.local` (precedência do Next), completado por `.env`                                 | desenvolvimento                                       |
+| `npm run seed:*`, `import:*`, `manutencao:*` | `.env.desenvolvimento.local` para o banco; `.env.local` + `.env` para as demais variáveis | desenvolvimento                                       |
+| `npm run migrations:pre-validar`             | `.env.neon.local` e `.env.desenvolvimento.local`                                          | somente leitura                                       |
+| `npm run migrations:validar-apenas`          | `.env.neon.local` e `.env.desenvolvimento.local`                                          | branch temporária, sem aplicar em desenvolvimento     |
+| `npm run migrations:validar`                 | `.env.neon.local` e `.env.desenvolvimento.local`                                          | branch temporária e, após validações, desenvolvimento |
+| `npx drizzle-kit generate` / `migrate`       | `DATABASE_URL_MIGRACOES` informada na própria linha de comando                            | o que for informado                                   |
 
 `.env` existe **apenas** para guardar a URL de produção documentada. Nenhum comando local o
 usa como destino.
@@ -42,8 +44,9 @@ npm run seed:own-delivery-regions
 npm run seed:admin-teste
 npm run import:ceps
 npm run manutencao:medidas-produtos
-npm run migrations:descartaveis -- aplicar-vazio
-npm run migrations:descartaveis -- migrar-clone
+npm run migrations:pre-validar       # não cria recursos
+npm run migrations:validar-apenas    # testa sem aplicar em desenvolvimento
+npm run migrations:validar           # fluxo completo e único
 ```
 
 Todos imprimem, antes de qualquer escrita, um quadro com o destino:
@@ -138,10 +141,25 @@ separada — ver o bloqueio registrado no início de qualquer sessão.
 
 ## 7. Ordem obrigatória para uma migration nova
 
-1. banco vazio (`npm run migrations:descartaveis -- aplicar-vazio`);
-2. clone descartável (`npm run migrations:descartaveis -- migrar-clone`);
-3. branch de desenvolvimento (`DATABASE_URL_MIGRACOES=<dev> npx drizzle-kit migrate`);
-4. produção — só com auditoria e aprovação explícitas.
+Use `npm run migrations:validar`. O comando executa, sem intervenção manual:
+
+1. confirmação da API, projeto, branch, endpoint, banco e usuário de desenvolvimento;
+2. criação de uma branch temporária única, com nome exclusivo e expiração;
+3. aplicação das pendências sobre o banco `neondb` clonado;
+4. criação de outro banco vazio na mesma branch e aplicação da cadeia desde `0000`;
+5. validação do journal e da estrutura nos dois bancos;
+6. reconfirmação do desenvolvimento e aplicação somente se todos os testes passaram;
+7. exclusão apenas do ID da branch criada pela execução.
+
+Em falha anterior ao passo 6, desenvolvimento permanece intacto. Produção não é usada como
+conexão PostgreSQL pelo fluxo. Para testar sem aplicar, use
+`npm run migrations:validar-apenas`.
+
+Os antigos arquivos `.env.baseline-clone.local` e `.env.baseline-vazio.local` e seus scripts
+foram preservados somente como histórico local. Seus endpoints já não existem e eles não
+participam mais de nenhum comando do `package.json`.
+
+Produção continua sendo uma tarefa futura, com auditoria e aprovação explícitas.
 
 Nunca alterar migration antiga já aplicada. Correção de drift entra em migration nova.
 Nunca esconder erro de schema com fallback silencioso: coluna ausente precisa aparecer, é o

@@ -6,8 +6,11 @@ import { db } from "@/db/connection";
 import { bannersHomeTable } from "@/db/schema";
 
 import { bannerHomeSecundarioFallback } from "../lib/banners-home-fallback";
+import type { BannerHomeAdminDados } from "../types/banners-home.types";
 
-export async function listarBannersHomeAdmin() {
+export async function listarBannersHomeAdmin(): Promise<
+  BannerHomeAdminDados[]
+> {
   const banners = await db
     .select()
     .from(bannersHomeTable)
@@ -26,5 +29,12 @@ export async function listarBannersHomeAdmin() {
   // registro ativo, ele aparece no gestor e vira persistido ao salvar.
   return existeComplementarAtivo
     ? banners
-    : [...banners, bannerHomeSecundarioFallback];
+    : [
+        ...banners,
+        {
+          ...bannerHomeSecundarioFallback,
+          createdAt: null,
+          updatedAt: null,
+        },
+      ];
 }

@@ -6,6 +6,10 @@ import {
   CHAVE_STORAGE_CARRINHO,
   EVENTO_CARRINHO_ATUALIZADO,
 } from "../constants/carrinho-storage";
+import {
+  adicionarItensAoCarrinho,
+  criarIdItemCarrinho,
+} from "../lib/adicionar-itens-carrinho";
 import { calcularTotaisCarrinho } from "../lib/calcular-totais-carrinho";
 import type { ItemCarrinho, NovoItemCarrinho } from "../types/carrinho.types";
 import { abrirGavetaCarrinho } from "./use-gaveta-carrinho";
@@ -13,21 +17,6 @@ import { abrirGavetaCarrinho } from "./use-gaveta-carrinho";
 type OpcoesAdicionarItemCarrinho = {
   abrirGaveta?: boolean;
 };
-
-function criarIdItemCarrinho(
-  item: Pick<
-    NovoItemCarrinho,
-    "produtoId" | "produtoVarianteId" | "modalidadeTipo" | "variante"
-  >,
-) {
-  return [
-    item.produtoId,
-    item.produtoVarianteId?.trim(),
-    item.modalidadeTipo?.trim() || item.variante?.trim() || "sem-modalidade",
-  ]
-    .filter(Boolean)
-    .join(":");
-}
 
 function lerCarrinhoStorage() {
   if (typeof window === "undefined") return [];
@@ -133,6 +122,19 @@ export function useCarrinho() {
     [atualizarItens],
   );
 
+  const adicionarItens = useCallback(
+    (novosItens: NovoItemCarrinho[]) => {
+      if (novosItens.length === 0) return;
+
+      atualizarItens((itensAtuais) =>
+        adicionarItensAoCarrinho(itensAtuais, novosItens),
+      );
+      // Um lote representa uma única confirmação do cliente e abre uma única gaveta.
+      abrirGavetaCarrinho();
+    },
+    [atualizarItens],
+  );
+
   const aumentarQuantidade = useCallback(
     (itemId: string) => {
       setItemAtualizandoId(itemId);
@@ -195,6 +197,7 @@ export function useCarrinho() {
     itemAtualizandoId,
     carrinhoVazio: itens.length === 0,
     adicionarItem,
+    adicionarItens,
     aumentarQuantidade,
     diminuirQuantidade,
     removerItem,

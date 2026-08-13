@@ -70,7 +70,7 @@ import {
   TIPOS_DESTAQUE_BANNER_HOME,
 } from "../../constants/banners-home";
 import type {
-  BannerHomeDados,
+  BannerHomeAdminDados,
   FocoImagemBannerHome,
   MetadataImagemBannerHome,
   PosicaoBannerHome,
@@ -80,7 +80,7 @@ import type {
 } from "../../types/banners-home.types";
 import { UploadImagemBannerHome } from "./upload-imagem-banner-home";
 
-type PropriedadesPagina = { banners: BannerHomeDados[] };
+type PropriedadesPagina = { banners: BannerHomeAdminDados[] };
 type DispositivoPreview = "desktop" | "tablet" | "mobile";
 type TipoLink = "sem_link" | "interno" | "externo";
 
@@ -150,7 +150,7 @@ function dataParaCampo(data: Date | null) {
   return data ? new Date(data).toISOString().slice(0, 16) : "";
 }
 
-function formularioDoBanner(banner: BannerHomeDados): FormularioBanner {
+function formularioDoBanner(banner: BannerHomeAdminDados): FormularioBanner {
   return {
     id: banner.id.startsWith("fallback-") ? undefined : banner.id,
     nome: banner.nome ?? banner.titulo ?? "",
@@ -190,7 +190,17 @@ function paginaDaPosicao(posicao: PosicaoBannerHome) {
   return posicao === "produto_institucional" ? "Produto" : "Home";
 }
 
-function formatarAtualizacao(data: Date) {
+function obterDataValida(data: Date | null | undefined) {
+  if (!data) return null;
+  const dataConvertida = new Date(data);
+  const timestamp = dataConvertida.getTime();
+  return Number.isFinite(timestamp) && timestamp > 0 ? dataConvertida : null;
+}
+
+function formatarAtualizacao(updatedAt: Date | null, createdAt: Date | null) {
+  const data = obterDataValida(updatedAt) ?? obterDataValida(createdAt);
+  if (!data) return "Data não disponível";
+
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "short",
@@ -198,7 +208,7 @@ function formatarAtualizacao(data: Date) {
   }).format(new Date(data));
 }
 
-function MiniaturaBanner({ banner }: { banner: BannerHomeDados }) {
+function MiniaturaBanner({ banner }: { banner: BannerHomeAdminDados }) {
   return (
     <div className="group/preview bg-muted relative h-[68px] w-28 shrink-0 overflow-hidden rounded-lg border sm:h-[76px] sm:w-36">
       {banner.tipoBanner === "imagem" && banner.imagemUrl ? (
@@ -239,7 +249,7 @@ function CartaoBanner({
   aoExcluir,
   aoAlternar,
 }: {
-  banner: BannerHomeDados;
+  banner: BannerHomeAdminDados;
   pendente: boolean;
   aoEditar: () => void;
   aoPreVisualizar: () => void;
@@ -268,7 +278,7 @@ function CartaoBanner({
           </p>
           <p className="text-muted-foreground/80 flex items-center gap-1.5 text-[11px]">
             <CalendarDays className="size-3" /> Atualizado em{" "}
-            {formatarAtualizacao(banner.updatedAt)}
+            {formatarAtualizacao(banner.updatedAt, banner.createdAt)}
           </p>
         </div>
         <div className="col-span-2 flex items-center justify-between gap-3 border-t pt-3 sm:justify-end sm:border-0 sm:pt-0">
@@ -467,6 +477,7 @@ export function PaginaBannersHomeAdmin({ banners }: PropriedadesPagina) {
   const [status, setStatus] = useState("todos");
   const [tipo, setTipo] = useState("todos");
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [erroNome, setErroNome] = useState<string | null>(null);
 
   const atualizar = <Campo extends keyof FormularioBanner>(
     campo: Campo,
@@ -541,17 +552,25 @@ export function PaginaBannersHomeAdmin({ banners }: PropriedadesPagina) {
     posicaoInicial: PosicaoBannerHome = "principal_esquerdo",
   ) {
     setModoEditor("novo");
+    setErroNome(null);
     setFormulario({ ...formularioInicial, posicao: posicaoInicial });
     setEditorAberto(true);
   }
 
-  function editarBanner(banner: BannerHomeDados) {
+  function editarBanner(banner: BannerHomeAdminDados) {
     setModoEditor("editar");
+    setErroNome(null);
     setFormulario(formularioDoBanner(banner));
     setEditorAberto(true);
   }
 
   function salvar() {
+    if (!formulario.nome.trim()) {
+      setErroNome("Informe o nome administrativo do banner.");
+      return;
+    }
+
+    setErroNome(null);
     executar(
       () =>
         salvarBannerHome({
@@ -570,7 +589,7 @@ export function PaginaBannersHomeAdmin({ banners }: PropriedadesPagina) {
     );
   }
 
-  function duplicar(banner: BannerHomeDados) {
+  function duplicar(banner: BannerHomeAdminDados) {
     const copia = formularioDoBanner(banner);
     executar(
       () =>
@@ -836,9 +855,19 @@ export function PaginaBannersHomeAdmin({ banners }: PropriedadesPagina) {
                 <Input
                   id="nome-banner"
                   value={formulario.nome}
-                  onChange={(evento) => atualizar("nome", evento.target.value)}
+                  onChange={(evento) => {
+                    atualizar("nome", evento.target.value);
+                    if (evento.target.value.trim()) setErroNome(null);
+                  }}
                   placeholder="Ex: Campanha de inverno"
+                  aria-invalid={Boolean(erroNome)}
+                  aria-describedby={erroNome ? "erro-nome-banner" : undefined}
                 />
+                {erroNome && (
+                  <p id="erro-nome-banner" className="text-destructive text-xs">
+                    {erroNome}
+                  </p>
+                )}
               </div>
 
               <section className="space-y-4">

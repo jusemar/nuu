@@ -21,6 +21,7 @@ import { productVariantTable } from "./table/products/product-variants";
 import { productTable } from "./table/products/products";
 import { productImageTable } from "./table/products/product-images";
 import { productPricingTable } from "./table/products/product-pricing";
+import { produtosVendaCruzadaTable } from "./table/products/produtos-venda-cruzada";
 import { productAttributeTable } from "./table/products/product-attributes";
 import { productVariantImageTable } from "./table/products/variant-images";
 import { productGalleryImagesTable } from "./table/products/product-gallery-images";
@@ -313,6 +314,12 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   attributes: many(productAttributeTable),
   pricing: many(productPricingTable),
   galleryImages: many(productGalleryImagesTable),
+  vendasCruzadasConfiguradas: many(produtosVendaCruzadaTable, {
+    relationName: "vendaCruzadaProdutoPrincipal",
+  }),
+  vendasCruzadasEmQueAparece: many(produtosVendaCruzadaTable, {
+    relationName: "vendaCruzadaProdutoOferecido",
+  }),
 
   // NOVOS: Relações de logística
   deliveryMethods: many(productDeliveryMethodsTable),
@@ -324,6 +331,24 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
     references: [modelosRetiradaTable.id],
   }),
 }));
+
+export const produtosVendaCruzadaRelations = relations(
+  produtosVendaCruzadaTable,
+  ({ one }) => ({
+    produtoPrincipal: one(productTable, {
+      fields: [produtosVendaCruzadaTable.produtoPrincipalId],
+      references: [productTable.id],
+      relationName: "vendaCruzadaProdutoPrincipal",
+    }),
+    produtoOferecido: one(productTable, {
+      fields: [produtosVendaCruzadaTable.produtoOferecidoId],
+      references: [productTable.id],
+      relationName: "vendaCruzadaProdutoOferecido",
+    }),
+  }),
+);
+
+export { produtosVendaCruzadaTable };
 
 export const marcaRelations = relations(marcaTable, ({ many }) => ({
   produtos: many(productTable),

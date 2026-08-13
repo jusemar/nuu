@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import type { ProductFormData } from "@/app/admin/products/new/data/product-form-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +37,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
+import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
 import { ModalRascunhoProdutoFornecedor } from "./modal-rascunho-produto-fornecedor";
 
 export type StatusVinculoFornecedorVisual =
@@ -178,7 +178,6 @@ type EstadoItemVinculoFornecedor = {
   rascunhoSalvo?: RascunhoSalvoVinculoFornecedor | null;
 };
 
-
 export type RascunhoProdutoFornecedorVisual = {
   produto: ProductFormData;
   codigoFornecedor: string | null;
@@ -305,7 +304,6 @@ function classeStatus(status: StatusVinculoFornecedorVisual) {
 
   return classes[status];
 }
-
 
 function combinaBuscaVinculo(
   item: ItemVinculoFornecedor,
@@ -1359,7 +1357,7 @@ export function TabelaVinculosFornecedor({
       <div className="hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs md:block">
         <div className="grid grid-cols-[44px_minmax(260px,1.35fr)_150px_minmax(320px,1.45fr)_132px] border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
           <span>
-            <Checkbox
+            <CheckboxFornecedor
               checked={todosSelecionados}
               onCheckedChange={(valor) => alternarTodos(Boolean(valor))}
               aria-label="Selecionar todos"
@@ -1401,7 +1399,7 @@ export function TabelaVinculosFornecedor({
                   )}
                 >
                   <div className="pt-1">
-                    <Checkbox
+                    <CheckboxFornecedor
                       checked={idsSelecionados.includes(item.id)}
                       onCheckedChange={(valor) =>
                         alternarSelecao(item.id, Boolean(valor))
@@ -1601,7 +1599,7 @@ export function TabelaVinculosFornecedor({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 gap-3">
-                  <Checkbox
+                  <CheckboxFornecedor
                     checked={idsSelecionados.includes(item.id)}
                     onCheckedChange={(valor) =>
                       alternarSelecao(item.id, Boolean(valor))

@@ -25,7 +25,6 @@ const ENDPOINT_PRODUCAO = "ep-proud-bonus-acy2bafx";
 /** Endpoints que cada ambiente pode usar. Qualquer outro é recusado. */
 const ENDPOINTS_PERMITIDOS: Record<AmbienteBanco, readonly string[]> = {
   desenvolvimento: ["ep-quiet-bar-acb7yly2"],
-  descartavel: ["ep-rapid-voice-acecqcwd", "ep-calm-sunset-acbm8l2l"],
   producao: [ENDPOINT_PRODUCAO],
 };
 
@@ -38,14 +37,10 @@ const ORIGEM_DA_URL: Record<
     arquivo: ".env.desenvolvimento.local",
     variavel: "DATABASE_URL_DESENVOLVIMENTO",
   },
-  descartavel: {
-    arquivo: ".env.baseline-clone.local",
-    variavel: "DATABASE_URL_BASELINE_CLONE",
-  },
   producao: { arquivo: ".env", variavel: "DATABASE_URL" },
 };
 
-export type AmbienteBanco = "desenvolvimento" | "descartavel" | "producao";
+export type AmbienteBanco = "desenvolvimento" | "producao";
 
 export type DestinoBanco = {
   ambiente: AmbienteBanco;
@@ -111,7 +106,7 @@ export function resolverDestinoBanco(): DestinoBanco {
 
   if (!(informado in ENDPOINTS_PERMITIDOS)) {
     throw new ErroDestinoBancoRecusado(
-      `AMBIENTE_BANCO inválido: "${informado}". Valores aceitos: desenvolvimento, descartavel, producao.`,
+      `AMBIENTE_BANCO inválido: "${informado}". Valores aceitos: desenvolvimento ou producao.`,
     );
   }
 

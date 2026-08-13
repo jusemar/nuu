@@ -51,6 +51,8 @@ export const productTable = pgTable("product", {
 
   // Status e organização
   status: text("status").default("draft"),
+  // A lista permanece configurada quando desligada; somente a exibição futura é suspensa.
+  vendaCruzadaAtiva: boolean("venda_cruzada_ativa").notNull().default(false),
   collection: text("collection"),
   tags: text("tags").array(),
 

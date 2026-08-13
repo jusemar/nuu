@@ -1,10 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check,Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,12 @@ export function CheckoutVisitante({
       itens: [],
     },
   });
+  const { setValue } = form;
+  const assinaturaItensCarrinho = useMemo(
+    () => JSON.stringify(carrinho.itens),
+    [carrinho.itens],
+  );
+  const assinaturaItensSincronizadaRef = useRef<string | undefined>(undefined);
   const cepEntrega = form.watch("cep");
   const cidadeEntrega = form.watch("cidade");
   const estadoEntrega = form.watch("estado");
@@ -157,8 +163,12 @@ export function CheckoutVisitante({
 
   useEffect(() => {
     // O formulário valida os dados; o carrinho continua sendo fonte do domínio carrinho.
-    form.setValue("itens", carrinho.itens);
-  }, [carrinho.itens, form]);
+    if (assinaturaItensSincronizadaRef.current === assinaturaItensCarrinho) {
+      return;
+    }
+    assinaturaItensSincronizadaRef.current = assinaturaItensCarrinho;
+    setValue("itens", carrinho.itens);
+  }, [assinaturaItensCarrinho, carrinho.itens, setValue]);
 
   useEffect(() => {
     let consultaCancelada = false;
@@ -181,7 +191,7 @@ export function CheckoutVisitante({
 
         if (resumo && !resumo.pagamentos[formaPagamento].ativo) {
           const proximaForma = resumo.pagamentos.pix.ativo ? "pix" : "cartao";
-          form.setValue("formaPagamento", proximaForma, {
+          setValue("formaPagamento", proximaForma, {
             shouldDirty: true,
             shouldValidate: true,
           });
@@ -189,7 +199,7 @@ export function CheckoutVisitante({
 
         const primeiraParcela = resumo?.pagamentos.cartao.parcelamentos[0];
         if (primeiraParcela && !parcelasCartao) {
-          form.setValue("parcelasCartao", primeiraParcela.parcelas, {
+          setValue("parcelasCartao", primeiraParcela.parcelas, {
             shouldDirty: true,
             shouldValidate: true,
           });
@@ -217,8 +227,8 @@ export function CheckoutVisitante({
     cepEntregaCompleto,
     cupom,
     formaPagamento,
-    form,
     parcelasCartao,
+    setValue,
   ]);
 
   useEffect(() => {

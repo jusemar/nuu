@@ -11,14 +11,15 @@
 "use client";
 
 import { Heart, ShoppingCart, Truck } from "lucide-react";
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+
+import { PrevisaoEntregaProdutoCard } from "@/features/logistica/components/store/previsao-entrega-produto-card";
 import {
   BadgePromocional,
   type TipoBadgePromocionalVisual,
 } from "@/features/promocoes/components/store/badge-promocional";
-import { PrevisaoEntregaProdutoCard } from "@/features/logistica/components/store/previsao-entrega-produto-card";
 
 // =====================================================================
 // TIPO: CategoryProductCardProps
@@ -40,6 +41,8 @@ interface CategoryProductCardProps {
   hasBestPrice?: boolean;
   className?: string;
   isLoading?: boolean;
+  mostrarAcaoCarrinho?: boolean;
+  mostrarPrevisaoEntrega?: boolean;
 }
 
 export function CategoryProductCard({
@@ -55,9 +58,10 @@ export function CategoryProductCard({
   isFeatured = false,
   hasFreeShipping,
   hasFlashSale,
-  hasBestPrice,
   className = "",
   isLoading = false,
+  mostrarAcaoCarrinho = true,
+  mostrarPrevisaoEntrega = true,
 }: CategoryProductCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -116,7 +120,7 @@ export function CategoryProductCard({
       data-product-id={id}
     >
       {/* Link para página do produto */}
-      <Link href={`/product/${slug}`} className="block">
+      <Link href={`/product/${slug}`} prefetch={false} className="block">
         {/* Container da Imagem */}
         <div className="relative aspect-[1/0.75] overflow-hidden bg-gray-50">
           {isFeatured ? (
@@ -147,7 +151,7 @@ export function CategoryProductCard({
       <div className="p-3 pt-1">
         {/* Cabeçalho com Título e Favorito */}
         <div className="mb-2 flex items-start justify-between gap-2">
-          <Link href={`/product/${slug}`} className="flex-1">
+          <Link href={`/product/${slug}`} prefetch={false} className="flex-1">
             <h3 className="line-clamp-2 text-sm leading-tight font-semibold text-gray-900 transition-colors hover:text-blue-600">
               {name}
             </h3>
@@ -205,22 +209,26 @@ export function CategoryProductCard({
             </div>
 
             {/* Botão Carrinho */}
-            <button
-              onClick={handleAddToCart}
-              disabled={isAddingToCart}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white transition-all duration-300 hover:bg-blue-700 ${
-                isAddingToCart ? "scale-95" : "hover:scale-105"
-              }`}
-              aria-label="Adicionar ao carrinho"
-            >
-              <ShoppingCart
-                className={`h-4 w-4 ${isAddingToCart ? "animate-bounce" : ""}`}
-              />
-            </button>
+            {mostrarAcaoCarrinho ? (
+              <button
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white transition-all duration-300 hover:bg-blue-700 ${
+                  isAddingToCart ? "scale-95" : "hover:scale-105"
+                }`}
+                aria-label="Adicionar ao carrinho"
+              >
+                <ShoppingCart
+                  className={`h-4 w-4 ${isAddingToCart ? "animate-bounce" : ""}`}
+                />
+              </button>
+            ) : null}
           </div>
         </div>
 
-        <PrevisaoEntregaProdutoCard produtoId={id} />
+        {mostrarPrevisaoEntrega ? (
+          <PrevisaoEntregaProdutoCard produtoId={id} />
+        ) : null}
 
         {/* Badges */}
         {(hasFreeShipping || hasFlashSale) && (

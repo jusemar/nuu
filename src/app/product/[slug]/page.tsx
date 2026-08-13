@@ -24,6 +24,7 @@ import { resolverUrlCanonicaProduto } from "@/features/products/lib/url-canonica
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
 import { buscarProdutosRelacionadosPdp } from "@/features/store/products/queries/buscar-produtos-relacionados-pdp";
+import { buscarVendaCruzadaPdp } from "@/features/store/products/queries/venda-cruzada/buscar-venda-cruzada-pdp";
 import { getProductBySlug } from "@/features/store/products/service/productService";
 import type {
   Modalidade,
@@ -152,28 +153,42 @@ export default async function ProductPage({ params }: PageProps) {
   }
 
   const pricing = normalizarPrecosProduto(product.pricing || []);
-  const precosCalculadosPorModalidade = await calcularPrecosProduto(
-    pricing.map((preco) => ({
+  const entradasPrecosModalidades = pricing.map((preco) => ({
+    produtoId: product.id,
+    modalidade: preco.type,
+    precoBaseEmCentavos: obterPrecoBaseModalidade(preco),
+  }));
+  const entradasPrecosVariantes = (product.variants || [])
+    .filter((variant) => variant.isActive)
+    .map((variant) => ({
       produtoId: product.id,
-      modalidade: preco.type,
-      precoBaseEmCentavos: obterPrecoBaseModalidade(preco),
-    })),
+      modalidade: `variant:${variant.id}`,
+      precoBaseEmCentavos: variant.priceInCents,
+    }));
+  // Configuração de pagamento e promoções são comuns às duas coleções. Uma única
+  // precificação evita repetir essas leituras durante a abertura da PDP.
+  const todosPrecosCalculados = await calcularPrecosProduto([
+    ...entradasPrecosModalidades,
+    ...entradasPrecosVariantes,
+  ]);
+  const precosCalculadosPorModalidade = Object.fromEntries(
+    entradasPrecosModalidades.flatMap((entrada) => {
+      const preco = todosPrecosCalculados[entrada.modalidade];
+      return preco ? [[entrada.modalidade, preco]] : [];
+    }),
   );
-  const precosCalculadosPorVariante = await calcularPrecosProduto(
-    (product.variants || [])
-      .filter((variant) => variant.isActive)
-      .map((variant) => ({
-        produtoId: product.id,
-        modalidade: `variant:${variant.id}`,
-        precoBaseEmCentavos: variant.priceInCents,
-      })),
+  const precosCalculadosPorVariante = Object.fromEntries(
+    entradasPrecosVariantes.flatMap((entrada) => {
+      const preco = todosPrecosCalculados[entrada.modalidade];
+      return preco ? [[entrada.modalidade, preco]] : [];
+    }),
   );
   const [
     breadcrumbCategorias,
     configuracaoLoja,
     produtosRelacionados,
-    selo,
     bannerInstitucionalProduto,
+    produtosVendaCruzada,
   ] = await Promise.all([
     buscarBreadcrumbCategoriaPorId(product.categoryId),
     buscarConfiguracaoLoja(),
@@ -182,19 +197,23 @@ export default async function ProductPage({ params }: PageProps) {
       categoriaId: product.categoryId,
       marcaId: product.marcaId,
     }),
-    // Calculado no servidor e descido como prop: a PDP não busca nada no cliente e não
-    // reimplementa regra nenhuma — quem decide é o motor central.
-    avaliarSeloPagamentoNaEntregaPdp({
-      produtoId: product.id,
-      // Sem variante: a PDP abre na visão do produto, e a variante escolhida é estado do
-      // cliente. `null` faz o motor herdar a decisão do produto, que é o comportamento
-      // correto para uma informação genérica da página.
-      varianteId: null,
-      modalidadeComercial: pricing[0]?.type ?? null,
-      permiteEntregaPropria: Boolean(product.allowsOwnDelivery),
-    }),
     buscarBannerHomeAtivoPorPosicao("produto_institucional"),
+    buscarVendaCruzadaPdp(product.id),
   ]);
+
+  // O motor do selo faz várias leituras próprias. Executá-lo dentro do Promise.all acima
+  // multiplicava o pico de consultas HTTP durante uma navegação RSC e podia derrubar a
+  // página inteira com ECONNRESET. A avaliação continua autoritativa, apenas fora da
+  // rajada das consultas estruturais da PDP.
+  const selo = await avaliarSeloPagamentoNaEntregaPdp({
+    produtoId: product.id,
+    // Sem variante: a PDP abre na visão do produto, e a variante escolhida é estado do
+    // cliente. `null` faz o motor herdar a decisão do produto, que é o comportamento
+    // correto para uma informação genérica da página.
+    varianteId: null,
+    modalidadeComercial: pricing[0]?.type ?? null,
+    permiteEntregaPropria: Boolean(product.allowsOwnDelivery),
+  });
 
   // 4. Passa os dados REAIS para o componente client renderizar
   return (
@@ -205,6 +224,7 @@ export default async function ProductPage({ params }: PageProps) {
       precosCalculadosPorModalidade={precosCalculadosPorModalidade}
       precosCalculadosPorVariante={precosCalculadosPorVariante}
       produtosRelacionados={produtosRelacionados}
+      produtosVendaCruzada={produtosVendaCruzada}
       servicosComPagamentoNaEntrega={selo.servicosComPagamentoNaEntrega}
       bannerInstitucionalProduto={
         bannerInstitucionalProduto ? (

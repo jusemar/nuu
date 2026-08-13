@@ -1866,7 +1866,7 @@ export function TabelaMapeamentoCamposFornecedor({
                 onChange={(evento) =>
                   setSalvarComoPadrao(evento.target.checked)
                 }
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-slate-950"
+                className="mt-0.5 size-5 rounded border-slate-400 bg-white accent-slate-950 shadow-sm outline-none hover:border-slate-600 focus-visible:ring-3 focus-visible:ring-slate-400/40 md:size-4"
               />
               <span>{textoCheckbox}</span>
             </label>

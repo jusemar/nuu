@@ -20,7 +20,7 @@ export const salvarBannerHomeSchema = z
       { error: "Escolha a posição onde este banner será exibido na Home." },
     ),
     tipoBanner: z.enum(["svg", "imagem"]).default("svg"),
-    nome: textoOpcionalSchema,
+    nome: z.string().trim().min(1, "Informe o nome administrativo do banner."),
     ativo: z.boolean().default(false),
     titulo: textoOpcionalSchema,
     subtitulo: textoOpcionalSchema,

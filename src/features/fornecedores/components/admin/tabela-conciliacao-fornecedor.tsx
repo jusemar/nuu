@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Eye,
   FileWarning,
+  FilterX,
   Loader2,
   MoreHorizontal,
   PackageCheck,
@@ -22,7 +23,6 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +71,9 @@ import type {
   FiltroConciliacaoFornecedor,
   ResumoConciliacaoFornecedor,
 } from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
+
+import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
+import { PainelFiltrosResponsivo } from "./compartilhados/painel-filtros-responsivo";
 
 export type TipoOrigemConciliacaoFornecedor = "arquivo" | "api";
 
@@ -1598,7 +1601,7 @@ function ModalEdicaoRascunhos({
                       key={secao.id}
                       className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm"
                     >
-                      <Checkbox
+                      <CheckboxFornecedor
                         checked={secoesLoja.includes(secao.id)}
                         onCheckedChange={(marcado) => {
                           setSecoesLoja((atuais) =>
@@ -2058,57 +2061,73 @@ export function TabelaConciliacaoFornecedor({
         </Card>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto rounded-lg border border-slate-200 bg-white p-2">
-        {filtros.map((item) => (
-          <Link
-            key={item.valor}
-            href={montarHrefFiltros({ filtro: item.valor })}
-            aria-current={filtroAtivo === item.valor ? "page" : undefined}
-            className={`inline-flex min-w-max items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
-              filtroAtivo === item.valor
-                ? "bg-slate-950 text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            {item.label}
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                filtroAtivo === item.valor
-                  ? "bg-white/15 text-white"
-                  : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              {item.total}
-            </span>
-          </Link>
-        ))}
-      </div>
+      <PainelFiltrosResponsivo
+        quantidadeAtivos={
+          Number(filtroAtivo !== "todos") + Number(Boolean(buscaInicial.trim()))
+        }
+      >
+        <div className="space-y-3 border-t border-slate-100 p-3 md:border-t-0">
+          <div className="flex gap-2 overflow-x-auto rounded-lg bg-slate-50 p-2">
+            {filtros.map((item) => (
+              <Link
+                key={item.valor}
+                href={montarHrefFiltros({ filtro: item.valor })}
+                aria-current={filtroAtivo === item.valor ? "page" : undefined}
+                className={`inline-flex min-w-max items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
+                  filtroAtivo === item.valor
+                    ? "bg-slate-950 text-white shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {item.label}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    filtroAtivo === item.valor
+                      ? "bg-white/15 text-white"
+                      : "bg-white text-slate-500"
+                  }`}
+                >
+                  {item.total}
+                </span>
+              </Link>
+            ))}
+          </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
-        <form
-          className="flex gap-2"
-          onSubmit={(evento) => {
-            evento.preventDefault();
-            router.push(montarHrefFiltros({ busca }));
-          }}
-        >
-          <label className="relative block flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={busca}
-              onChange={(evento) => setBusca(evento.target.value)}
-              placeholder="Buscar por produto ou código"
-              className="h-10 pl-9"
-            />
-          </label>
-          <Button type="submit" variant="outline">
-            Buscar
-          </Button>
-        </form>
-        <p className="mt-2 text-xs text-slate-500">
-          “Selecionar todos” seleciona somente os itens visíveis desta página.
-        </p>
-      </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(evento) => {
+              evento.preventDefault();
+              router.push(montarHrefFiltros({ busca }));
+            }}
+          >
+            <label className="relative block min-w-0 flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={busca}
+                onChange={(evento) => setBusca(evento.target.value)}
+                placeholder="Buscar por produto ou código"
+                className="h-10 pl-9"
+              />
+            </label>
+            <Button type="submit" variant="outline">
+              Buscar
+            </Button>
+            {filtroAtivo !== "todos" || buscaInicial.trim() ? (
+              <Button variant="outline" size="icon" asChild>
+                <Link
+                  href={montarHrefFiltros({ filtro: "todos", busca: "" })}
+                  aria-label="Limpar filtros"
+                >
+                  <FilterX className="size-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            ) : null}
+          </form>
+          <p className="text-xs text-slate-500">
+            “Selecionar todos” seleciona somente os itens visíveis desta página.
+          </p>
+        </div>
+      </PainelFiltrosResponsivo>
 
       {totalSelecionados > 0 ? (
         <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between">
@@ -2213,7 +2232,7 @@ export function TabelaConciliacaoFornecedor({
           <TableHeader>
             <TableRow className="bg-slate-50/80">
               <TableHead className="w-[48px]">
-                <Checkbox
+                <CheckboxFornecedor
                   checked={estadoSelecaoCabecalho}
                   onCheckedChange={(valor) =>
                     alternarSelecaoVisivel(valor === true)
@@ -2237,7 +2256,7 @@ export function TabelaConciliacaoFornecedor({
                 onClick={() => setItemDetalhes(item)}
               >
                 <TableCell onClick={(evento) => evento.stopPropagation()}>
-                  <Checkbox
+                  <CheckboxFornecedor
                     checked={idsSelecionados.includes(item.id)}
                     onCheckedChange={(valor) =>
                       alternarSelecaoItem(item.id, valor === true)
@@ -2485,7 +2504,7 @@ export function TabelaConciliacaoFornecedor({
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 gap-3">
-                <Checkbox
+                <CheckboxFornecedor
                   checked={idsSelecionados.includes(item.id)}
                   onCheckedChange={(valor) =>
                     alternarSelecaoItem(item.id, valor === true)

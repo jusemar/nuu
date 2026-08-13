@@ -6,16 +6,19 @@
 
 "use client";
 
+import { CircleAlert, CircleX, PackageCheck, Tag } from "lucide-react";
 import {
-  CircleAlert,
-  CircleX,
-  PackageCheck,
-  Tag,
-} from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
+import type { NovoItemCarrinho } from "@/features/carrinho";
 import { useContextoCepLogistica } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cliente";
+import { calcularProximaRevalidacaoEntregaPropria } from "@/features/logistica/lib/entrega-propria/calendario-entrega-propria";
 import { BadgePagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/components/store/badge-pagamento-na-entrega-pdp";
 import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
 import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
@@ -77,6 +80,10 @@ interface BuyBoxProps {
     },
   ) => void;
   onShowPaymentOptions?: () => void;
+  onQuantidadeChange?: (quantidade: number) => void;
+  onFreteEscolhidoChange?: (
+    freteEscolhido: NovoItemCarrinho["freteEscolhido"] | null,
+  ) => void;
 
   cupomAplicado?: { desconto: number; label: string; code: string } | null;
   onAplicarCupom?: (codigo: string) => void;
@@ -211,6 +218,8 @@ export function BuyBox({
   onAddToCart,
   onComprarAgora,
   onShowPaymentOptions,
+  onQuantidadeChange,
+  onFreteEscolhidoChange,
   cupomAplicado,
   onAplicarCupom,
   onRemoverCupom,
@@ -243,11 +252,22 @@ export function BuyBox({
       : disponibilidadeCompra.estado === "indisponivel"
         ? { icone: CircleX, texto: textoDisponibilidade, variante: "atencao" }
         : estoque !== null && estoque <= 10
-          ? { icone: CircleAlert, texto: textoDisponibilidade, variante: "atencao" }
-          : { icone: PackageCheck, texto: textoDisponibilidade, variante: "sucesso" };
+          ? {
+              icone: CircleAlert,
+              texto: textoDisponibilidade,
+              variante: "atencao",
+            }
+          : {
+              icone: PackageCheck,
+              texto: textoDisponibilidade,
+              variante: "sucesso",
+            };
   const pixPrincipal = precoCalculado?.pix.ativo !== false;
   // ESTADOS
   const [quantidade, setQuantidade] = useState(1);
+  useEffect(() => {
+    onQuantidadeChange?.(quantidade);
+  }, [onQuantidadeChange, quantidade]);
   const [cep, setCep] = useState("");
   const [cepConsultado, setCepConsultado] = useState(false);
   const [cepConsultadoLimpo, setCepConsultadoLimpo] = useState("");
@@ -265,6 +285,13 @@ export function BuyBox({
   const consultaFreteIdRef = useRef(0);
   const cepEditadoManualmenteRef = useRef(false);
   const consultaAutomaticaRef = useRef("");
+  const assinaturaFreteNotificadaRef = useRef<string | undefined>(undefined);
+  const assinaturaCotacaoRef = useRef(
+    `${varianteIdSelecionada ?? ""}:${quantidade}:${modalidadeAtiva?.type ?? ""}`,
+  );
+  const reconsultarFreteRef = useRef<
+    (cepInformado: string, registrarComoManual: boolean) => Promise<void>
+  >(async () => undefined);
 
   const precoPixEmCentavos = precoCalculado?.pix.valorEmCentavos;
   const precoNumerico =
@@ -274,6 +301,9 @@ export function BuyBox({
   const cepAtualLimpo = cep.replace(/\D/g, "");
   const resultadoDoCepAtual =
     cepConsultadoLimpo === cepAtualLimpo ? entregaPropriaResult : null;
+  const promessaEntregaAtual = resultadoDoCepAtual?.found
+    ? resultadoDoCepAtual.promessaEntrega
+    : null;
   const enderecoConsultado = resultadoDoCepAtual?.endereco;
   const prazoEntregaPropria =
     resultadoDoCepAtual?.found && resultadoDoCepAtual.deliveryDeadline?.trim()
@@ -395,19 +425,83 @@ export function BuyBox({
     }
   }
 
+  reconsultarFreteRef.current = consultarFrete;
+
+  useEffect(() => {
+    const assinaturaAtual = `${varianteIdSelecionada ?? ""}:${quantidade}:${modalidadeAtiva?.type ?? ""}`;
+    if (assinaturaCotacaoRef.current === assinaturaAtual) return;
+
+    assinaturaCotacaoRef.current = assinaturaAtual;
+    consultaFreteIdRef.current += 1;
+    consultaAutomaticaRef.current = "";
+    setTransportadoraSelecionada(null);
+    setCepConsultado(false);
+    setCepConsultadoLimpo("");
+    setEntregaPropriaResult(null);
+    setErroFrete(
+      "As condições do produto mudaram. Consulte e selecione a entrega novamente.",
+    );
+  }, [modalidadeAtiva?.type, quantidade, varianteIdSelecionada]);
+
   useEffect(() => {
     if (cepEditadoManualmenteRef.current || cepContextoLogistico.length !== 8) {
       return;
     }
 
-    const chaveConsulta = `${productId}:${varianteIdSelecionada ?? ""}:${cepContextoLogistico}`;
+    const chaveConsulta = `${productId}:${varianteIdSelecionada ?? ""}:${quantidade}:${modalidadeAtiva?.type ?? ""}:${cepContextoLogistico}`;
     if (consultaAutomaticaRef.current === chaveConsulta) return;
     consultaAutomaticaRef.current = chaveConsulta;
     setCep(formatCEP(cepContextoLogistico));
     void consultarFrete(cepContextoLogistico, false);
     // A função usa exclusivamente os valores representados na chave acima.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cepContextoLogistico, productId, varianteIdSelecionada]);
+  }, [
+    cepContextoLogistico,
+    modalidadeAtiva?.type,
+    productId,
+    quantidade,
+    varianteIdSelecionada,
+  ]);
+
+  useEffect(() => {
+    const promessa = promessaEntregaAtual;
+    if (!promessa || cepAtualLimpo.length !== 8) return;
+
+    // Usa o instante autoritativo em que o servidor calculou a cotação. O
+    // relógio do navegador serve apenas para medir o tempo transcorrido.
+    const instanteCalculadoNoServidor = new Date(promessa.calculadoEm);
+    const proximaFronteira = calcularProximaRevalidacaoEntregaPropria({
+      dataReferencia: instanteCalculadoNoServidor,
+      horarioCorte: promessa.horarioCorteAplicado,
+    });
+    const reconsultar = () => {
+      // Libera também a deduplicação da consulta automática. A nova chamada
+      // continua resolvendo preço, cobertura e calendário no servidor.
+      consultaAutomaticaRef.current = "";
+      void reconsultarFreteRef.current(cepAtualLimpo, false);
+    };
+    const atrasoAteFronteira = Math.max(
+      0,
+      proximaFronteira.getTime() - instanteCalculadoNoServidor.getTime() + 250,
+    );
+    const limiteNoRelogioDoCliente = Date.now() + atrasoAteFronteira;
+    const timer = window.setTimeout(reconsultar, atrasoAteFronteira);
+    const aoRetomarAba = () => {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() >= limiteNoRelogioDoCliente
+      ) {
+        window.clearTimeout(timer);
+        reconsultar();
+      }
+    };
+    document.addEventListener("visibilitychange", aoRetomarAba);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", aoRetomarAba);
+    };
+  }, [cepAtualLimpo, promessaEntregaAtual]);
 
   function handleAplicarCupom() {
     setErroCupom("");
@@ -423,7 +517,7 @@ export function BuyBox({
     if (onRemoverCupom) onRemoverCupom();
   }
 
-  function montarFreteEscolhido() {
+  const montarFreteEscolhido = useCallback(() => {
     if (transportadoraSelecionada === "retirada" && retiradaLocal) {
       return {
         id: "retirada" as const,
@@ -467,7 +561,26 @@ export function BuyBox({
     }
 
     return undefined;
-  }
+  }, [
+    cep,
+    opcaoFrenetSelecionada,
+    opcaoProgramadaSelecionada,
+    prazoEntregaPropria,
+    resultadoDoCepAtual,
+    retiradaLocal,
+    transportadoraSelecionada,
+  ]);
+
+  useEffect(() => {
+    const freteEscolhido = montarFreteEscolhido() ?? null;
+    // Objetos equivalentes podem ser recriados durante a composição da PDP. Notificar o
+    // pai somente quando os dados mudam evita um ciclo efeito → setState → render → efeito.
+    const assinaturaFrete = JSON.stringify(freteEscolhido);
+    if (assinaturaFreteNotificadaRef.current === assinaturaFrete) return;
+
+    assinaturaFreteNotificadaRef.current = assinaturaFrete;
+    onFreteEscolhidoChange?.(freteEscolhido);
+  }, [montarFreteEscolhido, onFreteEscolhidoChange]);
 
   function destacarFrete(mensagem: string) {
     setErroFrete(mensagem);
@@ -524,7 +637,7 @@ export function BuyBox({
     <div
       className={
         modoPreVisualizacao
-          ? "grid min-w-0 grid-cols-1 overflow-hidden rounded-3xl border border-border bg-card shadow-sm sm:grid-cols-[8.5rem_minmax(0,1fr)]"
+          ? "border-border bg-card grid min-w-0 grid-cols-1 overflow-hidden rounded-3xl border shadow-sm sm:grid-cols-[8.5rem_minmax(0,1fr)]"
           : "border-surface-border sticky top-20 flex flex-col gap-4 rounded-2xl border bg-white p-5"
       }
     >
@@ -532,7 +645,7 @@ export function BuyBox({
       <div
         className={
           modoPreVisualizacao
-            ? "bg-primary-light order-1 border-b border-primary/20 px-5 pt-5 pb-4 sm:col-span-2"
+            ? "bg-primary-light border-primary/20 order-1 border-b px-5 pt-5 pb-4 sm:col-span-2"
             : undefined
         }
       >
@@ -577,7 +690,9 @@ export function BuyBox({
             </div>
             <div
               className={`mt-0.5 text-[11px] font-semibold ${
-                modoPreVisualizacao ? "text-accent-brand-dark" : "text-emerald-700"
+                modoPreVisualizacao
+                  ? "text-accent-brand-dark"
+                  : "text-emerald-700"
               }`}
             >
               Economia de {promocaoVisual.economiaFormatada}
@@ -659,7 +774,7 @@ export function BuyBox({
         <div
           className={
             modoPreVisualizacao
-              ? "order-2 border-b border-border px-5 py-4 sm:col-span-2 [&_.bg-white]:bg-card"
+              ? "border-border [&_.bg-white]:bg-card order-2 border-b px-5 py-4 sm:col-span-2"
               : "order-2"
           }
         >
@@ -766,7 +881,7 @@ export function BuyBox({
       {/* CEP */}
       <div
         ref={freteRef}
-        className={`rounded-xl border bg-[#F9FAFB] p-3 transition-all ${modoPreVisualizacao ? "border-transparent bg-transparent order-4 mx-5 mb-1 p-0 pt-4 shadow-none sm:col-span-2" : ""} ${
+        className={`rounded-xl border bg-[#F9FAFB] p-3 transition-all ${modoPreVisualizacao ? "order-4 mx-5 mb-1 border-transparent bg-transparent p-0 pt-4 shadow-none sm:col-span-2" : ""} ${
           erroFrete
             ? "border-danger bg-red-50 ring-2 ring-red-100"
             : "border-surface-border"
@@ -815,7 +930,7 @@ export function BuyBox({
             <div
               className={
                 modoPreVisualizacao
-                  ? "mt-3 grid animate-[fadeUp_0.3s_ease] grid-cols-1 gap-2 sm:grid-cols-2 sm:grid-flow-row-dense"
+                  ? "mt-3 grid animate-[fadeUp_0.3s_ease] grid-cols-1 gap-2 sm:grid-flow-row-dense sm:grid-cols-2"
                   : "mt-2 flex animate-[fadeUp_0.3s_ease] flex-col gap-1"
               }
             >
@@ -1105,7 +1220,7 @@ export function BuyBox({
       ) : null}
 
       {modoPreVisualizacao ? (
-        <div className="order-6 flex items-center border-t border-border px-5 pt-4 sm:col-span-2">
+        <div className="border-border order-6 flex items-center border-t px-5 pt-4 sm:col-span-2">
           <ItemBeneficioProdutoPdp {...beneficioDisponibilidade} />
         </div>
       ) : null}
@@ -1114,9 +1229,7 @@ export function BuyBox({
       {!cupomAplicado ? (
         <div
           className={
-            modoPreVisualizacao
-              ? "order-7 px-5 pt-3 sm:col-span-2"
-              : undefined
+            modoPreVisualizacao ? "order-7 px-5 pt-3 sm:col-span-2" : undefined
           }
         >
           {!mostrarInputCupom ? (
@@ -1125,7 +1238,11 @@ export function BuyBox({
               className={`text-primary text-xs underline hover:no-underline ${modoPreVisualizacao ? "inline-flex items-center gap-1.5" : ""}`}
             >
               {modoPreVisualizacao ? (
-                <Tag aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
+                <Tag
+                  aria-hidden="true"
+                  className="size-3.5"
+                  strokeWidth={1.8}
+                />
               ) : (
                 "🏷️"
               )}
@@ -1238,7 +1355,7 @@ export function BuyBox({
         mostrarBeneficiosConfianca ? (
           <BeneficiosProdutoPdp
             beneficios={beneficiosConfiancaCompraPdp}
-            className="order-9 border-t border-border px-5 py-4 sm:col-span-2"
+            className="border-border order-9 border-t px-5 py-4 sm:col-span-2"
           />
         ) : null
       ) : (

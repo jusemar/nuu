@@ -7,6 +7,7 @@ import {
   Eye,
   FileText,
   PackageCheck,
+  PackagePlus,
   Save,
   Search,
   ShieldCheck,
@@ -23,6 +24,7 @@ import {
   BotaoPublicarProduto,
   SeloSituacaoPublicacao,
 } from "@/features/products";
+import { AbaVendaCruzada } from "@/features/products/components/admin/venda-cruzada/aba-venda-cruzada";
 import { useUpdateProduct } from "@/hooks/admin/mutations/products/useUpdateProduct";
 import { useProductId } from "@/hooks/admin/queries/products/use-Product-Id";
 
@@ -345,6 +347,12 @@ export default function EditProductPage() {
           }
         />
       ),
+    },
+    {
+      name: "Venda cruzada",
+      icon: PackagePlus,
+      value: "venda-cruzada",
+      component: <AbaVendaCruzada produtoId={productId} />,
     },
     {
       name: "SEO",

@@ -1,8 +1,9 @@
 // useFeaturedProducts.ts - VERSÃO FINAL OTIMIZADA
 "use client";
 
-import { useProductsByFlag } from "@/features/products/api/queries/use-products-by-flag";
 import { UseQueryResult } from "@tanstack/react-query";
+
+import { useProductsByFlag } from "@/features/products/api/queries/use-products-by-flag";
 
 /**
  * 🏷️ INTERFACE: Dados crus retornados do banco
@@ -94,7 +95,7 @@ export const useFeaturedProducts = () => {
       hasPromo && promoPriceInCents ? promoPriceInCents : originalPriceInCents;
 
     // 🖼️ TRATAMENTO DE IMAGEM: Fallback se não tiver
-    let imageUrl = "/placeholder-product.jpg";
+    let imageUrl = "/produto-sem-foto.webp";
     if (product.mainImage?.imageUrl) {
       // Se tiver base URL configurada, adiciona (ex: CDN)
       const baseUrl = process.env.NEXT_PUBLIC_IMAGE_BASE_URL || "";

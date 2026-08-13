@@ -26,6 +26,10 @@ const Home = async () => {
     buscarOfertasHome(),
     buscarBannersHomeAtivos(),
   ]);
+  const temBannersSecundariosNovidades = Boolean(
+    bannersHome.novidadesSecundarioEsquerdo ||
+      bannersHome.novidadesSecundarioDireito,
+  );
 
   return (
     <>
@@ -76,7 +80,13 @@ const Home = async () => {
 
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3 lg:gap-5">
             {/* Carousel de destaque */}
-            <Card className="min-h-80 overflow-hidden py-0 lg:col-span-2">
+            <Card
+              className={`min-h-80 overflow-hidden py-0 ${
+                temBannersSecundariosNovidades
+                  ? "lg:col-span-2"
+                  : "lg:col-span-3"
+              }`}
+            >
               <FeaturedProductsCarousel />
             </Card>
 

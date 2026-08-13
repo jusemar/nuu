@@ -38,6 +38,15 @@ export type MetadataImagemBannerHome = {
 
 export type BannerHomeDados = BannerHome;
 
+/** Fallbacks administrativos não possuem timestamps persistidos reais. */
+export type BannerHomeAdminDados = Omit<
+  BannerHomeDados,
+  "createdAt" | "updatedAt"
+> & {
+  createdAt: Date | null;
+  updatedAt: Date | null;
+};
+
 export type BannersHomeAtivos = {
   principalEsquerdo: BannerHomeDados[];
   secundarioDireito: BannerHomeDados | null;

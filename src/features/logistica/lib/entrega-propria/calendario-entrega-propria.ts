@@ -35,6 +35,82 @@ export function obterPartesDataEntregaPropria(data: Date) {
   };
 }
 
+function converterHorarioLocalParaInstante({
+  ano,
+  mes,
+  dia,
+  hora,
+  minuto,
+}: {
+  ano: number;
+  mes: number;
+  dia: number;
+  hora: number;
+  minuto: number;
+}) {
+  const horarioLocalComoUtc = Date.UTC(ano, mes - 1, dia, hora, minuto);
+  let instante = new Date(horarioLocalComoUtc);
+
+  // Converge o horário civil da loja para um instante real sem assumir offset
+  // fixo. Assim, uma eventual mudança de timezone não quebra o agendamento.
+  for (let tentativa = 0; tentativa < 3; tentativa += 1) {
+    const exibido = obterPartesDataEntregaPropria(instante);
+    const exibidoComoUtc = Date.UTC(
+      exibido.ano,
+      exibido.mes - 1,
+      exibido.dia,
+      exibido.hora,
+      exibido.minuto,
+    );
+    instante = new Date(
+      instante.getTime() + horarioLocalComoUtc - exibidoComoUtc,
+    );
+  }
+
+  return instante;
+}
+
+/**
+ * Retorna a próxima fronteira que pode mudar uma promessa já exibida: o corte
+ * de hoje ou a próxima virada de dia no timezone operacional.
+ */
+export function calcularProximaRevalidacaoEntregaPropria({
+  dataReferencia,
+  horarioCorte,
+}: {
+  dataReferencia: Date;
+  horarioCorte: string | null | undefined;
+}) {
+  const local = obterPartesDataEntregaPropria(dataReferencia);
+  const amanha = adicionarDiasCalendario(local, 1);
+  const candidatos = [
+    converterHorarioLocalParaInstante({
+      ano: amanha.ano,
+      mes: amanha.mes,
+      dia: amanha.dia,
+      hora: 0,
+      minuto: 0,
+    }),
+  ];
+
+  if (horarioCorte && /^([01]\d|2[0-3]):[0-5]\d$/.test(horarioCorte)) {
+    const [hora, minuto] = horarioCorte.split(":").map(Number);
+    candidatos.push(
+      converterHorarioLocalParaInstante({
+        ano: local.ano,
+        mes: local.mes,
+        dia: local.dia,
+        hora,
+        minuto,
+      }),
+    );
+  }
+
+  return candidatos
+    .filter((candidata) => candidata.getTime() > dataReferencia.getTime())
+    .sort((a, b) => a.getTime() - b.getTime())[0]!;
+}
+
 export function adicionarDiasCalendario(
   data: { ano: number; mes: number; dia: number },
   dias: number,

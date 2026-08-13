@@ -33,6 +33,7 @@ import { useProductPricing } from "../hooks/useProductPricing";
 import { formatarPromocaoPrecoPdp } from "../lib/promocoes/formatar-promocao-preco-pdp";
 import { resolverDisponibilidadeCompraPdp } from "../lib/resolver-disponibilidade-compra-pdp";
 import type { ProdutoRelacionadoPdp } from "../queries/buscar-produtos-relacionados-pdp";
+import type { ProdutoVendaCruzadaPdp } from "../queries/venda-cruzada/buscar-venda-cruzada-pdp";
 import type {
   AtributoProdutoLoja,
   Avaliacao,
@@ -54,6 +55,7 @@ import { DescricaoCurtaProdutoPdp, ProductInfo } from "./product-info";
 import type { ModalidadeInfo } from "./product-tabs";
 import { ProductTabs } from "./product-tabs";
 import { UpsellSection } from "./upsell-section";
+import { VendaCruzadaPdp } from "./venda-cruzada-pdp";
 
 // ==========================================
 // INTERFACE DAS PROPS
@@ -110,6 +112,7 @@ interface ProductDetailProps {
    */
   servicosComPagamentoNaEntrega?: string[];
   produtosRelacionados?: ProdutoRelacionadoPdp[];
+  produtosVendaCruzada?: ProdutoVendaCruzadaPdp[];
   bannerInstitucionalProduto?: ReactNode;
 }
 
@@ -126,6 +129,7 @@ export function ProductDetail({
   conteudoComplementar,
   servicosComPagamentoNaEntrega = [],
   produtosRelacionados,
+  produtosVendaCruzada,
   bannerInstitucionalProduto,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
@@ -162,6 +166,10 @@ export function ProductDetail({
       : null;
   const [selectedVariant, setSelectedVariant] =
     useState<VarianteProdutoLoja | null>(null);
+  const [quantidadePrincipal, setQuantidadePrincipal] = useState(1);
+  const [fretePrincipal, setFretePrincipal] = useState<
+    NovoItemCarrinho["freteEscolhido"] | null
+  >(null);
   const hasSelectedVariant =
     product.productKind === "variable" && Boolean(selectedVariant);
 
@@ -565,6 +573,7 @@ export function ProductDetail({
         }
         abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
         produtosRelacionados={produtosRelacionados}
+        vendaCruzada={undefined}
         modalPagamento={
           <PaymentModal
             isOpen={modalPgto}
@@ -668,6 +677,8 @@ export function ProductDetail({
           onAddToCart={adicionarProdutoAoCarrinho}
           onComprarAgora={comprarProdutoAgora}
           onShowPaymentOptions={() => setModalPgto(true)}
+          onQuantidadeChange={setQuantidadePrincipal}
+          onFreteEscolhidoChange={setFretePrincipal}
           modalidades={modalidadesDisponiveis}
           modalidadeAtiva={modalidadeAtiva}
           onTrocarModalidade={selecionarModalidade}
@@ -690,6 +701,22 @@ export function ProductDetail({
       }
       abas={<ProductTabs {...abasProduto.props} className="mt-0" />}
       produtosRelacionados={produtosRelacionados}
+      vendaCruzada={
+        <VendaCruzadaPdp
+          produtos={produtosVendaCruzada ?? []}
+          itemPrincipal={montarItemCarrinhoProduto(
+            quantidadePrincipal,
+            fretePrincipal ?? undefined,
+          )}
+          freteEscolhido={fretePrincipal}
+          precoPrincipalEmCentavos={
+            precoCompraCalculado?.pix.ativo
+              ? precoCompraCalculado.pix.valorEmCentavos
+              : null
+          }
+          quantidadePrincipal={quantidadePrincipal}
+        />
+      }
       modalPagamento={
         <PaymentModal
           isOpen={modalPgto}
@@ -863,6 +890,7 @@ export function ProductDetail({
               onAddToCart={adicionarProdutoAoCarrinho}
               onComprarAgora={comprarProdutoAgora}
               onShowPaymentOptions={() => setModalPgto(true)}
+              onQuantidadeChange={setQuantidadePrincipal}
               // === SELETOR DE MODALIDADES INTEGRADO (NOVO) ===
               modalidades={modalidadesDisponiveis}
               modalidadeAtiva={modalidadeAtiva}

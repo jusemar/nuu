@@ -23,7 +23,6 @@ import { toast } from "sonner";
 import { createCategory } from "@/actions/admin/categories/create";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,6 +46,7 @@ import { CategoryTreeSelector } from "@/features/admin/products/components/Categ
 import { MarcaPopoverSelector } from "@/features/admin/products/components/MarcaPopoverSelector";
 
 import { atualizarRevisaoImportacaoFornecedorAction } from "../../actions";
+import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
 
 type MarcaAtiva = {
   id: string;
@@ -668,7 +668,7 @@ export function AbaRevisaoImportacaoFornecedor({
             <TableHeader className="bg-slate-50">
               <TableRow className="border-slate-200 hover:bg-transparent">
                 <TableHead className="h-10 w-[44px] px-3">
-                  <Checkbox
+                  <CheckboxFornecedor
                     checked={todosSelecionados}
                     onCheckedChange={(valor) => alternarTodos(Boolean(valor))}
                     aria-label="Selecionar todos os itens da revisão"
@@ -713,7 +713,7 @@ export function AbaRevisaoImportacaoFornecedor({
                   return (
                     <TableRow key={linha.id} className="border-slate-100">
                       <TableCell className="px-3 py-2 align-middle">
-                        <Checkbox
+                        <CheckboxFornecedor
                           checked={selecionados.includes(linha.id)}
                           onCheckedChange={(valor) =>
                             alternarItem(linha.id, Boolean(valor))

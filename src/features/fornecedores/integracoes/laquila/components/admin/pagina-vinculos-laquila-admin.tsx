@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FilterX } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -12,6 +12,7 @@ import {
   desfazerVinculoProdutoRecebidoFornecedor,
   salvarVinculoProdutoRecebidoFornecedor,
 } from "@/features/fornecedores/actions";
+import { PainelFiltrosResponsivo } from "@/features/fornecedores/components/admin/compartilhados/painel-filtros-responsivo";
 import { PassosFluxoFornecedor } from "@/features/fornecedores/components/admin/compartilhados/passos-fluxo-fornecedor";
 import {
   type ItemVinculoFornecedor,
@@ -596,36 +597,56 @@ export function PaginaVinculosLaquilaAdmin({
         </section>
       ) : null}
 
-      <form
-        action={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`}
-        className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:grid-cols-[1fr_220px_auto]"
+      <PainelFiltrosResponsivo
+        quantidadeAtivos={Number(Boolean(busca)) + Number(Boolean(estagio))}
       >
-        <input type="hidden" name="pagina" value="1" />
-        <input type="hidden" name="limite" value={paginacao.limite} />
-        <Input
-          name="busca"
-          defaultValue={busca}
-          placeholder="Buscar produto ou código"
-        />
-        <select
-          name="estagio"
-          defaultValue={estagio ?? ""}
-          className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        <form
+          action={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos`}
+          className="grid gap-3 border-t border-slate-100 p-3 sm:grid-cols-[1fr_220px_auto] md:border-t-0"
         >
-          <option value="">Todos os estágios</option>
-          <option value="pendente">Pendentes</option>
-          <option value="novo">Novos</option>
-          <option value="vinculado">Vinculados</option>
-          <option value="publicado">Publicados</option>
-          <option value="ignorado">Ignorados</option>
-        </select>
-        <Button type="submit" variant="outline">
-          Filtrar
-        </Button>
-        <p className="text-xs text-slate-500 sm:col-span-3">
-          “Selecionar todos” seleciona somente os itens visíveis desta página.
-        </p>
-      </form>
+          <input type="hidden" name="pagina" value="1" />
+          <input type="hidden" name="limite" value={paginacao.limite} />
+          <Input
+            name="busca"
+            defaultValue={busca}
+            placeholder="Buscar produto ou código"
+          />
+          <select
+            name="estagio"
+            defaultValue={estagio ?? ""}
+            className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+          >
+            <option value="">Todos os estágios</option>
+            <option value="pendente">Pendentes</option>
+            <option value="novo">Novos</option>
+            <option value="vinculado">Vinculados</option>
+            <option value="publicado">Publicados</option>
+            <option value="ignorado">Ignorados</option>
+          </select>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              variant="outline"
+              className="flex-1 sm:flex-none"
+            >
+              Filtrar
+            </Button>
+            {busca || estagio ? (
+              <Button variant="outline" size="icon" asChild>
+                <Link
+                  href={`/admin/fornecedores/integracoes/laquila/importacoes/${importacaoId}/vinculos?pagina=1&limite=${paginacao.limite}`}
+                  aria-label="Limpar filtros"
+                >
+                  <FilterX className="size-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-xs text-slate-500 sm:col-span-3">
+            “Selecionar todos” seleciona somente os itens visíveis desta página.
+          </p>
+        </form>
+      </PainelFiltrosResponsivo>
 
       {itensSelecionados.length > 0 ? (
         <TabelaVinculosFornecedor

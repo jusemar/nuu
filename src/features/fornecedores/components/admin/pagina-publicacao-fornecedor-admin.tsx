@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { PaginacaoAdmin } from "@/components/shared/paginacao-admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +28,8 @@ import {
   OPCOES_LIMITE_FORNECEDORES,
   type PaginacaoFornecedores,
 } from "@/features/fornecedores/lib/paginacao-fornecedores";
+
+import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
 
 export type RascunhoPublicacaoFornecedor = {
   id: string;
@@ -374,7 +375,7 @@ export function PaginaPublicacaoFornecedorAdmin({
           ) : null}
 
           <div className="hidden grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] items-center gap-4 border-b bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 uppercase md:grid">
-            <Checkbox
+            <CheckboxFornecedor
               checked={todosProntosSelecionados}
               onCheckedChange={(marcado) =>
                 setSelecionados(
@@ -395,7 +396,7 @@ export function PaginaPublicacaoFornecedorAdmin({
                 key={rascunho.id}
                 className="grid gap-4 p-4 md:grid-cols-[40px_minmax(260px,1fr)_150px_170px_150px] md:items-center"
               >
-                <Checkbox
+                <CheckboxFornecedor
                   checked={selecionados.includes(rascunho.id)}
                   disabled={!rascunho.pronto || processando}
                   onCheckedChange={(marcado) =>

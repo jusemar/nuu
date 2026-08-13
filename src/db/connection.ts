@@ -1,21 +1,21 @@
 // src/db/connection.ts
-// 
+//
 // Configuração da conexão com o banco de dados Neon (PostgreSQL)
 // O cliente neon é responsável pela comunicação HTTP com o banco
 
-import { neon } from '@neondatabase/serverless';
-import { config as carregarDotenv } from 'dotenv';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from "@neondatabase/serverless";
+import { config as carregarDotenv } from "dotenv";
+import { drizzle } from "drizzle-orm/neon-http";
 
-import * as schema from './schema';
-export { productVariantTable } from './table/products/product-variants';
-export { productTable } from './table/products/products';
+import * as schema from "./schema";
+export { productVariantTable } from "./table/products/product-variants";
+export { productTable } from "./table/products/products";
 
 /**
  * Endpoint da branch `production`, fixo no código.
  * Ver `docs/ambientes-banco-e-scripts.md` e `scripts/lib/guarda-banco-local.ts`.
  */
-const ENDPOINT_PRODUCAO = 'ep-proud-bonus-acy2bafx';
+const ENDPOINT_PRODUCAO = "ep-proud-bonus-acy2bafx";
 
 /**
  * Resolve a URL do banco distinguindo COMO ela chegou até aqui — é essa distinção que
@@ -47,20 +47,20 @@ function resolverUrlDoBanco(): string {
 
   if (!urlImplicita) {
     throw new Error(
-      'DATABASE_URL não configurada. Para scripts locais use os comandos do package.json, que carregam `.env.desenvolvimento.local`.',
+      "DATABASE_URL não configurada. Para scripts locais use os comandos do package.json, que carregam `.env.desenvolvimento.local`.",
     );
   }
 
-  const endpoint = (new URL(urlImplicita).hostname.split('.')[0] ?? '').replace(
+  const endpoint = (new URL(urlImplicita).hostname.split(".")[0] ?? "").replace(
     /-pooler$/,
-    '',
+    "",
   );
 
   if (endpoint === ENDPOINT_PRODUCAO) {
     throw new Error(
-      'DESTINO RECUSADO: o processo caiu no `.env` (produção) sem ninguém escolher o destino. ' +
-        'Rode scripts locais pelos comandos do package.json — eles usam a branch de desenvolvimento. ' +
-        'Nenhuma consulta foi executada.',
+      "DESTINO RECUSADO: o processo caiu no `.env` (produção) sem ninguém escolher o destino. " +
+        "Rode scripts locais pelos comandos do package.json — eles usam a branch de desenvolvimento. " +
+        "Nenhuma consulta foi executada.",
     );
   }
 
@@ -76,10 +76,10 @@ const sql = neon(resolverUrlDoBanco(), {
     // Timeout de 30 segundos para evitar o erro ETIMEDOUT
     // O banco Neon no plano free pode hibernar e demorar para responder
     timeout: 30000,
-  }
+  },
 });
 
 // Exporta o drizzle com o cliente configurado e os schemas
 export const db = drizzle(sql, {
-    schema,
+  schema,
 });

@@ -289,6 +289,7 @@ export function CampoBuscaProdutos() {
                     {produto.slug ? (
                       <Link
                         href={`/product/${produto.slug}`}
+                        prefetch={false}
                         onClick={() => {
                           setSugestoesAbertas(false);
                           setDropdownAberto(false);

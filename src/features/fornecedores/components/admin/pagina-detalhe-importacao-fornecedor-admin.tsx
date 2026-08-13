@@ -32,6 +32,7 @@ import type {
 import { AbaConciliacaoImportacaoFornecedor } from "./aba-conciliacao-importacao-fornecedor";
 import { AbaVinculacaoImportacaoFornecedor } from "./aba-vinculacao-importacao-fornecedor";
 import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
+import { PainelFiltrosResponsivo } from "./compartilhados/painel-filtros-responsivo";
 import { PassosFluxoFornecedor } from "./compartilhados/passos-fluxo-fornecedor";
 import {
   type DadosTemporariosMapeamentoFornecedor,
@@ -375,97 +376,113 @@ function BarraFiltros({
   categorias: string[];
   marcas: string[];
 }) {
+  const quantidadeFiltrosAtivos = [
+    filtros.busca,
+    filtros.codigoFornecedor,
+    filtros.categoriaFornecedor,
+    filtros.status,
+    filtros.marcaFornecedor,
+    filtros.estagio,
+    filtros.limite !== 25 ? String(filtros.limite) : "",
+  ].filter(Boolean).length;
+
   return (
-    <form
-      action={`/admin/fornecedores/importacoes/${importacaoId}`}
-      className="sticky top-0 z-10 grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
+    <PainelFiltrosResponsivo
+      quantidadeAtivos={quantidadeFiltrosAtivos}
+      className="sticky top-0 z-10"
     >
-      <input type="hidden" name="etapa" value={filtros.etapa} />
-      <input
-        name="busca"
-        defaultValue={filtros.busca}
-        placeholder="Buscar produto"
-        className="h-9 min-w-0 rounded-md border border-slate-200 px-3 text-sm sm:col-span-2"
-      />
-      <input
-        name="codigoFornecedor"
-        defaultValue={filtros.codigoFornecedor}
-        placeholder="Código"
-        className="h-9 min-w-0 rounded-md border border-slate-200 px-3 text-sm"
-      />
-      <select
-        name="categoriaFornecedor"
-        defaultValue={filtros.categoriaFornecedor}
-        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
+      <form
+        action={`/admin/fornecedores/importacoes/${importacaoId}`}
+        className="grid gap-3 border-t border-slate-100 p-3 sm:grid-cols-2 md:border-t-0 lg:grid-cols-4 xl:grid-cols-6"
       >
-        <option value="">Categoria</option>
-        {categorias.map((categoria) => (
-          <option key={categoria} value={categoria}>
-            {categoria}
-          </option>
-        ))}
-      </select>
-      <select
-        name="status"
-        defaultValue={filtros.status}
-        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
-      >
-        <option value="">Status</option>
-        <option value="localizado">Localizado</option>
-        <option value="nao_localizado">Não localizado</option>
-        <option value="erro">Erro</option>
-      </select>
-      <select
-        name="marcaFornecedor"
-        defaultValue={filtros.marcaFornecedor}
-        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
-      >
-        <option value="">Marca</option>
-        {marcas.map((marca) => (
-          <option key={marca} value={marca}>
-            {marca}
-          </option>
-        ))}
-      </select>
-      <select
-        name="estagio"
-        defaultValue={filtros.estagio}
-        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
-      >
-        <option value="">Estágio</option>
-        <option value="pendente">Pendente</option>
-        <option value="vinculado">Vinculado</option>
-        <option value="novo">Novo</option>
-        <option value="publicado">Publicado</option>
-        <option value="ignorado">Ignorado</option>
-        <option value="erro">Com erro</option>
-      </select>
-      {/* Trocar o limite volta para a página 1: manter a página 12 ao sair de
+        <input type="hidden" name="etapa" value={filtros.etapa} />
+        <input
+          name="busca"
+          defaultValue={filtros.busca}
+          placeholder="Buscar produto"
+          className="h-9 min-w-0 rounded-md border border-slate-200 px-3 text-sm sm:col-span-2"
+        />
+        <input
+          name="codigoFornecedor"
+          defaultValue={filtros.codigoFornecedor}
+          placeholder="Código"
+          className="h-9 min-w-0 rounded-md border border-slate-200 px-3 text-sm"
+        />
+        <select
+          name="categoriaFornecedor"
+          defaultValue={filtros.categoriaFornecedor}
+          className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">Categoria</option>
+          {categorias.map((categoria) => (
+            <option key={categoria} value={categoria}>
+              {categoria}
+            </option>
+          ))}
+        </select>
+        <select
+          name="status"
+          defaultValue={filtros.status}
+          className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">Status</option>
+          <option value="localizado">Localizado</option>
+          <option value="nao_localizado">Não localizado</option>
+          <option value="erro">Erro</option>
+        </select>
+        <select
+          name="marcaFornecedor"
+          defaultValue={filtros.marcaFornecedor}
+          className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">Marca</option>
+          {marcas.map((marca) => (
+            <option key={marca} value={marca}>
+              {marca}
+            </option>
+          ))}
+        </select>
+        <select
+          name="estagio"
+          defaultValue={filtros.estagio}
+          className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="">Estágio</option>
+          <option value="pendente">Pendente</option>
+          <option value="vinculado">Vinculado</option>
+          <option value="novo">Novo</option>
+          <option value="publicado">Publicado</option>
+          <option value="ignorado">Ignorado</option>
+          <option value="erro">Com erro</option>
+        </select>
+        {/* Trocar o limite volta para a página 1: manter a página 12 ao sair de
           25 para 100 por página levaria o gestor a um trecho que ele não pediu. */}
-      <input type="hidden" name="pagina" value={1} />
-      <select
-        name="limite"
-        defaultValue={filtros.limite}
-        className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
-      >
-        <option value="25">25</option>
-        <option value="50">50</option>
-        <option value="100">100</option>
-      </select>
-      <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-1">
-        <Button type="submit" size="sm">
-          <Search className="mr-2 h-4 w-4" />
-          Filtrar
-        </Button>
-        <Button size="sm" variant="outline" asChild>
-          <Link
-            href={`/admin/fornecedores/importacoes/${importacaoId}?etapa=${filtros.etapa}`}
-          >
-            <FilterX className="h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
-    </form>
+        <input type="hidden" name="pagina" value={1} />
+        <select
+          name="limite"
+          defaultValue={filtros.limite}
+          className="h-9 min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm"
+        >
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-1">
+          <Button type="submit" size="sm">
+            <Search className="mr-2 h-4 w-4" />
+            Filtrar
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link
+              href={`/admin/fornecedores/importacoes/${importacaoId}?etapa=${filtros.etapa}`}
+              aria-label="Limpar filtros"
+            >
+              <FilterX className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </form>
+    </PainelFiltrosResponsivo>
   );
 }
 

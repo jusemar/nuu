@@ -30,6 +30,7 @@ type PropriedadesPaginaProdutoAprovada = {
   abas: ReactNode;
   modalPagamento: ReactNode;
   produtosRelacionados?: ProdutoRelacionadoPdp[];
+  vendaCruzada?: ReactNode;
   /** Mantém os marcadores exclusivos do laboratório fora da PDP pública. */
   modoPreVisualizacao?: boolean;
   bannerInstitucionalProduto?: ReactNode;
@@ -55,6 +56,7 @@ export function PaginaProdutoAprovada({
   abas,
   modalPagamento,
   produtosRelacionados = [],
+  vendaCruzada,
   modoPreVisualizacao = false,
   bannerInstitucionalProduto,
 }: PropriedadesPaginaProdutoAprovada) {
@@ -110,10 +112,14 @@ export function PaginaProdutoAprovada({
         </section>
 
         <div className="mt-10 md:mt-14">
-          <SecaoCompreJuntoPrevisualizacao
-            nomeProduto={nomeProduto}
-            imagemProduto={imagemProduto}
-          />
+          {modoPreVisualizacao ? (
+            <SecaoCompreJuntoPrevisualizacao
+              nomeProduto={nomeProduto}
+              imagemProduto={imagemProduto}
+            />
+          ) : (
+            vendaCruzada
+          )}
           {bannerInstitucionalProduto ?? <BannerInstitucionalPrevisualizacao />}
           <ProdutosRelacionadosPrevisualizacao
             produtos={produtosRelacionados}

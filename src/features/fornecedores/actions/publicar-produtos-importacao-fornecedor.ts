@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import { produtoRascunhosTable } from "@/db/schema";
+import { resumirPublicacaoFornecedor } from "@/features/fornecedores/lib/resumo-publicacao-fornecedor";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
 import { publicarProdutoRascunhoFornecedor } from "@/features/fornecedores/services/publicar-produto-rascunho-fornecedor.service";
@@ -35,14 +36,26 @@ export async function publicarProdutosImportacaoFornecedor(
       sucesso: false,
       erro: "Selecione ao menos um rascunho válido para publicar.",
       publicados: [] as ItemPublicadoImportacaoFornecedor[],
+      quantidadeSolicitada: 0,
+      quantidadePublicada: 0,
+      quantidadeNaoPublicada: 0,
+      naoPublicados: [],
     };
   }
 
   if (!(await possuiSessaoFornecedoresAdmin())) {
+    const quantidadeSolicitada = validacao.data.rascunhoIds.length;
     return {
       sucesso: false,
       erro: "Sua sessão expirou. Entre novamente para publicar produtos.",
       publicados: [] as ItemPublicadoImportacaoFornecedor[],
+      quantidadeSolicitada,
+      quantidadePublicada: 0,
+      quantidadeNaoPublicada: quantidadeSolicitada,
+      naoPublicados: validacao.data.rascunhoIds.map((rascunhoId) => ({
+        rascunhoId,
+        erro: "Sua sessão expirou. Entre novamente para publicar produtos.",
+      })),
     };
   }
 
@@ -51,10 +64,18 @@ export async function publicarProdutosImportacaoFornecedor(
   const origem = await buscarOrigemImportacaoFornecedor(idValidado.data);
 
   if (!origem) {
+    const quantidadeSolicitada = validacao.data.rascunhoIds.length;
     return {
       sucesso: false,
       erro: "Importação não encontrada.",
       publicados: [] as ItemPublicadoImportacaoFornecedor[],
+      quantidadeSolicitada,
+      quantidadePublicada: 0,
+      quantidadeNaoPublicada: quantidadeSolicitada,
+      naoPublicados: validacao.data.rascunhoIds.map((rascunhoId) => ({
+        rascunhoId,
+        erro: "Importação não encontrada.",
+      })),
     };
   }
 
@@ -72,18 +93,19 @@ export async function publicarProdutosImportacaoFornecedor(
       ),
     );
 
-  if (rascunhosPermitidos.length !== idsUnicos.length) {
-    return {
-      sucesso: false,
-      erro: "Um ou mais rascunhos não pertencem à importação ou ainda possuem pendências.",
-      publicados: [] as ItemPublicadoImportacaoFornecedor[],
-    };
-  }
-
   const publicados: ItemPublicadoImportacaoFornecedor[] = [];
-  const erros: Array<{ rascunhoId: string; erro: string }> = [];
+  const idsPermitidos = new Set(rascunhosPermitidos.map((item) => item.id));
+  const erros: Array<{ rascunhoId: string; erro: string }> = idsUnicos
+    .filter((rascunhoId) => !idsPermitidos.has(rascunhoId))
+    .map((rascunhoId) => ({
+      rascunhoId,
+      erro: "O produto não pertence à importação ou ainda possui pendências.",
+    }));
 
-  for (const rascunhoId of idsUnicos) {
+  // Um bloqueio válido não cancela os demais itens do lote. Cada rascunho
+  // permitido conserva sua transação independente e o retorno identifica
+  // explicitamente tudo o que não foi publicado.
+  for (const rascunhoId of idsUnicos.filter((id) => idsPermitidos.has(id))) {
     try {
       publicados.push(
         await publicarProdutoRascunhoFornecedor(rascunhoId, {
@@ -128,27 +150,22 @@ export async function publicarProdutosImportacaoFornecedor(
     }
   }
 
-  if (publicados.length === 0) {
-    return {
-      sucesso: false,
-      erro:
-        erros[0]?.erro ?? "Não foi possível publicar os produtos selecionados.",
-      publicados,
-      erros,
-    };
-  }
+  const resumo = resumirPublicacaoFornecedor(
+    idsUnicos.length,
+    publicados.length,
+  );
 
   return {
     sucesso: erros.length === 0,
-    mensagem:
-      erros.length === 0
-        ? `${publicados.length} produto${publicados.length === 1 ? " publicado" : "s publicados"} com sucesso.`
-        : `${publicados.length} produto${publicados.length === 1 ? " publicado" : "s publicados"}; ${erros.length} não puderam ser publicados.`,
+    mensagem: resumo.mensagem,
     erro:
       erros.length > 0
         ? "Alguns produtos possuem pendências. Revise os itens não publicados."
         : undefined,
     publicados,
-    erros,
+    quantidadeSolicitada: resumo.quantidadeSolicitada,
+    quantidadePublicada: resumo.quantidadePublicada,
+    quantidadeNaoPublicada: resumo.quantidadeNaoPublicada,
+    naoPublicados: erros,
   };
 }

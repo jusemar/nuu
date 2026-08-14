@@ -1,17 +1,17 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
+import type { SolicitacaoCotacaoFrete } from "../../types/contratos-frete";
+import {
+  type ConfiguracaoProvedorFreteFrenet,
+  criarProvedorFreteFrenet,
+} from "../provedores/criar-provedor-frete-frenet";
 import {
   consultarCotacaoFrenet,
   ErroCotacaoFrenet,
-  montarRequisicaoCotacaoFrenet,
   type FuncaoHttpFrenet,
+  montarRequisicaoCotacaoFrenet,
 } from "../provedores/frenet/consultar-cotacao-frenet";
-import {
-  criarProvedorFreteFrenet,
-  type ConfiguracaoProvedorFreteFrenet,
-} from "../provedores/criar-provedor-frete-frenet";
-import type { SolicitacaoCotacaoFrete } from "../../types/contratos-frete";
 
 const configuracao: ConfiguracaoProvedorFreteFrenet = {
   token: "token-frenet",
@@ -31,6 +31,9 @@ const solicitacaoSimples: SolicitacaoCotacaoFrete = {
     {
       identificador: "item-simples",
       produtoId: "produto-simples",
+      origemExpedicao: "loja",
+      fornecedorProvedor: null,
+      necessitaEtiquetaFornecedor: false,
       nome: "Produto simples",
       codigoSku: "SKU-SIMPLES",
       quantidade: 2,
@@ -44,6 +47,7 @@ const solicitacaoSimples: SolicitacaoCotacaoFrete = {
     },
   ],
   pacotes: [],
+  gruposLogisticos: [],
   moeda: "BRL",
 };
 

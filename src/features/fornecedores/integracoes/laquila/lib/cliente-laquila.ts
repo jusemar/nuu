@@ -58,6 +58,11 @@ type CorpoConsultarSaldoPrecoLaquila = {
 
 export type ItemProdutoLaquilaApi = Record<string, unknown>;
 export type ItemSaldoPrecoLaquilaApi = Record<string, unknown>;
+export type TransportadoraLaquila = {
+  codigo: string;
+  cnpj: string | null;
+  descricao: string;
+};
 
 export type ResultadoConsultarProdutosLaquila =
   | {
@@ -96,6 +101,19 @@ export type ResultadoConsultarSaldoPrecoLaquila =
       pagina: number;
       itensPorPagina: number;
       dados?: RespostaLaquilaJson;
+      diagnostico?: DiagnosticoChamadaLaquila;
+    };
+
+export type ResultadoConsultarTransportadorasLaquila =
+  | {
+      sucesso: true;
+      codigoHttp: number;
+      transportadoras: TransportadoraLaquila[];
+    }
+  | {
+      sucesso: false;
+      codigoHttp: number | null;
+      erro: string;
       diagnostico?: DiagnosticoChamadaLaquila;
     };
 
@@ -407,6 +425,109 @@ export async function testarConexaoTransportadorasLaquila({
       cnpj_transportador: "",
     },
   });
+}
+
+function obterTextoCampoLaquila(
+  registro: Record<string, unknown>,
+  nomes: readonly string[],
+) {
+  const nomesNormalizados = new Set(
+    nomes.map((nome) => nome.toLowerCase().replace(/[^a-z0-9]/gu, "")),
+  );
+
+  for (const [chave, valor] of Object.entries(registro)) {
+    const chaveNormalizada = chave.toLowerCase().replace(/[^a-z0-9]/gu, "");
+
+    if (nomesNormalizados.has(chaveNormalizada) && valor != null) {
+      const texto = String(valor).trim();
+      if (texto) return texto;
+    }
+  }
+
+  return null;
+}
+
+/** Normaliza somente os campos administrativos aprovados para exposição. */
+export function normalizarTransportadorasLaquila(
+  dados: RespostaLaquilaJson,
+): TransportadoraLaquila[] {
+  const resultado = dados.resultado;
+  const registrosTransportadoras =
+    resultado && typeof resultado === "object" && !Array.isArray(resultado)
+      ? (resultado as Record<string, unknown>).transportadores
+      : null;
+  const itens = Array.isArray(registrosTransportadoras)
+    ? registrosTransportadoras.flatMap((registro) => {
+        if (!registro || typeof registro !== "object") return [];
+        const transportadora = (registro as Record<string, unknown>)
+          .transportador;
+        return transportadora &&
+          typeof transportadora === "object" &&
+          !Array.isArray(transportadora)
+          ? [transportadora as Record<string, unknown>]
+          : [];
+      })
+    : extrairItensLaquila(dados);
+
+  const transportadoras = itens.flatMap((item) => {
+    const codigo = obterTextoCampoLaquila(item, ["cd_transportador"]);
+    const descricao = obterTextoCampoLaquila(item, [
+      "descricao",
+      "ds_transportador",
+      "nome",
+    ]);
+
+    if (!codigo || !descricao) return [];
+    const cnpjRecebido = obterTextoCampoLaquila(item, ["cnpj_transportador"]);
+    const cnpjNumerico = cnpjRecebido?.replace(/\D/gu, "") ?? "";
+
+    return [
+      {
+        codigo,
+        // Alguns registros da API repetem o código no campo de CNPJ. Só
+        // expomos a informação secundária quando ela possui os 14 dígitos.
+        cnpj: cnpjNumerico.length === 14 ? cnpjNumerico : null,
+        // A API repete o código no início da descrição. A interface já mostra
+        // o código separadamente, então removemos apenas esse prefixo exato.
+        descricao: descricao.replace(
+          new RegExp(
+            `^${codigo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*-\\s*`,
+          ),
+          "",
+        ),
+      },
+    ];
+  });
+
+  return Array.from(
+    new Map(
+      transportadoras.map((transportadora) => [
+        `${transportadora.codigo}:${transportadora.cnpj ?? ""}`,
+        transportadora,
+      ]),
+    ).values(),
+  );
+}
+
+export async function consultarTransportadorasLaquila({
+  cliente,
+  tokenCliente,
+}: {
+  cliente: ClienteLaquila;
+  tokenCliente: string;
+}): Promise<ResultadoConsultarTransportadorasLaquila> {
+  const resultado = await testarConexaoTransportadorasLaquila({
+    cliente,
+    tokenCliente,
+  });
+
+  if (!resultado.sucesso) return resultado;
+
+  return {
+    sucesso: true,
+    codigoHttp: resultado.codigoHttp,
+    transportadoras: normalizarTransportadorasLaquila(resultado.dados),
+  };
 }
 
 function extrairItensLaquila(

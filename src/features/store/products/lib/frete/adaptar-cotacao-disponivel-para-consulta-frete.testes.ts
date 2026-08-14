@@ -1,10 +1,8 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
-import type {
-  DisponibilidadeFreteProduto,
-  ResultadoCotacaoFrete,
-} from "@/features/logistica";
+import type { ResultadoCotacaoFrete } from "@/features/logistica/types/contratos-frete";
+import type { DisponibilidadeFreteProduto } from "@/features/logistica/types/disponibilidade-frete";
 
 import { adaptarCotacaoDisponivelParaConsultaFrete } from "./adaptar-cotacao-disponivel-para-consulta-frete";
 
@@ -17,6 +15,9 @@ const resultado: ResultadoCotacaoFrete = {
       {
         identificador: "item-1",
         produtoId: "produto-1",
+        origemExpedicao: "loja",
+        fornecedorProvedor: null,
+        necessitaEtiquetaFornecedor: false,
         nome: "Produto",
         quantidade: 1,
         pesoEmGramas: 500,
@@ -28,6 +29,7 @@ const resultado: ResultadoCotacaoFrete = {
       },
     ],
     pacotes: [],
+    gruposLogisticos: [],
     moeda: "BRL",
   },
   opcoes: [

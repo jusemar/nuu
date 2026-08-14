@@ -1,11 +1,11 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
-import { cotarFreteFluxoAtual } from "../entradas/cotar-frete-fluxo-atual";
 import type {
   ProdutoAtualComDimensoes,
   VarianteAtualComDimensoes,
 } from "../adaptadores/adaptar-produto-atual";
+import { cotarFreteFluxoAtual } from "../entradas/cotar-frete-fluxo-atual";
 
 const produtoSimples: ProdutoAtualComDimensoes = {
   identificadorProduto: "produto-1",
@@ -47,6 +47,32 @@ descrever("cotarFreteFluxoAtual", () => {
     afirmacoes.equal(resultado.solicitacao.itens[0]?.produtoId, "produto-1");
     afirmacoes.equal(resultado.solicitacao.pacotes[0]?.quantidadeVolumes, 2);
     afirmacoes.equal(resultado.solicitacao.pacotes[0]?.pesoTotalEmGramas, 1000);
+    afirmacoes.deepEqual(
+      resultado.solicitacao.gruposLogisticos.map((grupo) => grupo.chave),
+      ["expedicao:loja"],
+    );
+  });
+
+  verificar("disponibiliza grupo Laquila sem dividir a cotacao", async () => {
+    const resultado = await cotarFreteFluxoAtual({
+      produtoAtual: produtoSimples,
+      quantidade: 5,
+      cep: "30140071",
+      contextoOrigemExpedicao: {
+        origemExpedicao: "fornecedor",
+        fornecedorProvedor: "laquila",
+        necessitaEtiquetaFornecedor: true,
+      },
+    });
+
+    afirmacoes.equal(resultado.solicitacao.itens.length, 1);
+    afirmacoes.equal(resultado.solicitacao.itens[0]?.quantidade, 5);
+    afirmacoes.equal(resultado.solicitacao.pacotes.length, 1);
+    afirmacoes.equal(resultado.solicitacao.gruposLogisticos.length, 1);
+    afirmacoes.equal(
+      resultado.solicitacao.gruposLogisticos[0]?.chave,
+      "expedicao:fornecedor:laquila",
+    );
   });
 
   verificar("monta produto com variante com CEP valido", async () => {
@@ -159,10 +185,7 @@ descrever("cotarFreteFluxoAtual", () => {
 
     afirmacoes.equal(resultado.sucesso, true);
     afirmacoes.deepEqual(
-      resultado.opcoes.map((opcao) => [
-        opcao.servico,
-        opcao.valorEmCentavos,
-      ]),
+      resultado.opcoes.map((opcao) => [opcao.servico, opcao.valorEmCentavos]),
       [
         ["entrega-propria-atual", 2500],
         ["entrega-programada", 0],

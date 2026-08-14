@@ -176,6 +176,7 @@ export default async function Page({
       ? contarEstagiosVinculacaoFornecedor(id)
       : Promise.resolve({
           todos: 0,
+          conciliacao: 0,
           vinculados: 0,
           pendentes: 0,
           novos: 0,

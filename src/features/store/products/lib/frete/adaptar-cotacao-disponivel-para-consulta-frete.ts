@@ -1,8 +1,6 @@
-import {
-  filtrarResultadoCotacaoFreteDisponivel,
-  type DisponibilidadeFreteProduto,
-  type ResultadoCotacaoFrete,
-} from "@/features/logistica";
+import { filtrarResultadoCotacaoFreteDisponivel } from "@/features/logistica/lib/disponibilidade/filtrar-resultado-cotacao-disponivel";
+import type { ResultadoCotacaoFrete } from "@/features/logistica/types/contratos-frete";
+import type { DisponibilidadeFreteProduto } from "@/features/logistica/types/disponibilidade-frete";
 
 import { adaptarCotacaoLogisticaParaConsultaFrete } from "./adaptar-cotacao-logistica-para-consulta-frete";
 

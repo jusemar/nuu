@@ -1,15 +1,20 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+import { filtrarResultadoCotacaoFreteDisponivel } from "@/features/logistica/lib/disponibilidade/filtrar-resultado-cotacao-disponivel";
 import {
   cotarFreteFluxoAtual,
-  type DisponibilidadeFreteProduto,
   type EntradaCotacaoFreteFluxoAtual,
-  filtrarResultadoCotacaoFreteDisponivel,
-  type ItemLogistico,
-  type OpcaoFrete,
-  type PacoteEnvio,
-  type ResultadoCotacaoFrete,
-  type RetiradaAtualDisponivel,
-} from "@/features/logistica";
+} from "@/features/logistica/lib/entradas/cotar-frete-fluxo-atual";
+import { agruparItensPorOrigemExpedicao } from "@/features/logistica/lib/grupos-logisticos/agrupar-itens-por-origem-expedicao";
+import { resolverOrigemExpedicaoProduto } from "@/features/logistica/lib/grupos-logisticos/resolver-origem-expedicao-produto";
+import type { RetiradaAtualDisponivel } from "@/features/logistica/lib/portas/criar-porta-retirada-atual";
+import type {
+  ItemLogistico,
+  OpcaoFrete,
+  PacoteEnvio,
+  ResultadoCotacaoFrete,
+} from "@/features/logistica/types/contratos-frete";
+import type { DisponibilidadeFreteProduto } from "@/features/logistica/types/disponibilidade-frete";
+import type { GrupoLogistico } from "@/features/logistica/types/grupos-logisticos";
 
 type ModalidadeFreteCarrinho = "retirada" | "entrega-propria" | "frenet";
 
@@ -77,6 +82,7 @@ export type DependenciasRevalidacaoFreteCheckout = {
     produtoId: string;
     categoriaId?: string | null;
   }) => Promise<DisponibilidadeFreteProduto>;
+  provedoresExpedicaoPorProdutoId?: ReadonlyMap<string, string>;
 };
 
 export type ResultadoRevalidacaoFreteCheckout =
@@ -85,6 +91,7 @@ export type ResultadoRevalidacaoFreteCheckout =
       freteEmCentavos: number;
       fallbackAcionado: boolean;
       snapshotFrete: SnapshotFreteCheckout;
+      gruposLogisticos: GrupoLogistico<ItemLogistico>[];
     }
   | {
       sucesso: false;
@@ -345,19 +352,20 @@ function consolidarPromessaEntregaProgramada(
   const promessas = snapshots
     .filter((item) => item.servico === "entrega-programada")
     .map((item) => item.metadataResumida?.promessaEntregaProgramada)
-    .filter(
-      (promessa): promessa is Record<string, unknown> =>
-        Boolean(
-          promessa &&
-            typeof promessa === "object" &&
-            typeof (promessa as Record<string, unknown>).dataPrometida ===
-              "string",
-        ),
+    .filter((promessa): promessa is Record<string, unknown> =>
+      Boolean(
+        promessa &&
+          typeof promessa === "object" &&
+          typeof (promessa as Record<string, unknown>).dataPrometida ===
+            "string",
+      ),
     );
 
-  const promessaFinal = promessas.sort((a, b) =>
-    String(a.dataPrometida).localeCompare(String(b.dataPrometida)),
-  ).at(-1);
+  const promessaFinal = promessas
+    .sort((a, b) =>
+      String(a.dataPrometida).localeCompare(String(b.dataPrometida)),
+    )
+    .at(-1);
 
   if (!promessaFinal) return null;
 
@@ -365,7 +373,9 @@ function consolidarPromessaEntregaProgramada(
   for (const item of snapshots) {
     if (item.servico !== "entrega-programada") continue;
     item.prazo =
-      typeof promessaFinal.texto === "string" ? promessaFinal.texto : item.prazo;
+      typeof promessaFinal.texto === "string"
+        ? promessaFinal.texto
+        : item.prazo;
     item.metadataResumida = {
       ...(item.metadataResumida ?? {}),
       promessaEntregaProgramada: promessaFinal,
@@ -393,6 +403,10 @@ async function cotarItemComNovaLogistica({
     cep,
     valorDeclaradoEmCentavos: item.precoEmCentavos,
     retiradasAtuais: obterRetiradasAtuais(produto),
+    contextoOrigemExpedicao: resolverOrigemExpedicaoProduto({
+      fornecedorProvedorAtivo:
+        dependencias.provedoresExpedicaoPorProdutoId?.get(produto.id) ?? null,
+    }),
   };
 
   if (produto.allowsOwnDelivery) {
@@ -554,6 +568,9 @@ export async function revalidarFreteCheckout({
     sucesso: true,
     freteEmCentavos,
     fallbackAcionado,
+    gruposLogisticos: agruparItensPorOrigemExpedicao(
+      snapshotsItens.flatMap((snapshot) => snapshot.itensLogisticos),
+    ),
     snapshotFrete: {
       versao: "1",
       cep,

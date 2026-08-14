@@ -61,6 +61,8 @@ import { VendaCruzadaPdp } from "./venda-cruzada-pdp";
 // INTERFACE DAS PROPS
 // ==========================================
 interface ProductDetailProps {
+  /** Ausente no laboratório administrativo para não compartilhar a rota de preview. */
+  urlCompartilhamento?: string;
   product: {
     id: string;
     name: string;
@@ -120,6 +122,7 @@ interface ProductDetailProps {
 // COMPONENTE PRINCIPAL
 // ==========================================
 export function ProductDetail({
+  urlCompartilhamento,
   product,
   nomeComercialLoja,
   breadcrumbCategorias,
@@ -621,6 +624,7 @@ export function ProductDetail({
           dataFimRelampago={dataFimPromocaoModalidadeAtiva}
           modoPreVisualizacao={true}
           mostrarMarcaPrevisualizacao={false}
+          urlCompartilhamento={urlCompartilhamento}
         />
       }
       mensagemPromocional={

@@ -1,8 +1,8 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
-import type { SnapshotFreteCheckout } from "./revalidar-frete-checkout";
 import { montarRegistroSnapshotFretePedido } from "./montar-registro-snapshot-frete-pedido";
+import type { SnapshotFreteCheckout } from "./revalidar-frete-checkout";
 
 const snapshot: SnapshotFreteCheckout = {
   versao: "1",
@@ -92,6 +92,9 @@ descrever("montarRegistroSnapshotFretePedido", () => {
             {
               identificador: "item-logistico",
               produtoId: "produto-1",
+              origemExpedicao: "loja",
+              fornecedorProvedor: null,
+              necessitaEtiquetaFornecedor: false,
               varianteId: "variante-1",
               nome: "Produto",
               quantidade: 1,

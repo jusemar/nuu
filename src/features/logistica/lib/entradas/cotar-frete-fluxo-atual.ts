@@ -1,12 +1,13 @@
 import { esquemaEnderecoEntrega } from "../../schemas/contratos-frete";
 import type {
-  ErroCotacaoFrete,
   EnderecoEntrega,
+  ErroCotacaoFrete,
   ItemLogistico,
   PacoteEnvio,
   ResultadoCotacaoFrete,
   SolicitacaoCotacaoFrete,
 } from "../../types/contratos-frete";
+import type { ContextoOrigemExpedicao } from "../../types/grupos-logisticos";
 import {
   adaptarProdutoAtualParaLogistica,
   adaptarVarianteAtualParaLogistica,
@@ -14,10 +15,11 @@ import {
   type VarianteAtualComDimensoes,
 } from "../adaptadores/adaptar-produto-atual";
 import {
-  cotarFreteInterno,
   type ConfiguracaoCotacaoFreteInterna,
+  cotarFreteInterno,
   type DependenciasCotacaoFreteInterna,
 } from "../cotacoes/cotar-frete-interno";
+import { agruparItensPorOrigemExpedicao } from "../grupos-logisticos/agrupar-itens-por-origem-expedicao";
 import type { DependenciasPortaEntregaPropriaAtual } from "../portas/criar-porta-entrega-propria-atual";
 import type { RetiradaAtualDisponivel } from "../portas/criar-porta-retirada-atual";
 import { obterConfiguracaoFrenet } from "../provedores/frenet/obter-configuracao-frenet";
@@ -30,6 +32,7 @@ export type EntradaCotacaoFreteFluxoAtual = {
   cep: string;
   identificadorCotacao?: string;
   valorDeclaradoEmCentavos?: number | null;
+  contextoOrigemExpedicao?: ContextoOrigemExpedicao;
   retiradasAtuais?: RetiradaAtualDisponivel[];
   consultarEntregaPropriaAtual?: DependenciasPortaEntregaPropriaAtual["consultarEntregaPropriaAtual"];
 };
@@ -63,6 +66,7 @@ function criarSolicitacaoVazia(
     },
     itens: [],
     pacotes: [],
+    gruposLogisticos: [],
     moeda: "BRL",
   };
 }
@@ -149,6 +153,7 @@ export async function cotarFreteFluxoAtual(
     variante,
     quantidade: entrada.quantidade,
     valorDeclaradoEmCentavos: entrada.valorDeclaradoEmCentavos,
+    contextoOrigemExpedicao: entrada.contextoOrigemExpedicao,
   });
 
   if (resolucaoItem.sucesso === false) {
@@ -167,6 +172,7 @@ export async function cotarFreteFluxoAtual(
     ...criarSolicitacaoVazia(entrada, cepLimpo),
     itens: [resolucaoItem.item],
     pacotes: [pacote],
+    gruposLogisticos: agruparItensPorOrigemExpedicao([resolucaoItem.item]),
   };
 
   if (!validacaoEndereco.success) {

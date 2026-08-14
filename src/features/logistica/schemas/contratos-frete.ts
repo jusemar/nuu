@@ -37,6 +37,17 @@ export const esquemaItemLogistico = z.object({
   pesoEmGramas: esquemaInteiroPositivo,
   dimensoes: esquemaDimensoesPacote,
   valorDeclaradoEmCentavos: esquemaInteiroNaoNegativo.optional().nullable(),
+  origemExpedicao: z.enum(["loja", "fornecedor"]),
+  fornecedorProvedor: esquemaTextoObrigatorio.nullable(),
+  necessitaEtiquetaFornecedor: z.boolean(),
+});
+
+export const esquemaGrupoLogistico = z.object({
+  chave: esquemaTextoObrigatorio,
+  origemExpedicao: z.enum(["loja", "fornecedor"]),
+  fornecedorProvedor: esquemaTextoObrigatorio.nullable(),
+  necessitaEtiquetaFornecedor: z.boolean(),
+  itens: z.array(esquemaItemLogistico).min(1),
 });
 
 export const esquemaPacoteEnvio = z.object({
@@ -52,6 +63,7 @@ export const esquemaSolicitacaoCotacaoFrete = z.object({
   destino: esquemaEnderecoEntrega,
   itens: z.array(esquemaItemLogistico).min(1),
   pacotes: z.array(esquemaPacoteEnvio).default([]),
+  gruposLogisticos: z.array(esquemaGrupoLogistico).default([]),
   moeda: z.literal("BRL").default("BRL"),
 });
 

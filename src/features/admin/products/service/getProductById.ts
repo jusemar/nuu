@@ -7,22 +7,25 @@
 "use server";
 
 // --- IMPORTAÇÕES DO BANCO DE DADOS ---
+import { asc, eq, inArray } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
-  productTable, // Tabela principal dos produtos
+  categoryTable, // Tabela de categorias (para buscar o nome da categoria)
+  marcaTable,
+  modelosRetiradaTable, // Tabela de modelos de retirada
+  productAttributeTable,
   productGalleryImagesTable, // Tabela de imagens da GALERIA PRINCIPAL (product_gallery_images)
   productPricingTable, // Tabela de modalidades de preço
-  productAttributeTable,
+  productTable, // Tabela principal dos produtos
   productVariantTable,
   produtosTiposLogisticosTable,
   tiposLogisticosTable,
   variantesTiposLogisticosTable,
-  categoryTable, // Tabela de categorias (para buscar o nome da categoria)
-  marcaTable,
-  modelosRetiradaTable, // Tabela de modelos de retirada
 } from "@/db/schema";
-import { eq, asc, inArray } from "drizzle-orm";
 import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
+import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
+import { listarTransportadorasLaquila } from "@/features/fornecedores/integracoes/laquila/queries/listar-transportadoras-laquila";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 function obterDetalhesErro(error: unknown) {
@@ -309,7 +312,12 @@ export async function getProductById(id: string) {
           })
         : null;
 
-    const precosEntregaPropria = await listarPrecosEntregaPropriaProduto(id);
+    const usaLogisticaLaquila = await verificarLogisticaLaquilaProduto(id);
+    const [precosEntregaPropria, resultadoTransportadorasLaquila] =
+      await Promise.all([
+        listarPrecosEntregaPropriaProduto(id),
+        usaLogisticaLaquila ? listarTransportadorasLaquila() : null,
+      ]);
 
     // Montar o objeto de modalidades no formato que o frontend espera
     const modalities: Record<string, any> = {};
@@ -435,6 +443,9 @@ export async function getProductById(id: string) {
           deliveryDeadline: preco.deliveryDeadline,
           isActive: preco.isActive,
         })),
+        // Dado somente administrativo, derivado do vínculo ativo já existente.
+        usaLogisticaLaquila,
+        resultadoTransportadorasLaquila,
       },
     };
   } catch (error: unknown) {

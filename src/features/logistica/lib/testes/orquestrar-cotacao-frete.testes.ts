@@ -1,13 +1,13 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
-import { orquestrarCotacaoFrete } from "../cotacoes/orquestrar-cotacao-frete";
 import type {
   OpcaoFrete,
   ProvedorFrete,
   ResultadoCotacaoFrete,
   SolicitacaoCotacaoFrete,
 } from "../../types/contratos-frete";
+import { orquestrarCotacaoFrete } from "../cotacoes/orquestrar-cotacao-frete";
 
 const solicitacao: SolicitacaoCotacaoFrete = {
   identificador: "cotacao-orquestrada",
@@ -19,6 +19,9 @@ const solicitacao: SolicitacaoCotacaoFrete = {
     {
       identificador: "item-1",
       produtoId: "produto-1",
+      origemExpedicao: "loja",
+      fornecedorProvedor: null,
+      necessitaEtiquetaFornecedor: false,
       nome: "Produto",
       quantidade: 1,
       pesoEmGramas: 500,
@@ -30,6 +33,7 @@ const solicitacao: SolicitacaoCotacaoFrete = {
     },
   ],
   pacotes: [],
+  gruposLogisticos: [],
   moeda: "BRL",
 };
 

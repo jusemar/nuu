@@ -69,7 +69,9 @@ export function DescricaoCurtaProdutoPdp({
   modoPreVisualizacao?: boolean;
 }) {
   return modoPreVisualizacao ? (
-    <p className="text-muted-foreground max-w-2xl text-sm leading-6">{descricao}</p>
+    <p className="text-muted-foreground max-w-2xl text-sm leading-6">
+      {descricao}
+    </p>
   ) : (
     <p className="text-text-muted text-[13px] leading-relaxed">{descricao}</p>
   );

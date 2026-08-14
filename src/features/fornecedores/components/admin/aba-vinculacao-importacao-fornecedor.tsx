@@ -310,6 +310,13 @@ export function AbaVinculacaoImportacaoFornecedor({
       estagio: "vinculado",
     },
     {
+      chave: "conciliacao",
+      label: "Em Conciliação",
+      valor: contadoresEstagio.conciliacao,
+      classe: "border-cyan-200 bg-cyan-50 text-cyan-800",
+      estagio: "conciliacao",
+    },
+    {
       chave: "novos",
       label: "Novos",
       valor: contadoresEstagio.novos,

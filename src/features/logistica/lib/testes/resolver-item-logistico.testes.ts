@@ -1,11 +1,11 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
-import { resolverItemLogistico } from "../resolver-item-logistico";
 import type {
   ProdutoParaItemLogistico,
   VarianteParaItemLogistico,
 } from "../resolver-item-logistico";
+import { resolverItemLogistico } from "../resolver-item-logistico";
 
 const produtoSimplesCompleto: ProdutoParaItemLogistico = {
   identificador: "produto-simples",
@@ -152,12 +152,37 @@ descrever("resolverItemLogistico", () => {
 
     if (!resultado.sucesso) return;
 
-    afirmacoes.equal(resultado.item.pesoEmGramas, produtoComVariantes.pesoEmGramas);
+    afirmacoes.equal(
+      resultado.item.pesoEmGramas,
+      produtoComVariantes.pesoEmGramas,
+    );
     afirmacoes.deepEqual(resultado.item.dimensoes, {
       alturaEmCm: produtoComVariantes.alturaEmCm,
       larguraEmCm: produtoComVariantes.larguraEmCm,
       comprimentoEmCm: produtoComVariantes.comprimentoEmCm,
     });
+  });
+
+  verificar("mantem origem Laquila do produto ao resolver uma variante", () => {
+    const resultado = resolverItemLogistico({
+      produto: produtoComVariantes,
+      variante: varianteCompleta,
+      quantidade: 5,
+      contextoOrigemExpedicao: {
+        origemExpedicao: "fornecedor",
+        fornecedorProvedor: "laquila",
+        necessitaEtiquetaFornecedor: true,
+      },
+    });
+
+    afirmacoes.equal(resultado.sucesso, true);
+    if (!resultado.sucesso) return;
+
+    afirmacoes.equal(resultado.item.quantidade, 5);
+    afirmacoes.equal(resultado.item.varianteId, varianteCompleta.identificador);
+    afirmacoes.equal(resultado.item.origemExpedicao, "fornecedor");
+    afirmacoes.equal(resultado.item.fornecedorProvedor, "laquila");
+    afirmacoes.equal(resultado.item.necessitaEtiquetaFornecedor, true);
   });
 
   verificar("retorna erro para quantidade invalida", () => {

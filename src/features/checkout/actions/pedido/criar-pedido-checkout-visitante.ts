@@ -15,6 +15,7 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
+import { listarProvedoresExpedicaoProdutos } from "@/features/fornecedores/queries/listar-provedores-expedicao-produtos";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
 import {
   avaliarConsistenciaTrocoPedido,
@@ -452,6 +453,9 @@ export async function criarPedidoCheckoutVisitanteInterno({
       });
     });
 
+    const provedoresExpedicaoPorProdutoId =
+      await listarProvedoresExpedicaoProdutos(produtosIds);
+
     const revalidacaoFrete = await revalidarFreteCheckout({
       itens: dados.itens,
       produtos,
@@ -459,6 +463,7 @@ export async function criarPedidoCheckoutVisitanteInterno({
       dependencias: {
         consultarEntregaPropriaAtual: criarConsultaEntregaPropriaCheckout(),
         buscarDisponibilidadeFreteProduto,
+        provedoresExpedicaoPorProdutoId,
       },
     });
 

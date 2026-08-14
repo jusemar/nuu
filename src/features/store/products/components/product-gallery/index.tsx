@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { CompartilharProduto } from "../compartilhar-produto";
+
 interface ProductGalleryProps {
   imagens: string[];
   nomeProduto?: string;
@@ -20,6 +22,8 @@ interface ProductGalleryProps {
   modoPreVisualizacao?: boolean;
   /** Mantém o marcador de laboratório restrito à rota de pré-visualização. */
   mostrarMarcaPrevisualizacao?: boolean;
+  /** URL canônica presente somente na PDP pública. */
+  urlCompartilhamento?: string;
 }
 
 export function ProductGallery({
@@ -30,6 +34,7 @@ export function ProductGallery({
   dataFimRelampago = null,
   modoPreVisualizacao = false,
   mostrarMarcaPrevisualizacao = true,
+  urlCompartilhamento,
 }: ProductGalleryProps) {
   const [imgAtiva, setImgAtiva] = useState(0);
   const [ampliacaoAberta, setAmpliacaoAberta] = useState(false);
@@ -210,6 +215,12 @@ export function ProductGallery({
             : "rounded-2xl md:col-start-2 md:row-start-1"
         }`}
       >
+        {urlCompartilhamento ? (
+          <CompartilharProduto
+            nomeProduto={nomeProduto}
+            urlProduto={urlCompartilhamento}
+          />
+        ) : null}
         <button
           ref={imagemPrincipalRef}
           type="button"

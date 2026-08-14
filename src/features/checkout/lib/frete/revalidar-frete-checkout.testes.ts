@@ -9,9 +9,9 @@ import type {
 } from "@/features/logistica";
 
 import {
-  revalidarFreteCheckout,
   type DependenciasRevalidacaoFreteCheckout,
   type ProdutoRevalidacaoFreteCheckout,
+  revalidarFreteCheckout,
 } from "./revalidar-frete-checkout";
 
 const produtoSimples: ProdutoRevalidacaoFreteCheckout = {
@@ -116,6 +116,11 @@ function criarResultadoCotacao(
   const itemLogistico = {
     identificador: "item-logistico-1",
     produtoId: entrada.produtoAtual.identificadorProduto,
+    origemExpedicao: entrada.contextoOrigemExpedicao?.origemExpedicao ?? "loja",
+    fornecedorProvedor:
+      entrada.contextoOrigemExpedicao?.fornecedorProvedor ?? null,
+    necessitaEtiquetaFornecedor:
+      entrada.contextoOrigemExpedicao?.necessitaEtiquetaFornecedor ?? false,
     varianteId: entrada.varianteAtual?.identificadorVariante ?? null,
     nome:
       entrada.varianteAtual?.nomeVariante ?? entrada.produtoAtual.nomeProduto,
@@ -142,6 +147,7 @@ function criarResultadoCotacao(
           dimensoes,
         },
       ],
+      gruposLogisticos: [],
       moeda: "BRL",
     },
     opcoes,
@@ -312,47 +318,100 @@ descrever("revalidarFreteCheckout", () => {
     }
   });
 
-  verificar("consolida itens programados pela promessa mais distante", async () => {
-    const produtoMaisLento = {
-      ...produtoSimples,
-      id: "produto-mais-lento",
-      sku: "SKU-LENTO",
-    };
-    const resultado = await revalidarFreteCheckout({
-      itens: [
-        criarItem({
-          servico: "entrega-programada",
-          valorEmCentavos: 0,
-        }),
-        criarItem({
-          produtoId: produtoMaisLento.id,
-          servico: "entrega-programada",
-          valorEmCentavos: 0,
-        }),
-      ],
-      produtos: [produtoSimples, produtoMaisLento],
-      cepFinal: "30140071",
-      dependencias: criarDependencias(async (entrada) =>
-        criarResultadoCotacao(entrada, [
-          entrada.produtoAtual.identificadorProduto === produtoMaisLento.id
-            ? criarOpcaoProgramada("2026-08-07", "Receba 07/08")
-            : criarOpcaoProgramada("2026-08-05", "Receba quarta-feira"),
-        ]),
-      ),
-    });
+  verificar(
+    "disponibiliza grupos mistos sem alterar a cotacao por item",
+    async () => {
+      const produtoLaquila = {
+        ...produtoSimples,
+        id: "produto-laquila",
+        sku: "SKU-LAQUILA",
+      };
+      const entradasRecebidas: EntradaCotacaoFreteFluxoAtual[] = [];
+      const dependencias = criarDependencias(async (entrada) => {
+        entradasRecebidas.push(entrada);
+        return criarResultadoCotacao(entrada, [criarOpcaoEntrega()]);
+      });
+      dependencias.provedoresExpedicaoPorProdutoId = new Map([
+        [produtoLaquila.id, "laquila"],
+      ]);
 
-    afirmacoes.equal(resultado.sucesso, true);
-    if (resultado.sucesso) {
-      afirmacoes.equal(
-        resultado.snapshotFrete.promessaEntregaProgramada?.dataPrometida,
-        "2026-08-07",
+      const resultado = await revalidarFreteCheckout({
+        itens: [criarItem(), criarItem({ produtoId: produtoLaquila.id })],
+        produtos: [produtoSimples, produtoLaquila],
+        cepFinal: "30140071",
+        dependencias,
+      });
+
+      afirmacoes.equal(resultado.sucesso, true);
+      if (!resultado.sucesso) return;
+
+      afirmacoes.equal(entradasRecebidas.length, 2);
+      afirmacoes.deepEqual(
+        entradasRecebidas.map((entrada) => entrada.contextoOrigemExpedicao),
+        [
+          {
+            origemExpedicao: "loja",
+            fornecedorProvedor: null,
+            necessitaEtiquetaFornecedor: false,
+          },
+          {
+            origemExpedicao: "fornecedor",
+            fornecedorProvedor: "laquila",
+            necessitaEtiquetaFornecedor: true,
+          },
+        ],
       );
       afirmacoes.deepEqual(
-        resultado.snapshotFrete.itens.map((item) => item.prazo),
-        ["Receba 07/08", "Receba 07/08"],
+        resultado.gruposLogisticos.map((grupo) => grupo.chave),
+        ["expedicao:loja", "expedicao:fornecedor:laquila"],
       );
-    }
-  });
+    },
+  );
+
+  verificar(
+    "consolida itens programados pela promessa mais distante",
+    async () => {
+      const produtoMaisLento = {
+        ...produtoSimples,
+        id: "produto-mais-lento",
+        sku: "SKU-LENTO",
+      };
+      const resultado = await revalidarFreteCheckout({
+        itens: [
+          criarItem({
+            servico: "entrega-programada",
+            valorEmCentavos: 0,
+          }),
+          criarItem({
+            produtoId: produtoMaisLento.id,
+            servico: "entrega-programada",
+            valorEmCentavos: 0,
+          }),
+        ],
+        produtos: [produtoSimples, produtoMaisLento],
+        cepFinal: "30140071",
+        dependencias: criarDependencias(async (entrada) =>
+          criarResultadoCotacao(entrada, [
+            entrada.produtoAtual.identificadorProduto === produtoMaisLento.id
+              ? criarOpcaoProgramada("2026-08-07", "Receba 07/08")
+              : criarOpcaoProgramada("2026-08-05", "Receba quarta-feira"),
+          ]),
+        ),
+      });
+
+      afirmacoes.equal(resultado.sucesso, true);
+      if (resultado.sucesso) {
+        afirmacoes.equal(
+          resultado.snapshotFrete.promessaEntregaProgramada?.dataPrometida,
+          "2026-08-07",
+        );
+        afirmacoes.deepEqual(
+          resultado.snapshotFrete.itens.map((item) => item.prazo),
+          ["Receba 07/08", "Receba 07/08"],
+        );
+      }
+    },
+  );
 
   verificar("leva a variante selecionada para a cotacao oficial", async () => {
     let varianteCotada: string | null | undefined;

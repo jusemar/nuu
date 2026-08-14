@@ -40,6 +40,10 @@ function decisoesDaImportacao(importacaoId: string) {
         sql<boolean>`bool_or(${produtoRascunhosTable.produtoAtualizadoId} is null and ${produtoRascunhosTable.status} <> 'publicado')`.as(
           "marcado_como_novo",
         ),
+      emConciliacao:
+        sql<boolean>`bool_or(${produtoRascunhosTable.produtoAtualizadoId} is not null and ${produtoRascunhosTable.status} in ('rascunho', 'pendente_conciliacao', 'pronto_para_publicar'))`.as(
+          "em_conciliacao",
+        ),
     })
     .from(produtoRascunhosTable)
     .where(
@@ -55,6 +59,7 @@ type DecisoesDaImportacao = ReturnType<typeof decisoesDaImportacao>;
 
 export const ESTAGIOS_VINCULACAO_FORNECEDOR = [
   "publicado",
+  "conciliacao",
   "vinculado",
   "novo",
   "pendente",
@@ -84,6 +89,7 @@ function estagioSql(decisoes: DecisoesDaImportacao) {
     when ${fornecedorProdutosStagingTable.status} = 'ignorado' then 'ignorado'
     when ${fornecedorProdutosStagingTable.status} in ('erro', 'rejeitado') then 'erro'
     when coalesce(${decisoes.marcadoComoNovo}, false) then 'novo'
+    when coalesce(${decisoes.emConciliacao}, false) then 'conciliacao'
     when ${fornecedorProdutosStagingTable.produtoLocalizadoId} is not null then 'vinculado'
     else 'pendente'
   end`;
@@ -171,6 +177,11 @@ function montarCondicoes(
   // Um filtro só, a partir da MESMA expressão que alimenta os contadores.
   if (filtros.estagio) {
     condicoes.push(sql`${estagioSql(decisoes)} = ${filtros.estagio}`);
+  } else {
+    // O recorte padrão representa a fila ATIVA da Vinculação. Itens já
+    // confirmados continuam acessíveis pelo badge de Conciliação, mas não
+    // permanecem misturados aos que ainda exigem decisão nesta etapa.
+    condicoes.push(sql`${estagioSql(decisoes)} <> 'conciliacao'`);
   }
 
   return and(...condicoes);
@@ -293,6 +304,7 @@ export async function listarStagingImportacaoFornecedorAdmin(
 
 export type ContadoresEstagioVinculacaoFornecedor = {
   todos: number;
+  conciliacao: number;
   vinculados: number;
   pendentes: number;
   novos: number;
@@ -326,6 +338,7 @@ export async function contarEstagiosVinculacaoFornecedor(
       db
         .select({
           todos: count(),
+          conciliacao: sql<number>`count(*) filter (where ${estagio} = 'conciliacao')`,
           publicados: sql<number>`count(*) filter (where ${estagio} = 'publicado')`,
           ignorados: sql<number>`count(*) filter (where ${estagio} = 'ignorado')`,
           erros: sql<number>`count(*) filter (where ${estagio} = 'erro')`,
@@ -346,6 +359,7 @@ export async function contarEstagiosVinculacaoFornecedor(
 
   return {
     todos: Number(linha?.todos ?? 0),
+    conciliacao: Number(linha?.conciliacao ?? 0),
     vinculados: Number(linha?.vinculados ?? 0),
     pendentes: Number(linha?.pendentes ?? 0),
     novos: Number(linha?.novos ?? 0),

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { describe, it } from "node:test";
 
 describe("integração logística na edição de produto", () => {
   const caminhoEdicao = join(
@@ -19,6 +19,14 @@ describe("integração logística na edição de produto", () => {
   const caminhoAtualizarProduto = join(
     process.cwd(),
     "src/actions/admin/products/update.ts",
+  );
+  const caminhoBuscaProduto = join(
+    process.cwd(),
+    "src/features/admin/products/service/getProductById.ts",
+  );
+  const caminhoIdentificacaoLaquila = join(
+    process.cwd(),
+    "src/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto.ts",
   );
 
   it("reutiliza o mesmo componente EntregaTab na edição", () => {
@@ -95,5 +103,108 @@ describe("integração logística na edição de produto", () => {
       conteudoCriacao.includes("produtosTiposLogisticosTable"),
       true,
     );
+  });
+
+  it("identifica Logística Laquila pelo vínculo ativo existente", () => {
+    const conteudoBusca = readFileSync(caminhoBuscaProduto, "utf-8");
+    const conteudoIdentificacao = readFileSync(
+      caminhoIdentificacaoLaquila,
+      "utf-8",
+    );
+
+    assert.equal(
+      conteudoBusca.includes("verificarLogisticaLaquilaProduto(id)"),
+      true,
+    );
+    assert.equal(
+      conteudoIdentificacao.includes(
+        'eq(fornecedorProdutoVinculosTable.status, "ativo")',
+      ),
+      true,
+    );
+    assert.equal(
+      conteudoIdentificacao.includes("PROVEDOR_INTEGRACAO_LAQUILA"),
+      true,
+    );
+  });
+
+  it("mantém somente a retirada indisponível para produto Laquila", () => {
+    const conteudoEdicao = readFileSync(caminhoEdicao, "utf-8");
+    const conteudoEntrega = readFileSync(caminhoEntregaTab, "utf-8");
+
+    assert.equal(
+      conteudoEdicao.includes("usaLogisticaLaquila={Boolean("),
+      true,
+    );
+    assert.equal(conteudoEntrega.includes("Logística Laquila"), true);
+    assert.equal(conteudoEntrega.includes("Ativa"), true);
+    assert.equal(
+      conteudoEntrega.includes(
+        "Indisponível porque o produto é expedido pela Laquila.",
+      ),
+      true,
+    );
+    assert.equal(conteudoEntrega.includes("Retirada pelo cliente"), true);
+    assert.equal(
+      conteudoEntrega.includes(
+        "Este produto é separado e expedido pela Laquila. O frete é",
+      ),
+      true,
+    );
+  });
+
+  it("reutiliza controles normais de Entrega própria e Frete externo para Laquila", () => {
+    const conteudoEntrega = readFileSync(caminhoEntregaTab, "utf-8");
+
+    assert.equal(conteudoEntrega.includes("Permitir Entrega Própria"), true);
+    assert.equal(conteudoEntrega.includes("handleOwnDeliveryChange"), true);
+    assert.equal(
+      conteudoEntrega.includes("<ProdutoEntregaPropriaPrecos"),
+      true,
+    );
+    assert.equal(conteudoEntrega.includes("<DimensoesFreteExterno"), true);
+    assert.equal(conteudoEntrega.includes("<ResumoLogisticaProduto"), true);
+    assert.equal(
+      conteudoEntrega.includes(
+        "Indisponível para produtos com Logística Laquila.",
+      ),
+      false,
+    );
+  });
+
+  it("consulta e exibe transportadoras somente no ramo Laquila", () => {
+    const conteudoBusca = readFileSync(caminhoBuscaProduto, "utf-8");
+    const conteudoEntrega = readFileSync(caminhoEntregaTab, "utf-8");
+
+    assert.equal(
+      conteudoBusca.includes(
+        "usaLogisticaLaquila ? listarTransportadorasLaquila() : null",
+      ),
+      true,
+    );
+    assert.equal(conteudoEntrega.includes("Transportadoras Laquila"), true);
+    assert.equal(
+      conteudoEntrega.includes(
+        "Códigos de transportador aceitos pela integração Laquila. O frete",
+      ),
+      true,
+    );
+    assert.equal(
+      conteudoEntrega.includes("“O PROPRIO” identifica a coleta pela"),
+      true,
+    );
+    assert.equal(
+      conteudoEntrega.includes(
+        "Nenhuma transportadora foi retornada pela Laquila.",
+      ),
+      true,
+    );
+    assert.equal(
+      conteudoEntrega.includes(
+        "Não foi possível consultar as transportadoras da Laquila no momento.",
+      ),
+      false,
+    );
+    assert.equal(conteudoEntrega.includes('type="radio"'), false);
   });
 });

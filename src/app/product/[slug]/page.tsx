@@ -218,6 +218,10 @@ export default async function ProductPage({ params }: PageProps) {
   // 4. Passa os dados REAIS para o componente client renderizar
   return (
     <ProductDetail
+      urlCompartilhamento={resolverUrlCanonicaProduto({
+        slug: product.slug,
+        urlCanonicaSalva: product.canonicalUrl,
+      })}
       product={{ ...product, pricing }}
       nomeComercialLoja={configuracaoLoja.nomeComercial}
       breadcrumbCategorias={breadcrumbCategorias}

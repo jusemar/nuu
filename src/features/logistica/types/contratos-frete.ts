@@ -15,7 +15,7 @@ export type EnderecoEntrega = {
   pais: "BR";
 };
 
-export type ItemLogistico = {
+export type ItemLogistico = ItemAgrupavelLogisticamente & {
   identificador: string;
   produtoId: string;
   varianteId?: string | null;
@@ -40,6 +40,7 @@ export type SolicitacaoCotacaoFrete = {
   destino: EnderecoEntrega;
   itens: ItemLogistico[];
   pacotes: PacoteEnvio[];
+  gruposLogisticos: GrupoLogistico<ItemLogistico>[];
   moeda: "BRL";
 };
 
@@ -93,3 +94,7 @@ export interface ProvedorFrete {
     solicitacao: SolicitacaoCotacaoFrete,
   ): Promise<ResultadoCotacaoFrete>;
 }
+import type {
+  GrupoLogistico,
+  ItemAgrupavelLogisticamente,
+} from "./grupos-logisticos";

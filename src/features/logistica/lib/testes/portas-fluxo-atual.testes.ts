@@ -1,9 +1,9 @@
 import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
+import type { SolicitacaoCotacaoFrete } from "../../types/contratos-frete";
 import { criarPortaEntregaPropriaAtual } from "../portas/criar-porta-entrega-propria-atual";
 import { criarPortaRetiradaAtual } from "../portas/criar-porta-retirada-atual";
-import type { SolicitacaoCotacaoFrete } from "../../types/contratos-frete";
 
 const solicitacao: SolicitacaoCotacaoFrete = {
   identificador: "cotacao-atual",
@@ -15,6 +15,9 @@ const solicitacao: SolicitacaoCotacaoFrete = {
     {
       identificador: "item-1",
       produtoId: "produto-1",
+      origemExpedicao: "loja",
+      fornecedorProvedor: null,
+      necessitaEtiquetaFornecedor: false,
       nome: "Produto",
       quantidade: 1,
       pesoEmGramas: 500,
@@ -26,6 +29,7 @@ const solicitacao: SolicitacaoCotacaoFrete = {
     },
   ],
   pacotes: [],
+  gruposLogisticos: [],
   moeda: "BRL",
 };
 

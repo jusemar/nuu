@@ -1,5 +1,9 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
 import { db } from "@/db/connection";
 import {
   provedoresFreteTable,
@@ -11,9 +15,6 @@ import type { RespostaAcaoAdminFrete } from "@/features/admin/logistica/types/fr
 import { consultarCotacaoFrenet } from "@/features/logistica/lib/provedores/frenet/consultar-cotacao-frenet";
 import { obterConfiguracaoFrenet } from "@/features/logistica/lib/provedores/frenet/obter-configuracao-frenet";
 import type { SolicitacaoCotacaoFrete } from "@/features/logistica/types/contratos-frete";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 const sincronizarCatalogoFrenetSchema = z.object({
   cepDestino: z
@@ -79,6 +80,9 @@ export async function sincronizarCatalogoFrenet(
       {
         identificador: "item-catalogo-frenet",
         produtoId: "catalogo-frenet",
+        origemExpedicao: "loja",
+        fornecedorProvedor: null,
+        necessitaEtiquetaFornecedor: false,
         nome: "Consulta de catálogo Frenet",
         quantidade: 1,
         pesoEmGramas: Math.round(dados.pesoEmKg * 1000),
@@ -90,6 +94,7 @@ export async function sincronizarCatalogoFrenet(
       },
     ],
     pacotes: [],
+    gruposLogisticos: [],
     moeda: "BRL",
   };
 

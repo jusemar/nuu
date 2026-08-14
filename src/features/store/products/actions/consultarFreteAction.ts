@@ -1,8 +1,10 @@
 "use server";
 
+import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import {
   consultarEntregaPropriaLoja,
   cotarFreteFluxoAtual,
+  resolverOrigemExpedicaoProduto,
 } from "@/features/logistica";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
 
@@ -23,13 +25,19 @@ async function buscarEntradaCotacaoFreteLoja(
   varianteId?: string | null,
   quantidade = 1,
 ) {
-  const dadosCotacao = await buscarDadosCotacaoFreteLoja(produtoId, varianteId);
+  const [dadosCotacao, possuiLogisticaLaquila] = await Promise.all([
+    buscarDadosCotacaoFreteLoja(produtoId, varianteId),
+    verificarLogisticaLaquilaProduto(produtoId),
+  ]);
 
   return dadosCotacao
     ? {
         ...dadosCotacao,
         quantidade,
         cep,
+        contextoOrigemExpedicao: resolverOrigemExpedicaoProduto({
+          fornecedorProvedorAtivo: possuiLogisticaLaquila ? "laquila" : null,
+        }),
       }
     : null;
 }
@@ -71,8 +79,7 @@ function criarConsultaEntregaPropriaLojaParaCotacao(
               descricao: resultado.entregaProgramada.promessa.texto,
               metadados: {
                 nivelEntregaPropriaAtual: resultado.nivel,
-                promessaEntregaProgramada:
-                  resultado.entregaProgramada.promessa,
+                promessaEntregaProgramada: resultado.entregaProgramada.promessa,
                 regiaoEntregaPropria: resultado.regiaoResolvida ?? null,
                 bairro: resultado.bairro,
                 cidade: resultado.cidade,

@@ -2,6 +2,7 @@ import afirmacoes from "node:assert/strict";
 import { describe as descrever, it as verificar } from "node:test";
 
 import type { ResultadoCotacaoFrete } from "@/features/logistica";
+
 import { adaptarCotacaoLogisticaParaConsultaFrete } from "./adaptar-cotacao-logistica-para-consulta-frete";
 
 const solicitacao = {
@@ -12,6 +13,7 @@ const solicitacao = {
   },
   itens: [],
   pacotes: [],
+  gruposLogisticos: [],
   moeda: "BRL" as const,
 };
 

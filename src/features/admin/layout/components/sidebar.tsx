@@ -25,6 +25,7 @@ import {
   Image,
   LayoutDashboard,
   MapPin,
+  Medal,
   Megaphone,
   MoreHorizontal,
   Navigation,
@@ -79,6 +80,7 @@ const iconMap: Record<string, React.ElementType> = {
   Tag,
   TicketPercent,
   Megaphone,
+  Medal,
   ShieldCheck,
   FileSpreadsheet,
   Plug,
@@ -403,6 +405,12 @@ export const menuAdmin: EntradaMenuAdmin[] = [
         label: "Cupons",
         href: "/admin/marketing/cupons",
         icon: "TicketPercent",
+      },
+      {
+        id: "programa-fidelidade",
+        label: "Programa de Fidelidade",
+        href: "/admin/marketing/programa-fidelidade",
+        icon: "Medal",
       },
       {
         id: "auditoria-cupons",

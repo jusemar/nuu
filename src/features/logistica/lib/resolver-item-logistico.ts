@@ -1,5 +1,7 @@
 import { esquemaItemLogistico } from "../schemas/contratos-frete";
 import type { DimensoesPacote, ItemLogistico } from "../types/contratos-frete";
+import type { ContextoOrigemExpedicao } from "../types/grupos-logisticos";
+import { resolverOrigemExpedicaoProduto } from "./grupos-logisticos/resolver-origem-expedicao-produto";
 
 export type ProdutoParaItemLogistico = {
   identificador: string;
@@ -54,6 +56,7 @@ type EntradaResolverItemLogistico = {
   quantidade: number;
   identificadorItem?: string;
   valorDeclaradoEmCentavos?: number | null;
+  contextoOrigemExpedicao?: ContextoOrigemExpedicao;
 };
 
 type MedidasItemLogistico = {
@@ -136,6 +139,7 @@ export function resolverItemLogistico({
   quantidade,
   identificadorItem,
   valorDeclaradoEmCentavos,
+  contextoOrigemExpedicao,
 }: EntradaResolverItemLogistico): ResultadoResolucaoItemLogistico {
   if (!Number.isInteger(quantidade) || quantidade <= 0) {
     return montarErroResolucaoItemLogistico(
@@ -177,6 +181,8 @@ export function resolverItemLogistico({
     pesoEmGramas: medidas.pesoEmGramas,
     dimensoes: montarDimensoesPacote(medidas),
     valorDeclaradoEmCentavos: valorDeclaradoEmCentavos ?? null,
+    ...(contextoOrigemExpedicao ??
+      resolverOrigemExpedicaoProduto({ fornecedorProvedorAtivo: null })),
   };
   const validacao = esquemaItemLogistico.safeParse(itemCandidato);
 

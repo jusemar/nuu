@@ -1165,6 +1165,11 @@ export function TabelaVinculosFornecedor({
 
       toast.success(resultado.mensagem ?? "Itens enviados para a Conciliação.");
       setIdsSelecionados([]);
+
+      // A confirmação persiste os rascunhos no servidor; a navegação seguinte
+      // recarrega fila e contadores já com esse novo estágio e abre exatamente
+      // a Conciliação configurada pelo fluxo (Arquivo ou API).
+      if (hrefAcaoPrincipal) window.location.assign(hrefAcaoPrincipal);
     } finally {
       setConfirmandoSelecao(false);
     }

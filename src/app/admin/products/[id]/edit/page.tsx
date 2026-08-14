@@ -306,6 +306,12 @@ export default function EditProductPage() {
           data={productData.entrega ?? {}}
           productId={productId}
           dimensoesFrete={productData.dimensoesFreteExterno}
+          usaLogisticaLaquila={Boolean(
+            productResponse?.data?.usaLogisticaLaquila,
+          )}
+          resultadoTransportadorasLaquila={
+            productResponse?.data?.resultadoTransportadorasLaquila ?? null
+          }
           aoAlterarDimensoes={(dimensoes) =>
             setProductData((prev) => ({
               ...prev,

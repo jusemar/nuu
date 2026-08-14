@@ -23,6 +23,9 @@ const volumes: VolumesDisponibilidadeFrete = {
     {
       identificador: "item-colchao",
       produtoId: "produto-colchao",
+      origemExpedicao: "loja",
+      fornecedorProvedor: null,
+      necessitaEtiquetaFornecedor: false,
       nome: "Colchao",
       quantidade: 1,
       pesoEmGramas: 7000,

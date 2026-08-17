@@ -11,19 +11,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCarrinho } from "@/features/carrinho";
 
+import { calcularResumoCheckoutAction } from "../../../actions/calcular-resumo-checkout";
 import { consultarEnderecoCep } from "../../../actions/consultar-endereco-cep";
 import { criarPedidoCheckoutVisitante } from "../../../actions/pedido/criar-pedido-checkout-visitante";
 import { validarCupomCheckout } from "../../../actions/validar-cupom-checkout";
 import {
+  reconciliarSelecoesEntregaPorGrupo,
+  todasEntregasSelecionadas,
+} from "../../../lib/frete/selecoes-entrega-por-grupo";
+import {
   calcularPreviaTotaisPedido,
   type ResultadoCalcularPreviaTotaisPedido,
 } from "../../../queries/previa-totais/calcular-previa-totais-pedido";
-import { calcularResumoCheckout } from "../../../queries/resumo-checkout/calcular-resumo-checkout";
 import {
   type CheckoutVisitanteSchema,
   checkoutVisitanteSchema,
 } from "../../../schemas/checkout.schema";
-import type { ResumoCheckoutCalculado } from "../../../types/checkout.types";
+import type {
+  ResumoCheckoutCalculado,
+  SelecaoEntregaGrupoCheckout,
+} from "../../../types/checkout.types";
 import { FormularioEndereco } from "./formulario-endereco";
 import { FormularioIdentificacao } from "./formulario-identificacao";
 import { PagamentoPixPendente } from "./pagamento-pix-pendente";
@@ -82,6 +89,12 @@ export function CheckoutVisitante({
   const [carregandoResumo, setCarregandoResumo] = useState(false);
   const [resumoCheckout, setResumoCheckout] =
     useState<ResumoCheckoutCalculado | null>(null);
+  const [selecoesEntrega, setSelecoesEntrega] = useState<
+    SelecaoEntregaGrupoCheckout[]
+  >([]);
+  const selecoesEntregaRef = useRef<SelecaoEntregaGrupoCheckout[]>([]);
+  selecoesEntregaRef.current = selecoesEntrega;
+  const [tentouFinalizar, setTentouFinalizar] = useState(false);
   const [previaTotaisPedido, setPreviaTotaisPedido] =
     useState<ResultadoCalcularPreviaTotaisPedido | null>(null);
   const [pixCriado, setPixCriado] = useState<PixCriado | null>(null);
@@ -105,6 +118,7 @@ export function CheckoutVisitante({
       observacao: "",
       observacaoCliente: dadosClienteInicial?.observacaoCliente ?? "",
       cupom: "",
+      pontosResgate: "",
       formaPagamento: "pix",
       parcelasCartao: 1,
       permitirEntregaVizinho:
@@ -112,6 +126,7 @@ export function CheckoutVisitante({
       nomeVizinho: dadosClienteInicial?.nomeVizinho ?? "",
       observacaoVizinho: dadosClienteInicial?.observacaoVizinho ?? "",
       itens: [],
+      selecoesEntregaPorGrupo: [],
     },
   });
   const { setValue } = form;
@@ -130,6 +145,13 @@ export function CheckoutVisitante({
   const precisaTroco = form.watch("precisaTroco");
   const trocoParaEmCentavos = form.watch("trocoParaEmCentavos");
   const cupom = form.watch("cupom");
+  const pontosResgate = form.watch("pontosResgate");
+  const freteSelecionadoEmCentavos =
+    resumoCheckout?.totaisPorFormaPagamento.pix.freteEmCentavos ?? null;
+  const assinaturaSelecoesEntrega = useMemo(
+    () => JSON.stringify(selecoesEntrega),
+    [selecoesEntrega],
+  );
 
   /**
    * CEP só quando está completo.
@@ -179,10 +201,11 @@ export function CheckoutVisitante({
     }
 
     setCarregandoResumo(true);
-    calcularResumoCheckout({
+    calcularResumoCheckoutAction({
       itens: carrinho.itens,
       cupom,
       cepEntrega: cepEntregaCompleto,
+      selecoesEntregaPorGrupo: selecoesEntregaRef.current,
     })
       .then((resumo) => {
         if (consultaCancelada) return;
@@ -228,8 +251,61 @@ export function CheckoutVisitante({
     cupom,
     formaPagamento,
     parcelasCartao,
+    assinaturaSelecoesEntrega,
     setValue,
   ]);
+
+  useEffect(() => {
+    if (!resumoCheckout || !cepEntregaCompleto) {
+      if (selecoesEntregaRef.current.length > 0) {
+        setSelecoesEntrega([]);
+        setValue("selecoesEntregaPorGrupo", []);
+      }
+      return;
+    }
+
+    const selecoesAtuais = selecoesEntregaRef.current;
+    let reconciliadas = reconciliarSelecoesEntregaPorGrupo({
+      cotacoes: resumoCheckout.cotacoesEntrega,
+      selecoesAtuais,
+      cep: cepEntregaCompleto,
+    });
+
+    if (selecoesAtuais.length === 0) {
+      reconciliadas = resumoCheckout.cotacoesEntrega.flatMap((cotacao) => {
+        const grupo = resumoCheckout.gruposLogisticos.find(
+          (atual) => atual.chave === cotacao.chaveGrupo,
+        );
+        const itemCarrinho = carrinho.itens.find((item) =>
+          grupo?.itens.some((itemGrupo) => itemGrupo.id === item.id),
+        );
+        const anterior = itemCarrinho?.freteEscolhido;
+        const opcao = anterior
+          ? cotacao.opcoes.find(
+              (atual) =>
+                atual.provedor === anterior.id &&
+                (!anterior.servico || atual.servico === anterior.servico),
+            )
+          : null;
+        return opcao
+          ? [
+              {
+                ...opcao,
+                chaveGrupo: cotacao.chaveGrupo,
+                cep: cepEntregaCompleto,
+              },
+            ]
+          : [];
+      });
+    }
+
+    if (JSON.stringify(reconciliadas) !== JSON.stringify(selecoesAtuais)) {
+      setSelecoesEntrega(reconciliadas);
+      setValue("selecoesEntregaPorGrupo", reconciliadas, {
+        shouldValidate: true,
+      });
+    }
+  }, [carrinho.itens, cepEntregaCompleto, resumoCheckout, setValue]);
 
   useEffect(() => {
     let consultaCancelada = false;
@@ -245,6 +321,11 @@ export function CheckoutVisitante({
       cepEntrega,
       cidadeEntrega,
       estadoEntrega,
+      freteEmCentavosOficial: freteSelecionadoEmCentavos,
+      consultarFidelidade: true,
+      pontosResgate: pontosResgate || undefined,
+      formaPagamento,
+      parcelasCartao,
     })
       .then((previa) => {
         if (!consultaCancelada) {
@@ -260,7 +341,17 @@ export function CheckoutVisitante({
     return () => {
       consultaCancelada = true;
     };
-  }, [carrinho.itens, cupom, cepEntrega, cidadeEntrega, estadoEntrega]);
+  }, [
+    carrinho.itens,
+    cupom,
+    cepEntrega,
+    cidadeEntrega,
+    estadoEntrega,
+    freteSelecionadoEmCentavos,
+    formaPagamento,
+    pontosResgate,
+    parcelasCartao,
+  ]);
 
   async function conferirCupom() {
     if (!cupom?.trim()) {
@@ -305,6 +396,20 @@ export function CheckoutVisitante({
   }
 
   function finalizarCheckout(dados: CheckoutVisitanteSchema) {
+    setTentouFinalizar(true);
+    if (
+      !resumoCheckout ||
+      !todasEntregasSelecionadas({
+        cotacoes: resumoCheckout.cotacoesEntrega,
+        selecoes: selecoesEntrega,
+      })
+    ) {
+      setErroPagamento(
+        "Selecione uma forma de entrega para todas as entregas.",
+      );
+      return;
+    }
+
     setErroPagamento(null);
     setCarregandoPagamento(true);
 
@@ -313,6 +418,7 @@ export function CheckoutVisitante({
       cupom,
       itens: carrinho.itens,
       chaveIdempotencia,
+      selecoesEntregaPorGrupo: selecoesEntrega,
     })
       .then((pedido) => {
         setCarregandoPagamento(false);
@@ -512,6 +618,22 @@ export function CheckoutVisitante({
                 previaTotaisPedido?.freteGratisProgressivo
               }
               resumoCheckout={resumoCheckout}
+              selecoesEntrega={selecoesEntrega}
+              cepEntrega={cepEntregaCompleto ?? ""}
+              mostrarErrosSelecao={tentouFinalizar}
+              onSelecionarEntrega={(selecao) => {
+                const proximas = [
+                  ...selecoesEntrega.filter(
+                    (atual) => atual.chaveGrupo !== selecao.chaveGrupo,
+                  ),
+                  selecao,
+                ];
+                setSelecoesEntrega(proximas);
+                setValue("selecoesEntregaPorGrupo", proximas, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }}
               onRemoverItem={carrinho.removerItem}
             />
 
@@ -551,6 +673,13 @@ export function CheckoutVisitante({
             onAplicarCupom={conferirCupom}
             onPreviaTotaisChange={setPreviaTotaisPedido}
             isFormValid={form.formState.isValid}
+            entregasSelecionadas={
+              resumoCheckout !== null &&
+              todasEntregasSelecionadas({
+                cotacoes: resumoCheckout.cotacoesEntrega,
+                selecoes: selecoesEntrega,
+              })
+            }
           />
         </form>
       </main>

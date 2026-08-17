@@ -457,10 +457,10 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   const entradas = journal.entries ?? [];
   const ultima = entradas.at(-1);
   if (
-    migrations.length !== 24 ||
-    entradas.length !== 24 ||
-    ultima?.idx !== 23 ||
-    ultima.tag !== "0023_venda_cruzada_produtos" ||
+    migrations.length !== 27 ||
+    entradas.length !== 27 ||
+    ultima?.idx !== 27 ||
+    ultima.tag !== "0027_programa_fidelidade_resgate_checkout" ||
     ultima.when !== migrations.at(-1)?.folderMillis
   ) {
     throw new ErroFluxoMigration(
@@ -468,12 +468,15 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
       "Journal ou sequência local de migrations inesperada.",
     );
   }
-  const sql = readFileSync("drizzle/0023_venda_cruzada_produtos.sql", "utf8");
+  const sql = readFileSync(
+    "drizzle/0027_programa_fidelidade_resgate_checkout.sql",
+    "utf8",
+  );
   const hash = createHash("sha256").update(sql).digest("hex");
   if (hash !== migrations.at(-1)?.hash) {
     throw new ErroFluxoMigration(
       "arquivos-locais",
-      "O hash da migration 0023 diverge do migrator.",
+      "O hash da migration 0027 diverge do migrator.",
     );
   }
 }

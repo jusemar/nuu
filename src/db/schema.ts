@@ -659,6 +659,7 @@ export {
   fornecedorIntegracaoLogStatusEnum,
   fornecedorIntegracaoLogsRelations,
   fornecedorIntegracaoLogsTable,
+  fornecedorPedidoIntegracoesTable,
   fornecedorIntegracoesApiRelations,
   fornecedorIntegracoesApiTable,
   fornecedorMapeamentoColunaDestinoEnum,
@@ -694,6 +695,7 @@ export {
   importacoesFornecedorTable,
   type FornecedorIntegracaoApi,
   type FornecedorIntegracaoLog,
+  type FornecedorPedidoIntegracao,
   type Fornecedor,
   type FornecedorMapeamentoColuna,
   type FornecedorProdutoApiStaging,
@@ -706,6 +708,8 @@ export {
   type NovaImportacaoFornecedorAjuste,
   type NovaFornecedorIntegracaoApi,
   type NovaFornecedorIntegracaoLog,
+  type NovaFornecedorPedidoIntegracao,
+  type StatusFornecedorPedidoIntegracao,
   type NovoFornecedor,
   type NovoFornecedorMapeamentoColuna,
   type NovoFornecedorProdutoApiStaging,
@@ -780,6 +784,10 @@ export {
 
 // Persistência própria do Atendente IA.
 export * from "./tables/atendimento-ia";
+
+// Configurações e overrides do Programa de Fidelidade (sem carteira ou pontos).
+export * from "./tables/programa-fidelidade";
+export * from "./tables/programa-fidelidade-carteira";
 
 // Relations de Shipping
 export {

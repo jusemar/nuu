@@ -1,14 +1,10 @@
 import {
-  listarCategoriasFidelidade,
+  buscarProgramaFidelidade,
   PaginaProgramaFidelidadeAdmin,
 } from "@/features/programa-fidelidade";
-import { CATEGORIAS_DEMONSTRACAO } from "@/features/programa-fidelidade/constants/dados-demonstracao";
 
 export default async function ProgramaFidelidadePage() {
-  const categoriasExistentes = await listarCategoriasFidelidade();
-  const categorias = categoriasExistentes.length
-    ? categoriasExistentes
-    : CATEGORIAS_DEMONSTRACAO;
+  const estado = await buscarProgramaFidelidade();
 
-  return <PaginaProgramaFidelidadeAdmin categorias={categorias} />;
+  return <PaginaProgramaFidelidadeAdmin {...estado} />;
 }

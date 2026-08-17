@@ -1,4 +1,5 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+import { listarEntregasAgrupadasDoSnapshot } from "@/features/checkout/lib/frete/ler-snapshot-frete";
 import type { SnapshotFreteCheckout } from "@/features/checkout/lib/frete/revalidar-frete-checkout";
 
 function normalizarParteCodigoFrete(valor?: string | null) {
@@ -68,11 +69,10 @@ export function extrairCodigosFretePromocionalDeSnapshot(
 ) {
   const codigos = new Set<string>();
 
-  for (const item of snapshot?.itens ?? []) {
-    const transportadora =
-      typeof item.metadataResumida?.transportadora === "string"
-        ? item.metadataResumida.transportadora
-        : null;
+  for (const item of snapshot
+    ? listarEntregasAgrupadasDoSnapshot(snapshot)
+    : []) {
+    const transportadora = item.transportadora;
     const codigoTransportadora = montarCodigoTransportadoraPromocional({
       provedor: item.provedor,
       transportadora,

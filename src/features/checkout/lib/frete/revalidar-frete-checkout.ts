@@ -16,6 +16,16 @@ import type {
 import type { DisponibilidadeFreteProduto } from "@/features/logistica/types/disponibilidade-frete";
 import type { GrupoLogistico } from "@/features/logistica/types/grupos-logisticos";
 
+import type {
+  SnapshotFreteCheckoutVersao1,
+  SnapshotItemFreteCheckoutVersao1,
+} from "../../types/snapshot-frete.types";
+
+export type {
+  SnapshotFreteCheckout,
+  SnapshotItemFreteCheckoutVersao1 as SnapshotItemFreteCheckout,
+} from "../../types/snapshot-frete.types";
+
 type ModalidadeFreteCarrinho = "retirada" | "entrega-propria" | "frenet";
 
 export type ProdutoRevalidacaoFreteCheckout = {
@@ -90,7 +100,7 @@ export type ResultadoRevalidacaoFreteCheckout =
       sucesso: true;
       freteEmCentavos: number;
       fallbackAcionado: boolean;
-      snapshotFrete: SnapshotFreteCheckout;
+      snapshotFrete: SnapshotFreteCheckoutVersao1;
       gruposLogisticos: GrupoLogistico<ItemLogistico>[];
     }
   | {
@@ -106,29 +116,7 @@ export type ResultadoRevalidacaoFreteCheckout =
       exigeNovaConfirmacao: boolean;
     };
 
-export type SnapshotFreteCheckout = {
-  versao: "1";
-  cep: string;
-  valorTotalEmCentavos: number;
-  fallbackAcionado: boolean;
-  promessaEntregaProgramada?: Record<string, unknown> | null;
-  itens: SnapshotItemFreteCheckout[];
-};
-
-export type SnapshotItemFreteCheckout = {
-  itemCarrinhoId: string;
-  produtoId: string;
-  varianteId: string | null;
-  provedor: string;
-  servico: string;
-  modalidade: string;
-  valorEmCentavos: number;
-  prazo: string | null;
-  itensLogisticos: ItemLogistico[];
-  pacotes: PacoteEnvio[];
-  metadataResumida: Record<string, unknown> | null;
-  fallbackAcionado: boolean;
-};
+type SnapshotItemFreteCheckout = SnapshotItemFreteCheckoutVersao1;
 
 type ModalidadeItemCheckout = {
   id: ModalidadeFreteCarrinho;

@@ -15,6 +15,7 @@ export {
   cotarFreteInterno,
   type DependenciasCotacaoFreteInterna,
 } from "./lib/cotacoes/cotar-frete-interno";
+export { cotarFretePorGruposLogisticos } from "./lib/cotacoes/cotar-frete-por-grupos-logisticos";
 export { orquestrarCotacaoFrete } from "./lib/cotacoes/orquestrar-cotacao-frete";
 export { filtrarResultadoCotacaoFreteDisponivel } from "./lib/disponibilidade/filtrar-resultado-cotacao-disponivel";
 export {
@@ -115,6 +116,10 @@ export type {
   SelecaoFrete,
   SolicitacaoCotacaoFrete,
 } from "./types/contratos-frete";
+export type {
+  CotacaoGrupoLogistico,
+  ResultadoCotacoesGruposLogisticos,
+} from "./types/cotacoes-grupos-logisticos";
 export type {
   ConfiguracaoDisponibilidadeFrete,
   ContextoProdutoDisponibilidadeFrete,

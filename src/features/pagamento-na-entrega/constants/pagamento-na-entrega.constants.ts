@@ -28,12 +28,8 @@ export const MODALIDADES_COMERCIAIS_SUPORTADAS_PADRAO: readonly ModalidadeComerc
   ["stock"];
 
 /** Ordem estável de apresentação das formas. Evita a interface trocar de ordem sozinha. */
-export const ORDEM_FORMAS_PAGAMENTO_NA_ENTREGA: readonly FormaPagamentoNaEntrega[] = [
-  "dinheiro",
-  "pix_na_entrega",
-  "debito_entrega",
-  "credito_entrega",
-];
+export const ORDEM_FORMAS_PAGAMENTO_NA_ENTREGA: readonly FormaPagamentoNaEntrega[] =
+  ["dinheiro", "pix_na_entrega", "debito_entrega", "credito_entrega"];
 
 export const ROTULO_FORMA_PAGAMENTO_NA_ENTREGA: Record<
   FormaPagamentoNaEntrega,
@@ -74,6 +70,8 @@ export const MENSAGEM_MOTIVO_PAGAMENTO_NA_ENTREGA: Record<
     "Nenhuma forma de pagamento na entrega está disponível para este pedido.",
   "produto-nao-habilitado":
     "Um dos produtos do pedido não aceita pagamento na entrega.",
+  "produto-origem-fornecedor-indisponivel":
+    "Indisponível para produtos enviados desta origem.",
   "modalidade-comercial-nao-suportada":
     "Um dos produtos do pedido é vendido em uma modalidade que não aceita pagamento na entrega.",
   "endereco-nao-informado":

@@ -8,12 +8,14 @@ import {
   checkoutStripeWebhookEventosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
+import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoStripeAprovado } from "../../emails/email-service";
+import { expirarPagamentoPendente } from "../../pagamentos/expirar-pagamento-pendente";
 import { resolverStatusOperacionalPedidoAposPagamento } from "../../pedidos/resolver-status-operacional-pedido";
-import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { obterStripe, obterWebhookSecretStripe } from "./cliente-stripe";
 
 type ConfirmarPagamentoStripeParams = {
@@ -30,7 +32,8 @@ type ResultadoProcessamentoWebhookStripe = {
     | "ignorado"
     | "duplicado"
     | "pagamento_confirmado"
-    | "pagamento_ja_confirmado";
+    | "pagamento_ja_confirmado"
+    | "pagamento_expirado";
   eventId: string;
   eventType: string;
   pedidoId?: string;
@@ -71,6 +74,57 @@ function obterMetadataPagamentoStripe(event: Stripe.Event) {
   }
 
   return null;
+}
+
+async function expirarSessaoCheckoutStripe(event: Stripe.Event) {
+  const session = event.data.object as Stripe.Checkout.Session;
+  const pedidoId = session.metadata?.pedidoId;
+  const pagamentoId = session.metadata?.pagamentoId;
+
+  if (!pedidoId || !pagamentoId) {
+    return { expiradoAgora: false, duplicado: false, pedidoId, pagamentoId };
+  }
+
+  return dbTransacional.transaction(async (tx) => {
+    const eventoInserido = await tx
+      .insert(checkoutStripeWebhookEventosTable)
+      .values({
+        stripeEventId: event.id,
+        tipoEvento: event.type,
+        pedidoId,
+        pagamentoId,
+        statusProcessamento: "recebido",
+        payload: session,
+      })
+      .onConflictDoNothing({
+        target: checkoutStripeWebhookEventosTable.stripeEventId,
+      })
+      .returning({ id: checkoutStripeWebhookEventosTable.id });
+
+    if (eventoInserido.length === 0) {
+      return { expiradoAgora: false, duplicado: true, pedidoId, pagamentoId };
+    }
+
+    const resultado = await expirarPagamentoPendente({
+      tx,
+      pedidoId,
+      pagamentoId,
+      gateway: "stripe",
+      referencia: event.id,
+    });
+
+    await tx
+      .update(checkoutStripeWebhookEventosTable)
+      .set({
+        statusProcessamento: resultado.expiradoAgora
+          ? "processado"
+          : "ignorado_sem_alteracao",
+        updatedAt: new Date(),
+      })
+      .where(eq(checkoutStripeWebhookEventosTable.stripeEventId, event.id));
+
+    return { ...resultado, duplicado: false, pedidoId, pagamentoId };
+  });
 }
 
 async function confirmarPagamentoStripe({
@@ -212,6 +266,11 @@ async function confirmarPagamentoStripe({
         pagamentoId,
         clienteBanco: tx,
       });
+      await processarEventoPedidoFidelidade(
+        tx,
+        pedidoId,
+        "pagamento_confirmado",
+      );
     }
 
     await tx
@@ -274,6 +333,22 @@ export async function processarWebhookStripe(
     eventId: event.id,
     eventType: event.type,
   });
+
+  if (event.type === "checkout.session.expired") {
+    const resultado = await expirarSessaoCheckoutStripe(event);
+
+    return {
+      status: resultado.duplicado
+        ? "duplicado"
+        : resultado.expiradoAgora
+          ? "pagamento_expirado"
+          : "pagamento_ja_confirmado",
+      eventId: event.id,
+      eventType: event.type,
+      pedidoId: resultado.pedidoId,
+      pagamentoId: resultado.pagamentoId,
+    };
+  }
 
   if (
     event.type !== "checkout.session.completed" &&

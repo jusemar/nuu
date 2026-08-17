@@ -40,6 +40,20 @@ export const itemCheckoutSchema = z.object({
   quantidade: z.number().int().min(1).max(99),
 });
 
+const selecaoEntregaGrupoSchema = z.object({
+  chaveGrupo: z.string().trim().min(1),
+  identificador: z.string().trim().min(1),
+  nome: z.string().trim().min(1),
+  descricao: z.string().nullable(),
+  prazoMinimoEmDiasUteis: z.number().int().nonnegative().nullable(),
+  prazoMaximoEmDiasUteis: z.number().int().nonnegative().nullable(),
+  valorEmCentavos: z.number().int().nonnegative(),
+  tipo: z.enum(["entrega", "retirada"]),
+  provedor: z.string().trim().min(1),
+  servico: z.string().trim().min(1),
+  cep: z.string().trim().min(8),
+});
+
 export const checkoutVisitanteSchema = z
   .object({
     nome: z
@@ -89,6 +103,11 @@ export const checkoutVisitanteSchema = z
     nomeVizinho: z.string().optional(),
     observacaoVizinho: z.string().max(300, "Use até 300 caracteres").optional(),
     cupom: z.string().optional(),
+    pontosResgate: z
+      .string()
+      .regex(/^\d+(?:\.\d{1,4})?$/, "Quantidade de pontos inválida.")
+      .or(z.literal(""))
+      .optional(),
     formaPagamento: z.enum(["pix", "cartao", "naEntrega"]),
     parcelasCartao: z.number().int().min(1).max(12).optional(),
     /**
@@ -109,6 +128,9 @@ export const checkoutVisitanteSchema = z
      * e é por isso que o campo deve virar obrigatório assim que o front estiver publicado.
      */
     chaveIdempotencia: z.string().trim().min(8).max(120).optional(),
+    selecoesEntregaPorGrupo: z
+      .array(selecaoEntregaGrupoSchema)
+      .min(1, "Selecione uma forma de entrega."),
     itens: z.array(itemCheckoutSchema).min(1, "Seu carrinho está vazio"),
   })
   .superRefine((dados, ctx) => {

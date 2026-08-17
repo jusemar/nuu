@@ -169,6 +169,34 @@
       "when": 1786482506460,
       "tag": "0023_venda_cruzada_produtos",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786838400000,
+      "tag": "0024_fornecedor_pedido_integracoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1786913018748,
+      "tag": "0025_programa_fidelidade_configuracoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786916346608,
+      "tag": "0026_programa_fidelidade_carteira_pontos",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1786920000000,
+      "tag": "0027_programa_fidelidade_resgate_checkout",
+      "breakpoints": true
     }
   ]
 }

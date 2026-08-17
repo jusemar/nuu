@@ -1,4 +1,4 @@
-import { Check,Lock, ShieldCheck } from "lucide-react";
+import { Check, Lock, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import type { UseFormRegister, UseFormSetValue } from "react-hook-form";
 
@@ -32,6 +32,7 @@ type ResumoPedidoProps = {
     resultado: ResultadoCalcularPreviaTotaisPedido | null,
   ) => void;
   isFormValid: boolean;
+  entregasSelecionadas: boolean;
 };
 
 export function ResumoPedido({
@@ -49,6 +50,7 @@ export function ResumoPedido({
   onCupomChange,
   onPreviaTotaisChange,
   isFormValid,
+  entregasSelecionadas,
 }: ResumoPedidoProps) {
   const [resultadoCupom, setResultadoCupom] =
     useState<ResultadoValidarCupomPromocao | null>(null);
@@ -83,6 +85,11 @@ export function ResumoPedido({
     0;
   const totalEstimadoComCupomEmCentavos =
     totaisPreviaForma?.totalEstimadoEmCentavos ?? totalAtual;
+  const possuiCreditoFidelidade =
+    (previaTotais?.fidelidade?.creditoAplicadoEmCentavos ?? 0) > 0;
+  const totalExibidoEmCentavos = possuiCreditoFidelidade
+    ? totalEstimadoComCupomEmCentavos
+    : totalAtual;
   const economiaTotalEstimadaEmCentavos =
     totaisPreviaForma?.economiaEmCentavos ??
     (formaPagamento === "pix"
@@ -117,6 +124,7 @@ export function ResumoPedido({
 
             <CupomCheckoutResumo
               itens={itens}
+              freteEmCentavosOficial={totais?.freteEmCentavos ?? null}
               subtotalEmCentavos={totais?.subtotalEmCentavos ?? 0}
               onResultadoCupom={(resultado) => {
                 setResultadoCupom(resultado);
@@ -124,6 +132,62 @@ export function ResumoPedido({
               }}
               onPreviaTotais={onPreviaTotaisChange}
             />
+
+            {previaTotais?.fidelidade ? (
+              <section className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-sm dark:border-blue-900 dark:bg-blue-950/20">
+                <div className="flex items-center justify-between gap-3">
+                  <strong>Usar pontos</strong>
+                  <span className="text-muted-foreground text-xs">
+                    Saldo:{" "}
+                    {Number(
+                      previaTotais.fidelidade.saldoDisponivel,
+                    ).toLocaleString("pt-BR")}{" "}
+                    pontos
+                  </span>
+                </div>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {Number(
+                    previaTotais.fidelidade.pontosConversao,
+                  ).toLocaleString("pt-BR")}{" "}
+                  pontos ={" "}
+                  {formatarPrecoCarrinho(
+                    previaTotais.fidelidade.valorCreditoEmCentavos,
+                  )}
+                </p>
+                {previaTotais.fidelidade.disponivel ? (
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="number"
+                      min={Number(previaTotais.fidelidade.minimoPontosResgate)}
+                      max={Number(previaTotais.fidelidade.maximoPontos)}
+                      step="0.0001"
+                      placeholder={`Máximo ${Number(previaTotais.fidelidade.maximoPontos).toLocaleString("pt-BR")}`}
+                      className="border-input bg-background h-10 w-full rounded-md border px-3"
+                      {...register("pontosResgate")}
+                    />
+                    <p className="text-xs">
+                      Crédito aplicado: -
+                      {formatarPrecoCarrinho(
+                        previaTotais.fidelidade.creditoAplicadoEmCentavos,
+                      )}
+                    </p>
+                    {previaTotais.fidelidade.mensagem ? (
+                      <p className="text-destructive text-xs">
+                        {previaTotais.fidelidade.mensagem}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    O resgate fica disponível a partir de{" "}
+                    {Number(
+                      previaTotais.fidelidade.minimoPontosResgate,
+                    ).toLocaleString("pt-BR")}{" "}
+                    pontos.
+                  </p>
+                )}
+              </section>
+            ) : null}
 
             <IndicadorFreteGratisProgressivo
               resultado={previaTotais?.freteGratisProgressivo}
@@ -178,6 +242,18 @@ export function ResumoPedido({
                   </span>
                 </div>
               ) : null}
+              {(previaTotais?.fidelidade?.creditoAplicadoEmCentavos ?? 0) >
+              0 ? (
+                <div className="flex items-center justify-between text-blue-700 dark:text-blue-300">
+                  <span>Crédito de fidelidade</span>
+                  <span className="font-medium">
+                    -
+                    {formatarPrecoCarrinho(
+                      previaTotais!.fidelidade!.creditoAplicadoEmCentavos,
+                    )}
+                  </span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Pagamento</span>
                 <span className="text-right font-medium">
@@ -207,10 +283,12 @@ export function ResumoPedido({
                   </span>
                 </div>
               ) : null}
-              {resultadoCupom?.valido || freteGratisPromocionalAplicado ? (
+              {resultadoCupom?.valido ||
+              freteGratisPromocionalAplicado ||
+              possuiCreditoFidelidade ? (
                 <div className="flex items-end justify-between border-t border-dashed pt-3">
                   <span className="text-sm font-semibold">
-                    Total estimado promocional
+                    Total estimado
                   </span>
                   <div className="text-right">
                     <p className="text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-400">
@@ -226,7 +304,7 @@ export function ResumoPedido({
                 <span className="text-base font-semibold">Total</span>
                 <div className="text-right">
                   <p className="text-2xl font-bold tracking-tight">
-                    {formatarPrecoCarrinho(totalAtual)}
+                    {formatarPrecoCarrinho(totalExibidoEmCentavos)}
                   </p>
                   {formaPagamento === "cartao" && parcelamentoCartao ? (
                     <p className="text-muted-foreground text-xs font-medium">
@@ -243,9 +321,11 @@ export function ResumoPedido({
               type="submit"
               disabled={
                 !isFormValid ||
+                !entregasSelecionadas ||
                 carregandoPagamento ||
                 !resumoCheckout ||
-                !pagamentoDisponivel
+                !pagamentoDisponivel ||
+                Boolean(previaTotais?.fidelidade?.mensagem)
               }
               className="bg-primary text-primary-foreground mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-sm font-bold tracking-wide shadow-lg transition-all hover:brightness-110 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
             >

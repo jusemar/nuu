@@ -1,4 +1,10 @@
 export {
+  fornecedorPedidoIntegracoesTable,
+  type FornecedorPedidoIntegracao,
+  type NovaFornecedorPedidoIntegracao,
+  type StatusFornecedorPedidoIntegracao,
+} from "./tabelas/fornecedor-pedido-integracoes";
+export {
   fornecedorIntegracaoApiAmbienteEnum,
   fornecedorIntegracaoApiProvedorEnum,
   fornecedorIntegracaoApiTesteStatusEnum,

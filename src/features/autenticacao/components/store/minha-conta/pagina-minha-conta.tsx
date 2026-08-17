@@ -1,5 +1,5 @@
+import { Gem, PackageSearch, UserRound } from "lucide-react";
 import Link from "next/link";
-import { PackageSearch, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Header } from "@/features/header";
@@ -101,6 +101,22 @@ export function PaginaMinhaConta({
                     <Link href="/minha-conta/pedidos">
                       <PackageSearch className="h-4 w-4" />
                       Meus pedidos
+                    </Link>
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-3 rounded-lg border bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-950">
+                      Programa de Fidelidade
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Consulte seu saldo e o histórico dos seus pontos.
+                    </p>
+                  </div>
+                  <Button variant="outline" asChild>
+                    <Link href="/minha-conta/programa-fidelidade">
+                      <Gem className="h-4 w-4" />
+                      Ver meus pontos
                     </Link>
                   </Button>
                 </div>

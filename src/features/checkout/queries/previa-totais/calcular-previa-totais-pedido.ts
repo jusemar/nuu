@@ -1,10 +1,28 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+
+import {
+  carteirasFidelidadeTable,
+  checkoutClientesTable,
+  configuracoesProgramaFidelidadeTable,
+} from "@/db/schema";
+import { dbTransacional } from "@/db/transaction";
+import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
 import type { ItemCarrinho } from "@/features/carrinho";
 import {
   extrairFormasEntregaPromocionaisFreteGratis,
   extrairModalidadesPromocionaisFreteGratis,
 } from "@/features/checkout/lib/frete-gratis-promocional/extrair-modalidades-promocionais-frete-gratis";
+import {
+  buscarConfiguracaoPagamentoAtiva,
+  calcularParcelamentosCartao,
+} from "@/features/precificacao/server";
+import { VALOR_MINIMO_PAGAMENTO_APOS_FIDELIDADE_EM_CENTAVOS } from "@/features/programa-fidelidade/constants/resgate-fidelidade";
+import {
+  calcularCreditoPontos,
+  calcularLimitesResgate,
+} from "@/features/programa-fidelidade/lib/calcular-resgate-fidelidade";
 import { extrairCodigosFretePromocionalDeItens } from "@/features/promocoes/lib/codigos-frete-promocional";
 import {
   calcularFreteGratisProgressivo,
@@ -32,7 +50,7 @@ type FormaPagamentoPrevia = "pix" | "cartao" | "naEntrega";
 type EntradaCalcularPreviaTotaisPedido = {
   itens: ItemCarrinho[];
   codigoCupom?: string | null;
-  clienteId?: string | null;
+  checkoutClienteId?: string | null;
   freteEmCentavosOficial?: number | null;
   aplicarFreteGratisPromocional?: boolean;
   cepEntrega?: string | null;
@@ -40,6 +58,10 @@ type EntradaCalcularPreviaTotaisPedido = {
   estadoEntrega?: string | null;
   regioesEntregaCodigos?: string[];
   fretesSelecionadosCodigos?: string[];
+  consultarFidelidade?: boolean;
+  pontosResgate?: string;
+  formaPagamento?: FormaPagamentoPrevia;
+  parcelasCartao?: number;
 };
 
 export type ResultadoFreteGratisPromocionalPedido = {
@@ -112,6 +134,16 @@ export type ResultadoCalcularPreviaTotaisPedido = {
     FormaPagamentoPrevia,
     TotalPreviaFormaPagamento
   >;
+  fidelidade: {
+    disponivel: boolean;
+    saldoDisponivel: string;
+    minimoPontosResgate: string;
+    pontosConversao: string;
+    valorCreditoEmCentavos: number;
+    maximoPontos: string;
+    creditoAplicadoEmCentavos: number;
+    mensagem: string | null;
+  } | null;
 };
 
 function criarCupomAusente(): ResultadoValidarCupomPromocao | null {
@@ -121,11 +153,11 @@ function criarCupomAusente(): ResultadoValidarCupomPromocao | null {
 async function validarCupomPorSubtotal({
   codigoCupom,
   subtotalEmCentavos,
-  clienteId,
+  checkoutClienteId,
 }: {
   codigoCupom?: string | null;
   subtotalEmCentavos: number;
-  clienteId?: string | null;
+  checkoutClienteId?: string | null;
 }) {
   if (!codigoCupom?.trim()) {
     return criarCupomAusente();
@@ -134,7 +166,7 @@ async function validarCupomPorSubtotal({
   return validarCupomPromocao({
     codigoCupom,
     subtotalEmCentavos,
-    clienteId,
+    checkoutClienteId,
   });
 }
 
@@ -304,7 +336,7 @@ function aplicarFreteGratisPromocionalNaFormaPagamento({
 export async function calcularPreviaTotaisPedido({
   itens,
   codigoCupom,
-  clienteId,
+  checkoutClienteId,
   freteEmCentavosOficial,
   aplicarFreteGratisPromocional = true,
   cepEntrega,
@@ -312,6 +344,10 @@ export async function calcularPreviaTotaisPedido({
   estadoEntrega,
   regioesEntregaCodigos,
   fretesSelecionadosCodigos,
+  consultarFidelidade = false,
+  pontosResgate,
+  formaPagamento = "pix",
+  parcelasCartao = 1,
 }: EntradaCalcularPreviaTotaisPedido): Promise<ResultadoCalcularPreviaTotaisPedido | null> {
   const resumo = await calcularResumoCheckout({ itens });
 
@@ -323,12 +359,12 @@ export async function calcularPreviaTotaisPedido({
     codigoCupom,
     subtotalEmCentavos:
       resumo.totaisPorFormaPagamento.cartao.subtotalEmCentavos,
-    clienteId,
+    checkoutClienteId,
   });
   const cupomPix = await validarCupomPorSubtotal({
     codigoCupom,
     subtotalEmCentavos: resumo.totaisPorFormaPagamento.pix.subtotalEmCentavos,
-    clienteId,
+    checkoutClienteId,
   });
   const totaisCartaoBase = aplicarFreteOficialNaFormaPagamento({
     totais: resumo.totaisPorFormaPagamento.cartao,
@@ -408,6 +444,88 @@ export async function calcularPreviaTotaisPedido({
     freteGratisPromocional: freteGratisPromocionalPix,
   });
 
+  let fidelidade: ResultadoCalcularPreviaTotaisPedido["fidelidade"] = null;
+  if (consultarFidelidade) {
+    const sessao = await buscarSessaoCliente();
+    if (sessao) {
+      const cliente =
+        await dbTransacional.query.checkoutClientesTable.findFirst({
+          where: eq(checkoutClientesTable.userId, sessao.usuario.id),
+        });
+      const [configuracao, carteira] = cliente
+        ? await Promise.all([
+            dbTransacional.query.configuracoesProgramaFidelidadeTable.findFirst(
+              {
+                where: eq(configuracoesProgramaFidelidadeTable.id, "global"),
+              },
+            ),
+            dbTransacional.query.carteirasFidelidadeTable.findFirst({
+              where: eq(carteirasFidelidadeTable.clienteId, cliente.id),
+            }),
+          ])
+        : [null, null];
+      if (configuracao?.ativo && carteira) {
+        const formaBase =
+          formaPagamento === "cartao" ? totaisCartao : totaisPix;
+        const baseElegivel = Math.max(
+          formaBase.subtotalEmCentavos - formaBase.descontoCupomEmCentavos,
+          0,
+        );
+        const limites = calcularLimitesResgate({
+          saldoDisponivel: carteira.pontosDisponiveis,
+          pontosConversao: configuracao.pontosConversao,
+          valorCreditoEmCentavos: configuracao.valorCreditoEmCentavos,
+          baseElegivelEmCentavos: baseElegivel,
+          totalAntesJurosEmCentavos: formaBase.totalEstimadoEmCentavos,
+          valorMinimoPagamentoEmCentavos:
+            VALOR_MINIMO_PAGAMENTO_APOS_FIDELIDADE_EM_CENTAVOS,
+        });
+        const solicitado = pontosResgate ?? "0";
+        const valido =
+          Number(solicitado) === 0 ||
+          (Number(solicitado) >= Number(configuracao.minimoPontosResgate) &&
+            Number(solicitado) <= Number(limites.maximoPontos));
+        const credito = valido
+          ? calcularCreditoPontos({
+              pontos: solicitado,
+              pontosConversao: configuracao.pontosConversao,
+              valorCreditoEmCentavos: configuracao.valorCreditoEmCentavos,
+            })
+          : 0;
+        if (credito > 0) {
+          formaBase.totalEstimadoEmCentavos -= credito;
+          if (formaPagamento === "cartao") {
+            const configuracaoPagamento =
+              await buscarConfiguracaoPagamentoAtiva();
+            const parcelamentos = calcularParcelamentosCartao({
+              valorEmCentavos: formaBase.totalEstimadoEmCentavos,
+              configuracao: configuracaoPagamento,
+            });
+            formaBase.totalEstimadoEmCentavos =
+              parcelamentos.find((item) => item.parcelas === parcelasCartao)
+                ?.totalEmCentavos ??
+              parcelamentos[0]?.totalEmCentavos ??
+              formaBase.totalEstimadoEmCentavos;
+          }
+        }
+        fidelidade = {
+          disponivel:
+            Number(carteira.pontosDisponiveis) >=
+            Number(configuracao.minimoPontosResgate),
+          saldoDisponivel: carteira.pontosDisponiveis,
+          minimoPontosResgate: configuracao.minimoPontosResgate,
+          pontosConversao: configuracao.pontosConversao,
+          valorCreditoEmCentavos: configuracao.valorCreditoEmCentavos,
+          maximoPontos: limites.maximoPontos,
+          creditoAplicadoEmCentavos: credito,
+          mensagem: valido
+            ? null
+            : "Quantidade de pontos fora do limite permitido.",
+        };
+      }
+    }
+  }
+
   return {
     sucesso: true,
     cupom: cupomCartao ?? cupomPix,
@@ -477,5 +595,6 @@ export async function calcularPreviaTotaisPedido({
           ),
       },
     },
+    fidelidade,
   };
 }

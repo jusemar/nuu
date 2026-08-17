@@ -7,12 +7,13 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
+import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoPixAprovado } from "../../emails/email-service";
 import { resolverStatusOperacionalPedidoAposPagamento } from "../../pedidos/resolver-status-operacional-pedido";
-import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 
 type PixRecebidoWebhookEfi = {
   endToEndId?: string;
@@ -221,6 +222,11 @@ async function confirmarPagamentoPixEfi({
         pagamentoId: pagamentoAtual.id,
         clienteBanco: tx,
       });
+      await processarEventoPedidoFidelidade(
+        tx,
+        pedidoAtual.id,
+        "pagamento_confirmado",
+      );
     }
 
     await tx

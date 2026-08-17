@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import {
   registrarNaoRecebimentoPagamentoEntregaSchema,
@@ -155,6 +156,12 @@ export async function registrarNaoRecebimentoPagamentoEntregaAdmin(
           observacao: dados.observacao,
         },
       });
+
+      await processarEventoPedidoFidelidade(
+        tx,
+        dados.pedidoId,
+        "pedido_cancelado",
+      );
 
       return { sucesso: true, mensagem: "Ocorrência registrada." };
     });

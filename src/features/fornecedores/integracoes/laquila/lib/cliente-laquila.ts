@@ -56,6 +56,24 @@ type CorpoConsultarSaldoPrecoLaquila = {
   };
 };
 
+export type CorpoInserirPedidoLaquila = {
+  pedido: {
+    cnpj_empresa: string;
+    token: string;
+    cpf_cnpj: string;
+    cpf_cnpj_consulta: string;
+    nm_cliente: string;
+    email: string;
+    nr_celular: string;
+    cd_transportador: string;
+    itens: Array<{
+      cd_item: string;
+      qt_pedida: number;
+      vl_unitario: number;
+    }>;
+  };
+};
+
 export type ItemProdutoLaquilaApi = Record<string, unknown>;
 export type ItemSaldoPrecoLaquilaApi = Record<string, unknown>;
 export type TransportadoraLaquila = {
@@ -298,7 +316,9 @@ export async function chamarLaquila(
   corpo:
     | CorpoTesteTransportadorasLaquila
     | CorpoConsultarProdutosLaquila
-    | CorpoConsultarSaldoPrecoLaquila,
+    | CorpoConsultarSaldoPrecoLaquila
+    | CorpoInserirPedidoLaquila,
+  opcoes: { permitirRetry?: boolean } = {},
 ): Promise<ResultadoChamadaLaquila> {
   const urlBase = obterUrlBaseLaquila(cliente.configuracao);
 
@@ -360,7 +380,9 @@ export async function chamarLaquila(
   }
 
   try {
-    return await executarComRetryLaquila(executarFetch);
+    return opcoes.permitirRetry === false
+      ? await executarFetch()
+      : await executarComRetryLaquila(executarFetch);
   } catch (erro) {
     if (erro instanceof Error && erro.name === "AbortError") {
       const diagnostico: DiagnosticoChamadaLaquila = {
@@ -408,6 +430,19 @@ export async function chamarLaquila(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Método de escrita: nunca repete automaticamente uma requisição após possível
+ * envio, pois um timeout pode esconder um pedido já criado no fornecedor.
+ */
+export async function inserirPedidoLaquila(
+  cliente: ClienteLaquila,
+  corpo: CorpoInserirPedidoLaquila,
+) {
+  return chamarLaquila(cliente, METODOS_LAQUILA.inserirPedido, corpo, {
+    permitirRetry: false,
+  });
 }
 
 export async function testarConexaoTransportadorasLaquila({

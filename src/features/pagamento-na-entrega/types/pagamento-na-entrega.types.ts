@@ -16,7 +16,10 @@
  *   resposta é uma prévia (`decisaoParcial: true`) que só serve para exibir um selo;
  * - `checkout` tem tudo, e só ali a decisão pode ser final.
  */
-export type ContextoAvaliacaoPagamentoNaEntrega = "pdp" | "carrinho" | "checkout";
+export type ContextoAvaliacaoPagamentoNaEntrega =
+  | "pdp"
+  | "carrinho"
+  | "checkout";
 
 /** As quatro formas de pagar no momento do recebimento. */
 export type FormaPagamentoNaEntrega =
@@ -50,6 +53,7 @@ export type CodigoMotivoPagamentoNaEntrega =
   | "servico-com-pagamento-desativado"
   | "nenhuma-forma-habilitada"
   | "produto-nao-habilitado"
+  | "produto-origem-fornecedor-indisponivel"
   | "modalidade-comercial-nao-suportada"
   | "endereco-nao-informado"
   | "cep-divergente-do-frete"
@@ -89,6 +93,8 @@ export type ItemAvaliacaoPagamentoNaEntrega = {
   itemCarrinhoId: string;
   produtoId: string;
   varianteId: string | null;
+  /** Origem externa que exige pagamento confirmado antes da separação. */
+  origemFornecedorLaquila?: boolean;
   /** Flag do produto (`product.aceita_pagamento_na_entrega`). */
   produtoAceitaPagamentoNaEntrega: boolean;
   /** Flag da variante. `null` significa herdar do produto — nunca "não". */

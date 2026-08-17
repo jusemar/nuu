@@ -1,12 +1,12 @@
 import type { ItemCarrinho } from "@/features/carrinho";
-import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 import {
   calcularPrecoProduto,
+  type ConfiguracaoPagamentoCalculavel,
   modalidadePrecoExigeEstoqueLocal,
   modalidadesPrecoSaoEquivalentes,
   normalizarModalidadePrecoCanonica,
-  type ConfiguracaoPagamentoCalculavel,
 } from "@/features/precificacao/server";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 
 type PrecoProdutoCheckout = {
   type: string;
@@ -25,6 +25,7 @@ type PrecoProdutoCheckout = {
 
 type ProdutoCheckout = {
   id: string;
+  categoryId?: string | null;
   name: string;
   sku: string;
   productKind?: string | null;
@@ -284,6 +285,7 @@ export function montarSnapshotItemPedidoCheckout({
 
     return {
       produtoId: produto.id,
+      categoriaId: produto.categoryId,
       varianteId: itemVendavel.variante.id,
       nomeProduto: produto.name,
       nomeVariante:
@@ -323,6 +325,7 @@ export function montarSnapshotItemPedidoCheckout({
 
   return {
     produtoId: produto.id,
+    categoriaId: produto.categoryId,
     varianteId: itemVendavel.varianteTecnica.id,
     nomeProduto: produto.name,
     nomeVariante: null,

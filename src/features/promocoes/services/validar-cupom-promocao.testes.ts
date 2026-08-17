@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import {
-  validarCupomPromocao,
-  type ClienteBancoValidacaoCupom,
-} from "./validar-cupom-promocao";
 import type { TipoDescontoPromocao } from "../types";
+import {
+  type ClienteBancoValidacaoCupom,
+  validarCupomPromocao,
+} from "./validar-cupom-promocao";
 
 type CupomPromocaoBanco = Awaited<
   ReturnType<
@@ -18,7 +18,7 @@ type UsoCupomPromocaoBanco = NonNullable<
 >[number];
 
 const dataReferencia = new Date("2026-06-02T12:00:00.000Z");
-const clienteId = "11111111-1111-4111-8111-111111111111";
+const checkoutClienteId = "11111111-1111-4111-8111-111111111111";
 
 function criarUsoCupom(
   sobrescritas: Partial<UsoCupomPromocaoBanco> = {},
@@ -26,7 +26,7 @@ function criarUsoCupom(
   return {
     id: "22222222-2222-4222-8222-222222222222",
     cupomPromocaoId: "33333333-3333-4333-8333-333333333333",
-    clienteId,
+    clienteId: checkoutClienteId,
     pedidoId: null,
     codigoCupom: "BEMVINDO10",
     valorDescontoEmCentavos: 0,
@@ -161,7 +161,7 @@ describe("validarCupomPromocao", () => {
     const resultado = await validarCupomPromocao({
       codigoCupom: "BEMVINDO10",
       subtotalEmCentavos: 10000,
-      clienteId,
+      checkoutClienteId,
       dataReferencia,
       clienteBanco: criarClienteBancoValidacaoCupom(
         criarCupomBanco({
@@ -173,5 +173,24 @@ describe("validarCupomPromocao", () => {
 
     assert.equal(resultado.valido, false);
     assert.equal(resultado.motivoInvalido, "limite_cliente_atingido");
+  });
+
+  it("mantem visitante sem checkoutClienteId fora do limite individual", async () => {
+    const clienteBanco = criarClienteBancoValidacaoCupom(
+      criarCupomBanco({
+        limiteUsoPorCliente: 1,
+        usos: [criarUsoCupom()],
+      }),
+    );
+
+    const resultado = await validarCupomPromocao({
+      codigoCupom: "BEMVINDO10",
+      subtotalEmCentavos: 10_000,
+      checkoutClienteId: null,
+      dataReferencia,
+      clienteBanco,
+    });
+
+    assert.equal(resultado.valido, true);
   });
 });

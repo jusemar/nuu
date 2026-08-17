@@ -81,6 +81,19 @@ function codigos(
 }
 
 describe("matriz de decisao do pagamento na entrega", () => {
+  it("bloqueia origem Laquila com mensagem neutra e preserva pedido normal", () => {
+    const bloqueado = avaliar({
+      itens: [criarItem({ origemFornecedorLaquila: true })],
+    });
+
+    assert.equal(bloqueado.elegivel, false);
+    assert.deepEqual(codigos(bloqueado), [
+      "produto-origem-fornecedor-indisponivel",
+    ]);
+    assert.equal(bloqueado.motivos[0]?.mensagem.includes("Laquila"), false);
+    assert.equal(avaliar().elegivel, true);
+  });
+
   it("1. produto permite + servico permite + valor na faixa => elegivel", () => {
     const resultado = avaliar({
       configuracoesPorServico: [
@@ -94,7 +107,10 @@ describe("matriz de decisao do pagamento na entrega", () => {
     assert.equal(resultado.elegivel, true);
     assert.equal(resultado.decisaoParcial, false);
     assert.deepEqual(resultado.motivos, []);
-    assert.deepEqual(resultado.formasPermitidas, ["dinheiro", "debito_entrega"]);
+    assert.deepEqual(resultado.formasPermitidas, [
+      "dinheiro",
+      "debito_entrega",
+    ]);
     assert.equal(resultado.servico?.identificador, "entrega-propria-atual");
     // No checkout, com tudo resolvido, a decisão vale por si.
     assert.equal(resultado.exigeRevalidacao, false);
@@ -340,7 +356,9 @@ describe("matriz de decisao do pagamento na entrega", () => {
     });
 
     assert.equal(resultado.elegivel, false);
-    assert.deepEqual(codigos(resultado), ["modalidade-comercial-nao-suportada"]);
+    assert.deepEqual(codigos(resultado), [
+      "modalidade-comercial-nao-suportada",
+    ]);
   });
 
   it("18. PDP sem endereco nem total devolve decisao parcial com as formas", () => {
@@ -364,7 +382,10 @@ describe("matriz de decisao do pagamento na entrega", () => {
     assert.equal(resultado.exigeRevalidacao, true);
     assert.deepEqual(codigos(resultado), ["avaliacao-parcial-sem-total"]);
     // É isto que o selo da página de produto lê.
-    assert.deepEqual(resultado.formasPermitidas, ["dinheiro", "debito_entrega"]);
+    assert.deepEqual(resultado.formasPermitidas, [
+      "dinheiro",
+      "debito_entrega",
+    ]);
   });
 
   it("19. CEP do checkout diferente do CEP da cotacao bloqueia", () => {
@@ -469,7 +490,9 @@ describe("motivos fora da matriz e garantias do contrato", () => {
       itens: [criarItem({ modalidadeComercial: null })],
     });
 
-    assert.deepEqual(codigos(resultado), ["modalidade-comercial-nao-suportada"]);
+    assert.deepEqual(codigos(resultado), [
+      "modalidade-comercial-nao-suportada",
+    ]);
   });
 
   it("aceita ampliar as modalidades por parametro sem tocar no motor", () => {

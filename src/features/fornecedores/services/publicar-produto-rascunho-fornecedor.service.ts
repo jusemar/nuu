@@ -16,6 +16,7 @@ import {
   extrairConfiguracaoComercialRascunhoFornecedor,
   extrairSecoesLojaRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
+import { prepararDimensoesPublicacaoFornecedor } from "@/features/fornecedores/lib/publicacao/preparar-dimensoes-publicacao-fornecedor";
 import { gerarSkuDisponivel as gerarSkuDisponivelCompartilhado } from "@/features/products/lib/gerar-sku-disponivel";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
@@ -237,6 +238,16 @@ export async function publicarProdutoRascunhoFornecedor(
   const precoEmCentavos = Math.round(precoLoja * 100);
   const estoque = Math.max(0, rascunho.estoqueFornecedor ?? 0);
   const imagemPrincipal = rascunho.imagens[0] ?? null;
+  const dimensoesPublicacao = prepararDimensoesPublicacaoFornecedor({
+    origemTipo: origem.origemTipo,
+    origemProvedor: origem.origemProvedor,
+    dimensoes: {
+      peso: rascunho.peso,
+      altura: rascunho.altura,
+      largura: rascunho.largura,
+      comprimento: rascunho.comprimento,
+    },
+  });
 
   const resultadoProduto = await createProduct({
     name: rascunho.nome,
@@ -267,10 +278,10 @@ export async function publicarProdutoRascunhoFornecedor(
       altText: rascunho.nome,
     })),
     dimensoesFreteExterno: {
-      pesoEmKg: rascunho.peso ?? undefined,
-      alturaEmCm: rascunho.altura ?? undefined,
-      larguraEmCm: rascunho.largura ?? undefined,
-      comprimentoEmCm: rascunho.comprimento ?? undefined,
+      pesoEmKg: dimensoesPublicacao.pesoEmKg ?? undefined,
+      alturaEmCm: dimensoesPublicacao.alturaEmCm ?? undefined,
+      larguraEmCm: dimensoesPublicacao.larguraEmCm ?? undefined,
+      comprimentoEmCm: dimensoesPublicacao.comprimentoEmCm ?? undefined,
     },
     status: "published",
     isActive: true,

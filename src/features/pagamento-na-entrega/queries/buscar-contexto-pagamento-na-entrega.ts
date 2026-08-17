@@ -1,9 +1,11 @@
 import "server-only";
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
+  fornecedorIntegracoesApiTable,
+  fornecedorProdutoVinculosTable,
   productPricingTable,
   productTable,
   productVariantTable,
@@ -87,45 +89,69 @@ export async function buscarContextoPagamentoNaEntrega(
     ),
   ];
 
-  const [produtos, variantes, modalidades] = await Promise.all([
-    executor
-      .select({
-        id: productTable.id,
-        aceitaPagamentoNaEntrega: productTable.aceitaPagamentoNaEntrega,
-      })
-      .from(productTable)
-      .where(inArray(productTable.id, produtoIds)),
+  const [produtos, variantes, modalidades, vinculosLaquila] = await Promise.all(
+    [
+      executor
+        .select({
+          id: productTable.id,
+          aceitaPagamentoNaEntrega: productTable.aceitaPagamentoNaEntrega,
+        })
+        .from(productTable)
+        .where(inArray(productTable.id, produtoIds)),
 
-    varianteIds.length === 0
-      ? Promise.resolve(
-          [] as Array<{
-            id: string;
-            produtoId: string;
-            aceitaPagamentoNaEntrega: boolean | null;
-          }>,
+      varianteIds.length === 0
+        ? Promise.resolve(
+            [] as Array<{
+              id: string;
+              produtoId: string;
+              aceitaPagamentoNaEntrega: boolean | null;
+            }>,
+          )
+        : executor
+            .select({
+              id: productVariantTable.id,
+              produtoId: productVariantTable.productId,
+              aceitaPagamentoNaEntrega:
+                productVariantTable.aceitaPagamentoNaEntrega,
+            })
+            .from(productVariantTable)
+            .where(inArray(productVariantTable.id, varianteIds)),
+
+      // Modalidades ativas de cada produto, usadas só para conferir a informada.
+      executor
+        .select({
+          produtoId: productPricingTable.productId,
+          tipo: productPricingTable.type,
+        })
+        .from(productPricingTable)
+        .where(eq(productPricingTable.isActive, true)),
+
+      executor
+        .select({ produtoId: fornecedorProdutoVinculosTable.produtoId })
+        .from(fornecedorProdutoVinculosTable)
+        .innerJoin(
+          fornecedorIntegracoesApiTable,
+          eq(
+            fornecedorIntegracoesApiTable.fornecedorId,
+            fornecedorProdutoVinculosTable.fornecedorId,
+          ),
         )
-      : executor
-          .select({
-            id: productVariantTable.id,
-            produtoId: productVariantTable.productId,
-            aceitaPagamentoNaEntrega:
-              productVariantTable.aceitaPagamentoNaEntrega,
-          })
-          .from(productVariantTable)
-          .where(inArray(productVariantTable.id, varianteIds)),
-
-    // Modalidades ativas de cada produto, usadas só para conferir a informada.
-    executor
-      .select({
-        produtoId: productPricingTable.productId,
-        tipo: productPricingTable.type,
-      })
-      .from(productPricingTable)
-      .where(eq(productPricingTable.isActive, true)),
-  ]);
+        .where(
+          and(
+            inArray(fornecedorProdutoVinculosTable.produtoId, produtoIds),
+            eq(fornecedorProdutoVinculosTable.status, "ativo"),
+            eq(fornecedorIntegracoesApiTable.provedor, "laquila"),
+            eq(fornecedorIntegracoesApiTable.ativo, true),
+          ),
+        ),
+    ],
+  );
 
   const produtoPorId = new Map(produtos.map((item) => [item.id, item]));
   const variantePorId = new Map(variantes.map((item) => [item.id, item]));
+  const produtosLaquila = new Set(
+    vinculosLaquila.map((item) => item.produtoId),
+  );
 
   const modalidadesPorProduto = new Map<string, Set<string>>();
   for (const linha of modalidades) {
@@ -166,6 +192,7 @@ export async function buscarContextoPagamentoNaEntrega(
       itemCarrinhoId: item.itemCarrinhoId,
       produtoId: item.produtoId,
       varianteId: item.varianteId,
+      origemFornecedorLaquila: produtosLaquila.has(item.produtoId),
       // Produto inexistente vira `false`: nunca liberar por ausência de dado.
       produtoAceitaPagamentoNaEntrega:
         produto?.aceitaPagamentoNaEntrega ?? false,

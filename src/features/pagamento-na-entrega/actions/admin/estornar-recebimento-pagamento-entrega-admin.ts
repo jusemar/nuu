@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import { estornarRecebimentoPagamentoEntregaSchema } from "../../schemas/recebimento-pagamento-na-entrega.schema";
 import type { EstadoRecebimentoPagamentoEntrega } from "../../types/pagamento-na-entrega.types";
@@ -151,6 +152,12 @@ export async function estornarRecebimentoPagamentoEntregaAdmin(
         // de quem tinha confirmado e de quanto tinha sido recebido.
         metadata: { recebimentoAnterior, observacao: dados.observacao },
       });
+
+      await processarEventoPedidoFidelidade(
+        tx,
+        dados.pedidoId,
+        "pagamento_estornado",
+      );
 
       return { sucesso: true, mensagem: "Recebimento estornado." };
     });

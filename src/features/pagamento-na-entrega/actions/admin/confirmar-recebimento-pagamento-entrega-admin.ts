@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
 import { ROTULO_FORMA_PAGAMENTO_NA_ENTREGA } from "../../constants/pagamento-na-entrega.constants";
@@ -178,6 +179,12 @@ export async function confirmarRecebimentoPagamentoEntregaAdmin(
           observacao: dados.observacao,
         },
       });
+
+      await processarEventoPedidoFidelidade(
+        tx,
+        dados.pedidoId,
+        "pagamento_confirmado",
+      );
 
       return { sucesso: true, mensagem: "Recebimento confirmado.", pedido };
     });

@@ -271,6 +271,14 @@ export function avaliarElegibilidadePagamentoNaEntrega(
   // Percorre todos os itens em vez de parar no primeiro problema: a interface precisa
   // conseguir apontar exatamente quais produtos impedem o pagamento na entrega.
   for (const item of entrada.itens) {
+    if (item.origemFornecedorLaquila) {
+      registrarMotivo(estado, "produto-origem-fornecedor-indisponivel", {
+        escopo: "item",
+        itemCarrinhoId: item.itemCarrinhoId,
+        produtoId: item.produtoId,
+      });
+    }
+
     if (!resolverFlagPagamentoNaEntregaItem(item)) {
       registrarMotivo(estado, "produto-nao-habilitado", {
         escopo: "item",
@@ -315,7 +323,9 @@ export function avaliarElegibilidadePagamentoNaEntrega(
     // Sem total não dá para conferir mínimo, máximo nem teto de dinheiro. A avaliação para
     // aqui como prévia: `formasPermitidas` já está preenchida, que é tudo o que o selo da
     // página de produto precisa ler.
-    registrarMotivo(estado, "avaliacao-parcial-sem-total", { escopo: "pedido" });
+    registrarMotivo(estado, "avaliacao-parcial-sem-total", {
+      escopo: "pedido",
+    });
     return montarResultado();
   }
 
@@ -348,9 +358,7 @@ export function avaliarElegibilidadePagamentoNaEntrega(
     total > valorMaximoDinheiroEmCentavos &&
     formasPermitidas.includes("dinheiro")
   ) {
-    formasPermitidas = formasPermitidas.filter(
-      (forma) => forma !== "dinheiro",
-    );
+    formasPermitidas = formasPermitidas.filter((forma) => forma !== "dinheiro");
 
     registrarMotivo(estado, "valor-acima-do-limite-dinheiro", {
       escopo: "forma",

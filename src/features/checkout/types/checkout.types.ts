@@ -1,4 +1,8 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+import type {
+  GrupoLogistico,
+  ItemAgrupavelLogisticamente,
+} from "@/features/logistica/types/grupos-logisticos";
 // Tipos puros, sem `server-only`: podem ser importados por componente client sem risco.
 import type {
   FormaPagamentoNaEntrega,
@@ -39,7 +43,33 @@ export type TotaisCheckout = {
   totalEmCentavos: number;
 };
 
-export type ItemResumoCheckout = {
+export type OpcaoEntregaCheckout = {
+  identificador: string;
+  nome: string;
+  descricao: string | null;
+  prazoMinimoEmDiasUteis: number | null;
+  prazoMaximoEmDiasUteis: number | null;
+  valorEmCentavos: number;
+  tipo: "entrega" | "retirada";
+  provedor: string;
+  servico: string;
+  transportadora: string | null;
+  metadadosRelevantes: Record<string, unknown> | null;
+};
+
+export type CotacaoEntregaGrupoCheckout = {
+  chaveGrupo: string;
+  cepOrigem: string;
+  opcoes: OpcaoEntregaCheckout[];
+  mensagemErro: string | null;
+};
+
+export type SelecaoEntregaGrupoCheckout = OpcaoEntregaCheckout & {
+  chaveGrupo: string;
+  cep: string;
+};
+
+export type ItemResumoCheckout = ItemAgrupavelLogisticamente & {
   id: string;
   produtoId: string;
   categoriaId: string | null;
@@ -94,6 +124,8 @@ export type ItemResumoCheckout = {
 
 export type ResumoCheckoutCalculado = {
   itens: ItemResumoCheckout[];
+  gruposLogisticos: GrupoLogistico<ItemResumoCheckout>[];
+  cotacoesEntrega: CotacaoEntregaGrupoCheckout[];
   pagamentos: {
     pix: {
       ativo: boolean;

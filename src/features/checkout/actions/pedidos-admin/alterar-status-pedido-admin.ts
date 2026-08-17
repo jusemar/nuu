@@ -8,6 +8,7 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import { montarDescricaoAlteracaoManualStatus } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { alterarStatusPedidoAdminSchema } from "../../schemas/admin-pedidos.schema";
@@ -97,6 +98,12 @@ export async function alterarStatusPedidoAdmin(
           operacao: "alteracao_manual_status_admin",
         },
       });
+
+      if (status === "delivered") {
+        await processarEventoPedidoFidelidade(tx, pedidoId, "pedido_entregue");
+      } else if (status === "canceled") {
+        await processarEventoPedidoFidelidade(tx, pedidoId, "pedido_cancelado");
+      }
 
       return {
         atualizado: true,

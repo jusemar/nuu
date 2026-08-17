@@ -1,22 +1,22 @@
 "use client";
 
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Loader2, TicketPercent, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { ItemCarrinho } from "@/features/carrinho";
+import { formatarPrecoCarrinho } from "@/features/carrinho";
 import {
   calcularPreviaTotaisPedido,
   type ResultadoCalcularPreviaTotaisPedido,
 } from "@/features/checkout/queries/previa-totais/calcular-previa-totais-pedido";
-import type { ItemCarrinho } from "@/features/carrinho";
 import { CHAVE_STORAGE_CUPOM_CARRINHO } from "@/features/promocoes/constants/cupom-carrinho-storage";
 import type { ResultadoValidarCupomPromocao } from "@/features/promocoes/services";
-
-import { formatarPrecoCarrinho } from "@/features/carrinho";
 
 type CupomCheckoutResumoProps = {
   itens: ItemCarrinho[];
   subtotalEmCentavos: number;
+  freteEmCentavosOficial: number | null;
   onResultadoCupom: (resultado: ResultadoValidarCupomPromocao | null) => void;
   onPreviaTotais: (
     resultado: ResultadoCalcularPreviaTotaisPedido | null,
@@ -69,6 +69,7 @@ function persistirCupomValidado({
 export function CupomCheckoutResumo({
   itens,
   subtotalEmCentavos,
+  freteEmCentavosOficial,
   onResultadoCupom,
   onPreviaTotais,
 }: CupomCheckoutResumoProps) {
@@ -102,6 +103,7 @@ export function CupomCheckoutResumo({
       const previa = await calcularPreviaTotaisPedido({
         itens,
         codigoCupom: codigo,
+        freteEmCentavosOficial,
       });
       const validacao = previa?.cupom ?? null;
 
@@ -120,7 +122,13 @@ export function CupomCheckoutResumo({
         resultado: validacao,
       });
     });
-  }, [onResultadoCupom, subtotalEmCentavos]);
+  }, [
+    freteEmCentavosOficial,
+    itens,
+    onPreviaTotais,
+    onResultadoCupom,
+    subtotalEmCentavos,
+  ]);
 
   function removerCupom() {
     setCodigoCupom(null);

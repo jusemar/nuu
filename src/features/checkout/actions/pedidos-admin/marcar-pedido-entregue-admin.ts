@@ -9,6 +9,7 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import { montarDescricaoPedidoEntregue } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { acaoLogisticaPedidoAdminSchema } from "../../schemas/admin-pedidos.schema";
@@ -92,6 +93,8 @@ export async function marcarPedidoEntregueAdmin(
           dataEntrega: (pedido.logistica?.dataEntrega ?? agora).toISOString(),
         },
       });
+
+      await processarEventoPedidoFidelidade(tx, pedidoId, "pedido_entregue");
 
       return {
         sucesso: true,

@@ -12,7 +12,7 @@ import {
 
 import { checkoutPedidosTable } from "./pedidos";
 
-export type SnapshotFretePedidoLogistica = {
+type SnapshotFretePedidoLogisticaVersao1 = {
   versao: "1";
   cep: string;
   valorTotalEmCentavos: number;
@@ -32,6 +32,40 @@ export type SnapshotFretePedidoLogistica = {
     fallbackAcionado: boolean;
   }>;
 };
+
+type SnapshotFretePedidoLogisticaVersao2 = {
+  versao: "2";
+  cep: string;
+  valorTotalEmCentavos: number;
+  grupos: Array<{
+    chaveGrupo: string;
+    origemExpedicao: "loja" | "fornecedor";
+    fornecedorProvedor: string | null;
+    necessitaEtiquetaFornecedor: boolean;
+    itens: Array<{
+      itemCarrinhoId: string;
+      produtoId: string;
+      varianteId: string | null;
+      quantidade: number;
+      valorUnitarioEmCentavos: number;
+    }>;
+    entrega: {
+      identificadorOpcao: string;
+      tipo: "entrega" | "retirada";
+      provedor: string;
+      servicoId: string;
+      servicoNome: string;
+      transportadora: string | null;
+      valorEmCentavos: number;
+      prazo: string | null;
+      metadadosRelevantes: Record<string, unknown> | null;
+    };
+  }>;
+};
+
+export type SnapshotFretePedidoLogistica =
+  | SnapshotFretePedidoLogisticaVersao1
+  | SnapshotFretePedidoLogisticaVersao2;
 
 export const checkoutPedidoLogisticasTable = pgTable(
   "checkout_pedido_logisticas",

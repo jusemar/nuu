@@ -1,3 +1,4 @@
+import { listarEntregasAgrupadasDoSnapshot } from "./ler-snapshot-frete";
 import type { SnapshotFreteCheckout } from "./revalidar-frete-checkout";
 
 function resumirValorUnico(valores: string[]) {
@@ -11,32 +12,37 @@ function resumirValorUnico(valores: string[]) {
 }
 
 function resumirPrazo(snapshot: SnapshotFreteCheckout) {
-  const prazos = snapshot.itens
+  const prazos = listarEntregasAgrupadasDoSnapshot(snapshot)
     .map((item) => item.prazo?.trim())
     .filter((prazo): prazo is string => Boolean(prazo));
 
   return resumirValorUnico(prazos);
 }
 
-export function montarRegistroSnapshotFretePedido({
+export function montarRegistroSnapshotFretePedido<
+  TSnapshot extends SnapshotFreteCheckout,
+>({
   pedidoId,
   snapshot,
 }: {
   pedidoId: string;
-  snapshot: SnapshotFreteCheckout;
+  snapshot: TSnapshot;
 }) {
+  const entregas = listarEntregasAgrupadasDoSnapshot(snapshot);
+
   return {
     pedidoId,
     provedorFrete: resumirValorUnico(
-      snapshot.itens.map((item) => item.provedor),
+      entregas.map((item) => item.provedor),
     ),
     modalidadeFrete: resumirValorUnico(
-      snapshot.itens.map((item) => item.modalidade),
+      entregas.map((item) => item.modalidade),
     ),
     valorFreteEmCentavos: snapshot.valorTotalEmCentavos,
     prazoFrete: resumirPrazo(snapshot),
     cepFrete: snapshot.cep,
-    fallbackFreteUtilizado: snapshot.fallbackAcionado,
+    fallbackFreteUtilizado:
+      snapshot.versao === "1" ? snapshot.fallbackAcionado : false,
     snapshotFrete: snapshot,
     metadata: {
       origem: "checkout",

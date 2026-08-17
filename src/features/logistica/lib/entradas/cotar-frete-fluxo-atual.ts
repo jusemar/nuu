@@ -16,10 +16,11 @@ import {
 } from "../adaptadores/adaptar-produto-atual";
 import {
   type ConfiguracaoCotacaoFreteInterna,
-  cotarFreteInterno,
   type DependenciasCotacaoFreteInterna,
 } from "../cotacoes/cotar-frete-interno";
+import { cotarFretePorGruposLogisticos } from "../cotacoes/cotar-frete-por-grupos-logisticos";
 import { agruparItensPorOrigemExpedicao } from "../grupos-logisticos/agrupar-itens-por-origem-expedicao";
+import { obterCepOrigemLaquila } from "../origens/obter-cep-origem-laquila";
 import type { DependenciasPortaEntregaPropriaAtual } from "../portas/criar-porta-entrega-propria-atual";
 import type { RetiradaAtualDisponivel } from "../portas/criar-porta-retirada-atual";
 import { obterConfiguracaoFrenet } from "../provedores/frenet/obter-configuracao-frenet";
@@ -190,9 +191,25 @@ export async function cotarFreteFluxoAtual(
     destino: validacaoEndereco.data as EnderecoEntrega,
   };
 
-  return cotarFreteInterno(
+  const cotacoes = await cotarFretePorGruposLogisticos(
     solicitacao,
     criarDependenciasCotacaoInterna(entrada),
-    obterConfiguracaoCotacaoInterna(configuracao),
+    {
+      ...obterConfiguracaoCotacaoInterna(configuracao),
+      cepOrigemFornecedorPorProvedor: {
+        laquila: obterCepOrigemLaquila(),
+      },
+    },
+  );
+
+  return (
+    cotacoes.cotacoes[0]?.resultado ??
+    criarResultadoCotacaoComErro(
+      solicitacao,
+      criarErroCotacao(
+        "grupo-logistico-ausente",
+        "Não foi possível identificar o grupo logístico da cotação.",
+      ),
+    )
   );
 }

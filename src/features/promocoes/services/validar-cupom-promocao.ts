@@ -25,7 +25,7 @@ export type MotivoCupomInvalido =
 export type EntradaValidarCupomPromocao = {
   codigoCupom: string;
   subtotalEmCentavos: number;
-  clienteId?: string | null;
+  checkoutClienteId?: string | null;
   dataReferencia?: Date;
   clienteBanco?: ClienteBancoValidacaoCupom;
 };
@@ -85,13 +85,14 @@ function criarResultadoInvalido({
 
 function contarUsosCliente(
   cupom: CupomPromocaoBanco,
-  clienteId?: string | null,
+  checkoutClienteId?: string | null,
 ) {
-  if (!clienteId) {
+  if (!checkoutClienteId) {
     return 0;
   }
 
-  return (cupom.usos ?? []).filter((uso) => uso.clienteId === clienteId).length;
+  return (cupom.usos ?? []).filter((uso) => uso.clienteId === checkoutClienteId)
+    .length;
 }
 
 export async function validarCupomPromocao(
@@ -114,9 +115,12 @@ export async function validarCupomPromocao(
   const cupom = await clienteBanco.query.cuponsPromocaoTable.findFirst({
     where: eq(cuponsPromocaoTable.codigo, codigo),
     with: {
-      usos: entrada.clienteId
+      usos: entrada.checkoutClienteId
         ? {
-            where: eq(usosCuponsPromocaoTable.clienteId, entrada.clienteId),
+            where: eq(
+              usosCuponsPromocaoTable.clienteId,
+              entrada.checkoutClienteId,
+            ),
           }
         : true,
     },
@@ -173,11 +177,11 @@ export async function validarCupomPromocao(
     });
   }
 
-  const usosCliente = contarUsosCliente(cupom, entrada.clienteId);
+  const usosCliente = contarUsosCliente(cupom, entrada.checkoutClienteId);
 
   if (
     cupom.limiteUsoPorCliente !== null &&
-    entrada.clienteId &&
+    entrada.checkoutClienteId &&
     usosCliente >= cupom.limiteUsoPorCliente
   ) {
     return criarResultadoInvalido({

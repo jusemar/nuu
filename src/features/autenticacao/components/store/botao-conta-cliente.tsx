@@ -1,14 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import {
   Chrome,
+  Gem,
   Loader2,
   LogOut,
   PackageSearch,
   User,
   UserRound,
 } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -146,6 +147,12 @@ export function BotaoContaCliente() {
           <Link href="/minha-conta/pedidos">
             <PackageSearch className="h-4 w-4" />
             Meus pedidos
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer py-2.5">
+          <Link href="/minha-conta/programa-fidelidade">
+            <Gem className="h-4 w-4" />
+            Programa de Fidelidade
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

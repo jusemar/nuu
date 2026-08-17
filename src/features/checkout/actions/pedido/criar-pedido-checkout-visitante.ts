@@ -3,6 +3,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 
 import {
+  carteirasFidelidadeTable,
   checkoutClientesTable,
   checkoutEnderecosTable,
   checkoutPagamentosTable,
@@ -11,12 +12,11 @@ import {
   checkoutPedidoLogisticasTable,
   checkoutPedidoPagamentoEntregaTable,
   checkoutPedidosTable,
+  configuracoesProgramaFidelidadeTable,
   productTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
-import { listarProvedoresExpedicaoProdutos } from "@/features/fornecedores/queries/listar-provedores-expedicao-produtos";
-import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
 import {
   avaliarConsistenciaTrocoPedido,
   type FormaPagamentoNaEntrega,
@@ -27,6 +27,13 @@ import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
 } from "@/features/precificacao/server";
+import { VALOR_MINIMO_PAGAMENTO_APOS_FIDELIDADE_EM_CENTAVOS } from "@/features/programa-fidelidade/constants/resgate-fidelidade";
+import {
+  calcularCreditoPontos,
+  calcularLimitesResgate,
+  ratearCreditoFidelidadeEntreItens,
+} from "@/features/programa-fidelidade/lib/calcular-resgate-fidelidade";
+import { reservarPontosPedido } from "@/features/programa-fidelidade/lib/processar-resgate-fidelidade";
 import { extrairCodigosFretePromocionalDeSnapshot } from "@/features/promocoes/lib/codigos-frete-promocional";
 
 import { montarDescricaoPedidoCriado } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
@@ -34,9 +41,9 @@ import {
   enviarEmailPedidoRecebido,
   enviarEmailPixPendente,
 } from "../../lib/emails/email-service";
-import { criarConsultaEntregaPropriaCheckout } from "../../lib/frete/criar-consulta-entrega-propria-checkout";
+import { listarEntregasDoSnapshot } from "../../lib/frete/ler-snapshot-frete";
 import { montarRegistroSnapshotFretePedido } from "../../lib/frete/montar-registro-snapshot-frete-pedido";
-import { revalidarFreteCheckout } from "../../lib/frete/revalidar-frete-checkout";
+import { montarSnapshotFretePorGrupos } from "../../lib/frete/montar-snapshot-frete-por-grupos";
 import { criarCobrancaPixEfi } from "../../lib/gateways/efi/pix-efi";
 import { criarCheckoutCartaoStripe } from "../../lib/gateways/stripe/checkout-stripe";
 import {
@@ -52,6 +59,7 @@ import {
   isValidTelefone,
 } from "../../lib/validators";
 import { calcularPreviaTotaisPedido } from "../../queries/previa-totais/calcular-previa-totais-pedido";
+import { calcularResumoCheckout } from "../../queries/resumo-checkout/calcular-resumo-checkout";
 import {
   type CheckoutVisitanteSchema,
   checkoutVisitanteSchema,
@@ -354,6 +362,15 @@ async function marcarFalhaPagamentoGateway({
   erro: string;
 }) {
   await dbTransacional.transaction(async (tx) => {
+    const { processarReservaPedido } = await import(
+      "@/features/programa-fidelidade/lib/processar-resgate-fidelidade"
+    );
+    await processarReservaPedido(
+      tx,
+      pedidoId,
+      "liberar",
+      "falha_criacao_cobranca",
+    );
     await tx
       .update(checkoutPagamentosTable)
       .set({
@@ -453,36 +470,65 @@ export async function criarPedidoCheckoutVisitanteInterno({
       });
     });
 
-    const provedoresExpedicaoPorProdutoId =
-      await listarProvedoresExpedicaoProdutos(produtosIds);
-
-    const revalidacaoFrete = await revalidarFreteCheckout({
+    const selecoesEntregaPorGrupo = dados.selecoesEntregaPorGrupo;
+    const resumoFretePorGrupo = await calcularResumoCheckout({
       itens: dados.itens,
-      produtos,
-      cepFinal: dados.cep,
-      dependencias: {
-        consultarEntregaPropriaAtual: criarConsultaEntregaPropriaCheckout(),
-        buscarDisponibilidadeFreteProduto,
-        provedoresExpedicaoPorProdutoId,
-      },
+      cepEntrega: dados.cep,
+      selecoesEntregaPorGrupo,
+      incluirDadosAuditoriaFrete: true,
+    });
+    const revalidacaoFrete = montarSnapshotFretePorGrupos({
+      resumoRevalidado: resumoFretePorGrupo,
+      selecoesRecebidas: selecoesEntregaPorGrupo,
+      cep: dados.cep,
+      itensPedido: itensPedido.map((item, indice) => ({
+        itemCarrinhoId: dados.itens[indice]!.id,
+        produtoId: item.produtoId,
+        varianteId: item.varianteId,
+        quantidade: item.quantidade,
+        valorUnitarioEmCentavos: item.precoUnitarioEmCentavos,
+      })),
     });
 
     if (!revalidacaoFrete.sucesso) {
       throw new Error(revalidacaoFrete.mensagem);
     }
+    const snapshotFrete = revalidacaoFrete.snapshot;
+    const freteEmCentavos = snapshotFrete.valorTotalEmCentavos;
+
+    const clientePorDocumento = await tx.query.checkoutClientesTable.findFirst({
+      where: eq(checkoutClientesTable.documento, documento),
+    });
+    const clientePorUsuario = usuarioId
+      ? await tx.query.checkoutClientesTable.findFirst({
+          where: eq(checkoutClientesTable.userId, usuarioId),
+        })
+      : null;
+    const clientePorEmail = await tx.query.checkoutClientesTable.findFirst({
+      where: eq(checkoutClientesTable.email, email),
+    });
+    const clienteExistente =
+      clientePorDocumento ?? clientePorUsuario ?? clientePorEmail;
+
+    if (
+      usuarioId &&
+      clienteExistente?.userId &&
+      clienteExistente.userId !== usuarioId
+    ) {
+      throw new Error("Este CPF/CNPJ já está vinculado a outra conta.");
+    }
 
     const previaTotaisPedido = await calcularPreviaTotaisPedido({
       itens: dados.itens,
       codigoCupom: dados.cupom,
-      clienteId: usuarioId,
-      freteEmCentavosOficial: revalidacaoFrete.freteEmCentavos,
+      checkoutClienteId: clienteExistente?.id ?? null,
+      freteEmCentavosOficial: freteEmCentavos,
       aplicarFreteGratisPromocional: true,
       cepEntrega: dados.cep,
       cidadeEntrega: dados.cidade,
       estadoEntrega: dados.estado,
-      fretesSelecionadosCodigos: extrairCodigosFretePromocionalDeSnapshot(
-        revalidacaoFrete.snapshotFrete,
-      ),
+      fretesSelecionadosCodigos:
+        extrairCodigosFretePromocionalDeSnapshot(snapshotFrete),
     });
 
     if (!previaTotaisPedido) {
@@ -501,12 +547,84 @@ export async function criarPedidoCheckoutVisitanteInterno({
     const descontoCupomEmCentavos = totaisPreviaForma.descontoCupomEmCentavos;
     const freteGratisPromocionalPedido =
       previaTotaisPedido.freteGratisPromocional;
+    if (
+      freteGratisPromocionalPedido.valorFreteOriginalEmCentavos !==
+      snapshotFrete.valorTotalEmCentavos
+    ) {
+      throw new Error(
+        "O total das entregas ficou inconsistente. Revise as formas de entrega.",
+      );
+    }
     const descontoFretePromocionalEmCentavos =
       freteGratisPromocionalPedido.descontoFretePromocionalEmCentavos;
     const descontoTotalEmCentavos =
       descontoCupomEmCentavos + descontoFretePromocionalEmCentavos;
+    let resgateCalculado: {
+      pontos: string;
+      creditoEmCentavos: number;
+      baseElegivelEmCentavos: number;
+      limiteEmCentavos: number;
+      pontosConversao: string;
+      valorCreditoConversaoEmCentavos: number;
+      configuracaoVersao: number;
+    } | null = null;
+    if (dados.pontosResgate && Number(dados.pontosResgate) > 0) {
+      if (!usuarioId || !clienteExistente?.id) {
+        throw new Error("AUTENTICACAO_NECESSARIA_PARA_RESGATE");
+      }
+      const [configuracao, carteira] = await Promise.all([
+        tx.query.configuracoesProgramaFidelidadeTable.findFirst({
+          where: eq(configuracoesProgramaFidelidadeTable.id, "global"),
+        }),
+        tx.query.carteirasFidelidadeTable.findFirst({
+          where: eq(carteirasFidelidadeTable.clienteId, clienteExistente.id),
+        }),
+      ]);
+      if (!configuracao?.ativo || !carteira) {
+        throw new Error("RESGATE_FIDELIDADE_INDISPONIVEL");
+      }
+      const baseElegivelEmCentavos = Math.max(
+        totaisPreviaForma.subtotalEmCentavos - descontoCupomEmCentavos,
+        0,
+      );
+      const limites = calcularLimitesResgate({
+        saldoDisponivel: carteira.pontosDisponiveis,
+        pontosConversao: configuracao.pontosConversao,
+        valorCreditoEmCentavos: configuracao.valorCreditoEmCentavos,
+        baseElegivelEmCentavos,
+        totalAntesJurosEmCentavos: totaisPreviaForma.totalEstimadoEmCentavos,
+        valorMinimoPagamentoEmCentavos:
+          VALOR_MINIMO_PAGAMENTO_APOS_FIDELIDADE_EM_CENTAVOS,
+      });
+      const creditoEmCentavos = calcularCreditoPontos({
+        pontos: dados.pontosResgate,
+        pontosConversao: configuracao.pontosConversao,
+        valorCreditoEmCentavos: configuracao.valorCreditoEmCentavos,
+      });
+      if (
+        Number(dados.pontosResgate) < Number(configuracao.minimoPontosResgate)
+      )
+        throw new Error("MINIMO_RESGATE_NAO_ATINGIDO");
+      if (
+        Number(dados.pontosResgate) > Number(limites.maximoPontos) ||
+        creditoEmCentavos <= 0
+      )
+        throw new Error("LIMITE_RESGATE_EXCEDIDO");
+      resgateCalculado = {
+        pontos: dados.pontosResgate,
+        creditoEmCentavos,
+        baseElegivelEmCentavos,
+        limiteEmCentavos: limites.limiteCreditoEmCentavos,
+        pontosConversao: configuracao.pontosConversao,
+        valorCreditoConversaoEmCentavos: configuracao.valorCreditoEmCentavos,
+        configuracaoVersao: configuracao.versao,
+      };
+    }
+    const totalAposFidelidadeEmCentavos =
+      totaisPreviaForma.totalEstimadoEmCentavos -
+      (resgateCalculado?.creditoEmCentavos ?? 0);
     const parcelamentosCartao = calcularParcelamentosCartao({
-      valorEmCentavos: totaisPreviaForma.totalEstimadoEmCentavos,
+      valorEmCentavos: totalAposFidelidadeEmCentavos,
       configuracao: configuracaoPagamento,
     });
     const parcelamentoSelecionado =
@@ -522,27 +640,28 @@ export async function criarPedidoCheckoutVisitanteInterno({
       descontoEmCentavos: descontoTotalEmCentavos,
       descontoPromocionalEmCentavos,
       descontoCupomEmCentavos,
+      creditoFidelidadeEmCentavos: resgateCalculado?.creditoEmCentavos ?? 0,
       economiaTotalEmCentavos: totaisPreviaForma.economiaEmCentavos,
       totalEmCentavos:
         parcelamentoSelecionado?.totalEmCentavos ??
-        totaisPreviaForma.totalEstimadoEmCentavos,
+        totalAposFidelidadeEmCentavos,
       codigoCupomAplicado: cupomAplicado?.codigo ?? null,
       snapshotDescontos: {
         origem: "calcularPreviaTotaisPedido",
         formaPagamento: dados.formaPagamento,
         descontoPromocionalEmCentavos,
         descontoCupomEmCentavos,
+        creditoFidelidadeEmCentavos: resgateCalculado?.creditoEmCentavos ?? 0,
         descontoFretePromocionalEmCentavos,
         economiaTotalEmCentavos: totaisPreviaForma.economiaEmCentavos,
         valorFreteOriginalEmCentavos:
           freteGratisPromocionalPedido.valorFreteOriginalEmCentavos,
         valorFreteFinalEmCentavos:
           freteGratisPromocionalPedido.valorFreteFinalEmCentavos,
-        totalEstimadoSemJurosEmCentavos:
-          totaisPreviaForma.totalEstimadoEmCentavos,
+        totalEstimadoSemJurosEmCentavos: totalAposFidelidadeEmCentavos,
         totalFinalEmCentavos:
           parcelamentoSelecionado?.totalEmCentavos ??
-          totaisPreviaForma.totalEstimadoEmCentavos,
+          totalAposFidelidadeEmCentavos,
         cupom: cupomAplicado
           ? {
               codigo: cupomAplicado.codigo,
@@ -593,7 +712,7 @@ export async function criarPedidoCheckoutVisitanteInterno({
      * Acontece aqui dentro, na mesma transação que grava o pedido, e a partir de dados que
      * o servidor acabou de produzir:
      *
-     * - o serviço de entrega vem de `revalidacaoFrete.snapshotFrete`, nunca do carrinho —
+     * - o serviço de entrega vem do snapshot recém-revalidado, nunca do carrinho —
      *   o carrinho mora no localStorage e o usuário consegue editar o campo `servico`;
      * - o total é `totais.totalEmCentavos`, o oficial recém-calculado, não o exibido na tela;
      * - produto, variante e modalidade são relidos do banco pelo adaptador.
@@ -607,7 +726,7 @@ export async function criarPedidoCheckoutVisitanteInterno({
       avaliacaoNaEntrega = await avaliarPagamentoNaEntregaComBanco(
         {
           contexto: "checkout",
-          itens: revalidacaoFrete.snapshotFrete.itens.map((item) => ({
+          itens: listarEntregasDoSnapshot(snapshotFrete).map((item) => ({
             itemCarrinhoId: item.itemCarrinhoId,
             produtoId: item.produtoId,
             varianteId: item.varianteId,
@@ -622,7 +741,7 @@ export async function criarPedidoCheckoutVisitanteInterno({
             frete: {
               provedor: item.provedor,
               servico: item.servico,
-              cepCotado: revalidacaoFrete.snapshotFrete.cep,
+              cepCotado: snapshotFrete.cep,
             },
           })),
           totalPedidoEmCentavos: totais.totalEmCentavos,
@@ -669,28 +788,6 @@ export async function criarPedidoCheckoutVisitanteInterno({
 
     if (totais.totalEmCentavos <= 0) {
       throw new Error("Total do checkout inválido");
-    }
-
-    const clientePorDocumento = await tx.query.checkoutClientesTable.findFirst({
-      where: eq(checkoutClientesTable.documento, documento),
-    });
-    const clientePorUsuario = usuarioId
-      ? await tx.query.checkoutClientesTable.findFirst({
-          where: eq(checkoutClientesTable.userId, usuarioId),
-        })
-      : null;
-    const clientePorEmail = await tx.query.checkoutClientesTable.findFirst({
-      where: eq(checkoutClientesTable.email, email),
-    });
-    const clienteExistente =
-      clientePorDocumento ?? clientePorUsuario ?? clientePorEmail;
-
-    if (
-      usuarioId &&
-      clienteExistente?.userId &&
-      clienteExistente.userId !== usuarioId
-    ) {
-      throw new Error("Este CPF/CNPJ já está vinculado a outra conta.");
     }
 
     const dadosCliente = {
@@ -769,6 +866,20 @@ export async function criarPedidoCheckoutVisitanteInterno({
           economiaTotalEmCentavos: totais.economiaTotalEmCentavos,
           totalEmCentavos: totais.totalEmCentavos,
           codigoCupomAplicado: totais.codigoCupomAplicado,
+          pontosResgatados: resgateCalculado?.pontos ?? null,
+          creditoFidelidadeEmCentavos: resgateCalculado?.creditoEmCentavos ?? 0,
+          pontosConversaoFidelidade: resgateCalculado?.pontosConversao ?? null,
+          valorCreditoConversaoEmCentavos:
+            resgateCalculado?.valorCreditoConversaoEmCentavos ?? null,
+          configuracaoFidelidadeVersao:
+            resgateCalculado?.configuracaoVersao ?? null,
+          baseElegivelFidelidadeEmCentavos:
+            resgateCalculado?.baseElegivelEmCentavos ?? null,
+          limiteFidelidadeAplicadoEmCentavos:
+            resgateCalculado?.limiteEmCentavos ?? null,
+          valorMinimoPagamentoEmCentavos: resgateCalculado
+            ? VALOR_MINIMO_PAGAMENTO_APOS_FIDELIDADE_EM_CENTAVOS
+            : null,
           snapshotDescontos: totais.snapshotDescontos,
           gatewayPagamento,
           pagamentoStatus: "pending",
@@ -791,17 +902,43 @@ export async function criarPedidoCheckoutVisitanteInterno({
       throw new Error("Não foi possível criar o pedido.");
     }
 
+    const rateioFidelidade = ratearCreditoFidelidadeEntreItens({
+      itens: itensPedido.map((item, indice) => ({
+        id: dados.itens[indice]!.id,
+        valorBrutoEmCentavos: item.totalEmCentavos,
+      })),
+      descontoCupomEmCentavos,
+      creditoFidelidadeEmCentavos: resgateCalculado?.creditoEmCentavos ?? 0,
+    });
     await tx.insert(checkoutPedidoItensTable).values(
-      itensPedido.map((item) => ({
+      itensPedido.map((item, indice) => ({
         pedidoId: pedido.id,
         ...item,
+        creditoFidelidadeRateadoEmCentavos:
+          rateioFidelidade.get(dados.itens[indice]!.id) ?? 0,
       })),
     );
+
+    if (resgateCalculado && clienteExistente) {
+      const reserva = await reservarPontosPedido({
+        tx,
+        pedidoId: pedido.id,
+        checkoutClienteId: clienteExistente.id,
+        pontosSolicitados: resgateCalculado.pontos,
+        baseElegivelEmCentavos: resgateCalculado.baseElegivelEmCentavos,
+        totalAntesJurosEmCentavos: totaisPreviaForma.totalEstimadoEmCentavos,
+        referenciaIdempotencia: `pedido:${pedido.id}:resgate`,
+      });
+      await tx
+        .update(checkoutPedidosTable)
+        .set({ reservaFidelidadeId: reserva.id })
+        .where(eq(checkoutPedidosTable.id, pedido.id));
+    }
 
     await tx.insert(checkoutPedidoLogisticasTable).values(
       montarRegistroSnapshotFretePedido({
         pedidoId: pedido.id,
-        snapshot: revalidacaoFrete.snapshotFrete,
+        snapshot: snapshotFrete,
       }),
     );
 

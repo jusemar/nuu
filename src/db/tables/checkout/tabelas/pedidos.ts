@@ -1,7 +1,7 @@
 import {
+  boolean,
   index,
   integer,
-  boolean,
   jsonb,
   pgTable,
   text,
@@ -44,6 +44,25 @@ export const checkoutPedidosTable = pgTable(
       .default(0),
     totalEmCentavos: integer("total_em_centavos").notNull(),
     codigoCupomAplicado: text("codigo_cupom_aplicado"),
+    pontosResgatados: text("pontos_resgatados"),
+    creditoFidelidadeEmCentavos: integer("credito_fidelidade_em_centavos")
+      .notNull()
+      .default(0),
+    pontosConversaoFidelidade: text("pontos_conversao_fidelidade"),
+    valorCreditoConversaoEmCentavos: integer(
+      "valor_credito_conversao_em_centavos",
+    ),
+    configuracaoFidelidadeVersao: integer("configuracao_fidelidade_versao"),
+    baseElegivelFidelidadeEmCentavos: integer(
+      "base_elegivel_fidelidade_em_centavos",
+    ),
+    limiteFidelidadeAplicadoEmCentavos: integer(
+      "limite_fidelidade_aplicado_em_centavos",
+    ),
+    valorMinimoPagamentoEmCentavos: integer(
+      "valor_minimo_pagamento_em_centavos",
+    ),
+    reservaFidelidadeId: uuid("reserva_fidelidade_id"),
     snapshotDescontos: jsonb("snapshot_descontos"),
     gatewayPagamento:
       checkoutPagamentoGatewayEnum("gateway_pagamento").notNull(),

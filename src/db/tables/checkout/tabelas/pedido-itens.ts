@@ -18,6 +18,8 @@ export const checkoutPedidoItensTable = pgTable(
       .notNull()
       .references(() => checkoutPedidosTable.id, { onDelete: "cascade" }),
     produtoId: uuid("produto_id").notNull(),
+    // Snapshot sem FK: a categoria da venda deve sobreviver a futuras alterações/exclusões.
+    categoriaId: uuid("categoria_id"),
     varianteId: uuid("variante_id"),
     nomeProduto: text("nome_produto").notNull(),
     nomeVariante: text("nome_variante"),
@@ -32,6 +34,11 @@ export const checkoutPedidoItensTable = pgTable(
     quantidade: integer("quantidade").notNull(),
     precoUnitarioEmCentavos: integer("preco_unitario_em_centavos").notNull(),
     totalEmCentavos: integer("total_em_centavos").notNull(),
+    creditoFidelidadeRateadoEmCentavos: integer(
+      "credito_fidelidade_rateado_em_centavos",
+    )
+      .notNull()
+      .default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

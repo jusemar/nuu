@@ -1,23 +1,31 @@
 export type CategoriaFidelidade = {
   id: string;
   nome: string;
+  grupo: string;
+  produtos: number;
+  ativa: boolean;
+  pontosUltimos30Dias: number;
 };
 
 export type RegraCategoriaFidelidade = {
   categoriaId: string;
   personalizada: boolean;
-  valorGasto: string;
-  pontos: string;
+  pontosPorReal: number;
+  ativa: boolean;
 };
 
-export type ConfiguracaoFidelidadeMock = {
+export type ConfiguracaoFidelidade = {
   ativo: boolean;
   nomePublico: string;
-  valorGastoPadrao: string;
-  pontosPadrao: string;
-  pontosConversao: string;
-  valorCredito: string;
-  minimoResgate: string;
-  tipoValidade: "nao_expiram" | "expiram";
-  diasValidade: string;
+  pontosPorReal: number;
+  pontosConversao: number;
+  valorCredito: number;
+  minimoResgate: number;
+  mesesValidade: number;
+};
+
+export type EstadoProgramaFidelidade = {
+  configuracao: ConfiguracaoFidelidade;
+  regras: RegraCategoriaFidelidade[];
+  versao: number;
 };

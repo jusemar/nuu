@@ -1,5 +1,5 @@
 // src/app/category/[slug]/page.tsx
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -21,11 +21,17 @@ import { ConteudoEditorialCategoria } from "@/features/store/category/components
 import { DadosEstruturadosCategoria } from "@/features/store/category/components/dados-estruturados-categoria";
 import { MobileFilterDrawer } from "@/features/store/category/components/MobileFilterDrawer";
 import {
+  categoriaPodeSerIndexada,
+  urlCategoriaPossuiParametros,
+} from "@/features/store/category/lib/politica-indexacao-categoria";
+import {
   buscarArvoreCategoriaPublica,
   coletarIdsCategoriaEDescendentes,
 } from "@/features/store/category/queries/buscar-arvore-categoria-publica";
 import { buscarCategoriaPublicaPorSlug } from "@/features/store/category/queries/buscar-categoria-publica";
 import { buscarFaqsPublicasCategoria } from "@/features/store/category/queries/buscar-faqs-publicas-categoria";
+import { buscarSinaisIndexacaoCategoria } from "@/features/store/category/queries/buscar-sinais-indexacao-categoria";
+import { condicaoProdutoPublicoCategoria } from "@/features/store/category/queries/condicao-produto-publico-categoria";
 // Services
 import { getSubcategoryTabs } from "@/features/store/category/services/categoryTabsService";
 import {
@@ -67,12 +73,26 @@ async function executarLeituraCategoria<T>(
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const filtrosUrl = (await searchParams) ?? {};
   const resultado = await buscarCategoriaPublicaPorSlug(slug);
   if (!resultado) return {};
   const descricaoCategoria = resultado.categoria.description?.trim();
   const metaDescricao = resultado.categoria.metaDescription?.trim();
+  const possuiParametros = urlCategoriaPossuiParametros(filtrosUrl);
+  const sinais = possuiParametros
+    ? null
+    : await buscarSinaisIndexacaoCategoria(resultado.categoria.id);
+  const indexavel =
+    !possuiParametros &&
+    sinais !== null &&
+    categoriaPodeSerIndexada({
+      description: resultado.categoria.description,
+      descriptionBottom: resultado.categoria.descriptionBottom,
+      ...sinais,
+    });
 
   return {
     title: resultado.categoria.metaTitle || resultado.categoria.name,
@@ -81,6 +101,7 @@ export async function generateMetadata({
       descricaoCategoria ||
       obterDescricaoPadraoCategoria(resultado.categoria.name),
     alternates: { canonical: `/category/${resultado.categoria.slug}` },
+    robots: { index: indexavel, follow: true },
   };
 }
 
@@ -116,9 +137,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
       db.query.productTable.findMany({
         where: and(
           inArray(productTable.categoryId, categoriasIds),
-          eq(productTable.isActive, true),
-          eq(productTable.status, "published"),
-          sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
+          condicaoProdutoPublicoCategoria(),
         ),
         with: {
           galleryImages: true,
@@ -408,9 +427,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
           {/* ========================================================= */}
           <aside className="hidden flex-shrink-0 self-start lg:sticky lg:top-20 lg:block lg:w-64 xl:w-72">
             <div className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900">
                 Filtrar por
-              </h3>
+              </h2>
               <CategoryFilter
                 dados={{
                   categories: categoriasFiltro,

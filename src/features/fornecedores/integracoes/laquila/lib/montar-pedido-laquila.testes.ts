@@ -33,6 +33,7 @@ describe("payload Laquila 00002", () => {
   it("sanitiza PII e produz hash determinístico", () => {
     const pedido = montarPedidoLaquilaSemCredenciais({
       documento: "123.456.789-01",
+      cnpjLojista: "48.732.308/0001-58",
       nome: "Cliente Teste",
       email: "CLIENTE@example.com",
       telefone: "(41) 99999-9999",
@@ -56,5 +57,27 @@ describe("payload Laquila 00002", () => {
       gerarHashPayloadPedidoLaquila(pedido),
       gerarHashPayloadPedidoLaquila(pedido),
     );
+  });
+
+  it("separa o documento do cliente final do CNPJ do lojista", () => {
+    const pedido = montarPedidoLaquilaSemCredenciais({
+      documento: "040.224.446-06",
+      cnpjLojista: "48.732.308/0001-58",
+      nome: "Cliente Teste Laquila",
+      email: "cliente@example.com",
+      telefone: "(31) 99999-9999",
+      cdTransportador: "63993",
+      itens: [
+        {
+          codigoFornecedor: "1104095",
+          quantidade: 1,
+          precoUnitarioEmCentavos: 2369,
+        },
+      ],
+    });
+
+    assert.equal(pedido.cpf_cnpj, "04022444606");
+    assert.equal(pedido.cpf_cnpj_consulta, "48732308000158");
+    assert.notEqual(pedido.cpf_cnpj, pedido.cpf_cnpj_consulta);
   });
 });

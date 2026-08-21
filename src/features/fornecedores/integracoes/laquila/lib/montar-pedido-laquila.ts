@@ -80,6 +80,7 @@ export function montarItensPedidoLaquila(
 
 export function montarPedidoLaquilaSemCredenciais(entrada: {
   documento: string;
+  cnpjLojista: string;
   nome: string;
   email: string;
   telefone: string;
@@ -87,10 +88,15 @@ export function montarPedidoLaquilaSemCredenciais(entrada: {
   itens: readonly EntradaItemPedidoLaquila[];
 }): PedidoLaquilaSemCredenciais {
   const documento = normalizarDocumento(entrada.documento);
+  const cnpjLojista = normalizarDocumento(entrada.cnpjLojista);
+
+  if (cnpjLojista.length !== 14) {
+    throw new TypeError("CNPJ do lojista inválido para a Laquila.");
+  }
 
   return {
     cpf_cnpj: documento,
-    cpf_cnpj_consulta: documento,
+    cpf_cnpj_consulta: cnpjLojista,
     nm_cliente: entrada.nome.trim(),
     email: entrada.email.trim().toLowerCase(),
     nr_celular: normalizarTelefone(entrada.telefone),

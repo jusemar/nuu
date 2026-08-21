@@ -46,7 +46,30 @@ export async function getProductBySlug(slug: string) {
         galleryImages: true,
         pricing: true,
         attributes: true,
-        variants: true,
+        variants: {
+          with: {
+            identificadoresCatalogo: {
+              columns: {
+                tipo: true,
+                valor: true,
+                gtinTipo: true,
+                marcaId: true,
+                status: true,
+                principal: true,
+              },
+            },
+          },
+        },
+        identificadoresCatalogo: {
+          columns: {
+            tipo: true,
+            valor: true,
+            gtinTipo: true,
+            marcaId: true,
+            status: true,
+            principal: true,
+          },
+        },
         modeloRetirada: true,
         marca: true,
       },

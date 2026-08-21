@@ -457,10 +457,10 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   const entradas = journal.entries ?? [];
   const ultima = entradas.at(-1);
   if (
-    migrations.length !== 27 ||
-    entradas.length !== 27 ||
-    ultima?.idx !== 27 ||
-    ultima.tag !== "0027_programa_fidelidade_resgate_checkout" ||
+    migrations.length !== 29 ||
+    entradas.length !== 29 ||
+    ultima?.idx !== 28 ||
+    ultima.tag !== "0028_identificadores_catalogo_gtin_mpn" ||
     ultima.when !== migrations.at(-1)?.folderMillis
   ) {
     throw new ErroFluxoMigration(
@@ -469,14 +469,14 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
     );
   }
   const sql = readFileSync(
-    "drizzle/0027_programa_fidelidade_resgate_checkout.sql",
+    "drizzle/0028_identificadores_catalogo_gtin_mpn.sql",
     "utf8",
   );
   const hash = createHash("sha256").update(sql).digest("hex");
   if (hash !== migrations.at(-1)?.hash) {
     throw new ErroFluxoMigration(
       "arquivos-locais",
-      "O hash da migration 0027 diverge do migrator.",
+      "O hash da migration 0028 diverge do migrator.",
     );
   }
 }

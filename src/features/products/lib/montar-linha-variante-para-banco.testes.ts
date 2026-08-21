@@ -50,6 +50,9 @@ describe("montagem da linha de variante para o banco", () => {
       "id",
       "productId",
       "classificacoesLogisticasIds",
+      // Persistidos na tabela canônica de identificadores, nunca na variante.
+      "gtin",
+      "mpn",
     ]);
 
     const camposDoSchema = Object.keys(productVariantSchema.shape);

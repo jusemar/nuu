@@ -21,8 +21,11 @@ import {
   normalizarModalidadePrecoCanonica,
 } from "@/features/precificacao/server";
 import { resolverUrlCanonicaProduto } from "@/features/products/lib/url-canonica-produto";
+import { resolverVarianteInicialUrl } from "@/features/products/lib/url-variante-produto";
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
+import { DadosEstruturadosProduto } from "@/features/store/products/components/dados-estruturados-produto";
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
+import { montarMetadataProduto } from "@/features/store/products/lib/metadata-produto";
 import { buscarProdutosRelacionadosPdp } from "@/features/store/products/queries/buscar-produtos-relacionados-pdp";
 import { buscarVendaCruzadaPdp } from "@/features/store/products/queries/venda-cruzada/buscar-venda-cruzada-pdp";
 import { getProductBySlug } from "@/features/store/products/service/productService";
@@ -34,23 +37,13 @@ import type {
 // Props que o Next.js injeta automaticamente em pages com [slug]
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 // `cache` do React memoriza a consulta durante a MESMA requisição.
 // Assim `generateMetadata` e o componente da página compartilham o resultado
 // em vez de consultar o banco duas vezes.
 const buscarProdutoDaPagina = cache(getProductBySlug);
-
-/** Transforma o texto do produto em uma meta description limpa e curta. */
-function montarDescricaoParaMetadados(texto: string | null | undefined) {
-  const semHtml = (texto ?? "")
-    .replace(/<[^>]*>/g, " ") // remove tags caso a descrição venha em HTML
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (semHtml === "") return undefined;
-  return semHtml.length > 160 ? `${semHtml.slice(0, 157)}...` : semHtml;
-}
 
 // ==========================================
 // METADADOS (SEO) — roda no servidor
@@ -71,27 +64,7 @@ export async function generateMetadata({
     urlCanonicaSalva: product.canonicalUrl,
   });
 
-  const titulo = product.metaTitle?.trim() || product.name;
-  const descricao =
-    montarDescricaoParaMetadados(product.metaDescription) ??
-    montarDescricaoParaMetadados(product.description);
-
-  const imagemPrincipal =
-    product.galleryImages?.find((imagem) => imagem.isPrimary)?.imageUrl ??
-    product.galleryImages?.[0]?.imageUrl;
-
-  return {
-    title: titulo,
-    description: descricao,
-    alternates: { canonical: urlCanonica },
-    openGraph: {
-      type: "website",
-      url: urlCanonica,
-      title: titulo,
-      description: descricao,
-      images: imagemPrincipal ? [{ url: imagemPrincipal }] : undefined,
-    },
-  };
+  return montarMetadataProduto({ produto: product, urlCanonica });
 }
 
 function converterDataPromocao(data: Date | string | null | undefined) {
@@ -139,9 +112,10 @@ function normalizarPrecosProduto(
   });
 }
 
-export default async function ProductPage({ params }: PageProps) {
+export default async function ProductPage({ params, searchParams }: PageProps) {
   // 1. Extrair o slug da URL (ex: "tenis-nike")
   const { slug } = await params;
+  const parametrosBusca = await searchParams;
 
   // 2. Buscar produto no banco de dados pelo slug
   //    (mesma função memorizada usada em `generateMetadata`)
@@ -151,6 +125,21 @@ export default async function ProductPage({ params }: PageProps) {
   if (!product) {
     notFound();
   }
+
+  const parametroVariante =
+    typeof parametrosBusca.variant === "string"
+      ? parametrosBusca.variant
+      : undefined;
+  const varianteInicial = resolverVarianteInicialUrl({
+    tipoProduto: product.productKind,
+    variantes: product.variants,
+    varianteId: parametroVariante,
+  });
+
+  const urlCanonica = resolverUrlCanonicaProduto({
+    slug: product.slug,
+    urlCanonicaSalva: product.canonicalUrl,
+  });
 
   const pricing = normalizarPrecosProduto(product.pricing || []);
   const entradasPrecosModalidades = pricing.map((preco) => ({
@@ -215,26 +204,65 @@ export default async function ProductPage({ params }: PageProps) {
     permiteEntregaPropria: Boolean(product.allowsOwnDelivery),
   });
 
+  // Identificadores e procedência servem ao JSON-LD no servidor e não devem
+  // aumentar nem expor o payload enviado ao componente interativo da PDP.
+  const {
+    identificadoresCatalogo: identificadoresProduto,
+    variants: variantesComIdentificadores,
+    ...produtoSemIdentificadores
+  } = product;
+  void identificadoresProduto;
+  const variantesSemIdentificadores = variantesComIdentificadores.map(
+    ({ identificadoresCatalogo, ...variant }) => {
+      void identificadoresCatalogo;
+      return variant;
+    },
+  );
+
   // 4. Passa os dados REAIS para o componente client renderizar
   return (
-    <ProductDetail
-      urlCompartilhamento={resolverUrlCanonicaProduto({
-        slug: product.slug,
-        urlCanonicaSalva: product.canonicalUrl,
-      })}
-      product={{ ...product, pricing }}
-      nomeComercialLoja={configuracaoLoja.nomeComercial}
-      breadcrumbCategorias={breadcrumbCategorias}
-      precosCalculadosPorModalidade={precosCalculadosPorModalidade}
-      precosCalculadosPorVariante={precosCalculadosPorVariante}
-      produtosRelacionados={produtosRelacionados}
-      produtosVendaCruzada={produtosVendaCruzada}
-      servicosComPagamentoNaEntrega={selo.servicosComPagamentoNaEntrega}
-      bannerInstitucionalProduto={
-        bannerInstitucionalProduto ? (
-          <BannerInstitucionalProduto banner={bannerInstitucionalProduto} />
-        ) : null
-      }
-    />
+    <>
+      <DadosEstruturadosProduto
+        produto={{
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          brand: product.brand,
+          sku: product.sku,
+          productKind: product.productKind,
+          marcaId: product.marcaId,
+          identificadoresCatalogo: product.identificadoresCatalogo,
+          galleryImages: product.galleryImages,
+          pricing,
+          variants: product.variants,
+        }}
+        urlCanonica={urlCanonica}
+        nomeVendedor={configuracaoLoja.nomeComercial}
+        breadcrumbCategorias={breadcrumbCategorias}
+        precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+        precosCalculadosPorVariante={precosCalculadosPorVariante}
+      />
+      <ProductDetail
+        urlCompartilhamento={urlCanonica}
+        initialVariantId={varianteInicial?.id ?? null}
+        product={{
+          ...produtoSemIdentificadores,
+          variants: variantesSemIdentificadores,
+          pricing,
+        }}
+        nomeComercialLoja={configuracaoLoja.nomeComercial}
+        breadcrumbCategorias={breadcrumbCategorias}
+        precosCalculadosPorModalidade={precosCalculadosPorModalidade}
+        precosCalculadosPorVariante={precosCalculadosPorVariante}
+        produtosRelacionados={produtosRelacionados}
+        produtosVendaCruzada={produtosVendaCruzada}
+        servicosComPagamentoNaEntrega={selo.servicosComPagamentoNaEntrega}
+        bannerInstitucionalProduto={
+          bannerInstitucionalProduto ? (
+            <BannerInstitucionalProduto banner={bannerInstitucionalProduto} />
+          ) : null
+        }
+      />
+    </>
   );
 }

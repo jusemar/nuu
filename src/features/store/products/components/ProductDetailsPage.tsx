@@ -18,7 +18,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { Footer } from "@/components/common/footer";
@@ -27,6 +27,7 @@ import { useCarrinho } from "@/features/carrinho";
 import { Header } from "@/features/header";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
+import { montarUrlProdutoComVariante } from "@/features/products/lib/url-variante-produto";
 import { BannerPromocaoProdutoPdp } from "@/features/promocoes/components/store/banner-promocao-produto-pdp";
 
 import { useProductPricing } from "../hooks/useProductPricing";
@@ -63,6 +64,7 @@ import { VendaCruzadaPdp } from "./venda-cruzada-pdp";
 interface ProductDetailProps {
   /** Ausente no laboratório administrativo para não compartilhar a rota de preview. */
   urlCompartilhamento?: string;
+  initialVariantId?: string | null;
   product: {
     id: string;
     name: string;
@@ -123,6 +125,7 @@ interface ProductDetailProps {
 // ==========================================
 export function ProductDetail({
   urlCompartilhamento,
+  initialVariantId = null,
   product,
   nomeComercialLoja,
   breadcrumbCategorias,
@@ -167,8 +170,45 @@ export function ProductDetail({
           })),
         })
       : null;
+  const encontrarVarianteInicial = () =>
+    product.productKind === "variable"
+      ? (publicVariants.find((variant) => variant.id === initialVariantId) ??
+        null)
+      : null;
   const [selectedVariant, setSelectedVariant] =
-    useState<VarianteProdutoLoja | null>(null);
+    useState<VarianteProdutoLoja | null>(encontrarVarianteInicial);
+
+  useEffect(() => {
+    const proximaVariante = encontrarVarianteInicial();
+    setSelectedVariant((atual) =>
+      atual?.id === proximaVariante?.id ? atual : proximaVariante,
+    );
+    // A lista pertence ao produto já carregado; a sincronização responde à URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialVariantId, product.id, product.productKind]);
+
+  function selecionarVariante(variant: VarianteProdutoLoja | null) {
+    setSelectedVariant(variant);
+    if (modoPreVisualizacao || typeof window === "undefined") return;
+
+    const urlAtualizada = new URL(
+      montarUrlProdutoComVariante({
+        urlProduto: window.location.href,
+        varianteId: variant?.id,
+      }),
+    );
+    router.replace(
+      `${urlAtualizada.pathname}${urlAtualizada.search}${urlAtualizada.hash}`,
+      { scroll: false },
+    );
+  }
+
+  const urlCompartilhamentoAtual = urlCompartilhamento
+    ? montarUrlProdutoComVariante({
+        urlProduto: urlCompartilhamento,
+        varianteId: selectedVariant?.id,
+      })
+    : undefined;
   const [quantidadePrincipal, setQuantidadePrincipal] = useState(1);
   const [fretePrincipal, setFretePrincipal] = useState<
     NovoItemCarrinho["freteEscolhido"] | null
@@ -516,7 +556,7 @@ export function ProductDetail({
             variantAttributes={product.attributes}
             variants={publicVariants}
             selectedVariant={selectedVariant}
-            onSelectVariant={setSelectedVariant}
+            onSelectVariant={selecionarVariante}
             modoAssistenteVirtual
             modoPreVisualizacao
             mostrarDescricao={false}
@@ -624,7 +664,7 @@ export function ProductDetail({
           dataFimRelampago={dataFimPromocaoModalidadeAtiva}
           modoPreVisualizacao={true}
           mostrarMarcaPrevisualizacao={false}
-          urlCompartilhamento={urlCompartilhamento}
+          urlCompartilhamento={urlCompartilhamentoAtual}
         />
       }
       mensagemPromocional={
@@ -648,7 +688,7 @@ export function ProductDetail({
           variantAttributes={product.attributes}
           variants={publicVariants}
           selectedVariant={selectedVariant}
-          onSelectVariant={setSelectedVariant}
+          onSelectVariant={selecionarVariante}
           modoPreVisualizacao={true}
           mostrarDescricao={false}
         />
@@ -844,7 +884,7 @@ export function ProductDetail({
               variantAttributes={product.attributes}
               variants={publicVariants}
               selectedVariant={selectedVariant}
-              onSelectVariant={setSelectedVariant}
+              onSelectVariant={selecionarVariante}
               modoAssistenteVirtual={modoPreVisualizacao}
             />
           </div>

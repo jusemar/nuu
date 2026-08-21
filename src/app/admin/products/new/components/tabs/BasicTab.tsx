@@ -1,27 +1,6 @@
 // src/app/admin/products/new/components/tabs/BasicTab.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RichTextEditor } from "@/components/admin/rich-text-editor";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
   Box,
   CheckCircle2,
@@ -35,18 +14,42 @@ import {
   Tag,
   X,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { StoreProductFlags } from "@/components/admin/store-product-flags";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { listarMarcasAtivas } from "@/features/admin/marcas/services/marcaService";
+import { CategoryTreeSelector } from "@/features/admin/products/components/CategoryTreeSelector";
+import { MarcaPopoverSelector } from "@/features/admin/products/components/MarcaPopoverSelector";
+import type { ProductKind } from "@/features/products";
+import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { useCategories } from "@/hooks/admin/queries/use-categories";
-import { useSlugGenerator } from "@/hooks/forms/useSlugGenerator";
 import { useSkuGenerator } from "@/hooks/forms/useSkuGenerator";
+import { useSlugGenerator } from "@/hooks/forms/useSlugGenerator";
+
 import {
   ProductImageGallery,
   UploadedImage,
 } from "../image-upload/ProductImageGallery";
-import { StoreProductFlags } from "@/components/admin/store-product-flags";
-import { CategoryTreeSelector } from "@/features/admin/products/components/CategoryTreeSelector";
-import { MarcaPopoverSelector } from "@/features/admin/products/components/MarcaPopoverSelector";
-import type { ProductKind } from "@/features/products";
-import { listarMarcasAtivas } from "@/features/admin/marcas/services/marcaService";
 
 interface BasicTabProps {
   data: {
@@ -64,13 +67,15 @@ interface BasicTabProps {
     productType: string;
     productCode: string;
     ncmCode: string;
+    gtinProdutoSimples: string;
+    mpnProduto: string;
     estoqueProdutoSimples: number;
     estoqueProdutoSimplesIndisponivel?: boolean;
     images?: UploadedImage[];
     cardShortText: string;
     storeProductFlags: string[];
   };
-  onChange: (updates: any) => void;
+  onChange: (updates: Partial<BasicTabProps["data"]>) => void;
 }
 
 export function BasicTab({ data, onChange }: BasicTabProps) {
@@ -79,6 +84,10 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
   const { generateSku } = useSkuGenerator();
   const [tagInput, setTagInput] = useState("");
   const [marcas, setMarcas] = useState<Array<{ id: string; nome: string }>>([]);
+  const gtinSimplesInvalido = Boolean(
+    data.gtinProdutoSimples.trim() &&
+      !validarGtin(data.gtinProdutoSimples).valido,
+  );
 
   // Geração automática do SKU
   useEffect(() => {
@@ -519,6 +528,43 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                   onChange={(e) => onChange({ ncmCode: e.target.value })}
                   className="text-sm"
                 />
+              </div>
+
+              {data.productKind === "simple" ? (
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="gtinProdutoSimples">
+                    GTIN/EAN (opcional)
+                  </Label>
+                  <Input
+                    id="gtinProdutoSimples"
+                    inputMode="numeric"
+                    value={data.gtinProdutoSimples}
+                    onChange={(e) =>
+                      onChange({ gtinProdutoSimples: e.target.value })
+                    }
+                    aria-invalid={gtinSimplesInvalido}
+                    placeholder="Somente GTIN-8, 12, 13 ou 14 válido"
+                  />
+                  {gtinSimplesInvalido ? (
+                    <p className="text-xs text-red-600">
+                      GTIN inválido. Confira o formato e o dígito verificador.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="mpnProduto">MPN do produto (opcional)</Label>
+                <Input
+                  id="mpnProduto"
+                  value={data.mpnProduto}
+                  maxLength={120}
+                  onChange={(e) => onChange({ mpnProduto: e.target.value })}
+                  placeholder="Código declarado pelo fabricante"
+                />
+                <p className="text-xs text-slate-500">
+                  Não use SKU, NCM ou código interno neste campo.
+                </p>
               </div>
             </CardContent>
           </Card>

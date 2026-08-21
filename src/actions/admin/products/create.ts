@@ -1,25 +1,31 @@
 "use server";
 
-import { db } from "@/db/connection";
-import {
-  productTable,
-  productGalleryImagesTable,
-  productPricingTable,
-  productVariantTable,
-  produtosTiposLogisticosTable,
-  marcaTable,
-} from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+
+import { db } from "@/db/connection";
+import {
+  marcaTable,
+  productGalleryImagesTable,
+  productPricingTable,
+  productTable,
+  productVariantTable,
+  produtosTiposLogisticosTable,
+} from "@/db/schema";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
-import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
 import type {
   ProductAttributeInput,
   ProductKind,
   ProductVariantFormInput,
 } from "@/features/products";
-import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
+import {
+  ErroIdentificadorCatalogo,
+  salvarIdentificadorCatalogo,
+} from "@/features/products/actions/salvar-identificador-catalogo";
+import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
 
 function revalidateAdminProductsPath() {
@@ -55,13 +61,26 @@ interface CreateProductData {
   productKind?: ProductKind;
   productCode?: string;
   ncmCode?: string;
+  gtinProdutoSimples?: string;
+  mpnProduto?: string;
+  procedenciaIdentificadores?: {
+    origem: "manual_admin" | "fornecedor_importacao";
+    fornecedorId?: string | null;
+    referenciaOrigem?: string | null;
+  };
   estoqueProdutoSimples?: number;
   collection?: string;
   tags?: string[];
   storeProductFlags?: string[];
   pricing?: {
     costPrice?: string;
-    modalities?: any;
+    modalities?: Record<
+      string,
+      {
+        price?: string;
+        deliveryText?: string;
+      }
+    >;
     mainCardPriceType?: string;
   };
   warranty?: {
@@ -133,6 +152,13 @@ export async function createProduct(data: CreateProductData) {
   let produtoCriadoId: string | null = null;
 
   try {
+    if (
+      (data.productKind ?? "simple") === "simple" &&
+      data.gtinProdutoSimples?.trim() &&
+      !validarGtin(data.gtinProdutoSimples).valido
+    ) {
+      return { success: false, error: "Informe um GTIN válido." };
+    }
     const estoqueProdutoSimples = normalizarEstoqueProdutoSimples(
       data.estoqueProdutoSimples ??
         data.varianteTecnicaProdutoSimples?.estoque ??
@@ -225,7 +251,7 @@ export async function createProduct(data: CreateProductData) {
     // 3. SALVAR MODALIDADES DE PREÇO (apenas texto descritivo)
     if (data.pricing?.modalities) {
       const pricingEntries = Object.entries(data.pricing.modalities).map(
-        ([type, modality]: [string, any]) => ({
+        ([type, modality]) => ({
           productId: product.id,
           type: type,
           price: converterPrecoEmCentavos(modality.price) ?? 0,
@@ -264,6 +290,7 @@ export async function createProduct(data: CreateProductData) {
       productKind: data.productKind ?? "simple",
       attributes: data.attributes,
       variants: data.variants,
+      marcaId: marcaFinal.id,
     });
 
     let varianteTecnicaId: string | null = null;
@@ -305,6 +332,30 @@ export async function createProduct(data: CreateProductData) {
         .returning({ id: productVariantTable.id });
 
       varianteTecnicaId = varianteTecnica.id;
+
+      if (data.gtinProdutoSimples?.trim()) {
+        await salvarIdentificadorCatalogo({
+          tipo: "gtin",
+          valor: data.gtinProdutoSimples,
+          varianteId: varianteTecnica.id,
+          marcaId: marcaFinal.id,
+          origem: data.procedenciaIdentificadores?.origem ?? "manual_admin",
+          fornecedorId: data.procedenciaIdentificadores?.fornecedorId,
+          referenciaOrigem: data.procedenciaIdentificadores?.referenciaOrigem,
+        });
+      }
+    }
+
+    if (data.mpnProduto?.trim()) {
+      await salvarIdentificadorCatalogo({
+        tipo: "mpn",
+        valor: data.mpnProduto,
+        produtoId: product.id,
+        marcaId: marcaFinal.id,
+        origem: data.procedenciaIdentificadores?.origem ?? "manual_admin",
+        fornecedorId: data.procedenciaIdentificadores?.fornecedorId,
+        referenciaOrigem: data.procedenciaIdentificadores?.referenciaOrigem,
+      });
     }
 
     // 4. Revalidar cache
@@ -330,7 +381,10 @@ export async function createProduct(data: CreateProductData) {
 
     return {
       success: false,
-      error: "Erro ao criar produto. Tente novamente.",
+      error:
+        error instanceof ErroIdentificadorCatalogo
+          ? error.message
+          : "Erro ao criar produto. Tente novamente.",
     };
   }
 }

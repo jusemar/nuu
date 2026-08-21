@@ -41,8 +41,12 @@ import {
 import { WarrantyTab } from "../../new/components/tabs/WarrantyTab";
 import {
   initialProductData,
-  ProductFormData,
+  type ProductFormData,
 } from "../../new/data/product-form-data";
+
+type ModalidadesFormulario = NonNullable<
+  NonNullable<ProductFormData["pricing"]>["modalities"]
+>;
 
 export default function EditProductPage() {
   const params = useParams();
@@ -69,7 +73,9 @@ export default function EditProductPage() {
       const product = productResponse.data;
       const estoqueProdutoSimples = product.estoqueProdutoSimples;
       // Função para mapear modalidades do banco para estrutura do frontend
-      const mapModalitiesFromDB = (dbModalities: any) => {
+      const mapModalitiesFromDB = (
+        dbModalities: ModalidadesFormulario | undefined,
+      ) => {
         return {
           stock: {
             price: dbModalities?.stock?.price || "",
@@ -145,6 +151,8 @@ export default function EditProductPage() {
         productType: product.productType || "",
         productCode: product.productCode || "",
         ncmCode: product.ncmCode || "",
+        gtinProdutoSimples: product.gtinProdutoSimples || "",
+        mpnProduto: product.mpnProduto || "",
         estoqueProdutoSimples:
           typeof estoqueProdutoSimples === "number" &&
           Number.isSafeInteger(estoqueProdutoSimples) &&
@@ -162,7 +170,8 @@ export default function EditProductPage() {
 
         // Dados de preços (estrutura que estava faltando)
         pricing: {
-          costPrice: (product.pricing as any)?.costPrice || "",
+          // O serviço legado não inclui custo dentro de `pricing`.
+          costPrice: "",
           modalities: mapModalitiesFromDB(product.pricing?.modalities),
           mainCardPriceType: product.pricing?.mainCardPriceType || "",
         },
@@ -176,7 +185,7 @@ export default function EditProductPage() {
 
         // Imagens da galeria principal (vindas da tabela product_gallery_images)
         images: Array.isArray(product.images)
-          ? product.images.map((img: any) => ({
+          ? product.images.map((img) => ({
               id: String(img.id),
               url: String(img.url ?? ""),
               preview: String(img.url ?? img.preview ?? ""),
@@ -185,7 +194,7 @@ export default function EditProductPage() {
           : [],
 
         attributes: Array.isArray(product.attributes)
-          ? product.attributes.map((attribute: any) => ({
+          ? product.attributes.map((attribute) => ({
               id: String(attribute.id),
               productId: String(attribute.productId),
               name: String(attribute.name ?? ""),
@@ -194,10 +203,12 @@ export default function EditProductPage() {
           : [],
 
         variants: Array.isArray(product.variants)
-          ? product.variants.map((variant: any) => ({
+          ? product.variants.map((variant) => ({
               id: String(variant.id),
               productId: String(variant.productId),
               sku: String(variant.sku ?? ""),
+              gtin: String(variant.gtin ?? ""),
+              mpn: String(variant.mpn ?? ""),
               name: variant.name ?? null,
               attributes: variant.attributes ?? {},
               priceInCents: Number(variant.priceInCents ?? 0),

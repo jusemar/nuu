@@ -1,13 +1,18 @@
 "use server";
 
+import { eq, inArray } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
+  identificadoresCatalogoTable,
   productAttributeTable,
   productVariantTable,
   variantesTiposLogisticosTable,
 } from "@/db/schema";
-import { eq } from "drizzle-orm";
 
+import { validarGtin, validarMpnBasico } from "../lib/identificadores-catalogo";
+import { montarLinhaVarianteParaBanco } from "../lib/montar-linha-variante-para-banco";
+import { normalizeProductKind } from "../lib/product-kind";
 import {
   productAttributeSchema,
   productVariantSchema,
@@ -17,15 +22,20 @@ import type {
   ProductKind,
   ProductVariantFormInput,
 } from "../types/product-variants.types";
-import { montarLinhaVarianteParaBanco } from "../lib/montar-linha-variante-para-banco";
-import { normalizeProductKind } from "../lib/product-kind";
+import {
+  ErroIdentificadorCatalogo,
+  removerIdentificadorManualNaoVerificado,
+  salvarIdentificadorCatalogo,
+} from "./salvar-identificador-catalogo";
 
 type SaveProductVariantsInput = {
   productId: string;
   productKind?: ProductKind | string | null;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
+  marcaId?: string | null;
   preservarVarianteTecnicaProdutoSimples?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   executor?: any;
 };
 
@@ -44,10 +54,55 @@ export async function salvarEstruturaVariantesProduto({
   productKind,
   attributes = [],
   variants = [],
+  marcaId,
   preservarVarianteTecnicaProdutoSimples = false,
   executor = db,
 }: SaveProductVariantsInput) {
   const normalizedKind = normalizeProductKind(productKind);
+
+  // Valida antes do primeiro delete para que um identificador inválido nunca
+  // deixe a estrutura de variantes parcialmente recriada.
+  for (const variant of variants) {
+    if (variant.gtin?.trim() && !validarGtin(variant.gtin).valido) {
+      throw new ErroIdentificadorCatalogo(
+        `GTIN inválido na variante ${variant.sku || "sem SKU"}.`,
+      );
+    }
+    if (
+      variant.mpn?.trim() &&
+      !validarMpnBasico({
+        valor: variant.mpn,
+        declaradoExplicitamente: true,
+      }).valido
+    ) {
+      throw new ErroIdentificadorCatalogo(
+        `MPN inválido na variante ${variant.sku || "sem SKU"}.`,
+      );
+    }
+  }
+
+  const variantesAnteriores =
+    normalizedKind === "variable"
+      ? await executor
+          .select({ id: productVariantTable.id, sku: productVariantTable.sku })
+          .from(productVariantTable)
+          .where(eq(productVariantTable.productId, productId))
+      : [];
+  const idsAnteriores = variantesAnteriores.map(
+    (variante: { id: string }) => variante.id,
+  );
+  const identificadoresAnteriores = idsAnteriores.length
+    ? await executor
+        .select()
+        .from(identificadoresCatalogoTable)
+        .where(inArray(identificadoresCatalogoTable.varianteId, idsAnteriores))
+    : [];
+  const skuPorIdAnterior = new Map<string, string>(
+    variantesAnteriores.map((variante: { id: string; sku: string }) => [
+      variante.id,
+      variante.sku,
+    ]),
+  );
 
   await executor
     .delete(productAttributeTable)
@@ -131,12 +186,85 @@ export async function salvarEstruturaVariantesProduto({
         sku: productVariantTable.sku,
       });
 
-    const varianteIdPorSku = new Map(
+    const varianteIdPorSku = new Map<string, string>(
       variantesInseridas.map((variante: { id: string; sku: string }) => [
         variante.sku,
         variante.id,
       ]),
     );
+
+    // O fluxo legado recria variantes. Reassociamos todos os registros (inclusive
+    // conflitos e procedência) pelo SKU antes de aplicar o valor do formulário.
+    const identificadoresParaRestaurar = identificadoresAnteriores.flatMap(
+      (identificador: typeof identificadoresCatalogoTable.$inferSelect) => {
+        const sku = identificador.varianteId
+          ? skuPorIdAnterior.get(identificador.varianteId)
+          : null;
+        const varianteId = sku ? varianteIdPorSku.get(sku) : null;
+        if (!varianteId) return [];
+        return [
+          {
+            tipo: identificador.tipo,
+            valor: identificador.valor,
+            gtinTipo: identificador.gtinTipo,
+            produtoId: null,
+            varianteId,
+            marcaId: identificador.marcaId,
+            origem: identificador.origem,
+            fornecedorId: identificador.fornecedorId,
+            referenciaOrigem: identificador.referenciaOrigem,
+            status: identificador.status,
+            motivoStatus: identificador.motivoStatus,
+            principal: identificador.principal,
+            verificadoEm: identificador.verificadoEm,
+            createdAt: identificador.createdAt,
+            updatedAt: identificador.updatedAt,
+          },
+        ];
+      },
+    );
+    if (identificadoresParaRestaurar.length) {
+      await executor
+        .insert(identificadoresCatalogoTable)
+        .values(identificadoresParaRestaurar);
+    }
+
+    for (const variant of parsedVariants) {
+      const varianteId = varianteIdPorSku.get(variant.sku);
+      if (!varianteId) continue;
+      if (variant.gtin?.trim()) {
+        await salvarIdentificadorCatalogo({
+          tipo: "gtin",
+          valor: variant.gtin,
+          varianteId,
+          marcaId,
+          origem: "manual_admin",
+          executor,
+        });
+      } else {
+        await removerIdentificadorManualNaoVerificado({
+          tipo: "gtin",
+          varianteId,
+          executor,
+        });
+      }
+      if (variant.mpn?.trim()) {
+        await salvarIdentificadorCatalogo({
+          tipo: "mpn",
+          valor: variant.mpn,
+          varianteId,
+          marcaId,
+          origem: "manual_admin",
+          executor,
+        });
+      } else {
+        await removerIdentificadorManualNaoVerificado({
+          tipo: "mpn",
+          varianteId,
+          executor,
+        });
+      }
+    }
     const vinculosClassificacoes = parsedVariants.flatMap((variant) => {
       const varianteId = varianteIdPorSku.get(variant.sku);
       if (!varianteId) return [];

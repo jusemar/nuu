@@ -22,13 +22,15 @@ import {
  *   1. `exigirBancoProducao()` exige `AMBIENTE_BANCO=producao` **e** a variável
  *      `AUTORIZACAO_PRODUCAO` com o valor exato, e confirma no próprio servidor que o
  *      endpoint é mesmo o da branch `production`;
- *   2. `--somente=<tag>` exige que o operador escreva o nome da migration que espera aplicar.
- *      Se a lista de pendentes não for exatamente essa, o script recusa e não escreve nada;
+ *   2. `--somente=<tag[,tag...]>` exige que o operador escreva, em ordem, os nomes de todas
+ *      as migrations que espera aplicar. Se a lista de pendentes não for exatamente essa,
+ *      o script recusa e não escreve nada;
  *   3. `--conferir` roda o diagnóstico completo sem aplicar coisa alguma.
  *
  * Uso (sempre via package.json):
  *   npm run migrations:producao -- --conferir
  *   npm run migrations:producao -- --somente=0015_lush_red_wolf
+ *   npm run migrations:producao -- --somente=0023_exemplo,0024_exemplo
  */
 
 const PASTA_MIGRACOES = "./drizzle";
@@ -169,6 +171,10 @@ async function aplicar(url: string) {
 async function executar() {
   const apenasConferir = process.argv.includes("--conferir");
   const somente = obterArgumento("somente");
+  const esperadas = somente
+    ?.split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 
   if (!apenasConferir && !somente) {
     throw new Error(
@@ -214,13 +220,18 @@ async function executar() {
 
   // A confirmação nominal é o que impede uma migration inesperada de entrar de carona: o
   // operador declara o que espera, e o script recusa qualquer coisa diferente disso.
-  if (pendentes.length !== 1 || pendentes[0].tag !== somente) {
+  const tagsPendentes = pendentes.map((item) => item.tag);
+  const listaEsperadaCorresponde =
+    esperadas?.length === tagsPendentes.length &&
+    esperadas.every((tag, indice) => tag === tagsPendentes[indice]);
+
+  if (!listaEsperadaCorresponde) {
     throw new Error(
-      `Recusado: --somente=${somente} não corresponde às pendentes (${pendentes.map((item) => item.tag).join(", ") || "nenhuma"}). Nenhuma alteração foi feita.`,
+      `Recusado: --somente=${somente} não corresponde às pendentes (${tagsPendentes.join(", ") || "nenhuma"}). Nenhuma alteração foi feita.`,
     );
   }
 
-  console.log(`Aplicando ${somente} em PRODUÇÃO…\n`);
+  console.log(`Aplicando ${esperadas.join(", ")} em PRODUÇÃO…\n`);
   await aplicar(destino.url);
 
   const depois = await consultarAplicadas(destino.url);
@@ -232,13 +243,19 @@ async function executar() {
   console.log(`Registros depois : ${depois.length}`);
   console.log(`Novos registros  : ${novos.length}`);
 
-  if (novos.length !== 1 || novos[0].hash !== pendentes[0].hash) {
+  const registrosCorrespondem =
+    novos.length === pendentes.length &&
+    novos.every((registro, indice) => registro.hash === pendentes[indice].hash);
+
+  if (!registrosCorrespondem) {
     throw new Error(
       "A migration foi executada, mas o registro resultante não é o esperado. Confira drizzle_v2.__drizzle_migrations manualmente.",
     );
   }
 
-  console.log(`\n${somente} aplicada e registrada uma única vez.\n`);
+  console.log(
+    `\n${esperadas.length} migration(s) aplicada(s) e registrada(s) uma única vez.\n`,
+  );
 }
 
 executar().catch(encerrarComFalhaDeDestino);

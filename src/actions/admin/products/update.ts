@@ -1,33 +1,40 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
 import { db } from "@/db/connection";
-import { dbTransacional } from "@/db/transaction";
 import {
   categoryTable,
-  productTable,
-  productPricingTable,
-  productVariantTable,
-  productGalleryImagesTable,
   marcaTable,
+  productGalleryImagesTable,
+  productPricingTable,
+  productTable,
+  productVariantTable,
 } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
+import { dbTransacional } from "@/db/transaction";
+import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
-import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
 import type {
   ProductAttributeInput,
   ProductKind,
   ProductVariantFormInput,
 } from "@/features/products";
-import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import { salvarEstruturaVariantesProduto } from "@/features/products/actions/admin-product-variants.actions";
+import {
+  ErroIdentificadorCatalogo,
+  removerIdentificadorManualNaoVerificado,
+  salvarIdentificadorCatalogo,
+} from "@/features/products/actions/salvar-identificador-catalogo";
 import {
   descreverErroBancoParaLog,
   erroEhTransitorioDeBanco,
 } from "@/features/products/lib/classificar-erro-banco";
-import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
+import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
+import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 function revalidatePathSeguro(path: string, recurso: string) {
   try {
@@ -147,6 +154,8 @@ interface UpdateProductData {
   productType?: string;
   productCode?: string;
   ncmCode?: string;
+  gtinProdutoSimples?: string;
+  mpnProduto?: string;
   estoqueProdutoSimples?: number;
   metaTitle?: string;
   metaDescription?: string;
@@ -222,6 +231,13 @@ export async function updateProduct(id: string, data: UpdateProductData) {
         "Verifique os dados informados e tente novamente.",
       );
     }
+    if (
+      (data.productKind ?? "simple") === "simple" &&
+      data.gtinProdutoSimples?.trim() &&
+      !validarGtin(data.gtinProdutoSimples).valido
+    ) {
+      return falha("DADOS_INVALIDOS", "Informe um GTIN válido.");
+    }
 
     etapaAtual = "consulta_produto";
     const [existingProduct] = await executarLeituraComRetry("produto", () =>
@@ -256,7 +272,7 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     }
 
     // ✅ CONSTRUIR APENAS CAMPOS QUE FORAM ENVIADOS
-    const updateFields: any = {
+    const updateFields: Partial<typeof productTable.$inferInsert> = {
       updatedAt: new Date(), // Sempre atualiza
     };
 
@@ -376,6 +392,52 @@ export async function updateProduct(id: string, data: UpdateProductData) {
             : null;
       }
 
+      if (
+        tipoProdutoFinal === "simple" &&
+        data.gtinProdutoSimples !== undefined
+      ) {
+        if (!varianteTecnicaConfiavelId) {
+          throw new ErroIdentificadorCatalogo(
+            "A variante interna do produto simples está inconsistente.",
+          );
+        }
+        if (data.gtinProdutoSimples.trim()) {
+          await salvarIdentificadorCatalogo({
+            tipo: "gtin",
+            valor: data.gtinProdutoSimples,
+            varianteId: varianteTecnicaConfiavelId,
+            marcaId: data.brandId || existingProduct.marcaId,
+            origem: "manual_admin",
+            executor: tx,
+          });
+        } else {
+          await removerIdentificadorManualNaoVerificado({
+            tipo: "gtin",
+            varianteId: varianteTecnicaConfiavelId,
+            executor: tx,
+          });
+        }
+      }
+
+      if (data.mpnProduto !== undefined) {
+        if (data.mpnProduto.trim()) {
+          await salvarIdentificadorCatalogo({
+            tipo: "mpn",
+            valor: data.mpnProduto,
+            produtoId: id,
+            marcaId: data.brandId || existingProduct.marcaId,
+            origem: "manual_admin",
+            executor: tx,
+          });
+        } else {
+          await removerIdentificadorManualNaoVerificado({
+            tipo: "mpn",
+            produtoId: id,
+            executor: tx,
+          });
+        }
+      }
+
       if (Object.keys(updateFields).length > 1) {
         await tx
           .update(productTable)
@@ -435,8 +497,8 @@ export async function updateProduct(id: string, data: UpdateProductData) {
           .where(eq(productPricingTable.productId, id));
 
         const pricingEntries = Object.entries(data.pricing.modalities)
-          .filter(([_, modality]) => modality.price)
-          .map(([type, modality]: [string, any]) => {
+          .filter(([, modality]) => modality.price)
+          .map(([type, modality]) => {
             let promoDuration = null;
             let promoDurationUnit = null;
 
@@ -522,6 +584,7 @@ export async function updateProduct(id: string, data: UpdateProductData) {
             data.productKind ?? existingProduct.productKind ?? "simple",
           attributes: data.attributes ?? [],
           variants: data.variants ?? [],
+          marcaId: data.brandId || existingProduct.marcaId,
           preservarVarianteTecnicaProdutoSimples:
             existingProduct.productKind === "simple",
           executor: tx,
@@ -563,6 +626,10 @@ export async function updateProduct(id: string, data: UpdateProductData) {
         "DADOS_INVALIDOS",
         "Não foi possível atualizar o estoque porque a variante interna deste produto está inconsistente.",
       );
+    }
+
+    if (error instanceof ErroIdentificadorCatalogo) {
+      return falha("DADOS_INVALIDOS", error.message);
     }
 
     return falha(

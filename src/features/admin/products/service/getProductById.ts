@@ -7,11 +7,12 @@
 "use server";
 
 // --- IMPORTAÇÕES DO BANCO DE DADOS ---
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
   categoryTable, // Tabela de categorias (para buscar o nome da categoria)
+  identificadoresCatalogoTable,
   marcaTable,
   modelosRetiradaTable, // Tabela de modelos de retirada
   productAttributeTable,
@@ -24,8 +25,8 @@ import {
   variantesTiposLogisticosTable,
 } from "@/db/schema";
 import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
-import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import { listarTransportadorasLaquila } from "@/features/fornecedores/integracoes/laquila/queries/listar-transportadoras-laquila";
+import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 function obterDetalhesErro(error: unknown) {
@@ -261,6 +262,37 @@ export async function getProductById(id: string) {
       .where(eq(productVariantTable.productId, id))
       .orderBy(asc(productVariantTable.createdAt));
 
+    const identificadores = await db
+      .select({
+        tipo: identificadoresCatalogoTable.tipo,
+        valor: identificadoresCatalogoTable.valor,
+        produtoId: identificadoresCatalogoTable.produtoId,
+        varianteId: identificadoresCatalogoTable.varianteId,
+      })
+      .from(identificadoresCatalogoTable)
+      .where(
+        and(
+          eq(identificadoresCatalogoTable.principal, true),
+          variants.length
+            ? or(
+                eq(identificadoresCatalogoTable.produtoId, id),
+                inArray(
+                  identificadoresCatalogoTable.varianteId,
+                  variants.map((v) => v.id),
+                ),
+              )
+            : eq(identificadoresCatalogoTable.produtoId, id),
+        ),
+      );
+    const identificadorProduto = identificadores.find(
+      (item) => item.produtoId === id && item.tipo === "mpn",
+    );
+    const identificadoresPorVariante = new Map(
+      identificadores
+        .filter((item) => item.varianteId)
+        .map((item) => [`${item.varianteId}:${item.tipo}`, item.valor]),
+    );
+
     const vinculosClassificacoesVariantes =
       await carregarClassificacoesLogisticasVariantes(id, variants);
 
@@ -289,6 +321,8 @@ export async function getProductById(id: string) {
       const classificacoes = classificacoesPorVariante.get(variant.id) ?? [];
       return {
         ...variant,
+        gtin: identificadoresPorVariante.get(`${variant.id}:gtin`) ?? "",
+        mpn: identificadoresPorVariante.get(`${variant.id}:mpn`) ?? "",
         classificacoesLogisticasIds: classificacoes.map(
           (classificacao) => classificacao.tipoLogisticoId,
         ),
@@ -320,10 +354,22 @@ export async function getProductById(id: string) {
       ]);
 
     // Montar o objeto de modalidades no formato que o frontend espera
-    const modalities: Record<string, any> = {};
+    const modalities: Record<
+      string,
+      {
+        price: string;
+        deliveryText: string;
+        promo: {
+          active: boolean;
+          type: string;
+          price: string;
+          endDate: Date | undefined;
+        };
+      }
+    > = {};
     let mainCardPriceType = "";
 
-    pricingModalities.forEach((m: any) => {
+    pricingModalities.forEach((m) => {
       // Tipo da modalidade (stock, preSale, dropshipping, orderBasis)
       const type = m.type || "default";
 
@@ -364,7 +410,7 @@ export async function getProductById(id: string) {
         flags =
           typeof product.storeProductFlags === "string"
             ? JSON.parse(product.storeProductFlags)
-            : (product.storeProductFlags as any);
+            : product.storeProductFlags;
       } catch {
         flags = Array.isArray(product.storeProductFlags)
           ? product.storeProductFlags
@@ -423,6 +469,13 @@ export async function getProductById(id: string) {
         ),
         attributes,
         variants: variantsWithClassifications,
+        gtinProdutoSimples:
+          varianteTecnicaProdutoSimples?.situacao === "confiavel"
+            ? (identificadoresPorVariante.get(
+                `${varianteTecnicaProdutoSimples.variante.id}:gtin`,
+              ) ?? "")
+            : "",
+        mpnProduto: identificadorProduto?.valor ?? "",
         estoqueProdutoSimples:
           varianteTecnicaProdutoSimples?.situacao === "confiavel"
             ? varianteTecnicaProdutoSimples.variante.estoque

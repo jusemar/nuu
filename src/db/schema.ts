@@ -13,18 +13,61 @@ import {
 // ============================================
 // IMPORTS DAS TABELAS EXISTENTES
 // ============================================
-
 import { categoryTable } from "./table/categories/categories";
 import { categoryFaqTable } from "./table/categories/category-faq";
+import { cities } from "./table/logistics/cities/cities";
+// Modalidades e Fornecedores
+import { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
+// Entrega Própria - Sistema de 3 níveis
+import {
+  bairrosAvulsos,
+  bairrosAvulsosRelations,
+  cepsEspecificos,
+  productOwnDeliveryPrices,
+  productOwnDeliveryPricesRelations,
+  regioBairros,
+  regioBairrosRelations,
+  shippingBairroAvulsoSlots,
+  shippingBairroAvulsoSlotsRelations,
+  shippingPendingNeighborhoods,
+  shippingRegionCepRanges,
+  shippingRegionCepRangesRelations,
+  shippingRegions,
+  shippingRegionSlots,
+  shippingRegionSlotsRelations,
+  shippingRegionsRelations,
+  shippingZipAddresses,
+  shippingZipAddressesRelations,
+} from "./table/logistics/entrega-propria";
+import { neighborhoods } from "./table/logistics/neighborhoods/neighborhoods";
+// Tabelas de junção (Produto ↔ Logística)
+import { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
+import { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
+// ============================================
+// IMPORTS DAS TABELAS DE LOGÍSTICA (NOVOS)
+// ============================================
+// Regiões (Estados, Cidades, Bairros)
+import { states } from "./table/logistics/states/states";
+import { suppliers } from "./table/logistics/suppliers/suppliers";
 import { marcaTable } from "./table/marcas/marcas";
-import { productVariantTable } from "./table/products/product-variants";
-import { productTable } from "./table/products/products";
+import { identificadoresCatalogoTable } from "./table/products/identificadores-catalogo";
+import { productAttributeTable } from "./table/products/product-attributes";
+import { productGalleryImagesTable } from "./table/products/product-gallery-images";
 import { productImageTable } from "./table/products/product-images";
 import { productPricingTable } from "./table/products/product-pricing";
+import { productVariantTable } from "./table/products/product-variants";
+import { productTable } from "./table/products/products";
 import { produtosVendaCruzadaTable } from "./table/products/produtos-venda-cruzada";
-import { productAttributeTable } from "./table/products/product-attributes";
 import { productVariantImageTable } from "./table/products/variant-images";
-import { productGalleryImagesTable } from "./table/products/product-gallery-images";
+// Retirada - Modelos de retirada
+// import { modelosRetiradaTable } from "./table/retirada";
+import {
+  configHorarioRelations,
+  configHorarioTable,
+  feriadosRelations,
+  feriadosTable,
+  modelosRetiradaTable,
+} from "./table/retirada";
 import {
   clienteTipoPessoaEnum,
   enderecosClientesRelations,
@@ -33,55 +76,7 @@ import {
   perfisClientesTable,
   userTable,
 } from "./tables/autenticacao";
-
-// ============================================
-// IMPORTS DAS TABELAS DE LOGÍSTICA (NOVOS)
-// ============================================
-
-// Regiões (Estados, Cidades, Bairros)
-import { states } from "./table/logistics/states/states";
-import { cities } from "./table/logistics/cities/cities";
-import { neighborhoods } from "./table/logistics/neighborhoods/neighborhoods";
-
-// Modalidades e Fornecedores
-import { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
-import { suppliers } from "./table/logistics/suppliers/suppliers";
-
-// Tabelas de junção (Produto ↔ Logística)
-import { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
-import { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
-
-// Entrega Própria - Sistema de 3 níveis
-import {
-  shippingRegions,
-  regioBairros,
-  shippingRegionCepRanges,
-  bairrosAvulsos,
-  cepsEspecificos,
-  shippingRegionSlots,
-  shippingBairroAvulsoSlots,
-  shippingPendingNeighborhoods,
-  shippingRegionsRelations,
-  regioBairrosRelations,
-  shippingRegionCepRangesRelations,
-  bairrosAvulsosRelations,
-  shippingRegionSlotsRelations,
-  shippingBairroAvulsoSlotsRelations,
-  productOwnDeliveryPrices,
-  productOwnDeliveryPricesRelations,
-  shippingZipAddresses,
-  shippingZipAddressesRelations,
-} from "./table/logistics/entrega-propria";
-
-// Retirada - Modelos de retirada
-// import { modelosRetiradaTable } from "./table/retirada";
-import {
-  configHorarioTable,
-  feriadosTable,
-  modelosRetiradaTable,
-  configHorarioRelations,
-  feriadosRelations,
-} from "./table/retirada";
+import { fornecedoresTable as fornecedoresIdentificadoresTable } from "./tables/fornecedores/tabelas/fornecedores";
 
 // ============================================
 // TABELAS EXISTENTES (mantidas como estavam)
@@ -294,6 +289,7 @@ export const productVariantRelations = relations(
     variantImages: many(productVariantImageTable),
     cartItems: many(cartItemTable),
     orderItems: many(orderItemTable),
+    identificadoresCatalogo: many(identificadoresCatalogoTable),
   }),
 );
 
@@ -314,6 +310,7 @@ export const productRelations = relations(productTable, ({ one, many }) => ({
   attributes: many(productAttributeTable),
   pricing: many(productPricingTable),
   galleryImages: many(productGalleryImagesTable),
+  identificadoresCatalogo: many(identificadoresCatalogoTable),
   vendasCruzadasConfiguradas: many(produtosVendaCruzadaTable, {
     relationName: "vendaCruzadaProdutoPrincipal",
   }),
@@ -352,7 +349,40 @@ export { produtosVendaCruzadaTable };
 
 export const marcaRelations = relations(marcaTable, ({ many }) => ({
   produtos: many(productTable),
+  identificadoresCatalogo: many(identificadoresCatalogoTable),
 }));
+
+export const identificadoresCatalogoRelations = relations(
+  identificadoresCatalogoTable,
+  ({ one }) => ({
+    produto: one(productTable, {
+      fields: [identificadoresCatalogoTable.produtoId],
+      references: [productTable.id],
+    }),
+    variante: one(productVariantTable, {
+      fields: [identificadoresCatalogoTable.varianteId],
+      references: [productVariantTable.id],
+    }),
+    marca: one(marcaTable, {
+      fields: [identificadoresCatalogoTable.marcaId],
+      references: [marcaTable.id],
+    }),
+    fornecedor: one(fornecedoresIdentificadoresTable, {
+      fields: [identificadoresCatalogoTable.fornecedorId],
+      references: [fornecedoresIdentificadoresTable.id],
+    }),
+  }),
+);
+
+export {
+  type IdentificadorCatalogo,
+  identificadorCatalogoGtinTipoEnum,
+  identificadorCatalogoOrigemEnum,
+  identificadorCatalogoStatusEnum,
+  identificadorCatalogoTipoEnum,
+  identificadoresCatalogoTable,
+  type NovoIdentificadorCatalogo,
+} from "./table/products/identificadores-catalogo";
 
 export const shippingAddressRelations = relations(
   shippingAddressTable,
@@ -528,6 +558,16 @@ export const productSuppliersRelations = relations(
 // ============================================
 
 // Tabelas existentes
+export { categoryTable } from "./table/categories/categories";
+export { categoryFaqTable } from "./table/categories/category-faq";
+export { marcaTable } from "./table/marcas/marcas";
+export { productAttributeTable } from "./table/products/product-attributes";
+export { productGalleryImagesTable } from "./table/products/product-gallery-images";
+export { productImageTable } from "./table/products/product-images";
+export { productPricingTable } from "./table/products/product-pricing";
+export { productVariantTable } from "./table/products/product-variants";
+export { productTable } from "./table/products/products";
+export { productVariantImageTable } from "./table/products/variant-images";
 export {
   clienteTipoPessoaEnum,
   enderecosClientesRelations,
@@ -537,69 +577,59 @@ export {
   userTable,
 } from "./tables/autenticacao";
 export {
+  type BannerHome,
   bannerHomeDestaqueEnum,
   bannerHomePosicaoEnum,
   bannerHomeTipoEnum,
   bannersHomeTable,
-  type BannerHome,
   type NovoBannerHome,
 } from "./tables/banners-home";
 export {
-  configuracoesLojaTable,
   type ConfiguracaoLoja,
+  configuracoesLojaTable,
 } from "./tables/configuracoes-loja/tabelas/configuracoes-loja";
-export { categoryTable } from "./table/categories/categories";
-export { categoryFaqTable } from "./table/categories/category-faq";
-export { marcaTable } from "./table/marcas/marcas";
-export { productTable } from "./table/products/products";
-export { productVariantTable } from "./table/products/product-variants";
-export { productImageTable } from "./table/products/product-images";
-export { productPricingTable } from "./table/products/product-pricing";
-export { productAttributeTable } from "./table/products/product-attributes";
-export { productVariantImageTable } from "./table/products/variant-images";
-export { productGalleryImagesTable } from "./table/products/product-gallery-images";
 
 // Tabelas de logística
-export { states } from "./table/logistics/states/states";
 export { cities } from "./table/logistics/cities/cities";
-export { neighborhoods } from "./table/logistics/neighborhoods/neighborhoods";
 export { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
-export { suppliers } from "./table/logistics/suppliers/suppliers";
+export { neighborhoods } from "./table/logistics/neighborhoods/neighborhoods";
 export { productDeliveryMethodsTable } from "./table/logistics/productDeliveryMethods.ts/productDeliveryMethods";
 export { productSuppliersTable } from "./table/logistics/productSuppliers/productSuppliers";
+export { states } from "./table/logistics/states/states";
+export { suppliers } from "./table/logistics/suppliers/suppliers";
 
 // Shipping - Novo sistema 3 níveis (NOVO)
 export {
-  shippingRegions,
-  regioBairros,
-  shippingRegionCepRanges,
-  bairrosAvulsos,
-  cepsEspecificos,
-  shippingRegionSlots,
-  shippingBairroAvulsoSlots,
-  shippingPendingNeighborhoods,
-  shippingZipAddresses,
-  productOwnDeliveryPrices,
-  type ShippingRegion,
-  type NewShippingRegion,
-  type RegioBairro,
-  type NewRegioBairro,
-  type ShippingRegionCepRange,
-  type NewShippingRegionCepRange,
   type BairroAvulso,
-  type NewBairroAvulso,
+  bairrosAvulsos,
   type CepEspecifico,
+  cepsEspecificos,
+  type NewBairroAvulso,
   type NewCepEspecifico,
-  type ShippingRegionSlot,
-  type NewShippingRegionSlot,
-  type ShippingBairroAvulsoSlot,
+  type NewProductOwnDeliveryPrice,
+  type NewRegioBairro,
   type NewShippingBairroAvulsoSlot,
-  type ShippingPendingNeighborhood,
   type NewShippingPendingNeighborhood,
-  type ShippingZipAddress,
+  type NewShippingRegion,
+  type NewShippingRegionCepRange,
+  type NewShippingRegionSlot,
   type NewShippingZipAddress,
   type ProductOwnDeliveryPrice,
-  type NewProductOwnDeliveryPrice,
+  productOwnDeliveryPrices,
+  type RegioBairro,
+  regioBairros,
+  type ShippingBairroAvulsoSlot,
+  shippingBairroAvulsoSlots,
+  type ShippingPendingNeighborhood,
+  shippingPendingNeighborhoods,
+  type ShippingRegion,
+  type ShippingRegionCepRange,
+  shippingRegionCepRanges,
+  shippingRegions,
+  type ShippingRegionSlot,
+  shippingRegionSlots,
+  type ShippingZipAddress,
+  shippingZipAddresses,
 } from "./table/logistics/entrega-propria";
 
 // Tabelas de Retirada
@@ -620,24 +650,24 @@ export {
   checkoutPagamentoGatewayEnum,
   checkoutPagamentoMetodoEnum,
   checkoutPagamentoNaEntregaFormaEnum,
-  checkoutPagamentoStatusEnum,
-  checkoutPedidoHistoricoOrigemEnum,
-  checkoutPedidoHistoricoTipoEnum,
-  checkoutPedidoHistoricosRelations,
-  checkoutPedidoHistoricosTable,
   checkoutPagamentosRelations,
   checkoutPagamentosTable,
+  checkoutPagamentoStatusEnum,
+  checkoutPedidoHistoricoOrigemEnum,
+  checkoutPedidoHistoricosRelations,
+  checkoutPedidoHistoricosTable,
+  checkoutPedidoHistoricoTipoEnum,
   checkoutPedidoItensRelations,
   checkoutPedidoItensTable,
   checkoutPedidoLogisticasRelations,
   checkoutPedidoLogisticasTable,
   checkoutPedidoPagamentoEntregaRelations,
   checkoutPedidoPagamentoEntregaTable,
-  checkoutStripeWebhookEventosRelations,
-  checkoutStripeWebhookEventosTable,
   checkoutPedidosRelations,
   checkoutPedidosTable,
   checkoutPedidoStatusEnum,
+  checkoutStripeWebhookEventosRelations,
+  checkoutStripeWebhookEventosTable,
   type SnapshotElegibilidadePagamentoNaEntrega,
 } from "./tables/checkout";
 
@@ -653,79 +683,94 @@ export {
 
 // Fornecedores e importações
 export {
+  type Fornecedor,
+  fornecedoresRelations,
+  fornecedoresTable,
+  type FornecedorIntegracaoApi,
   fornecedorIntegracaoApiAmbienteEnum,
   fornecedorIntegracaoApiProvedorEnum,
   fornecedorIntegracaoApiTesteStatusEnum,
-  fornecedorIntegracaoLogStatusEnum,
+  type FornecedorIntegracaoLog,
   fornecedorIntegracaoLogsRelations,
   fornecedorIntegracaoLogsTable,
-  fornecedorPedidoIntegracoesTable,
+  fornecedorIntegracaoLogStatusEnum,
   fornecedorIntegracoesApiRelations,
   fornecedorIntegracoesApiTable,
+  type FornecedorMapeamentoColuna,
   fornecedorMapeamentoColunaDestinoEnum,
   fornecedorMapeamentosColunasRelations,
   fornecedorMapeamentosColunasTable,
+  type FornecedorPedidoIntegracao,
+  fornecedorPedidoIntegracoesTable,
+  fornecedorPrecoOrigemAjusteEnum,
+  type FornecedorProdutoApiStaging,
   fornecedorProdutoApiStagingStatusEnum,
   fornecedorProdutosApiStagingRelations,
   fornecedorProdutosApiStagingTable,
-  produtoRascunhoOrigemTipoEnum,
-  produtoRascunhoStatusEnum,
-  produtoRascunhosRelations,
-  produtoRascunhosTable,
-  fornecedorProdutoStagingStatusEnum,
-  fornecedorProdutoVinculoStatusEnum,
-  fornecedorProdutoVinculoTipoEnum,
-  fornecedorProdutoVinculosRelations,
-  fornecedorProdutoVinculosTable,
   fornecedorProdutosStagingRelations,
   fornecedorProdutosStagingTable,
-  fornecedorPrecoOrigemAjusteEnum,
+  type FornecedorProdutoStaging,
+  fornecedorProdutoStagingStatusEnum,
+  type FornecedorProdutoVinculo,
+  fornecedorProdutoVinculosRelations,
+  fornecedorProdutoVinculosTable,
+  fornecedorProdutoVinculoStatusEnum,
+  fornecedorProdutoVinculoTipoEnum,
   fornecedorStatusEnum,
-  fornecedoresRelations,
-  fornecedoresTable,
   fornecedorTipoIntegracaoEnum,
+  type ImportacaoFornecedor,
+  type ImportacaoFornecedorAjuste,
   importacaoFornecedorAjusteEscopoEnum,
-  importacaoFornecedorAjusteStatusEnum,
-  importacaoFornecedorAjusteTipoEnum,
   importacaoFornecedorAjustesRelations,
   importacaoFornecedorAjustesTable,
+  importacaoFornecedorAjusteStatusEnum,
+  importacaoFornecedorAjusteTipoEnum,
   importacaoFornecedorStatusEnum,
   importacaoFornecedorTipoArquivoEnum,
   importacoesFornecedorRelations,
   importacoesFornecedorTable,
-  type FornecedorIntegracaoApi,
-  type FornecedorIntegracaoLog,
-  type FornecedorPedidoIntegracao,
-  type Fornecedor,
-  type FornecedorMapeamentoColuna,
-  type FornecedorProdutoApiStaging,
-  type ProdutoRascunho,
-  type FornecedorProdutoStaging,
-  type FornecedorProdutoVinculo,
-  type ImportacaoFornecedorAjuste,
-  type ImportacaoFornecedor,
-  type NovaImportacaoFornecedor,
-  type NovaImportacaoFornecedorAjuste,
   type NovaFornecedorIntegracaoApi,
   type NovaFornecedorIntegracaoLog,
   type NovaFornecedorPedidoIntegracao,
-  type StatusFornecedorPedidoIntegracao,
+  type NovaImportacaoFornecedor,
+  type NovaImportacaoFornecedorAjuste,
   type NovoFornecedor,
   type NovoFornecedorMapeamentoColuna,
   type NovoFornecedorProdutoApiStaging,
-  type NovoProdutoRascunho,
   type NovoFornecedorProdutoStaging,
   type NovoFornecedorProdutoVinculo,
+  type NovoProdutoRascunho,
+  type ProdutoRascunho,
+  produtoRascunhoOrigemTipoEnum,
+  produtoRascunhosRelations,
+  produtoRascunhosTable,
+  produtoRascunhoStatusEnum,
+  type StatusFornecedorPedidoIntegracao,
 } from "./tables/fornecedores";
 
 // Motor de promoções
 export {
+  type CupomPromocao,
   cuponsPromocaoRelations,
   cuponsPromocaoTable,
+  type NovaRegraPromocao,
+  type NovaRegraPromocaoCategoria,
+  type NovaRegraPromocaoFreteGratis,
+  type NovaRegraPromocaoMarca,
+  type NovaRegraPromocaoProduto,
+  type NovaRegraPromocaoSubtotal,
+  type NovoCupomPromocao,
+  type NovoUsoCupomPromocao,
   promocaoStatusEnum,
   promocaoTipoBeneficioEnum,
   promocaoTipoCampanhaEnum,
   promocaoTipoDescontoEnum,
+  type RegraPromocao,
+  type RegraPromocaoCategoria,
+  type RegraPromocaoFreteGratis,
+  type RegraPromocaoMarca,
+  type RegraPromocaoProduto,
+  type RegraPromocaoSubtotal,
   regrasPromocaoCategoriasRelations,
   regrasPromocaoCategoriasTable,
   regrasPromocaoFretesGratisRelations,
@@ -738,24 +783,9 @@ export {
   regrasPromocaoSubtotaisRelations,
   regrasPromocaoSubtotaisTable,
   regrasPromocaoTable,
+  type UsoCupomPromocao,
   usosCuponsPromocaoRelations,
   usosCuponsPromocaoTable,
-  type CupomPromocao,
-  type NovoCupomPromocao,
-  type NovaRegraPromocao,
-  type NovaRegraPromocaoCategoria,
-  type NovaRegraPromocaoFreteGratis,
-  type NovaRegraPromocaoMarca,
-  type NovaRegraPromocaoProduto,
-  type NovaRegraPromocaoSubtotal,
-  type RegraPromocao,
-  type RegraPromocaoCategoria,
-  type RegraPromocaoFreteGratis,
-  type RegraPromocaoMarca,
-  type RegraPromocaoProduto,
-  type RegraPromocaoSubtotal,
-  type NovoUsoCupomPromocao,
-  type UsoCupomPromocao,
 } from "./tables/promocoes";
 
 // Regras profissionais de disponibilidade de frete
@@ -791,13 +821,13 @@ export * from "./tables/programa-fidelidade-carteira";
 
 // Relations de Shipping
 export {
-  shippingRegionsRelations,
-  regioBairrosRelations,
-  shippingRegionCepRangesRelations,
   bairrosAvulsosRelations,
-  shippingRegionSlotsRelations,
-  shippingBairroAvulsoSlotsRelations,
   productOwnDeliveryPricesRelations,
+  regioBairrosRelations,
+  shippingBairroAvulsoSlotsRelations,
+  shippingRegionCepRangesRelations,
+  shippingRegionSlotsRelations,
+  shippingRegionsRelations,
   shippingZipAddressesRelations,
 } from "./table/logistics/entrega-propria";
 

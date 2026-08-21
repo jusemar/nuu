@@ -28,6 +28,12 @@ export async function prepararPedidoLaquila(pedidoId: string) {
     throw new Error("Integração Laquila ativa e credenciada não encontrada.");
   }
   const tokenCliente = configuracao.tokenCliente;
+  const cnpjLojista = process.env.LAQUILA_CNPJ_LOJISTA?.trim();
+  if (!cnpjLojista) {
+    throw new Error(
+      "Configure LAQUILA_CNPJ_LOJISTA antes de preparar o pedido.",
+    );
+  }
 
   const [pedido] = await db
     .select({
@@ -144,6 +150,7 @@ export async function prepararPedidoLaquila(pedidoId: string) {
 
       const pedidoSemCredenciais = montarPedidoLaquilaSemCredenciais({
         documento: pedido.documento,
+        cnpjLojista,
         nome: pedido.nome,
         email: pedido.email,
         telefone: pedido.telefone,

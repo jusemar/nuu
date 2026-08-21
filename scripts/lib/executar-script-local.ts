@@ -34,9 +34,11 @@ async function executar() {
 
   // Por padrão só desenvolvimento. Um comando pode ampliar via AMBIENTES_ACEITOS, mas
   // "producao" nunca entra aqui — operação em produção tem caminho próprio.
-  const ambientesAceitos = (process.env.AMBIENTES_ACEITOS?.trim()
-    ? process.env.AMBIENTES_ACEITOS.split(",").map((item) => item.trim())
-    : ["desenvolvimento"]) as AmbienteBanco[];
+  const ambientesAceitos = (
+    process.env.AMBIENTES_ACEITOS?.trim()
+      ? process.env.AMBIENTES_ACEITOS.split(",").map((item) => item.trim())
+      : ["desenvolvimento"]
+  ) as AmbienteBanco[];
 
   if (ambientesAceitos.includes("producao")) {
     throw new Error(
@@ -53,7 +55,18 @@ async function executar() {
 
   console.log(`[executar-script-local] iniciando ${caminhoAlvo}\n`);
 
-  await import(pathToFileURL(caminhoAlvo).href);
+  const modulo = await import(pathToFileURL(caminhoAlvo).href);
+
+  // Scripts de análise podem exportar a execução assíncrona para que o lançador
+  // não encerre enquanto consultas HTTP do Neon/Frenet ainda estão pendentes.
+  const execucao =
+    modulo.execucao ??
+    (typeof modulo.default === "object" && modulo.default !== null
+      ? modulo.default.execucao
+      : undefined);
+  if (execucao instanceof Promise) {
+    await execucao;
+  }
 }
 
 executar().catch(encerrarComFalhaDeDestino);

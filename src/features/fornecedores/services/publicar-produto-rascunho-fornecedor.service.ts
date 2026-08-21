@@ -17,7 +17,9 @@ import {
   extrairSecoesLojaRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { prepararDimensoesPublicacaoFornecedor } from "@/features/fornecedores/lib/publicacao/preparar-dimensoes-publicacao-fornecedor";
+import { salvarIdentificadorCatalogo } from "@/features/products/actions/salvar-identificador-catalogo";
 import { gerarSkuDisponivel as gerarSkuDisponivelCompartilhado } from "@/features/products/lib/gerar-sku-disponivel";
+import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 type OrigemTipoRascunhoFornecedor =
@@ -156,6 +158,9 @@ export async function publicarProdutoRascunhoFornecedor(
       produtoAtualizadoId: rascunho.produtoAtualizadoId,
       precoLoja: rascunho.precoLoja,
       estoqueFornecedor: rascunho.estoqueFornecedor,
+      ean: rascunho.ean,
+      fornecedorId: rascunho.fornecedorId,
+      codigoFornecedor: rascunho.codigoFornecedor,
       // Só chegam preenchidos quando o gestor editou o campo na Conciliação —
       // o rascunho de item vinculado nasce com os três vazios.
       categoriaId: rascunho.categoriaId,
@@ -165,6 +170,14 @@ export async function publicarProdutoRascunhoFornecedor(
   }
 
   const precoLoja = numeroNaoNegativo(rascunho.precoLoja);
+  const gtinFornecedor = rascunho.ean?.trim()
+    ? validarGtin(rascunho.ean)
+    : null;
+  if (gtinFornecedor && !gtinFornecedor.valido) {
+    throw new Error(
+      `O EAN recebido do fornecedor não é um GTIN válido (${gtinFornecedor.motivo.replaceAll("_", " ")}).`,
+    );
+  }
   const secoesLoja = extrairSecoesLojaRascunhoFornecedor(
     rascunho.dadosOrigemJson,
   );
@@ -259,7 +272,16 @@ export async function publicarProdutoRascunhoFornecedor(
     brand: marcaNome,
     sku,
     productKind: "simple",
-    productCode: rascunho.ean?.trim() || undefined,
+    // EAN explícito possui destino canônico próprio; productCode permanece um
+    // código genérico independente e não recebe mais esse valor.
+    gtinProdutoSimples: gtinFornecedor?.valido
+      ? gtinFornecedor.valor
+      : undefined,
+    procedenciaIdentificadores: {
+      origem: "fornecedor_importacao",
+      fornecedorId,
+      referenciaOrigem: `${origem.origemProvedor}:${rascunho.id}:${codigoFornecedor}`,
+    },
     ncmCode: rascunho.ncm?.trim() || undefined,
     storeProductFlags: secoesLoja,
     pricing: {
@@ -367,6 +389,9 @@ type RascunhoAtualizacaoProdutoVinculadoFornecedor = {
   produtoAtualizadoId: string;
   precoLoja: string | null;
   estoqueFornecedor: number | null;
+  ean: string | null;
+  fornecedorId: string | null;
+  codigoFornecedor: string | null;
   /**
    * Campos de catálogo que o gestor pode ter reescrito na Conciliação.
    *
@@ -398,6 +423,14 @@ async function publicarAtualizacaoProdutoVinculadoFornecedor(
   rascunho: RascunhoAtualizacaoProdutoVinculadoFornecedor,
 ) {
   const precoLoja = numeroNaoNegativo(rascunho.precoLoja);
+  const gtinFornecedor = rascunho.ean?.trim()
+    ? validarGtin(rascunho.ean)
+    : null;
+  if (gtinFornecedor && !gtinFornecedor.valido) {
+    throw new Error(
+      `O EAN recebido do fornecedor não é um GTIN válido (${gtinFornecedor.motivo.replaceAll("_", " ")}).`,
+    );
+  }
 
   if (!precoLoja || precoLoja <= 0) {
     throw new Error(
@@ -415,6 +448,7 @@ async function publicarAtualizacaoProdutoVinculadoFornecedor(
       .select({
         id: productTable.id,
         tipoProduto: productTable.productKind,
+        marcaId: productTable.marcaId,
         sku: productTable.sku,
         slug: productTable.slug,
       })
@@ -568,6 +602,19 @@ async function publicarAtualizacaoProdutoVinculadoFornecedor(
         updatedAt: agora,
       })
       .where(eq(productVariantTable.id, identificacao.variante.id));
+
+    if (gtinFornecedor?.valido && rascunho.fornecedorId) {
+      await salvarIdentificadorCatalogo({
+        tipo: "gtin",
+        valor: gtinFornecedor.valor,
+        varianteId: identificacao.variante.id,
+        marcaId: produtoBloqueado.marcaId,
+        origem: "fornecedor_importacao",
+        fornecedorId: rascunho.fornecedorId,
+        referenciaOrigem: `rascunho:${rascunho.id}:${rascunho.codigoFornecedor ?? "sem-codigo"}`,
+        executor: tx,
+      });
+    }
 
     // Campos de catálogo: só entram quando o gestor decidiu mudá-los na
     // Conciliação. Um rascunho de item vinculado nasce sem categoria, marca e

@@ -13,6 +13,9 @@ export type ProductVariantInput = {
   id?: string;
   productId?: string;
   sku: string;
+  /** Identificadores explícitos do item vendável; nunca derivados do SKU. */
+  gtin?: string | null;
+  mpn?: string | null;
   name?: string | null;
   attributes: ProductVariantAttributes;
   priceInCents: number;

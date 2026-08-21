@@ -1,6 +1,6 @@
 import type { UploadedImage } from "@/app/admin/products/new/components/image-upload/ProductImageGallery";
-import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -40,6 +40,8 @@ export interface ProductFormData {
   productType: string;
   productCode: string;
   ncmCode: string;
+  gtinProdutoSimples: string;
+  mpnProduto: string;
   /** Estoque da variante técnica; usado exclusivamente por produto simples. */
   estoqueProdutoSimples: number;
   /** Protege produtos legados cuja variante técnica não pode ser identificada. */
@@ -47,8 +49,32 @@ export interface ProductFormData {
   images: UploadedImage[];
 
   // Dados de outras abas (serão preenchidos depois)
-  pricing?: any;
-  shipping?: any;
+  pricing?: {
+    costPrice?: string;
+    modalities?: Record<
+      string,
+      {
+        price: string;
+        deliveryText: string;
+        promo: {
+          active: boolean;
+          type: string;
+          price: string;
+          endDate?: Date;
+        };
+      }
+    >;
+    mainCardPriceType?: string;
+    configuracaoMapeamentoComercial?: unknown;
+  };
+  shipping?: {
+    weight?: string | number;
+    length?: string | number;
+    width?: string | number;
+    height?: string | number;
+    hasFreeShipping?: boolean;
+    hasLocalPickup?: boolean;
+  };
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   entrega?: {
     permiteRetirada?: boolean;
@@ -67,10 +93,18 @@ export interface ProductFormData {
     mensagem: string | null;
     ativo: boolean;
   }>;
-  warranty?: any;
+  warranty?: {
+    period?: string;
+    provider?: string;
+    terms?: string;
+  };
   attributes: ProductAttributeInput[];
   variants: ProductVariantFormInput[];
-  seller?: any;
+  seller?: {
+    sellerCode?: string;
+    internalCode?: string;
+    sellerInfo?: string;
+  };
   metaTitle?: string;
   metaDescription?: string;
   canonicalUrl?: string;
@@ -130,6 +164,8 @@ export const initialProductData: ProductFormData = {
   productType: "",
   productCode: "",
   ncmCode: "",
+  gtinProdutoSimples: "",
+  mpnProduto: "",
   estoqueProdutoSimples: 0,
   images: [],
   metaTitle: "",

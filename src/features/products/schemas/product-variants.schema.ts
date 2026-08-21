@@ -18,6 +18,8 @@ export const productVariantSchema = z.object({
   id: z.string().optional(),
   productId: z.string().optional(),
   sku: z.string().trim().min(1),
+  gtin: z.string().trim().optional().nullable(),
+  mpn: z.string().trim().max(120).optional().nullable(),
   name: z.string().trim().optional().nullable(),
   attributes: productVariantAttributesSchema.default({}),
   priceInCents: z.coerce.number().int().min(0),

@@ -107,7 +107,8 @@ export function montarDadosIniciaisRascunhoProdutoFornecedor(
     brandId: valoresPadrao?.marcaId ?? initialProductData.brandId,
     brand: valoresPadrao?.marcaNome ?? initialProductData.brand,
     sku: initialProductData.sku,
-    productCode: item?.ean ?? initialProductData.productCode,
+    productCode: initialProductData.productCode,
+    gtinProdutoSimples: item?.ean ?? initialProductData.gtinProdutoSimples,
     ncmCode: item?.ncm ?? "",
     cardShortText: item?.complemento?.slice(0, 80) ?? "",
     description: item?.complemento

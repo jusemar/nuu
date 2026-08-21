@@ -17,12 +17,15 @@ import {
 import { CategoryFilter } from "@/features/store/category/components/CategoryFilter";
 import { CategoryProductCard } from "@/features/store/category/components/CategoryProductCard";
 import { CategoryTabs } from "@/features/store/category/components/CategoryTabs";
+import { ConteudoEditorialCategoria } from "@/features/store/category/components/conteudo-editorial-categoria";
+import { DadosEstruturadosCategoria } from "@/features/store/category/components/dados-estruturados-categoria";
 import { MobileFilterDrawer } from "@/features/store/category/components/MobileFilterDrawer";
 import {
   buscarArvoreCategoriaPublica,
   coletarIdsCategoriaEDescendentes,
 } from "@/features/store/category/queries/buscar-arvore-categoria-publica";
 import { buscarCategoriaPublicaPorSlug } from "@/features/store/category/queries/buscar-categoria-publica";
+import { buscarFaqsPublicasCategoria } from "@/features/store/category/queries/buscar-faqs-publicas-categoria";
 // Services
 import { getSubcategoryTabs } from "@/features/store/category/services/categoryTabsService";
 import {
@@ -98,6 +101,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
 
   const arvoreCategoria = await buscarArvoreCategoriaPublica(category.id);
   const categoriasIds = arvoreCategoria.map((categoria) => categoria.id);
+  const faqsCategoria = await buscarFaqsPublicasCategoria(category.id);
 
   // =================================================================
   // PASSO 2: Buscar produtos da categoria com todos os relacionamentos
@@ -379,6 +383,7 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <DadosEstruturadosCategoria breadcrumb={breadcrumb} />
       <Header />
 
       {/* =========================================================== */}
@@ -386,9 +391,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
       {/* =========================================================== */}
       <section className="border-b bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
+          <h1 className="text-3xl font-bold text-gray-900 md:text-4xl">
             {category?.name || "Categoria"}
-          </h2>
+          </h1>
           <p className="mt-3 max-w-3xl text-gray-600">{descricaoCategoria}</p>
         </div>
       </section>
@@ -547,17 +552,10 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
         </div>
       </div>
 
-      {/* =========================================================== */}
-      {/* SEO FOOTER */}
-      {/* =========================================================== */}
-      <section className="bg-gray-50 py-8 md:py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="text-gray-600">
-            Confira nossa linha completa de {category.name} com os melhores
-            preços e condições especiais. Frete rápido para todo o Brasil.
-          </p>
-        </div>
-      </section>
+      <ConteudoEditorialCategoria
+        descricaoInferior={category.descriptionBottom}
+        faqs={faqsCategoria}
+      />
 
       <Footer />
     </div>

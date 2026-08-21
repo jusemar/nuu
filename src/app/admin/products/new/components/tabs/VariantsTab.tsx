@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Box,
@@ -24,6 +23,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { buscarResumoLogisticaProduto } from "@/features/admin/logistica/actions/produto-logistica/buscar-resumo-logistica-produto";
+import type {
+  ProductAttributeInput,
+  ProductVariantFormInput,
+} from "@/features/products";
 import {
   buildVariantSku,
   centsToCurrencyInput,
@@ -54,10 +58,7 @@ import {
   getCombinationFormula,
   summarizeVariantEditor,
 } from "@/features/products";
-import type {
-  ProductAttributeInput,
-  ProductVariantFormInput,
-} from "@/features/products";
+import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 
 import type { ProductFormData } from "../../data/product-form-data";
 
@@ -1137,6 +1138,8 @@ export function VariantsTab({ data, onChange, draftKey }: VariantsTabProps) {
                         Combinação
                       </th>
                       <th className="border-b px-3 py-3 text-left">SKU</th>
+                      <th className="border-b px-3 py-3 text-left">GTIN/EAN</th>
+                      <th className="border-b px-3 py-3 text-left">MPN</th>
                       <th className="border-b px-3 py-3 text-right">Preço</th>
                       <th className="border-b px-3 py-3 text-right">Estoque</th>
                       <th className="border-b px-3 py-3 text-left">
@@ -1300,6 +1303,42 @@ export function VariantsTab({ data, onChange, draftKey }: VariantsTabProps) {
                                 })
                               }
                               className="h-9 font-mono text-xs"
+                            />
+                          </td>
+                          <td className="border-b border-slate-100 px-3 py-3 align-middle">
+                            <Input
+                              inputMode="numeric"
+                              value={variant.gtin ?? ""}
+                              onChange={(event) =>
+                                updateVariant(variant.id, index, {
+                                  gtin: event.target.value,
+                                })
+                              }
+                              placeholder="GTIN válido"
+                              aria-invalid={Boolean(
+                                variant.gtin?.trim() &&
+                                  !validarGtin(variant.gtin).valido,
+                              )}
+                              title={
+                                variant.gtin?.trim() &&
+                                !validarGtin(variant.gtin).valido
+                                  ? "GTIN inválido: confira formato e dígito verificador."
+                                  : undefined
+                              }
+                              className="h-9 min-w-36 font-mono text-xs aria-invalid:border-red-500"
+                            />
+                          </td>
+                          <td className="border-b border-slate-100 px-3 py-3 align-middle">
+                            <Input
+                              value={variant.mpn ?? ""}
+                              maxLength={120}
+                              onChange={(event) =>
+                                updateVariant(variant.id, index, {
+                                  mpn: event.target.value,
+                                })
+                              }
+                              placeholder="MPN explícito"
+                              className="h-9 min-w-32 font-mono text-xs"
                             />
                           </td>
                           <td className="border-b border-slate-100 px-3 py-3 text-right align-middle">
@@ -1714,18 +1753,14 @@ export function VariantsTab({ data, onChange, draftKey }: VariantsTabProps) {
                         : "herda"
                   }
                   onChange={(event) =>
-                    updateVariant(
-                      logisticsVariant.id,
-                      logisticsVariantIndex,
-                      {
-                        aceitaPagamentoNaEntrega:
-                          event.target.value === "aceita"
-                            ? true
-                            : event.target.value === "nao-aceita"
-                              ? false
-                              : null,
-                      },
-                    )
+                    updateVariant(logisticsVariant.id, logisticsVariantIndex, {
+                      aceitaPagamentoNaEntrega:
+                        event.target.value === "aceita"
+                          ? true
+                          : event.target.value === "nao-aceita"
+                            ? false
+                            : null,
+                    })
                   }
                 >
                   <option value="herda">

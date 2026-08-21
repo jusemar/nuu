@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "bash scripts/executar-next-com-lock.sh dev",
-    "build": "bash scripts/executar-next-com-lock.sh build",
+    "build": "npm run schema:verificar-deploy && bash scripts/executar-next-com-lock.sh build",
     "import:ceps": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/import-shipping-zip-addresses.ts",
     "seed:own-delivery-regions": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/seed-own-delivery-official-regions.ts",
     "seed:logistica-dados-iniciais": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/seed-dados-iniciais-logistica.ts",
@@ -16,6 +16,7 @@
     "migrations:validar-apenas": "tsx scripts/validar-e-aplicar-migrations.ts --somente-validar",
     "migrations:validar": "tsx scripts/validar-e-aplicar-migrations.ts",
     "migrations:producao": "AMBIENTE_BANCO=producao tsx scripts/aplicar-migration-producao.ts",
+    "schema:verificar-deploy": "node --import tsx scripts/verificar-schema-deploy.ts",
     "merchant:analisar-frete": "NODE_OPTIONS=--conditions=react-server AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/analisar-matriz-frete-merchant.ts",
     "corrigir:criterio-localizacao": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/corrigir-criterio-localizacao-fornecedores.ts"
   },

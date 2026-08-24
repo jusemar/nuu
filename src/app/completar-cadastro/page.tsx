@@ -10,14 +10,28 @@ export const metadata: Metadata = {
     "Complete seus dados cadastrais para compras, entregas e acompanhamento da loja.",
 };
 
-export default async function CompletarCadastroPage() {
+export default async function CompletarCadastroPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ destino?: string }>;
+}) {
+  const { destino } = await searchParams;
   const { sessao, cadastro } = await protegerFluxoCadastroCliente({
     permitirCadastroIncompleto: true,
   });
 
   if (cadastro.completo) {
-    redirect("/minha-conta");
+    const { normalizarDestinoAutenticacao } = await import(
+      "@/features/autenticacao/lib/destino-autenticacao-cliente"
+    );
+    redirect(normalizarDestinoAutenticacao(destino));
   }
 
-  return <PaginaCompletarCadastro sessao={sessao} cadastro={cadastro} />;
+  return (
+    <PaginaCompletarCadastro
+      sessao={sessao}
+      cadastro={cadastro}
+      destino={destino}
+    />
+  );
 }

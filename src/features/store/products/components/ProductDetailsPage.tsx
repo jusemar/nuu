@@ -21,7 +21,6 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
-import { Footer } from "@/components/common/footer";
 import type { NovoItemCarrinho } from "@/features/carrinho";
 import { useCarrinho } from "@/features/carrinho";
 import { Header } from "@/features/header";
@@ -118,6 +117,7 @@ interface ProductDetailProps {
   produtosRelacionados?: ProdutoRelacionadoPdp[];
   produtosVendaCruzada?: ProdutoVendaCruzadaPdp[];
   bannerInstitucionalProduto?: ReactNode;
+  rodape: ReactNode;
 }
 
 // ==========================================
@@ -137,6 +137,7 @@ export function ProductDetail({
   produtosRelacionados,
   produtosVendaCruzada,
   bannerInstitucionalProduto,
+  rodape,
 }: ProductDetailProps) {
   const { adicionarItem } = useCarrinho();
   const router = useRouter();
@@ -512,6 +513,7 @@ export function ProductDetail({
   if (modoPreVisualizacao) {
     return (
       <PaginaProdutoAprovada
+        rodape={rodape}
         bannerInstitucionalProduto={bannerInstitucionalProduto}
         produtoId={product.id}
         produtoSlug={product.slug}
@@ -640,6 +642,7 @@ export function ProductDetail({
 
   return (
     <PaginaProdutoAprovada
+      rodape={rodape}
       bannerInstitucionalProduto={bannerInstitucionalProduto}
       produtoId={product.id}
       produtoSlug={product.slug}
@@ -960,7 +963,7 @@ export function ProductDetail({
       </main>
 
       {/* FOOTER: Rodapé do site */}
-      <Footer />
+      {rodape}
 
       {/* MODAL DE PAGAMENTO: Opções de parcelamento */}
       <PaymentModal

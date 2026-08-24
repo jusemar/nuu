@@ -21,6 +21,7 @@ import { consultarEnderecoCep } from "@/features/checkout/actions/consultar-ende
 import { notificarEnderecoClienteAtualizado } from "@/features/logistica/lib/cep-cliente";
 
 import { salvarCadastroCliente } from "../../../actions/cadastro/salvar-cadastro-cliente";
+import { normalizarDestinoAutenticacao } from "../../../lib/destino-autenticacao-cliente";
 import {
   type CompletarCadastroClienteSchema,
   completarCadastroClienteSchema,
@@ -32,6 +33,7 @@ type FormularioCompletarCadastroProps = {
   sessao: SessaoClienteAutenticado;
   cadastro: CadastroClienteCompleto;
   modo?: "completar" | "editar";
+  destino?: string;
 };
 
 function montarDataNascimentoPadrao(data: Date | null) {
@@ -64,6 +66,7 @@ export function FormularioCompletarCadastro({
   sessao,
   cadastro,
   modo = "completar",
+  destino,
 }: FormularioCompletarCadastroProps) {
   const router = useRouter();
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -155,7 +158,7 @@ export function FormularioCompletarCadastro({
 
     toast.success(resultado.mensagem ?? "Cadastro salvo.");
     notificarEnderecoClienteAtualizado();
-    router.replace("/minha-conta");
+    router.replace(normalizarDestinoAutenticacao(destino));
     router.refresh();
   }
 

@@ -9,6 +9,7 @@ import {
   User,
   UserRound,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,19 @@ export function BotaoContaCliente() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild className="cursor-pointer py-2.5">
+            <Link href="/authentication">
+              <User className="h-4 w-4" />
+              Entrar
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer py-2.5">
+            <Link href="/authentication?modo=criar">
+              <UserRound className="h-4 w-4" />
+              Criar conta
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={entrarComGoogle}
             disabled={entrandoComGoogle}
@@ -87,7 +101,7 @@ export function BotaoContaCliente() {
             ) : (
               <Chrome className="h-4 w-4" />
             )}
-            Entrar com Google
+            Continuar com Google
           </DropdownMenuItem>
           {mensagemErro && (
             <>
@@ -114,9 +128,11 @@ export function BotaoContaCliente() {
         >
           <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
             {sessao?.usuario.imagem ? (
-              <img
+              <Image
                 src={sessao.usuario.imagem}
                 alt={sessao.usuario.nome}
+                width={32}
+                height={32}
                 className="h-full w-full object-cover"
               />
             ) : (

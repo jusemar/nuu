@@ -1,4 +1,5 @@
 import type { SessaoClienteAutenticado } from "../types/sessao-cliente.types";
+import { emailEhTecnicoTelefone } from "./email-tecnico-telefone-compartilhado";
 
 type SessaoBetterAuth = {
   user: {
@@ -9,6 +10,7 @@ type SessaoBetterAuth = {
     createdAt: Date | string;
   };
   session: {
+    createdAt: Date | string;
     expiresAt: Date;
   };
 };
@@ -24,10 +26,11 @@ export function mapearSessaoCliente(
     usuario: {
       id: sessao.user.id,
       nome: sessao.user.name,
-      email: sessao.user.email,
+      email: emailEhTecnicoTelefone(sessao.user.email) ? "" : sessao.user.email,
       imagem: sessao.user.image ?? null,
       criadoEm: new Date(sessao.user.createdAt),
     },
+    criadoEm: new Date(sessao.session.createdAt),
     expiraEm: sessao.session.expiresAt,
   };
 }

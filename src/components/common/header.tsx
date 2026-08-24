@@ -4,6 +4,7 @@ import { LogInIcon, LogOutIcon, MenuIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { emailEhTecnicoTelefone } from "@/features/autenticacao/lib/email-tecnico-telefone-compartilhado";
 import { GavetaCarrinho } from "@/features/carrinho";
 import { authClient } from "@/lib/auth-client";
 
@@ -53,9 +54,11 @@ export const Header = () => {
 
                       <div>
                         <h3 className="font-semibold">{session?.user?.name}</h3>
-                        <span className="text-muted-foreground block text-xs">
-                          {session?.user?.email}
-                        </span>
+                        {!emailEhTecnicoTelefone(session?.user?.email) && (
+                          <span className="text-muted-foreground block text-xs">
+                            {session?.user?.email}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Button

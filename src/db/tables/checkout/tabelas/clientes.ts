@@ -7,12 +7,17 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { userTable } from "../../autenticacao/tabelas/usuarios";
+
 export const checkoutClientesTable = pgTable(
   "checkout_clientes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    // Preparado para login futuro sem exigir autenticação no checkout visitante.
-    userId: text("user_id"),
+    // `set null` preserva o cliente e todo o histórico comercial quando uma
+    // identidade é removida; pedidos nunca devem ser apagados em cascata.
+    userId: text("user_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
     nome: text("nome").notNull(),
     email: text("email").notNull(),
     telefone: text("telefone").notNull(),
@@ -22,6 +27,7 @@ export const checkoutClientesTable = pgTable(
   },
   (table) => [
     index("checkout_clientes_email_idx").on(table.email),
+    index("checkout_clientes_user_id_idx").on(table.userId),
     uniqueIndex("checkout_clientes_documento_unique").on(table.documento),
   ],
 );

@@ -1,5 +1,4 @@
 "use client";
 
-import { createAuthClient } from "better-auth/react";
-
-export const clienteAutenticacao = createAuthClient();
+// Alias temporário preserva os imports existentes usando a única instância.
+export { authClient as clienteAutenticacao } from "@/lib/auth-client";

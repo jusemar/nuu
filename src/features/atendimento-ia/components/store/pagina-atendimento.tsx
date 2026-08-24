@@ -13,6 +13,7 @@ import Link from "next/link";
 import {
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -20,7 +21,6 @@ import {
   useState,
 } from "react";
 
-import { Footer } from "@/components/common/footer";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +49,7 @@ import { CartaoTransferenciaWhatsapp } from "./cartao-transferencia-whatsapp";
 
 type TentativaPendente = { chaveIdempotencia: string; mensagem: string };
 
-export function PaginaAtendimento() {
+export function PaginaAtendimento({ rodape }: { rodape: ReactNode }) {
   const listaConversaRef = useRef<HTMLElement>(null);
   const inicioExecutadoRef = useRef(false);
   const historicoPosicionadoRef = useRef(false);
@@ -483,7 +483,7 @@ export function PaginaAtendimento() {
           </form>
         </div>
       </Container>
-      <Footer />
+      {rodape}
     </div>
   );
 }

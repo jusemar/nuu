@@ -1,12 +1,15 @@
 import { Gem, PackageSearch, UserRound } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Header } from "@/features/header";
 
+import type { AcessoSegurancaCliente as DadosAcessoSegurancaCliente } from "../../../queries/acesso-seguranca/buscar-acesso-seguranca-cliente";
 import type { CadastroClienteCompleto } from "../../../types/cadastro-cliente.types";
 import type { SessaoClienteAutenticado } from "../../../types/sessao-cliente.types";
 import { FormularioCompletarCadastro } from "../completar-cadastro/formulario-completar-cadastro";
+import { AcessoSegurancaCliente } from "./acesso-seguranca-cliente";
 
 function formatarDataConta(data: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -18,9 +21,11 @@ function formatarDataConta(data: Date) {
 export function PaginaMinhaConta({
   sessao,
   cadastro,
+  acesso,
 }: {
   sessao: SessaoClienteAutenticado;
   cadastro: CadastroClienteCompleto;
+  acesso: DadosAcessoSegurancaCliente;
 }) {
   return (
     <>
@@ -41,12 +46,14 @@ export function PaginaMinhaConta({
 
             <div className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
               <div className="flex flex-col items-center rounded-lg border bg-slate-50 p-5 text-center">
-                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-slate-200">
                   {sessao.usuario.imagem ? (
-                    <img
+                    <Image
                       src={sessao.usuario.imagem}
                       alt={sessao.usuario.nome}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="96px"
+                      className="object-cover"
                     />
                   ) : (
                     <UserRound className="h-10 w-10 text-slate-500" />
@@ -55,9 +62,11 @@ export function PaginaMinhaConta({
                 <p className="mt-4 text-sm font-semibold text-slate-950">
                   {sessao.usuario.nome}
                 </p>
-                <p className="mt-1 max-w-full truncate text-xs text-slate-500">
-                  {sessao.usuario.email}
-                </p>
+                {sessao.usuario.email ? (
+                  <p className="mt-1 max-w-full truncate text-xs text-slate-500">
+                    {sessao.usuario.email}
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-4">
@@ -75,7 +84,7 @@ export function PaginaMinhaConta({
                       Email
                     </dt>
                     <dd className="mt-1 text-sm font-semibold break-words text-slate-950">
-                      {sessao.usuario.email}
+                      {sessao.usuario.email || "E-mail não adicionado"}
                     </dd>
                   </div>
                   <div className="rounded-lg border p-4 sm:col-span-2">
@@ -123,6 +132,13 @@ export function PaginaMinhaConta({
               </div>
             </div>
           </section>
+
+          <AcessoSegurancaCliente
+            acesso={acesso}
+            sessaoRecenteInicial={
+              Date.now() - sessao.criadoEm.getTime() <= 15 * 60 * 1_000
+            }
+          />
 
           <section className="mt-6">
             <div className="mb-4">

@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
-import { Footer } from "@/components/common/footer";
 import { Header } from "@/features/header";
 
 type PropriedadesLayoutProdutoAprovado = {
@@ -16,6 +15,7 @@ type PropriedadesLayoutProdutoAprovado = {
   modalPagamento: ReactNode;
   conteudoAposProduto?: ReactNode;
   modoPreVisualizacao?: boolean;
+  rodape: ReactNode;
 };
 
 /**
@@ -32,6 +32,7 @@ export function LayoutProdutoAprovado({
   modalPagamento,
   conteudoAposProduto,
   modoPreVisualizacao = false,
+  rodape,
 }: PropriedadesLayoutProdutoAprovado) {
   return (
     <div
@@ -66,7 +67,7 @@ export function LayoutProdutoAprovado({
         {conteudoAposProduto}
       </main>
 
-      <Footer />
+      {rodape}
       {modalPagamento}
     </div>
   );

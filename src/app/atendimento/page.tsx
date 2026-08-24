@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { Footer } from "@/components/common/footer";
 import { PaginaAtendimento } from "@/features/atendimento-ia";
 
 export const metadata: Metadata = {
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function AtendimentoPage() {
-  return <PaginaAtendimento />;
+  return <PaginaAtendimento rodape={<Footer />} />;
 }

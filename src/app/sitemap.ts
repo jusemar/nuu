@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { listarPaginasPublicadasSitemap } from "@/features/paginas-dinamicas/queries/buscar-pagina-publicada";
 import { listarCategoriasPublicasSitemap } from "@/features/store/category/queries/listar-categorias-publicas-sitemap";
 import { listarProdutosPublicosSitemap } from "@/features/store/products/queries/listar-produtos-publicos-sitemap";
 import { montarSitemapPublico } from "@/lib/seo/sitemap-publico";
@@ -8,10 +9,11 @@ import { montarSitemapPublico } from "@/lib/seo/sitemap-publico";
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [categorias, produtos] = await Promise.all([
+  const [categorias, produtos, paginas] = await Promise.all([
     listarCategoriasPublicasSitemap(),
     listarProdutosPublicosSitemap(),
+    listarPaginasPublicadasSitemap(),
   ]);
 
-  return montarSitemapPublico(categorias, produtos);
+  return montarSitemapPublico(categorias, produtos, paginas);
 }

@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ChevronUp,
   DollarSign,
+  Files,
   FileSpreadsheet,
   FolderIcon,
   Image,
@@ -83,6 +84,7 @@ const iconMap: Record<string, React.ElementType> = {
   Medal,
   ShieldCheck,
   FileSpreadsheet,
+  Files,
   Plug,
 };
 
@@ -445,6 +447,12 @@ export const menuAdmin: EntradaMenuAdmin[] = [
         label: "Banners da Home",
         href: "/admin/configuracoes/banners-home",
         icon: "Image",
+      },
+      {
+        id: "paginas-da-loja",
+        label: "Páginas da loja",
+        href: "/admin/configuracoes/paginas-da-loja",
+        icon: "Files",
       },
     ],
   },

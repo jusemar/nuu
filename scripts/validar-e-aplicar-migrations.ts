@@ -7,6 +7,17 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client, Pool } from "pg";
 
+import {
+  ANCORA_MIGRATIONS,
+  type EntradaJournalValidacao,
+  type MigrationLocalValidacao,
+  validarDeltaSnapshots,
+  validarHistoricoAplicado,
+  validarIdentidadeBanco,
+  validarSequenciaLocal,
+} from "./lib/validar-cadeia-migrations";
+import { validarEstruturaPaginasDinamicas } from "./lib/validar-estrutura-paginas-dinamicas";
+
 const API_NEON = "https://console.neon.tech/api/v2";
 const PASTA_MIGRACOES = "./drizzle";
 const SCHEMA_MIGRACOES = "drizzle_v2";
@@ -42,10 +53,7 @@ type EndpointNeon = {
   type: string;
 };
 
-type MigrationLocal = {
-  hash: string;
-  folderMillis: number;
-};
+type MigrationLocal = MigrationLocalValidacao;
 
 class ErroFluxoMigration extends Error {
   constructor(
@@ -324,30 +332,25 @@ function validarIdentidade(
   },
   etapa: string,
 ) {
-  if (
-    identidade.projetoId !== esperado.projetoId ||
-    identidade.branchId !== esperado.branchId ||
-    identidade.endpointId !== esperado.endpointId ||
-    identidade.banco !== esperado.banco ||
-    identidade.usuario !== PAPEL_BANCO
-  ) {
-    throw new ErroFluxoMigration(
-      etapa,
-      "A identidade do banco não corresponde ao alvo autorizado.",
+  try {
+    validarIdentidadeBanco(
+      identidade,
+      { ...esperado, usuario: PAPEL_BANCO },
+      { branchId: BRANCH_PRODUCAO, endpointId: ENDPOINT_PRODUCAO },
     );
-  }
-  if (
-    identidade.branchId === BRANCH_PRODUCAO ||
-    identidade.endpointId === ENDPOINT_PRODUCAO
-  ) {
+  } catch (erro) {
     throw new ErroFluxoMigration(
       etapa,
-      "Produção foi recusada pela guarda de identidade.",
+      erro instanceof Error ? erro.message : "Identidade recusada.",
     );
   }
 }
 
 async function contarMigrations(url: string) {
+  return (await listarMigrationsAplicadas(url)).length;
+}
+
+async function listarMigrationsAplicadas(url: string) {
   const cliente = new Client({ connectionString: url });
   await cliente.connect();
   try {
@@ -355,11 +358,19 @@ async function contarMigrations(url: string) {
       "SELECT to_regclass($1)::text AS existe",
       [`${SCHEMA_MIGRACOES}.${TABELA_MIGRACOES}`],
     );
-    if (!existe.rows[0]?.existe) return 0;
-    const resultado = await cliente.query<{ total: number }>(
-      `SELECT count(*)::int AS total FROM ${SCHEMA_MIGRACOES}.${TABELA_MIGRACOES}`,
+    if (!existe.rows[0]?.existe) return [];
+    const resultado = await cliente.query<{
+      hash: string;
+      created_at: string | number;
+    }>(
+      `SELECT hash, created_at
+       FROM ${SCHEMA_MIGRACOES}.${TABELA_MIGRACOES}
+       ORDER BY created_at ASC, id ASC`,
     );
-    return resultado.rows[0]?.total ?? 0;
+    return resultado.rows.map((item) => ({
+      hash: item.hash,
+      createdAt: Number(item.created_at),
+    }));
   } finally {
     await cliente.end();
   }
@@ -439,6 +450,63 @@ async function validarEstruturaVendaCruzada(url: string) {
   }
 }
 
+async function consultarEstruturaPaginasDinamicas(url: string) {
+  const cliente = new Client({ connectionString: url });
+  await cliente.connect();
+  try {
+    await cliente.query("BEGIN READ ONLY");
+    const [tabelas, enums, indices, restricoes] = await Promise.all([
+      cliente.query<{ nome: string }>(`
+        SELECT table_name AS nome FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name IN ('paginas_dinamicas', 'grupos_navegacao', 'grupo_paginas')
+      `),
+      cliente.query<{ nome: string; valores: unknown }>(`
+        SELECT t.typname AS nome,
+          array_agg(e.enumlabel::text ORDER BY e.enumsortorder) AS valores
+        FROM pg_type t
+        JOIN pg_enum e ON e.enumtypid = t.oid
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+          AND t.typname IN ('grupo_navegacao_local', 'pagina_dinamica_status')
+        GROUP BY t.typname
+      `),
+      cliente.query<{ nome: string }>(`
+        SELECT indexname AS nome FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND tablename IN ('paginas_dinamicas', 'grupos_navegacao', 'grupo_paginas')
+      `),
+      cliente.query<{ nome: string }>(`
+        SELECT conname AS nome FROM pg_constraint
+        WHERE conrelid = ANY(ARRAY[
+          'public.paginas_dinamicas'::regclass,
+          'public.grupos_navegacao'::regclass,
+          'public.grupo_paginas'::regclass
+        ])
+      `),
+    ]);
+    await cliente.query("COMMIT");
+    const estrutura = {
+      tabelas: tabelas.rows.map((item) => item.nome),
+      enums: enums.rows,
+      indices: indices.rows.map((item) => item.nome),
+      restricoes: restricoes.rows.map((item) => item.nome),
+    };
+    validarEstruturaPaginasDinamicas(estrutura);
+    return {
+      tabelas: estrutura.tabelas.length,
+      enums: estrutura.enums.length,
+      indices: estrutura.indices.length,
+      restricoes: estrutura.restricoes.length,
+    };
+  } catch (erro) {
+    await cliente.query("ROLLBACK").catch(() => undefined);
+    throw erro;
+  } finally {
+    await cliente.end();
+  }
+}
+
 function carregarMigrationsLocais(): MigrationLocal[] {
   return readMigrationFiles({ migrationsFolder: PASTA_MIGRACOES }).map(
     (item) => ({
@@ -452,31 +520,27 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   const journal = JSON.parse(
     readFileSync("drizzle/meta/_journal.json", "utf8"),
   ) as {
-    entries?: Array<{ idx: number; tag: string; when: number }>;
+    entries?: EntradaJournalValidacao[];
   };
   const entradas = journal.entries ?? [];
-  const ultima = entradas.at(-1);
-  if (
-    migrations.length !== 29 ||
-    entradas.length !== 29 ||
-    ultima?.idx !== 28 ||
-    ultima.tag !== "0028_identificadores_catalogo_gtin_mpn" ||
-    ultima.when !== migrations.at(-1)?.folderMillis
-  ) {
+  try {
+    validarSequenciaLocal(migrations, entradas);
+    validarDeltaSnapshots(
+      JSON.parse(readFileSync("drizzle/meta/0028_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0029_snapshot.json", "utf8")),
+    );
+  } catch {
     throw new ErroFluxoMigration(
       "arquivos-locais",
       "Journal ou sequência local de migrations inesperada.",
     );
   }
-  const sql = readFileSync(
-    "drizzle/0028_identificadores_catalogo_gtin_mpn.sql",
-    "utf8",
-  );
+  const sql = readFileSync(ANCORA_MIGRATIONS.ultimoArquivo, "utf8");
   const hash = createHash("sha256").update(sql).digest("hex");
   if (hash !== migrations.at(-1)?.hash) {
     throw new ErroFluxoMigration(
       "arquivos-locais",
-      "O hash da migration 0028 diverge do migrator.",
+      "O hash da migration 0029 diverge do migrator.",
     );
   }
 }
@@ -492,13 +556,14 @@ async function preValidar(
       "A URL local não aponta para o endpoint de desenvolvimento.",
     );
   }
-  const [projeto, branches, endpoints, identidade, total] = await Promise.all([
-    neon.buscarProjeto(),
-    neon.listarBranches(),
-    neon.listarEndpoints(),
-    consultarIdentidade(urlDesenvolvimento),
-    contarMigrations(urlDesenvolvimento),
-  ]);
+  const [projeto, branches, endpoints, identidade, historico] =
+    await Promise.all([
+      neon.buscarProjeto(),
+      neon.listarBranches(),
+      neon.listarEndpoints(),
+      consultarIdentidade(urlDesenvolvimento),
+      listarMigrationsAplicadas(urlDesenvolvimento),
+    ]);
   if (projeto.project.id !== neon.projetoId) {
     throw new ErroFluxoMigration(
       "pre-validacao",
@@ -538,13 +603,18 @@ async function preValidar(
     },
     "pre-validacao",
   );
-  if (total > migrations.length) {
+  try {
+    validarHistoricoAplicado(historico, migrations);
+  } catch {
     throw new ErroFluxoMigration(
       "pre-validacao",
-      "O desenvolvimento possui mais migrations que o repositório.",
+      "O histórico de desenvolvimento diverge da cadeia local autorizada.",
     );
   }
-  return { totalAplicadas: total, totalLocais: migrations.length };
+  return {
+    totalAplicadas: historico.length,
+    totalLocais: migrations.length,
+  };
 }
 
 async function executar() {
@@ -579,6 +649,13 @@ async function executar() {
     );
 
     if (somentePreValidar || estado.totalAplicadas === estado.totalLocais) {
+      if (estado.totalAplicadas === estado.totalLocais) {
+        const estrutura =
+          await consultarEstruturaPaginasDinamicas(urlDesenvolvimento);
+        console.log(
+          `[migrations] Estrutura de Páginas Dinâmicas aprovada: ${estrutura.tabelas} tabelas, ${estrutura.enums} enums, ${estrutura.indices} índices e ${estrutura.restricoes} restrições.`,
+        );
+      }
       console.log(
         somentePreValidar
           ? "[migrations] Modo pré-validação: nenhum recurso foi criado."
@@ -645,6 +722,8 @@ async function executar() {
       );
     }
     const estruturaClone = await validarEstruturaVendaCruzada(urlClone);
+    const paginasDinamicasClone =
+      await consultarEstruturaPaginasDinamicas(urlClone);
     console.log(
       `[migrations] Atualização sobre clone aprovada: ${totalCloneAntes} -> ${totalCloneDepois}.`,
     );
@@ -694,6 +773,8 @@ async function executar() {
       );
     }
     const estruturaVazio = await validarEstruturaVendaCruzada(urlVazio);
+    const paginasDinamicasVazio =
+      await consultarEstruturaPaginasDinamicas(urlVazio);
     console.log(
       `[migrations] Cadeia completa no banco vazio aprovada: 0 -> ${totalVazio}.`,
     );
@@ -726,6 +807,8 @@ async function executar() {
       }
       const estruturaDev =
         await validarEstruturaVendaCruzada(urlDesenvolvimento);
+      const paginasDinamicasDev =
+        await consultarEstruturaPaginasDinamicas(urlDesenvolvimento);
       console.log(
         `[migrations] Desenvolvimento atualizado: ${estado.totalAplicadas} -> ${totalDevDepois}.`,
       );
@@ -736,6 +819,11 @@ async function executar() {
               clone: estruturaClone,
               bancoVazio: estruturaVazio,
               desenvolvimento: estruturaDev,
+              paginasDinamicas: {
+                clone: paginasDinamicasClone,
+                bancoVazio: paginasDinamicasVazio,
+                desenvolvimento: paginasDinamicasDev,
+              },
             },
           },
           null,

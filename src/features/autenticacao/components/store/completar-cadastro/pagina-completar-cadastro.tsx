@@ -7,9 +7,11 @@ import { FormularioCompletarCadastro } from "./formulario-completar-cadastro";
 export function PaginaCompletarCadastro({
   sessao,
   cadastro,
+  destino,
 }: {
   sessao: SessaoClienteAutenticado;
   cadastro: CadastroClienteCompleto;
+  destino?: string;
 }) {
   return (
     <>
@@ -27,7 +29,11 @@ export function PaginaCompletarCadastro({
             </p>
           </div>
 
-          <FormularioCompletarCadastro sessao={sessao} cadastro={cadastro} />
+          <FormularioCompletarCadastro
+            sessao={sessao}
+            cadastro={cadastro}
+            destino={destino}
+          />
         </div>
       </main>
     </>

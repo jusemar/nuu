@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { Footer } from "@/components/common/footer";
 import { BannerInstitucionalProduto } from "@/features/banners-home/components/store/banner-institucional-produto";
 import { buscarBannerHomeAtivoPorPosicao } from "@/features/banners-home/queries/buscar-banners-home-ativos";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
@@ -108,6 +109,7 @@ export default async function PaginaPreVisualizacaoProduto({
   return (
     <div data-pdp-preview="true">
       <ProductDetail
+        rodape={<Footer />}
         product={{ ...produto, pricing: precos }}
         nomeComercialLoja={configuracaoLoja.nomeComercial}
         breadcrumbCategorias={breadcrumbCategorias}

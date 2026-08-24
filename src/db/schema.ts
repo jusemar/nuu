@@ -2,11 +2,13 @@
 
 import { relations } from "drizzle-orm";
 import {
+  index,
   integer,
   pgEnum,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -82,45 +84,66 @@ import { fornecedoresTable as fornecedoresIdentificadoresTable } from "./tables/
 // TABELAS EXISTENTES (mantidas como estavam)
 // ============================================
 
-export const sessionTable = pgTable("session", {
-  id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  userId: text("user_id")
-    .notNull()
-    .references(() => userTable.id, { onDelete: "cascade" }),
-});
+export const sessionTable = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("session_user_id_idx").on(table.userId)],
+);
 
-export const accountTable = pgTable("account", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id").notNull(),
-  providerId: text("provider_id").notNull(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => userTable.id, { onDelete: "cascade" }),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-});
+export const accountTable = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => [
+    // Na versão 1.3.34, Better Auth resolve uma identidade externa pelo par
+    // providerId + accountId. A constraint impede dois users de reivindicarem
+    // a mesma conta do provedor em uma corrida de gravação.
+    uniqueIndex("account_provider_id_account_id_unique").on(
+      table.providerId,
+      table.accountId,
+    ),
+    index("account_user_id_idx").on(table.userId),
+  ],
+);
 
-export const verificationTable = pgTable("verification", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").$defaultFn(() => new Date()),
-  updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
-});
+export const verificationTable = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at").$defaultFn(() => new Date()),
+  },
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
 
 export const shippingAddressTable = pgTable("shipping_address", {
   id: uuid().primaryKey().defaultRandom(),
@@ -577,6 +600,10 @@ export {
   userTable,
 } from "./tables/autenticacao";
 export {
+  desafiosOtpTelefoneTable,
+  emissoesOtpTelefoneTable,
+} from "./tables/autenticacao";
+export {
   type BannerHome,
   bannerHomeDestaqueEnum,
   bannerHomePosicaoEnum,
@@ -818,6 +845,9 @@ export * from "./tables/atendimento-ia";
 // Configurações e overrides do Programa de Fidelidade (sem carteira ou pontos).
 export * from "./tables/programa-fidelidade";
 export * from "./tables/programa-fidelidade-carteira";
+
+// Páginas institucionais e seus grupos ordenáveis de navegação.
+export * from "./tables/paginas-dinamicas";
 
 // Relations de Shipping
 export {

@@ -204,6 +204,34 @@
       "when": 1787184000000,
       "tag": "0028_identificadores_catalogo_gtin_mpn",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1787345398871,
+      "tag": "0029_paginas_dinamicas",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1787492461811,
+      "tag": "0030_preparar-identidade-telefone",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1787492492138,
+      "tag": "0031_migrar-whatsapp-legado-e164",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787494818667,
+      "tag": "0032_desafios-otp-telefone-seguros",
+      "breakpoints": true
     }
   ]
 }

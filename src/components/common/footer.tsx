@@ -2,8 +2,11 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
+import { listarGruposRodapePublicos } from "@/features/paginas-dinamicas/queries/listar-grupos-rodape-publicos";
 
-export const Footer = () => {
+export const Footer = async () => {
+  const grupos = await listarGruposRodapePublicos();
+
   return (
     <footer className="bg-primary text-primary-foreground">
       {/* ── Corpo principal ── */}
@@ -44,53 +47,25 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Empresa */}
-          <div>
-            <h3 className="text-warning mb-4 text-xs font-bold tracking-widest uppercase">
-              Empresa
-            </h3>
-            <ul className="space-y-2.5 text-sm text-white/70">
-              {[
-                { href: "/sobre", label: "Sobre nós" },
-                { href: "/fale-conosco", label: "Fale Conosco" },
-                { href: "/fornecedor", label: "Fornecedor" },
-                { href: "/entregas", label: "Entregas" },
-                { href: "/garantias", label: "Garantias" },
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Ajuda */}
-          <div>
-            <h3 className="text-warning mb-4 text-xs font-bold tracking-widest uppercase">
-              Ajuda
-            </h3>
-            <ul className="space-y-2.5 text-sm text-white/70">
-              {[
-                { href: "/termos", label: "Termos de Serviço" },
-                { href: "/devolucao", label: "Política de Devolução" },
-                { href: "/reembolso", label: "Política de Reembolso" },
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="transition-colors hover:text-white"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {grupos.map((grupo) => (
+            <nav key={grupo.id} aria-label={grupo.titulo}>
+              <h2 className="text-warning mb-4 text-xs font-bold tracking-widest uppercase">
+                {grupo.titulo}
+              </h2>
+              <ul className="space-y-2.5 text-sm text-white/70">
+                {grupo.links.map((link) => (
+                  <li key={link.id}>
+                    <Link
+                      href={link.href}
+                      className="focus-visible:ring-warning focus-visible:ring-offset-primary rounded-sm transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                      {link.texto}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
       </Container>
 

@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { Footer } from "@/components/common/footer";
 import { BannerInstitucionalProduto } from "@/features/banners-home/components/store/banner-institucional-produto";
 import { buscarBannerHomeAtivoPorPosicao } from "@/features/banners-home/queries/buscar-banners-home-ativos";
 import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
@@ -243,6 +244,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
         precosCalculadosPorVariante={precosCalculadosPorVariante}
       />
       <ProductDetail
+        rodape={<Footer />}
         urlCompartilhamento={urlCanonica}
         initialVariantId={varianteInicial?.id ?? null}
         product={{

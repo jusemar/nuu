@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
-import { Footer } from "@/components/common/footer";
 import { CampoMensagemAtendente } from "@/features/atendimento-ia";
 import { Header } from "@/features/header";
 
@@ -34,6 +33,7 @@ type PropriedadesPaginaProdutoAprovada = {
   /** Mantém os marcadores exclusivos do laboratório fora da PDP pública. */
   modoPreVisualizacao?: boolean;
   bannerInstitucionalProduto?: ReactNode;
+  rodape: ReactNode;
 };
 
 /**
@@ -59,6 +59,7 @@ export function PaginaProdutoAprovada({
   vendaCruzada,
   modoPreVisualizacao = false,
   bannerInstitucionalProduto,
+  rodape,
 }: PropriedadesPaginaProdutoAprovada) {
   return (
     <div
@@ -130,7 +131,7 @@ export function PaginaProdutoAprovada({
         </div>
       </main>
 
-      <Footer />
+      {rodape}
       {modalPagamento}
     </div>
   );

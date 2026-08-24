@@ -8,5 +8,6 @@ export type UsuarioClienteAutenticado = {
 
 export type SessaoClienteAutenticado = {
   usuario: UsuarioClienteAutenticado;
+  criadoEm: Date;
   expiraEm: Date;
 };

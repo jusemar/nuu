@@ -34,9 +34,7 @@ function formatarBytes(bytes: number) {
 async function enviarImagemBannerHome(arquivo: File) {
   const formData = new FormData();
   formData.append("file", arquivo);
-  formData.append("destino", "banners-home");
-
-  const resposta = await fetch("/api/upload", {
+  const resposta = await fetch("/api/upload?contexto=banner", {
     method: "POST",
     body: formData,
   });

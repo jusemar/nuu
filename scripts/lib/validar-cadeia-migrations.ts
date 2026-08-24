@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 34,
-  ultimoIndice: 33,
-  ultimaTag: "0033_confirmacao_email_cliente",
-  ultimoArquivo: "drizzle/0033_confirmacao_email_cliente.sql",
+  total: 36,
+  ultimoIndice: 35,
+  ultimaTag: "0035_convite_administrativo_nome_destinatario",
+  ultimoArquivo: "drizzle/0035_convite_administrativo_nome_destinatario.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -166,6 +166,138 @@ export function validarDeltaSnapshots(
     ) {
       falhar(`Delta inesperado nos snapshots para ${grupo}.`);
     }
+  }
+}
+
+/** Garante que 0034 acrescenta somente a fundação independente do RBAC global. */
+export function validarDeltaSnapshotRbacGlobal(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0033 e 0034 não estão encadeados.");
+  }
+
+  const adicoesEsperadas = {
+    tables: [
+      "public.administradores",
+      "public.administradores_funcoes",
+      "public.administradores_permissoes",
+      "public.auditorias_administrativas",
+      "public.convites_administrativos",
+      "public.convites_funcoes",
+      "public.convites_permissoes",
+      "public.funcoes_administrativas",
+      "public.funcoes_permissoes",
+      "public.permissoes_administrativas",
+    ],
+    enums: [
+      "public.administrador_status",
+      "public.auditoria_administrativa_resultado",
+      "public.convite_administrativo_status",
+      "public.efeito_permissao_administrador",
+      "public.funcao_administrativa_status",
+      "public.permissao_administrativa_status",
+    ],
+  } as const;
+
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    const anterior = snapshotAnterior[grupo] ?? {};
+    const atual = snapshotAtual[grupo] ?? {};
+    const adicionadas = Object.keys(atual).filter(
+      (chave) => !(chave in anterior),
+    );
+    const removidas = Object.keys(anterior).filter(
+      (chave) => !(chave in atual),
+    );
+    const alteradas = Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        JSON.stringify(anterior[chave]) !== JSON.stringify(atual[chave]),
+    );
+    const esperadas =
+      grupo === "tables" || grupo === "enums"
+        ? [...adicoesEsperadas[grupo]]
+        : [];
+
+    if (
+      JSON.stringify(adicionadas.sort()) !== JSON.stringify(esperadas.sort()) ||
+      removidas.length > 0 ||
+      alteradas.length > 0
+    ) {
+      falhar(`Delta inesperado do RBAC global para ${grupo}.`);
+    }
+  }
+}
+
+/** Garante que 0035 acrescenta somente o nome necessário ao convite global. */
+export function validarDeltaSnapshotConviteAdministrativo(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0034 e 0035 não estão encadeados.");
+  }
+
+  for (const grupo of [
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    if (
+      JSON.stringify(snapshotAnterior[grupo] ?? {}) !==
+      JSON.stringify(snapshotAtual[grupo] ?? {})
+    ) {
+      falhar(`Delta inesperado do convite administrativo para ${grupo}.`);
+    }
+  }
+
+  const tabela = "public.convites_administrativos";
+  for (const [nome, definicao] of Object.entries(snapshotAnterior.tables)) {
+    if (nome === tabela) continue;
+    if (
+      JSON.stringify(definicao) !== JSON.stringify(snapshotAtual.tables[nome])
+    )
+      falhar("0035 alterou tabela fora do convite administrativo.");
+  }
+  if (
+    Object.keys(snapshotAnterior.tables).length !==
+    Object.keys(snapshotAtual.tables).length
+  )
+    falhar("0035 adicionou ou removeu tabela.");
+
+  const anterior = snapshotAnterior.tables[tabela] as {
+    columns?: Record<string, unknown>;
+  };
+  const atual = snapshotAtual.tables[tabela] as {
+    columns?: Record<string, unknown>;
+  };
+  const colunasAnteriores = anterior?.columns ?? {};
+  const colunasAtuais = atual?.columns ?? {};
+  const adicionadas = Object.keys(colunasAtuais).filter(
+    (nome) => !(nome in colunasAnteriores),
+  );
+  if (
+    JSON.stringify(adicionadas) !== JSON.stringify(["nome_destinatario"]) ||
+    Object.keys(colunasAtuais).length !==
+      Object.keys(colunasAnteriores).length + 1
+  ) {
+    falhar("0035 não contém somente nome_destinatario.");
+  }
+  for (const [nome, definicao] of Object.entries(colunasAnteriores)) {
+    if (JSON.stringify(definicao) !== JSON.stringify(colunasAtuais[nome]))
+      falhar("0035 alterou coluna preexistente do convite.");
   }
 }
 

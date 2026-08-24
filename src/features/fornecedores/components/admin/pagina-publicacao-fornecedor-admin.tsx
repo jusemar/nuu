@@ -298,7 +298,7 @@ export function PaginaPublicacaoFornecedorAdmin({
                   : `Publicando ${Math.min(progresso.concluidos + 1, progresso.total)} de ${progresso.total} produtos…`}
               </p>
               {progresso.atual ? (
-                <p className="mt-0.5 break-words text-xs text-blue-800">
+                <p className="mt-0.5 text-xs break-words text-blue-800">
                   {progresso.atual}
                 </p>
               ) : null}
@@ -444,11 +444,11 @@ export function PaginaPublicacaoFornecedorAdmin({
                         : "Criar produto"}
                     </Badge>
                   </div>
-                  <p className="mt-1 break-words text-xs text-slate-500">
+                  <p className="mt-1 text-xs break-words text-slate-500">
                     Código fornecedor:{" "}
                     {rascunho.codigoFornecedor ?? "Não informado"}
                   </p>
-                  <p className="mt-1 break-words text-xs text-slate-500">
+                  <p className="mt-1 text-xs break-words text-slate-500">
                     {rascunho.produtoAtualizadoId
                       ? `Produto na loja: ${rascunho.produtoAtualizadoNome ?? "-"}`
                       : `${rascunho.categoriaNome ?? "Sem categoria"} · ${rascunho.marcaNome ?? "Sem marca"}`}
@@ -470,7 +470,7 @@ export function PaginaPublicacaoFornecedorAdmin({
                       >
                         Bloqueado
                       </Badge>
-                      <p className="break-words text-xs text-amber-700">
+                      <p className="text-xs break-words text-amber-700">
                         {rascunho.pendencias.join(", ")}
                       </p>
                     </div>

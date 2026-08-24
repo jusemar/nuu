@@ -1,3 +1,5 @@
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { GestaoPaginasLoja } from "@/features/paginas-dinamicas/components/admin/gestao-paginas-loja";
 import { listarGruposNavegacao } from "@/features/paginas-dinamicas/queries/listar-grupos-navegacao";
 import { listarPaginasDinamicas } from "@/features/paginas-dinamicas/queries/listar-paginas-dinamicas";
@@ -15,6 +17,7 @@ async function listarTodasPaginas() {
 }
 
 export default async function PaginasDaLojaAdminPage() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAGINAS.ADMINISTRAR);
   const [grupos, paginas] = await Promise.all([
     listarGruposNavegacao(),
     listarTodasPaginas(),

@@ -937,7 +937,7 @@ function SecaoCamposSemOrigem({
               <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
                 Campo da loja
               </p>
-              <p className="mt-1 break-words text-sm font-semibold text-slate-950 lg:truncate">
+              <p className="mt-1 text-sm font-semibold break-words text-slate-950 lg:truncate">
                 {campo.label}
               </p>
               <p
@@ -1039,7 +1039,7 @@ function LinhaMobile({
           <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
             {labelPrimeiraColuna}
           </p>
-          <p className="mt-1 break-words text-sm font-semibold text-slate-950">
+          <p className="mt-1 text-sm font-semibold break-words text-slate-950">
             {linha.nomeOrigem}
           </p>
         </div>
@@ -1048,7 +1048,7 @@ function LinhaMobile({
         <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
           {labelAmostra}
         </p>
-        <p className="mt-1 break-words text-sm text-slate-800">
+        <p className="mt-1 text-sm break-words text-slate-800">
           {linha.amostra || "-"}
         </p>
       </div>

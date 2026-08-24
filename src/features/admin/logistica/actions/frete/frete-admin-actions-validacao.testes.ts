@@ -7,7 +7,9 @@ import { editarTransportadoraFrete } from "./transportadoras";
 
 describe("actions admin frete - validacao", () => {
   it("falha edicao de transportadora sem id", async () => {
-    const resposta = await editarTransportadoraFrete("", { nome: "Atualizada" });
+    const resposta = await editarTransportadoraFrete("", {
+      nome: "Atualizada",
+    });
 
     assert.equal(resposta.sucesso, false);
     if (!resposta.sucesso) {
@@ -33,4 +35,3 @@ describe("actions admin frete - validacao", () => {
     }
   });
 });
-

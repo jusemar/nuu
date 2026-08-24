@@ -41,38 +41,39 @@ export async function listarImportacoesRecentesFornecedoresAdmin(
     },
     () =>
       Promise.all([
-    db
-      .select({
-        id: importacoesFornecedorTable.id,
-        fornecedorId: importacoesFornecedorTable.fornecedorId,
-        nomeFornecedor: fornecedoresTable.nome,
-        tipoArquivo: importacoesFornecedorTable.tipoArquivo,
-        configuracaoFluxoJson: importacoesFornecedorTable.configuracaoFluxoJson,
-        nomeArquivo: importacoesFornecedorTable.nomeArquivo,
-        totalLinhas: importacoesFornecedorTable.totalLinhas,
-        totalProcessadas: importacoesFornecedorTable.totalProcessadas,
-        totalErros: importacoesFornecedorTable.totalErros,
-        status: importacoesFornecedorTable.status,
-        criadoEm: importacoesFornecedorTable.criadoEm,
-      })
-      .from(importacoesFornecedorTable)
-      .innerJoin(
-        fornecedoresTable,
-        eq(importacoesFornecedorTable.fornecedorId, fornecedoresTable.id),
-      )
-      .orderBy(desc(importacoesFornecedorTable.criadoEm))
-      .limit(limite)
-      .offset(offset),
-    db
-      .select({ total: sql<number>`count(*)` })
-      .from(importacoesFornecedorTable),
-    db
-      .select({
-        status: importacoesFornecedorTable.status,
-        total: sql<number>`count(*)`,
-      })
-      .from(importacoesFornecedorTable)
-      .groupBy(importacoesFornecedorTable.status),
+        db
+          .select({
+            id: importacoesFornecedorTable.id,
+            fornecedorId: importacoesFornecedorTable.fornecedorId,
+            nomeFornecedor: fornecedoresTable.nome,
+            tipoArquivo: importacoesFornecedorTable.tipoArquivo,
+            configuracaoFluxoJson:
+              importacoesFornecedorTable.configuracaoFluxoJson,
+            nomeArquivo: importacoesFornecedorTable.nomeArquivo,
+            totalLinhas: importacoesFornecedorTable.totalLinhas,
+            totalProcessadas: importacoesFornecedorTable.totalProcessadas,
+            totalErros: importacoesFornecedorTable.totalErros,
+            status: importacoesFornecedorTable.status,
+            criadoEm: importacoesFornecedorTable.criadoEm,
+          })
+          .from(importacoesFornecedorTable)
+          .innerJoin(
+            fornecedoresTable,
+            eq(importacoesFornecedorTable.fornecedorId, fornecedoresTable.id),
+          )
+          .orderBy(desc(importacoesFornecedorTable.criadoEm))
+          .limit(limite)
+          .offset(offset),
+        db
+          .select({ total: sql<number>`count(*)` })
+          .from(importacoesFornecedorTable),
+        db
+          .select({
+            status: importacoesFornecedorTable.status,
+            total: sql<number>`count(*)`,
+          })
+          .from(importacoesFornecedorTable)
+          .groupBy(importacoesFornecedorTable.status),
       ]),
   );
 
@@ -109,7 +110,9 @@ export async function listarImportacoesRecentesFornecedoresAdmin(
       provedor,
       /** O que identifica a aquisição na tela: arquivo tem nome, API tem provedor. */
       rotuloOrigem: origemApi
-        ? (provedor === "laquila" ? "Laquila" : (provedor ?? "API"))
+        ? provedor === "laquila"
+          ? "Laquila"
+          : (provedor ?? "API")
         : (item.nomeArquivo ?? "Arquivo enviado"),
       /** Número curto de controle, legível sem expor o uuid inteiro. */
       numeroControle: item.id.slice(0, 8),

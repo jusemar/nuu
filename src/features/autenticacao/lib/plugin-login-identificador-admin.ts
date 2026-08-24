@@ -7,9 +7,9 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import { userTable } from "@/db/schema";
+import { buscarVinculoAdministrativoBasico } from "@/features/autenticacao/queries/autorizacao-admin/buscar-vinculo-administrativo-basico";
 
 import { normalizarWhatsappAdmin } from "./normalizar-whatsapp-admin";
-import { emailPossuiPermissaoAdmin } from "./permissoes-admin";
 
 const mensagemCredenciaisInvalidas = "Identificador ou senha inválidos.";
 
@@ -55,7 +55,10 @@ export function pluginLoginIdentificadorAdmin() {
                 })
               : null;
 
-          if (!usuario || !emailPossuiPermissaoAdmin(usuario.email)) {
+          const vinculo = usuario
+            ? await buscarVinculoAdministrativoBasico(usuario.id)
+            : null;
+          if (!usuario || vinculo?.status !== "ativo") {
             // Mantém custo semelhante ao caminho válido e reduz enumeração por tempo.
             await contexto.context.password.hash(contexto.body.senha);
             throw erroCredenciaisInvalidas();

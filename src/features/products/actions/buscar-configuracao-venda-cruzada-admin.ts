@@ -1,6 +1,7 @@
 "use server";
 
-import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { buscarConfiguracaoVendaCruzadaAdmin as buscarConfiguracao } from "../queries/venda-cruzada/buscar-configuracao-venda-cruzada-admin";
 
@@ -8,10 +9,7 @@ import { buscarConfiguracaoVendaCruzadaAdmin as buscarConfiguracao } from "../qu
 export async function buscarConfiguracaoVendaCruzadaAdmin(
   produtoPrincipalId: unknown,
 ) {
-  const sessao = await buscarSessaoAdmin();
-  if (!sessao.autorizado) {
-    throw new Error("Sessão de administrador inválida ou expirada.");
-  }
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.VISUALIZAR);
 
   const configuracao = await buscarConfiguracao(produtoPrincipalId);
   if (!configuracao) throw new Error("Produto principal não encontrado.");

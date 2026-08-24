@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
 import { variantesTiposLogisticosTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function desvincularVarianteTipoLogistico(vinculoId: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   if (!vinculoId) {
     return { sucesso: false as const, erro: "ID do vínculo é obrigatório" };
   }

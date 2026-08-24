@@ -5,16 +5,17 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 
-import { emailPossuiPermissaoAdmin } from "../../lib/permissoes-admin";
 import {
   classificarSessaoAdmin,
   consultarSessaoComRepeticao,
   diagnosticarErroSessaoAdmin,
 } from "../../lib/diagnosticar-erro-sessao-admin";
+import { buscarVinculoAdministrativoBasico } from "../autorizacao-admin/buscar-vinculo-administrativo-basico";
 
 export type ResultadoSessaoAdmin = {
   sessao: Awaited<ReturnType<typeof auth.api.getSession>>;
   autorizado: boolean;
+  origemAutorizacao: "rbac_persistido" | null;
   motivo:
     | "ok"
     | "sessao_ausente"
@@ -31,7 +32,12 @@ export async function buscarSessaoAdmin(): Promise<ResultadoSessaoAdmin> {
   const cookieSessaoPresente = Boolean(getSessionCookie(cabecalhos));
 
   if (!cookieSessaoPresente) {
-    return { sessao: null, autorizado: false, motivo: "sessao_ausente" };
+    return {
+      sessao: null,
+      autorizado: false,
+      motivo: "sessao_ausente",
+      origemAutorizacao: null,
+    };
   }
 
   try {
@@ -59,10 +65,18 @@ export async function buscarSessaoAdmin(): Promise<ResultadoSessaoAdmin> {
       cookieSessaoPresente,
     });
 
-    return { sessao: null, autorizado: false, motivo: "indisponivel" };
+    return {
+      sessao: null,
+      autorizado: false,
+      motivo: "indisponivel",
+      origemAutorizacao: null,
+    };
   }
 
-  const autorizado = emailPossuiPermissaoAdmin(sessao?.user?.email);
+  const vinculo = sessao?.user
+    ? await buscarVinculoAdministrativoBasico(sessao.user.id)
+    : null;
+  const autorizado = vinculo?.status === "ativo";
   const motivo = classificarSessaoAdmin({
     cookieSessaoPresente,
     usuarioPresente: Boolean(sessao?.user),
@@ -73,5 +87,6 @@ export async function buscarSessaoAdmin(): Promise<ResultadoSessaoAdmin> {
     sessao,
     autorizado,
     motivo,
+    origemAutorizacao: autorizado ? "rbac_persistido" : null,
   };
 }

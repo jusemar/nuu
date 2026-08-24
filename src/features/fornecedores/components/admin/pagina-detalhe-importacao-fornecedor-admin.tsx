@@ -246,10 +246,10 @@ function CabecalhoExecutivo({
           <p className="text-xs text-slate-500">
             Fornecedores &gt; Importações
           </p>
-          <h1 className="break-words text-2xl font-semibold text-slate-950 md:truncate">
+          <h1 className="text-2xl font-semibold break-words text-slate-950 md:truncate">
             Importação #{importacao.id.slice(0, 8)}
           </h1>
-          <p className="break-words text-sm text-slate-600 md:truncate">
+          <p className="text-sm break-words text-slate-600 md:truncate">
             {importacao.nomeArquivo ?? "arquivo sem nome"}
           </p>
         </div>

@@ -1,6 +1,8 @@
 "use server";
 
 import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-acesso-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { MODALIDADES_PRECO_PRODUTO } from "../constants/modalidades-preco";
 import {
@@ -91,6 +93,7 @@ function resumir(
 }
 
 export async function solicitarPreviewAlteracaoEmMassa(input: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.VISUALIZAR);
   const acesso = await validarAcessoAdmin();
   if (!acesso.sucesso) return { sucesso: false as const, erro: acesso.erro };
 

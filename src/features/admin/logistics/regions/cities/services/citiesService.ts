@@ -5,17 +5,22 @@
  */
 "use server";
 
+import { eq, sql } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { cities } from "@/db/table/logistics/cities/cities";
 import { neighborhoods } from "@/db/table/logistics/neighborhoods/neighborhoods";
-import { eq, sql } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import type { City } from "../types/cities";
 
 /**
  * Busca todas as cidades (opcionalmente filtradas por estado)
  */
 export async function getCities(stateUf?: string): Promise<City[]> {
-  let query = db.select().from(cities);
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
+  const query = db.select().from(cities);
 
   const citiesData = stateUf
     ? await query.where(eq(cities.stateUf, stateUf))
@@ -49,6 +54,7 @@ export async function getCities(stateUf?: string): Promise<City[]> {
  * Busca cidade por ID
  */
 export async function getCityById(id: string): Promise<City | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const city = await db.query.cities.findFirst({
     where: eq(cities.id, parseInt(id)),
   });
@@ -79,6 +85,7 @@ export async function getCityById(id: string): Promise<City | null> {
 export async function createCity(
   city: Omit<City, "id" | "createdAt">,
 ): Promise<City> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [newCity] = await db
     .insert(cities)
     .values({
@@ -108,6 +115,7 @@ export async function updateCityStatus(
   id: string,
   isActive: boolean,
 ): Promise<City> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [updatedCity] = await db
     .update(cities)
     .set({ isActive, updatedAt: new Date() })
@@ -138,5 +146,6 @@ export async function updateCityStatus(
  * Remove cidade
  */
 export async function deleteCity(id: string): Promise<void> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db.delete(cities).where(eq(cities.id, parseInt(id)));
 }

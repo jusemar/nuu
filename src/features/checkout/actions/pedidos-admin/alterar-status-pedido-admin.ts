@@ -8,6 +8,8 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import { montarDescricaoAlteracaoManualStatus } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
@@ -22,6 +24,7 @@ export async function alterarStatusPedidoAdmin(
   _estadoAtual: EstadoAlterarStatusPedidoAdmin,
   formData: FormData,
 ): Promise<EstadoAlterarStatusPedidoAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PEDIDOS.ADMINISTRAR);
   const validacao = alterarStatusPedidoAdminSchema.safeParse({
     pedidoId: formData.get("pedidoId"),
     status: formData.get("status"),

@@ -514,7 +514,7 @@ export function VariantsTab({ data, onChange, draftKey }: VariantsTabProps) {
       const formData = new FormData();
       formData.append("file", arquivo);
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/api/upload?contexto=produto", {
         method: "POST",
         body: formData,
       });

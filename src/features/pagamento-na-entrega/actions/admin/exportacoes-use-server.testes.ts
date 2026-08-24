@@ -21,7 +21,10 @@ import { describe, it } from "node:test";
  * pacote que o Next inspeciona em tempo de execução.
  */
 
-const PASTA_ACTIONS = join(process.cwd(), "src/features/pagamento-na-entrega/actions");
+const PASTA_ACTIONS = join(
+  process.cwd(),
+  "src/features/pagamento-na-entrega/actions",
+);
 
 /** Lista recursivamente os arquivos `.ts` da pasta de actions. */
 function listarArquivosTs(pasta: string): string[] {

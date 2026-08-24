@@ -9,6 +9,8 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import { montarDescricaoPedidoEntregue } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
@@ -23,6 +25,7 @@ export async function marcarPedidoEntregueAdmin(
   _estadoAtual: EstadoMarcarPedidoEntregueAdmin,
   formData: FormData,
 ): Promise<EstadoMarcarPedidoEntregueAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PEDIDOS.ADMINISTRAR);
   const validacao = acaoLogisticaPedidoAdminSchema.safeParse({
     pedidoId: formData.get("pedidoId"),
   });

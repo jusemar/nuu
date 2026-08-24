@@ -1,6 +1,10 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { traduzirErroAutorizacaoRouteHandler } from "@/features/autenticacao/lib/autorizacao-admin/traduzir-erro-autorizacao-route-handler";
+
 const formatosImagemBannerHomePermitidos = [
   "image/jpeg",
   "image/png",
@@ -19,10 +23,32 @@ function normalizarNomeArquivo(nome: string) {
 
 export async function POST(request: Request) {
   try {
+    const contexto = new URL(request.url).searchParams.get("contexto");
+    const configuracao =
+      contexto === "produto"
+        ? {
+            pasta: "products",
+            permissao: PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR,
+          }
+        : contexto === "banner"
+          ? {
+              pasta: "banners-home",
+              permissao: PERMISSOES_ADMIN.BANNERS.ADMINISTRAR,
+            }
+          : null;
+
+    if (!configuracao) {
+      return NextResponse.json(
+        { error: "Contexto de upload inválido." },
+        { status: 400 },
+      );
+    }
+
+    // O contexto fechado define simultaneamente a pasta e a permissão.
+    await exigirPermissaoAdmin(configuracao.permissao);
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const destino = formData.get("destino");
-    const pasta = destino === "banners-home" ? "banners-home" : "products";
+    const pasta = configuracao.pasta;
 
     if (!file) {
       return NextResponse.json(
@@ -68,6 +94,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(blob);
   } catch (error) {
+    const respostaAutorizacao = traduzirErroAutorizacaoRouteHandler(error);
+    if (respostaAutorizacao) return respostaAutorizacao;
     console.error("Erro no upload:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

@@ -1,15 +1,18 @@
 // TODO: Implementar
 "use server";
 
-// Action: atualiza modelo de retirada existente
-
-import { db } from "@/db/connection";
-import { modelosRetiradaTable } from "@/db/table/retirada/modelos-retirada";
-import { atualizarModeloRetiradaSchema } from "@/features/admin/logistica/schemas/retiradaLocal.schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+// Action: atualiza modelo de retirada existente
+import { db } from "@/db/connection";
+import { modelosRetiradaTable } from "@/db/table/retirada/modelos-retirada";
+import { atualizarModeloRetiradaSchema } from "@/features/admin/logistica/schemas/retiradaLocal.schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 export async function atualizarModeloRetirada(id: string, dados: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   if (!id) {
     return { success: false, error: "ID do modelo é obrigatório" };
   }

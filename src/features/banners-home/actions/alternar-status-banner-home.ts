@@ -5,10 +5,13 @@ import { revalidatePath } from "next/cache";
 
 import { bannersHomeTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { alternarStatusBannerHomeSchema } from "../schemas/banner-home.schema";
 
 export async function alternarStatusBannerHome(data: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.BANNERS.ADMINISTRAR);
   const { id, ativo } = alternarStatusBannerHomeSchema.parse(data);
   const agora = new Date();
 

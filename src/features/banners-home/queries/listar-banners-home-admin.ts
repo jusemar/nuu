@@ -4,6 +4,8 @@ import { asc, desc } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { bannersHomeTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { bannerHomeSecundarioFallback } from "../lib/banners-home-fallback";
 import type { BannerHomeAdminDados } from "../types/banners-home.types";
@@ -11,6 +13,7 @@ import type { BannerHomeAdminDados } from "../types/banners-home.types";
 export async function listarBannersHomeAdmin(): Promise<
   BannerHomeAdminDados[]
 > {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.BANNERS.ADMINISTRAR);
   const banners = await db
     .select()
     .from(bannersHomeTable)

@@ -3,9 +3,11 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-import { atendimentoIaPapeisAdminTable, userTable } from "@/db/schema";
+import {
+  administradoresTable,
+  atendimentoIaPapeisAdminTable,
+} from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
-import { emailPossuiPermissaoAdmin } from "@/features/autenticacao/lib/permissoes-admin";
 
 import { registrarAuditoriaPermissaoAtendimentoIa } from "../../lib/admin/permissoes/auditoria-permissoes";
 import { exigirCapacidadeAtendimentoIa } from "../../queries/admin/permissoes/buscar-acesso-atendimento-ia";
@@ -16,12 +18,17 @@ export async function atribuirPapelAtendimentoIa(entrada: unknown) {
   const dados = atribuirPapelAtendimentoIaSchema.parse(entrada);
 
   await dbTransacional.transaction(async (transacao) => {
-    const [usuario] = await transacao
-      .select({ email: userTable.email })
-      .from(userTable)
-      .where(eq(userTable.id, dados.usuarioId))
+    const [administradorGlobal] = await transacao
+      .select({ id: administradoresTable.id })
+      .from(administradoresTable)
+      .where(
+        and(
+          eq(administradoresTable.usuarioId, dados.usuarioId),
+          eq(administradoresTable.status, "ativo"),
+        ),
+      )
       .limit(1);
-    if (!usuario || !emailPossuiPermissaoAdmin(usuario.email))
+    if (!administradorGlobal)
       throw new Error("USUARIO_NAO_AUTORIZADO_NO_ADMIN");
 
     await transacao
@@ -38,16 +45,14 @@ export async function atribuirPapelAtendimentoIa(entrada: unknown) {
           eq(atendimentoIaPapeisAdminTable.ativo, true),
         ),
       );
-    await transacao
-      .insert(atendimentoIaPapeisAdminTable)
-      .values({
-        ativo: true,
-        capacidadesAdicionais: [],
-        origem: "atribuicao_explicita",
-        papel: dados.papel,
-        atribuidoPorId: ator.usuarioId,
-        usuarioId: dados.usuarioId,
-      });
+    await transacao.insert(atendimentoIaPapeisAdminTable).values({
+      ativo: true,
+      capacidadesAdicionais: [],
+      origem: "atribuicao_explicita",
+      papel: dados.papel,
+      atribuidoPorId: ator.usuarioId,
+      usuarioId: dados.usuarioId,
+    });
     await registrarAuditoriaPermissaoAtendimentoIa(transacao, {
       acao: "atribuir_papel",
       atorId: ator.usuarioId,

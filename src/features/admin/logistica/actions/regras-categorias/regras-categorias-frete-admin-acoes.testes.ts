@@ -7,7 +7,9 @@ import { removerRegraCategoriaFrete } from "./remover-regra-categoria-frete";
 
 describe("acoes admin regras por categoria", () => {
   it("falha ao editar sem id", async () => {
-    const resposta = await editarRegraCategoriaFrete("", { efeito: "bloquear" });
+    const resposta = await editarRegraCategoriaFrete("", {
+      efeito: "bloquear",
+    });
     assert.equal(resposta.sucesso, false);
   });
 
@@ -21,4 +23,3 @@ describe("acoes admin regras por categoria", () => {
     assert.equal(resposta.sucesso, false);
   });
 });
-

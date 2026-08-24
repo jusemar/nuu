@@ -2522,10 +2522,10 @@ export function TabelaConciliacaoFornecedor({
                   onClick={(evento) => evento.stopPropagation()}
                 />
                 <div className="min-w-0">
-                  <p className="break-words text-sm font-semibold text-slate-950">
+                  <p className="text-sm font-semibold break-words text-slate-950">
                     {nomeProdutoLegivel(item.produto.nome)}
                   </p>
-                  <p className="mt-1 break-words text-xs text-slate-500">
+                  <p className="mt-1 text-xs break-words text-slate-500">
                     {resumoProduto(item)}
                   </p>
                 </div>

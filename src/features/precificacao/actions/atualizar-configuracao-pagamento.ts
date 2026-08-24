@@ -4,10 +4,13 @@ import { desc, eq } from "drizzle-orm";
 
 import { configuracoesPagamentoTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { configuracaoPagamentoSchema } from "../schemas/configuracao-pagamento.schema";
 
 export async function atualizarConfiguracaoPagamento(data: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRECIFICACAO.ADMINISTRAR);
   const dados = configuracaoPagamentoSchema.parse(data);
 
   return dbTransacional.transaction(async (tx) => {

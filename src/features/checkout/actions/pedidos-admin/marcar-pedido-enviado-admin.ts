@@ -9,6 +9,8 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { montarDescricaoPedidoEnviado } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { acaoLogisticaPedidoAdminSchema } from "../../schemas/admin-pedidos.schema";
@@ -22,6 +24,7 @@ export async function marcarPedidoEnviadoAdmin(
   _estadoAtual: EstadoMarcarPedidoEnviadoAdmin,
   formData: FormData,
 ): Promise<EstadoMarcarPedidoEnviadoAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PEDIDOS.ADMINISTRAR);
   const validacao = acaoLogisticaPedidoAdminSchema.safeParse({
     pedidoId: formData.get("pedidoId"),
   });

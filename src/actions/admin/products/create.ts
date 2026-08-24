@@ -15,6 +15,8 @@ import {
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -149,6 +151,7 @@ async function buscarMarcaPorId(id: string) {
 }
 
 export async function createProduct(data: CreateProductData) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
   let produtoCriadoId: string | null = null;
 
   try {

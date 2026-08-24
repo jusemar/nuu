@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/connection";
 import { variantesTiposLogisticosTable } from "@/db/schema";
 import { vincularVarianteTipoLogisticoSchema } from "@/features/admin/logistica/schemas/tipos-logisticos-admin.schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function vincularVarianteTipoLogistico(entrada: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const validacao = vincularVarianteTipoLogisticoSchema.safeParse(entrada);
 
   if (!validacao.success) {

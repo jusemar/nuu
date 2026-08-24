@@ -10,6 +10,8 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
@@ -37,6 +39,7 @@ export async function registrarNaoRecebimentoPagamentoEntregaAdmin(
   _estadoAtual: EstadoRecebimentoPagamentoEntrega,
   formData: FormData,
 ): Promise<EstadoRecebimentoPagamentoEntrega> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAGAMENTOS_ENTREGA.ADMINISTRAR);
   const sessao = await buscarSessaoAdmin();
 
   if (!sessao.autorizado || !sessao.sessao) {

@@ -1,4 +1,10 @@
 "use server";
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- contratos legados fora do escopo desta etapa */
+
+import { asc, desc, eq, inArray,sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
 // =====================================================================
 // SERVER ACTIONS - CATEGORIAS
 // =====================================================================
@@ -9,29 +15,29 @@
 // ARQUITETURA: Feature-based (modular por domínio)
 // TECNOLOGIAS: Next.js App Router, Drizzle ORM, PostgreSQL
 // =====================================================================
-
 import { db } from "@/db/connection";
-import { dbTransacional } from "@/db/transaction";
-import { revalidatePath } from "next/cache";
 import { categoryTable } from "@/db/table/categories/categories";
 import { productTable } from "@/db/table/products/products";
-import { sql, eq, desc, asc, inArray } from "drizzle-orm";
+import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import {
+  descreverErroBancoParaLog,
+  erroEhTransitorioDeBanco,
+  executarLeituraComRetry,
+} from "@/lib/db/classificar-erro-banco";
+
+import {
+  calcularNiveisReais,
+  obterIdsDescendentes,
+} from "../lib/calcular-niveis-categorias";
+import { validarSlugCategoria } from "../lib/slug-categoria";
 import type {
   Category,
   CreateCategoryInput,
   HierarchicalSubcategory,
   UpdateCategoryInput,
 } from "../types";
-import {
-  calcularNiveisReais,
-  obterIdsDescendentes,
-} from "../lib/calcular-niveis-categorias";
-import { validarSlugCategoria } from "../lib/slug-categoria";
-import {
-  descreverErroBancoParaLog,
-  erroEhTransitorioDeBanco,
-  executarLeituraComRetry,
-} from "@/lib/db/classificar-erro-banco";
 
 type SubcategoryNode = HierarchicalSubcategory & {
   id?: string;
@@ -360,6 +366,7 @@ function collectExistingSubcategoryIds(
 // 1. BUSCAR TODAS AS CATEGORIAS (LISTAGEM)
 // =====================================================================
 export async function getAllCategories(): Promise<Category[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.VISUALIZAR);
   try {
     const categories = await executarLeituraComRetry(
       "categorias:admin:listagem",
@@ -437,6 +444,7 @@ export async function getAllCategories(): Promise<Category[]> {
 // 2. BUSCAR CATEGORIA POR ID (DETALHES)
 // =====================================================================
 export async function getCategoryById(id: string): Promise<Category | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.VISUALIZAR);
   try {
     return await executarLeituraComRetry(
       "categorias:admin:detalhe",
@@ -568,6 +576,7 @@ export async function getCategoryById(id: string): Promise<Category | null> {
 // 3. CRIAR NOVA CATEGORIA
 // =====================================================================
 export async function createCategory(data: CreateCategoryInput) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   try {
     const itens = validarArvoreCategorias(data);
     const newCategory = await dbTransacional.transaction(async (tx) => {
@@ -643,6 +652,7 @@ export async function createCategory(data: CreateCategoryInput) {
 // 4. ATUALIZAR CATEGORIA EXISTENTE
 // =====================================================================
 export async function updateCategory(id: string, data: UpdateCategoryInput) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   try {
     const resultado = await dbTransacional.transaction(async (tx) => {
       const hierarquiaAtual = await tx
@@ -852,6 +862,7 @@ export async function deleteCategory(
   id: string,
   type: "soft" | "hard" = "soft",
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.EXCLUIR);
   try {
     if (type === "hard") {
       const subcategorias = await getDescendantCategories(id);
@@ -900,6 +911,7 @@ export async function deleteCategory(
 // 6. RESTAURAR CATEGORIA INATIVA
 // =====================================================================
 export async function restoreCategory(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   try {
     await db
       .update(categoryTable)
@@ -919,6 +931,7 @@ export async function restoreCategory(id: string) {
 // 7. BUSCAR CATEGORIAS POR NÍVEL
 // =====================================================================
 export async function getCategoriesByLevel(level: number = 0) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.VISUALIZAR);
   try {
     return await db
       .select({
@@ -937,6 +950,7 @@ export async function getCategoriesByLevel(level: number = 0) {
 }
 
 export async function getProdutosVinculadosDaCategoria(categoryId: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.VISUALIZAR);
   try {
     const produtos = await db
       .select({

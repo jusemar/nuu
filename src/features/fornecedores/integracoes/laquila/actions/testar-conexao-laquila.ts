@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
 import { fornecedorIntegracoesApiTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirAcessoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import { METODOS_LAQUILA } from "../constants";
 import {
@@ -164,6 +166,9 @@ async function buscarConfiguracaoSegura(
 export async function testarConexaoLaquila(
   entrada: unknown,
 ): Promise<ResultadoTestarConexaoLaquila> {
+  await exigirAcessoFornecedoresAdmin(
+    PERMISSOES_ADMIN.FORNECEDORES.ADMINISTRAR,
+  );
   const validacao = testarConexaoLaquilaSchema.safeParse(entrada);
 
   if (!validacao.success) {

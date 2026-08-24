@@ -9,8 +9,16 @@ import { avaliarPortaoPublicacaoFornecedor } from "./portao-publicacao-fornecedo
  */
 test("item conciliado sem aprovação não pode anunciar 'pronto para publicar'", () => {
   const portao = avaliarPortaoPublicacaoFornecedor([
-    { id: "a", pendenciasObrigatorias: [], statusRascunho: "pendente_conciliacao" },
-    { id: "b", pendenciasObrigatorias: [], statusRascunho: "pendente_conciliacao" },
+    {
+      id: "a",
+      pendenciasObrigatorias: [],
+      statusRascunho: "pendente_conciliacao",
+    },
+    {
+      id: "b",
+      pendenciasObrigatorias: [],
+      statusRascunho: "pendente_conciliacao",
+    },
   ]);
 
   assert.equal(portao.estado, "aguardando_aprovacao");
@@ -20,7 +28,11 @@ test("item conciliado sem aprovação não pode anunciar 'pronto para publicar'"
 
 test("aprovado libera a etapa e é o que a Publicação vai listar", () => {
   const portao = avaliarPortaoPublicacaoFornecedor([
-    { id: "a", pendenciasObrigatorias: [], statusRascunho: "pronto_para_publicar" },
+    {
+      id: "a",
+      pendenciasObrigatorias: [],
+      statusRascunho: "pronto_para_publicar",
+    },
   ]);
 
   assert.equal(portao.estado, "liberada");
@@ -30,8 +42,16 @@ test("aprovado libera a etapa e é o que a Publicação vai listar", () => {
 
 test("pendência obrigatória bloqueia mesmo com outro item já aprovado", () => {
   const portao = avaliarPortaoPublicacaoFornecedor([
-    { id: "a", pendenciasObrigatorias: ["Preço"], statusRascunho: "pendente_conciliacao" },
-    { id: "b", pendenciasObrigatorias: [], statusRascunho: "pronto_para_publicar" },
+    {
+      id: "a",
+      pendenciasObrigatorias: ["Preço"],
+      statusRascunho: "pendente_conciliacao",
+    },
+    {
+      id: "b",
+      pendenciasObrigatorias: [],
+      statusRascunho: "pronto_para_publicar",
+    },
   ]);
 
   assert.equal(portao.estado, "bloqueada");
@@ -40,8 +60,16 @@ test("pendência obrigatória bloqueia mesmo com outro item já aprovado", () =>
 
 test("item com pendência não entra na aprovação em massa", () => {
   const portao = avaliarPortaoPublicacaoFornecedor([
-    { id: "a", pendenciasObrigatorias: ["Preço"], statusRascunho: "pendente_conciliacao" },
-    { id: "b", pendenciasObrigatorias: [], statusRascunho: "pendente_conciliacao" },
+    {
+      id: "a",
+      pendenciasObrigatorias: ["Preço"],
+      statusRascunho: "pendente_conciliacao",
+    },
+    {
+      id: "b",
+      pendenciasObrigatorias: [],
+      statusRascunho: "pendente_conciliacao",
+    },
   ]);
 
   assert.deepEqual(portao.idsAguardandoAprovacao, ["b"]);

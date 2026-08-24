@@ -9,6 +9,8 @@ import {
   servicosFreteTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 
 import { PROVEDOR_ENTREGA_PROPRIA } from "../../constants/pagamento-na-entrega.constants";
@@ -29,6 +31,7 @@ export async function salvarConfiguracaoPagamentoNaEntregaServico(
   _estadoAtual: EstadoSalvarConfiguracaoPagamentoNaEntrega,
   formData: FormData,
 ): Promise<EstadoSalvarConfiguracaoPagamentoNaEntrega> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAGAMENTOS_ENTREGA.ADMINISTRAR);
   const sessao = await buscarSessaoAdmin();
 
   if (!sessao.autorizado) {

@@ -14,15 +14,32 @@ export type AtribuicaoPapelAtendimentoIa = {
   usuarioId: string;
 };
 
+export function projetarAtribuicaoPapelAtendimentoIa(registro: {
+  ativo: boolean;
+  capacidadesAdicionais: CapacidadeAtendimentoIaAdmin[];
+  id: string;
+  origem: string;
+  papel: PapelAtendimentoIaAdmin;
+  usuarioId: string;
+}): AtribuicaoPapelAtendimentoIa {
+  return {
+    ...registro,
+    origem:
+      registro.origem === "bootstrap_admin_emails"
+        ? "bootstrap_admin_emails"
+        : "atribuicao_explicita",
+  };
+}
+
 /** Resolve somente dados confiáveis produzidos pelo servidor e pelo banco. */
 export function resolverPapelAtendimentoIa({
   atribuicao,
-  emailAutorizado,
+  acessoGlobalAutorizado,
 }: {
   atribuicao: AtribuicaoPapelAtendimentoIa | null;
-  emailAutorizado: boolean;
+  acessoGlobalAutorizado: boolean;
 }): AcessoAtendimentoIaAdmin | null {
-  if (!emailAutorizado || !atribuicao?.ativo) return null;
+  if (!acessoGlobalAutorizado || !atribuicao?.ativo) return null;
   const base = CAPACIDADES_BASE_POR_PAPEL_ADMIN[atribuicao.papel];
   const adicionaisPermitidas =
     atribuicao.papel === "visualizador"

@@ -17,6 +17,9 @@
     "migrations:validar": "tsx scripts/validar-e-aplicar-migrations.ts",
     "migrations:producao": "AMBIENTE_BANCO=producao tsx scripts/aplicar-migration-producao.ts",
     "schema:verificar-deploy": "node --import tsx scripts/verificar-schema-deploy.ts",
+    "rbac:sincronizar-catalogo": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts src/features/autenticacao/scripts/sincronizar-catalogo-permissoes-admin.ts",
+    "rbac:bootstrap-principal": "NODE_OPTIONS=--conditions=react-server AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts src/features/autenticacao/scripts/bootstrap-administrador-principal.ts",
+    "rbac:sincronizar-presets": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts src/features/administradores/scripts/sincronizar-presets-administrativos.ts",
     "merchant:analisar-frete": "NODE_OPTIONS=--conditions=react-server AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/analisar-matriz-frete-merchant.ts",
     "corrigir:criterio-localizacao": "AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/corrigir-criterio-localizacao-fornecedores.ts"
   },

@@ -15,6 +15,8 @@ import {
   shippingZipAddresses,
 } from "@/db/table/logistics/entrega-propria";
 import { states } from "@/db/table/logistics/states/states";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
 
@@ -219,6 +221,7 @@ async function listarNomesBairrosVinculadosNaCidade(
 export async function listarEstadosEntregaPropria(): Promise<
   EntregaPropriaEstadoResumo[]
 > {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const estados = await db.query.states.findMany({
     orderBy: (states, { asc }) => [asc(states.name)],
   });
@@ -249,6 +252,7 @@ export async function listarEstadosEntregaPropria(): Promise<
 export async function buscarNomeEstadoEntregaPropria(
   uf: string,
 ): Promise<string | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const estado = await db.query.states.findFirst({
     where: eq(states.uf, uf),
     columns: {
@@ -262,6 +266,7 @@ export async function buscarNomeEstadoEntregaPropria(
 export async function listarCidadesEntregaPropria(
   stateUf: string,
 ): Promise<EntregaPropriaCidadeResumo[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const cidades = await db.query.cities.findMany({
     where: eq(cities.stateUf, stateUf),
     orderBy: (cities, { asc }) => [asc(cities.name)],
@@ -339,6 +344,7 @@ export async function listarRegioesEntregaPropriaPorCidade(
   stateUf: string,
   city: string,
 ): Promise<EntregaPropriaRegiaoResumo[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const regioes = await db.query.shippingRegions.findMany({
     where: and(
       eq(shippingRegions.state, stateUf),
@@ -365,6 +371,7 @@ export async function listarRegioesEntregaPropriaPorCidade(
 export async function buscarRegiaoEntregaPropriaDetalhe(
   id: number,
 ): Promise<EntregaPropriaRegiaoDetalhe | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const regiao = await db.query.shippingRegions.findFirst({
     where: eq(shippingRegions.id, id),
     with: {
@@ -505,6 +512,7 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
 export async function listarDestinosEntregaPropriaProduto(): Promise<
   EntregaPropriaDestinoProduto[]
 > {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const [cidades, regioes, bairros, ceps] = await Promise.all([
     db.query.cities.findMany({
       where: eq(cities.isActive, true),
@@ -568,6 +576,7 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
 export async function listarPrecosEntregaPropriaProduto(
   productId: string,
 ): Promise<EntregaPropriaPrecoProduto[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const resultadoColunaCidade = await db.execute<{ existe: boolean }>(sql`
     SELECT EXISTS (
       SELECT 1
@@ -648,12 +657,12 @@ export async function listarPrecosEntregaPropriaProduto(
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.name
           : preco.destinationType === "cep-especifico" && preco.cepEspecifico
-          ? `${preco.cepEspecifico.cep.slice(0, 5)}-${preco.cepEspecifico.cep.slice(5)} - ${preco.cepEspecifico.neighborhood}`
-          : (destino as { name?: string; neighborhood?: string } | null)
-              ?.name ||
-            (destino as { name?: string; neighborhood?: string } | null)
-              ?.neighborhood ||
-            "Destino removido",
+            ? `${preco.cepEspecifico.cep.slice(0, 5)}-${preco.cepEspecifico.cep.slice(5)} - ${preco.cepEspecifico.neighborhood}`
+            : (destino as { name?: string; neighborhood?: string } | null)
+                ?.name ||
+              (destino as { name?: string; neighborhood?: string } | null)
+                ?.neighborhood ||
+              "Destino removido",
       city:
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.name

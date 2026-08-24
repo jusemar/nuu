@@ -1,4 +1,4 @@
 // Barrel export
-export { criarModeloRetirada } from "./criarModeloRetirada";
 export { atualizarModeloRetirada } from "./atualizarModeloRetirada";
+export { criarModeloRetirada } from "./criarModeloRetirada";
 export { excluirModeloRetirada } from "./excluirModeloRetirada";

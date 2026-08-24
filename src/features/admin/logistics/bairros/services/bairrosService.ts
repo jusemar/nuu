@@ -5,10 +5,14 @@
  */
 "use server";
 
+import { and, eq, sql } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { cities } from "@/db/table/logistics/cities/cities";
 import { neighborhoods } from "@/db/table/logistics/neighborhoods/neighborhoods";
-import { eq, and, sql } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import type { Bairro, FaixaCep, SlotEntrega } from "../types/bairros";
 
 /**
@@ -27,6 +31,8 @@ const DIA_NOMES = [
 /**
  * Converte dados do banco para tipo UI
  */
+// Compatibilidade temporária com o JSON legado ainda sem tipo Drizzle dedicado.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toBairroType(dbBairro: any): Bairro {
   const cepRange: FaixaCep = dbBairro.cepRange || {
     inicio: "",
@@ -36,6 +42,7 @@ function toBairroType(dbBairro: any): Bairro {
   const deliverySlots = dbBairro.deliverySlots || [];
 
   const slots: SlotEntrega[] = deliverySlots.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (slot: any, index: number) => ({
       id: slot.id || `slot-${index}`,
       diaSemana: slot.dayOfWeek || slot.diaSemana || 0,
@@ -69,8 +76,10 @@ export async function getBairros(
   cidade?: string,
   estadoUf?: string,
 ): Promise<Bairro[]> {
-  let query = db.select().from(neighborhoods);
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
+  const query = db.select().from(neighborhoods);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let bairrosData: any[];
 
   if (estadoUf && cidade) {
@@ -95,6 +104,7 @@ export async function getBairros(
  * Busca bairro por ID
  */
 export async function getBairroById(id: string): Promise<Bairro | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const bairro = await db.query.neighborhoods.findFirst({
     where: eq(neighborhoods.id, parseInt(id)),
   });
@@ -108,6 +118,7 @@ export async function getBairroById(id: string): Promise<Bairro | null> {
  * Busca bairro por CEP
  */
 export async function getBairroByCep(cep: string): Promise<Bairro | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const cepNumerico = cep.replace(/\D/g, "");
 
   if (cepNumerico.length !== 8) return null;
@@ -117,6 +128,7 @@ export async function getBairroByCep(cep: string): Promise<Bairro | null> {
   });
 
   for (const bairro of allBairros) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cepRange = bairro.cepRange as any;
     if (!cepRange || !cepRange.start || !cepRange.end) continue;
 
@@ -134,6 +146,7 @@ export async function getBairroByCep(cep: string): Promise<Bairro | null> {
 export async function createBairro(
   bairro: Omit<Bairro, "id" | "createdAt" | "updatedAt">,
 ): Promise<Bairro> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   // Buscar ID da cidade pelo nome
   const cityResult = await db
     .select()
@@ -178,6 +191,7 @@ export async function updateBairroStatus(
   id: string,
   isActive: boolean,
 ): Promise<Bairro> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [updatedBairro] = await db
     .update(neighborhoods)
     .set({ isActive, updatedAt: new Date() })
@@ -196,6 +210,7 @@ export async function updateBairroSlots(
   id: string,
   slots: Bairro["slots"],
 ): Promise<Bairro> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const deliverySlots = slots.map((s) => ({
     id: s.id,
     dayOfWeek: s.diaSemana,
@@ -225,5 +240,6 @@ export async function updateBairroSlots(
  * Remove bairro
  */
 export async function deleteBairro(id: string): Promise<void> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db.delete(neighborhoods).where(eq(neighborhoods.id, parseInt(id)));
 }

@@ -11,7 +11,6 @@
  * Usa banco de dados real via Drizzle ORM.
  * A diretiva 'use server' garante execução no servidor.
  */
-
 import { and, eq, gte, ilike, inArray, lte, or } from "drizzle-orm";
 
 import { db } from "@/db/connection";
@@ -41,6 +40,8 @@ import {
   shippingRegionSlots,
 } from "@/db/table/logistics/entrega-propria";
 import { states } from "@/db/table/logistics/states/states";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import {
   calcularPromessaEntregaProgramada,
   type PromessaEntregaProgramada,
@@ -101,6 +102,7 @@ export async function getShippingPrice(
   city: string,
   state: string,
 ): Promise<ShippingPriceResult> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const cleanCep = cep.replace(/\D/g, "");
 
   // [PRÉ-FILTRO 1] Estado ativo?
@@ -365,6 +367,7 @@ export async function getProductOwnDeliveryPrice(
   city: string,
   state: string,
 ): Promise<ShippingPriceResult & { pendingEligible?: boolean }> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const cleanCep = cep.replace(/\D/g, "");
 
   const [estadoAtivo, cidadeAtiva] = await Promise.all([
@@ -528,7 +531,9 @@ export async function getProductOwnDeliveryPrice(
 
     const precoCidade = await buscarPrecoCidade();
     if (precoCidade) {
-      const promessa = await calcularPromessaDaRegiao(faixaRegiaoCompativel.region.id);
+      const promessa = await calcularPromessaDaRegiao(
+        faixaRegiaoCompativel.region.id,
+      );
       const entregaProgramada = await calcularProgramadaDaRegra(
         precoCidade,
         faixaRegiaoCompativel.region.id,
@@ -537,7 +542,8 @@ export async function getProductOwnDeliveryPrice(
         found: true,
         level: "cidade",
         shippingPrice: precoCidade.shippingPrice,
-        deliveryDeadline: promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
+        deliveryDeadline:
+          promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
         promessaEntrega: promessa,
         entregaProgramada,
         message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
@@ -612,7 +618,9 @@ export async function getProductOwnDeliveryPrice(
   if (regioesCompativeis.length > 0) {
     const precoCidade = await buscarPrecoCidade();
     if (precoCidade) {
-      const promessa = await calcularPromessaDaRegiao(regioesCompativeis[0].regiao.id);
+      const promessa = await calcularPromessaDaRegiao(
+        regioesCompativeis[0].regiao.id,
+      );
       const entregaProgramada = await calcularProgramadaDaRegra(
         precoCidade,
         regioesCompativeis[0].regiao.id,
@@ -621,7 +629,8 @@ export async function getProductOwnDeliveryPrice(
         found: true,
         level: "cidade",
         shippingPrice: precoCidade.shippingPrice,
-        deliveryDeadline: promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
+        deliveryDeadline:
+          promessa?.texto ?? precoCidade.deliveryDeadline ?? null,
         promessaEntrega: promessa,
         entregaProgramada,
         message: `Entrega própria: R$ ${(precoCidade.shippingPrice / 100).toFixed(2)}`,
@@ -668,6 +677,7 @@ export async function getProductsOwnDeliveryForecasts(
   city: string,
   state: string,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const ids = [...new Set(productIds)].slice(0, 80);
   const cleanCep = cep.replace(/\D/g, "");
   if (ids.length === 0 || cleanCep.length !== 8) return {};
@@ -834,7 +844,7 @@ export async function getProductsOwnDeliveryForecasts(
       // sem preço não cai para bairro ou outra modalidade.
       const regiaoPromessaId = precoCep
         ? faixaCompativel?.region.id
-        : precoRegiao?.regionId ?? (precoCidade ? regionIds[0] : undefined);
+        : (precoRegiao?.regionId ?? (precoCidade ? regionIds[0] : undefined));
       const precoValido = precoCep ?? precoBairro ?? precoRegiao ?? precoCidade;
       const promessa = regiaoPromessaId
         ? promessasPorRegiao.get(regiaoPromessaId)
@@ -850,6 +860,7 @@ export async function getProductsOwnDeliveryForecasts(
  */
 
 export async function getRegions() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const regions = await db.query.shippingRegions.findMany({
     orderBy: shippingRegions.name,
     with: {
@@ -868,6 +879,7 @@ export async function getRegions() {
 }
 
 export async function getRegionById(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const region = await db.query.shippingRegions.findFirst({
     where: eq(shippingRegions.id, parseInt(id)),
     with: {
@@ -888,6 +900,7 @@ export async function getRegionById(id: string) {
 }
 
 export async function getBairrosAvulsos() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   return db.query.bairrosAvulsos.findMany({
     orderBy: bairrosAvulsos.neighborhood,
     with: {
@@ -897,6 +910,7 @@ export async function getBairrosAvulsos() {
 }
 
 export async function getBairroAvulsoById(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   return db.query.bairrosAvulsos.findFirst({
     where: eq(bairrosAvulsos.id, parseInt(id)),
     with: {
@@ -906,6 +920,7 @@ export async function getBairroAvulsoById(id: string) {
 }
 
 export async function getCepsEspecificos() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   return db.query.cepsEspecificos.findMany({
     orderBy: cepsEspecificos.cep,
   });
@@ -928,6 +943,7 @@ export async function createRegion(data: {
     endTime: string;
   }>;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [newRegion] = await db
     .insert(shippingRegions)
     .values({
@@ -985,9 +1001,10 @@ export async function updateRegion(
     }>;
   },
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regionId = parseInt(id);
 
-  const updateData: Record<string, any> = { updatedAt: new Date() };
+  const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
   if (data.name !== undefined) updateData.name = data.name;
   if (data.description !== undefined) updateData.description = data.description;
@@ -1037,6 +1054,7 @@ export async function updateRegion(
 }
 
 export async function toggleRegion(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regionId = parseInt(id);
 
   const region = await db.query.shippingRegions.findFirst({
@@ -1054,6 +1072,7 @@ export async function toggleRegion(id: string) {
 }
 
 export async function deleteRegion(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regionId = parseInt(id);
   await db.delete(shippingRegions).where(eq(shippingRegions.id, regionId));
 }
@@ -1073,6 +1092,7 @@ export async function createBairroAvulso(data: {
     endTime: string;
   }>;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [newBairro] = await db
     .insert(bairrosAvulsos)
     .values({
@@ -1116,9 +1136,10 @@ export async function updateBairroAvulso(
     }>;
   },
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const bairroId = parseInt(id);
 
-  const updateData: Record<string, any> = { updatedAt: new Date() };
+  const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
   if (data.neighborhood !== undefined)
     updateData.neighborhood = data.neighborhood;
@@ -1155,6 +1176,7 @@ export async function updateBairroAvulso(
 }
 
 export async function toggleBairroAvulso(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const bairroId = parseInt(id);
 
   const bairro = await db.query.bairrosAvulsos.findFirst({
@@ -1172,6 +1194,7 @@ export async function toggleBairroAvulso(id: string) {
 }
 
 export async function deleteBairroAvulso(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const bairroId = parseInt(id);
   await db.delete(bairrosAvulsos).where(eq(bairrosAvulsos.id, bairroId));
 }
@@ -1187,6 +1210,7 @@ export async function createCepEspecifico(data: {
   state: string;
   shippingPrice: number;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const cleanCep = data.cep.replace(/\D/g, "");
 
   const [newCep] = await db
@@ -1213,9 +1237,10 @@ export async function updateCepEspecifico(
     isActive?: boolean;
   },
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const cepId = parseInt(id);
 
-  const updateData: Record<string, any> = { updatedAt: new Date() };
+  const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
   if (data.shippingPrice !== undefined)
     updateData.shippingPrice = data.shippingPrice;
@@ -1232,6 +1257,7 @@ export async function updateCepEspecifico(
 }
 
 export async function toggleCepEspecifico(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const cepId = parseInt(id);
 
   const cep = await db.query.cepsEspecificos.findFirst({
@@ -1251,6 +1277,7 @@ export async function toggleCepEspecifico(id: string) {
 }
 
 export async function deleteCepEspecifico(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const cepId = parseInt(id);
   await db.delete(cepsEspecificos).where(eq(cepsEspecificos.id, cepId));
 }
@@ -1307,6 +1334,7 @@ export type EstadoDropdown = {
 };
 
 export async function getEstadosAtivos(): Promise<EstadoDropdown[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const data = await db.query.states.findMany({
     where: eq(states.isActive, true),
     orderBy: (states, { asc }) => [asc(states.name)],
@@ -1327,6 +1355,7 @@ export type CidadeDropdown = {
 export async function getCidadesAtivasPorEstado(
   stateUf: string,
 ): Promise<CidadeDropdown[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const data = await db.query.cities.findMany({
     where: and(eq(cities.stateUf, stateUf), eq(cities.isActive, true)),
     orderBy: (cities, { asc }) => [asc(cities.name)],

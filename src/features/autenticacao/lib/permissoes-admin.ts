@@ -9,10 +9,7 @@ function listarEmailsAdministradores() {
   );
 }
 
-/**
- * A autorização administrativa é fechada por padrão. Sem ADMIN_EMAILS
- * configurado, nenhuma conta autenticada recebe acesso ao painel.
- */
+/** Uso restrito ao bootstrap explícito; nunca autoriza login ou requests. */
 export function emailPossuiPermissaoAdmin(email: string | null | undefined) {
   if (!email) return false;
   return listarEmailsAdministradores().has(email.trim().toLowerCase());

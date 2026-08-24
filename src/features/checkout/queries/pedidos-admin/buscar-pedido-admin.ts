@@ -7,12 +7,15 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import type { PedidoAdminDetalhe } from "../../types/admin-pedidos.types";
 
 export async function buscarPedidoAdminPorId(
   pedidoId: string,
 ): Promise<PedidoAdminDetalhe | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PEDIDOS.VISUALIZAR);
   const pedido = await dbTransacional.query.checkoutPedidosTable.findFirst({
     where: eq(checkoutPedidosTable.id, pedidoId),
     with: {

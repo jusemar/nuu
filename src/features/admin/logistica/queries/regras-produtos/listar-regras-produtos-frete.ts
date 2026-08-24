@@ -1,5 +1,7 @@
 import "server-only";
 
+import { asc, eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
   productTable,
@@ -8,9 +10,11 @@ import {
   servicosFreteTable,
   transportadorasFreteTable,
 } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function listarRegrasProdutosFrete() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   return db
     .select({
       id: regrasProdutosFreteTable.id,
@@ -28,13 +32,24 @@ export async function listarRegrasProdutosFrete() {
       updatedAt: regrasProdutosFreteTable.updatedAt,
     })
     .from(regrasProdutosFreteTable)
-    .innerJoin(productTable, eq(regrasProdutosFreteTable.produtoId, productTable.id))
-    .leftJoin(provedoresFreteTable, eq(regrasProdutosFreteTable.provedorFreteId, provedoresFreteTable.id))
+    .innerJoin(
+      productTable,
+      eq(regrasProdutosFreteTable.produtoId, productTable.id),
+    )
+    .leftJoin(
+      provedoresFreteTable,
+      eq(regrasProdutosFreteTable.provedorFreteId, provedoresFreteTable.id),
+    )
     .leftJoin(
       transportadorasFreteTable,
-      eq(regrasProdutosFreteTable.transportadoraFreteId, transportadorasFreteTable.id),
+      eq(
+        regrasProdutosFreteTable.transportadoraFreteId,
+        transportadorasFreteTable.id,
+      ),
     )
-    .leftJoin(servicosFreteTable, eq(regrasProdutosFreteTable.servicoFreteId, servicosFreteTable.id))
+    .leftJoin(
+      servicosFreteTable,
+      eq(regrasProdutosFreteTable.servicoFreteId, servicosFreteTable.id),
+    )
     .orderBy(asc(productTable.name), asc(regrasProdutosFreteTable.createdAt));
 }
-

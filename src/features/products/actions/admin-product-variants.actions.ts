@@ -9,6 +9,8 @@ import {
   productVariantTable,
   variantesTiposLogisticosTable,
 } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { validarGtin, validarMpnBasico } from "../lib/identificadores-catalogo";
 import { montarLinhaVarianteParaBanco } from "../lib/montar-linha-variante-para-banco";
@@ -58,6 +60,7 @@ export async function salvarEstruturaVariantesProduto({
   preservarVarianteTecnicaProdutoSimples = false,
   executor = db,
 }: SaveProductVariantsInput) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
   const normalizedKind = normalizeProductKind(productKind);
 
   // Valida antes do primeiro delete para que um identificador inválido nunca

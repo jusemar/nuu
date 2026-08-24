@@ -49,7 +49,8 @@ test("offset acompanha a página pedida", () => {
     50,
   );
   assert.equal(
-    calcularPaginacaoFornecedores({ pagina: 2, limite: 100, total: 685 }).offset,
+    calcularPaginacaoFornecedores({ pagina: 2, limite: 100, total: 685 })
+      .offset,
     100,
   );
 });
@@ -86,8 +87,11 @@ test("lista vazia continua sendo página 1 de 1, nunca 1 de 0", () => {
 test("offset nunca é negativo", () => {
   for (const pagina of [0, -1, "0"]) {
     assert.ok(
-      calcularPaginacaoFornecedores({ pagina: pagina as never, limite: 25, total: 100 })
-        .offset >= 0,
+      calcularPaginacaoFornecedores({
+        pagina: pagina as never,
+        limite: 25,
+        total: 100,
+      }).offset >= 0,
     );
   }
 });

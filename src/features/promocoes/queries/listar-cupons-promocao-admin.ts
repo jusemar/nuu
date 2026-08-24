@@ -2,6 +2,9 @@ import "server-only";
 
 import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { db } from "../../../db/connection";
 import { cuponsPromocaoTable } from "../../../db/schema";
 import { filtrosCuponsPromocaoAdminSchema } from "../schemas";
@@ -67,6 +70,7 @@ function mapearCupomAdmin(
 export async function listarCuponsPromocaoAdmin(
   filtrosEntrada: FiltrosCuponsPromocaoAdmin = {},
 ): Promise<ResultadoCuponsPromocaoAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const filtros = filtrosCuponsPromocaoAdminSchema.parse(filtrosEntrada);
   const condicoes = criarCondicoesCupons(filtros);
   const deslocamento = (filtros.pagina - 1) * filtros.limite;

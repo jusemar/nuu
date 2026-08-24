@@ -8,17 +8,23 @@ import {
   atendimentoIaAuditoriasTable,
   atendimentoIaPapeisAdminTable,
 } from "@/db/tables/atendimento-ia";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 
 import {
-  bootstrapGestorPrincipalAtendimentoIa,
-  projetarAtribuicao,
-} from "../../../lib/admin/permissoes/bootstrap-gestor-principal";
-import { resolverPapelAtendimentoIa } from "../../../lib/admin/permissoes/resolver-papel-atendimento-ia";
+  projetarAtribuicaoPapelAtendimentoIa,
+  resolverPapelAtendimentoIa,
+} from "../../../lib/admin/permissoes/resolver-papel-atendimento-ia";
 import { verificarCapacidadeAtendimentoIa } from "../../../lib/admin/permissoes/verificar-capacidade";
 import type { CapacidadeAtendimentoIaAdmin } from "../../../types/admin/permissoes";
 
 export async function buscarAcessoAtendimentoIa() {
+  try {
+    await exigirPermissaoAdmin(PERMISSOES_ADMIN.ATENDENTE_IA.ACESSAR);
+  } catch {
+    return null;
+  }
   const sessaoAdmin = await buscarSessaoAdmin();
   const usuario = sessaoAdmin.sessao?.user;
 
@@ -67,10 +73,12 @@ export async function buscarAcessoAtendimentoIa() {
       .catch(() => undefined);
     return null;
   }
-  const atribuicao = ultimoRegistro
-    ? projetarAtribuicao(ultimoRegistro)
-    : await bootstrapGestorPrincipalAtendimentoIa(usuario.id);
-  return resolverPapelAtendimentoIa({ atribuicao, emailAutorizado: true });
+  if (!ultimoRegistro) return null;
+  const atribuicao = projetarAtribuicaoPapelAtendimentoIa(ultimoRegistro);
+  return resolverPapelAtendimentoIa({
+    acessoGlobalAutorizado: true,
+    atribuicao,
+  });
 }
 
 export async function exigirCapacidadeAtendimentoIa(

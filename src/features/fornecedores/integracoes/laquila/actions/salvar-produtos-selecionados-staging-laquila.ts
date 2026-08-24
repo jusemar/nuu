@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
 import { fornecedorProdutosApiStagingTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import { METODOS_LAQUILA } from "../constants";
@@ -76,7 +77,11 @@ export async function salvarProdutosSelecionadosStagingLaquila(
     };
   }
 
-  if (!(await possuiSessaoFornecedoresAdmin())) {
+  if (
+    !(await possuiSessaoFornecedoresAdmin(
+      PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR,
+    ))
+  ) {
     return {
       sucesso: false,
       erro: "Sua sessão não está ativa. Entre novamente para salvar os selecionados.",

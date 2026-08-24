@@ -3,6 +3,15 @@ import { redirect } from "next/navigation";
 
 import { AdminHeader } from "@/components/admin/header";
 import { AdminSidebar } from "@/features/admin/layout/components/sidebar";
+import {
+  CATALOGO_PERMISSOES_ADMIN,
+  PERMISSOES_ADMIN,
+} from "@/features/autenticacao/constants/permissoes-administrativas";
+import { podeAdmin } from "@/features/autenticacao/lib/autorizacao-admin/resolver-autorizacao-admin";
+import {
+  exigirPermissaoAdmin,
+  obterContextoAdministrativo,
+} from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { montarUrlLoginAdmin } from "@/features/autenticacao/lib/normalizar-redirecionamento-admin";
 import { rotaAdminEhPublica } from "@/features/autenticacao/lib/rotas-publicas-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
@@ -34,9 +43,17 @@ export default async function AdminLayout({
     redirect(montarUrlLoginAdmin(caminho, "sem_permissao"));
   }
 
+  if (caminho === "/admin") {
+    await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAINEL.VISUALIZAR);
+  }
+  const contexto = await obterContextoAdministrativo();
+  const permissoesMenu = CATALOGO_PERMISSOES_ADMIN.filter(({ chave }) =>
+    podeAdmin(contexto, chave),
+  ).map(({ chave }) => chave);
+
   return (
     <div className="painel-admin bg-background flex min-h-dvh">
-      <AdminSidebar />
+      <AdminSidebar permissoes={permissoesMenu} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminHeader usuario={acesso.sessao.user} />

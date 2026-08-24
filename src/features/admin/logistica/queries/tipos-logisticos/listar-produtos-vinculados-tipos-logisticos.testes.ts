@@ -5,7 +5,9 @@ import { erroTabelaVinculoAusente } from "@/features/admin/logistica/lib/erro-ta
 
 describe("listar produtos vinculados tipos logísticos", () => {
   it("identifica erro de tabela ausente", () => {
-    const erro = new Error('relation "produtos_tipos_logisticos" does not exist');
+    const erro = new Error(
+      'relation "produtos_tipos_logisticos" does not exist',
+    );
     assert.equal(erroTabelaVinculoAusente(erro), true);
   });
 

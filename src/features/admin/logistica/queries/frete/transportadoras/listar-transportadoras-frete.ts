@@ -1,14 +1,18 @@
 import "server-only";
 
+import { asc, eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { provedoresFreteTable, transportadorasFreteTable } from "@/db/schema";
 import {
   erroConexaoLogisticaIndisponivel,
   erroTabelaLogisticaAusente,
 } from "@/features/admin/logistica/lib/erro-tabela-logistica-ausente";
-import { asc, eq } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function listarTransportadorasFrete() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   try {
     return await db
       .select({

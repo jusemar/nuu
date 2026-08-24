@@ -113,7 +113,8 @@ export function FormularioDadosMinhaContaAdmin({
                     />
                   </FormControl>
                   <p className="text-muted-foreground text-xs">
-                    O novo e-mail precisa estar autorizado em ADMIN_EMAILS.
+                    Alterar o e-mail encerra as sessões atuais e exige novo
+                    login.
                   </p>
                   <FormMessage />
                 </FormItem>

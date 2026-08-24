@@ -1,16 +1,20 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
 import { servicosFreteTable } from "@/db/schema";
 import { alternarAtivacaoSchema } from "@/features/admin/logistica/schemas/frete-admin.schema";
 import type { RespostaAcaoAdminFrete } from "@/features/admin/logistica/types/frete-admin.types";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function alternarServicoFrete(
   servicoFreteId: string,
   entrada: unknown,
 ): Promise<RespostaAcaoAdminFrete<{ id: string; ativo: boolean }>> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   if (!servicoFreteId) {
     return { sucesso: false, erro: "ID do serviço é obrigatório" };
   }

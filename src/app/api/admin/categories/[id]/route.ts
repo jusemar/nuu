@@ -1,8 +1,12 @@
 // src/app/api/admin/categories/[id]/route.ts
-import { NextResponse, NextRequest } from "next/server";
+import { eq } from "drizzle-orm";
+import { NextRequest,NextResponse } from "next/server";
+
 import { db } from "@/db/connection";
 import { categoryTable } from "@/db/table/categories/categories";
-import { eq } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { traduzirErroAutorizacaoRouteHandler } from "@/features/autenticacao/lib/autorizacao-admin/traduzir-erro-autorizacao-route-handler";
 
 export async function DELETE(
   request: NextRequest,
@@ -12,6 +16,12 @@ export async function DELETE(
     const { id } = await params;
     const body = await request.json();
     const type = body?.type || "soft"; // 'soft', 'hard', ou 'restore'
+
+    await exigirPermissaoAdmin(
+      type === "restore"
+        ? PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR
+        : PERMISSOES_ADMIN.CATEGORIAS.EXCLUIR,
+    );
 
     console.log(
       `[API DELETE] Iniciando operação para categoria ID: ${id}, tipo: ${type}`,
@@ -124,6 +134,8 @@ export async function DELETE(
       );
     }
   } catch (error) {
+    const respostaAutorizacao = traduzirErroAutorizacaoRouteHandler(error);
+    if (respostaAutorizacao) return respostaAutorizacao;
     console.error("[API DELETE] Erro:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";

@@ -175,11 +175,7 @@ export async function analisarRevisaoImportacaoFornecedor(
 
       if (normalizarPreco(linha.precoFornecedor) === null) {
         problemas.push(
-          criarProblema(
-            "preco_invalido",
-            "precoFornecedor",
-            "Preço inválido.",
-          ),
+          criarProblema("preco_invalido", "precoFornecedor", "Preço inválido."),
         );
         resumo.totalPrecoInvalido += 1;
       }
@@ -195,7 +191,10 @@ export async function analisarRevisaoImportacaoFornecedor(
         stagingId: linha.id,
         codigoFornecedor: linha.codigoFornecedor,
         sku: valorTextoBruto(
-          linha.dadosBrutos as Record<string, string | number | boolean | Date | null>,
+          linha.dadosBrutos as Record<
+            string,
+            string | number | boolean | Date | null
+          >,
           ["sku", "SKU", "codigo_sku", "codigoSKU", "referencia"],
         ),
         nomeProduto: linha.nomeProduto,
@@ -206,9 +205,7 @@ export async function analisarRevisaoImportacaoFornecedor(
         status: "com_problema",
       });
     })
-    .filter(
-      (item): item is ItemRevisaoImportacaoFornecedor => item !== null,
-    );
+    .filter((item): item is ItemRevisaoImportacaoFornecedor => item !== null);
 
   return {
     importacaoId,

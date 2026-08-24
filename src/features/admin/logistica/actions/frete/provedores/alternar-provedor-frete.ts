@@ -1,16 +1,20 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
 import { provedoresFreteTable } from "@/db/schema";
 import { alternarAtivacaoSchema } from "@/features/admin/logistica/schemas/frete-admin.schema";
 import type { RespostaAcaoAdminFrete } from "@/features/admin/logistica/types/frete-admin.types";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function alternarProvedorFrete(
   provedorFreteId: string,
   entrada: unknown,
 ): Promise<RespostaAcaoAdminFrete<{ id: string; ativo: boolean }>> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   if (!provedorFreteId) {
     return { sucesso: false, erro: "ID do provedor é obrigatório" };
   }
@@ -31,7 +35,10 @@ export async function alternarProvedorFrete(
         updatedAt: new Date(),
       })
       .where(eq(provedoresFreteTable.id, provedorFreteId))
-      .returning({ id: provedoresFreteTable.id, ativo: provedoresFreteTable.ativo });
+      .returning({
+        id: provedoresFreteTable.id,
+        ativo: provedoresFreteTable.ativo,
+      });
 
     if (!registro) {
       return { sucesso: false, erro: "Provedor de frete não encontrado" };

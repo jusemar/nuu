@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedorPedidoIntegracoesTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirAcessoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import {
   consultarSaldoPrecoLaquila,
@@ -18,6 +20,7 @@ import { prepararPedidoLaquila } from "../queries/preparar-pedido-laquila";
  * de envio e não possui dependência do método 00002.
  */
 export async function prepararPedidoLaquilaDryRun(pedidoId: string) {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const grupos = await prepararPedidoLaquila(pedidoId);
   const resultados = [];
 

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { db } from "@/db/connection";
 import { produtoRascunhosTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { resumirPublicacaoFornecedor } from "@/features/fornecedores/lib/resumo-publicacao-fornecedor";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 import { buscarOrigemImportacaoFornecedor } from "@/features/fornecedores/queries/buscar-origem-importacao-fornecedor";
@@ -43,7 +44,11 @@ export async function publicarProdutosImportacaoFornecedor(
     };
   }
 
-  if (!(await possuiSessaoFornecedoresAdmin())) {
+  if (
+    !(await possuiSessaoFornecedoresAdmin(
+      PERMISSOES_ADMIN.FORNECEDORES.PUBLICAR,
+    ))
+  ) {
     const quantidadeSolicitada = validacao.data.rascunhoIds.length;
     return {
       sucesso: false,

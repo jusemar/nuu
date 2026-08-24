@@ -1,16 +1,20 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
 import { provedoresFreteTable } from "@/db/schema";
 import { editarProvedorFreteSchema } from "@/features/admin/logistica/schemas/frete-admin.schema";
 import type { RespostaAcaoAdminFrete } from "@/features/admin/logistica/types/frete-admin.types";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function editarProvedorFrete(
   provedorFreteId: string,
   entrada: unknown,
 ): Promise<RespostaAcaoAdminFrete<{ id: string }>> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   if (!provedorFreteId) {
     return { sucesso: false, erro: "ID do provedor é obrigatório" };
   }

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { asc, eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
   provedoresFreteTable,
@@ -8,9 +10,11 @@ import {
   tiposLogisticosTable,
   transportadorasFreteTable,
 } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function listarRegrasTiposLogisticosFrete() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   return db
     .select({
       id: regrasTiposLogisticosFreteTable.id,
@@ -20,7 +24,8 @@ export async function listarRegrasTiposLogisticosFrete() {
       ativo: regrasTiposLogisticosFreteTable.ativo,
       provedorFreteId: regrasTiposLogisticosFreteTable.provedorFreteId,
       provedorNome: provedoresFreteTable.nome,
-      transportadoraFreteId: regrasTiposLogisticosFreteTable.transportadoraFreteId,
+      transportadoraFreteId:
+        regrasTiposLogisticosFreteTable.transportadoraFreteId,
       transportadoraNome: transportadorasFreteTable.nome,
       servicoFreteId: regrasTiposLogisticosFreteTable.servicoFreteId,
       servicoNome: servicosFreteTable.nome,
@@ -30,11 +35,17 @@ export async function listarRegrasTiposLogisticosFrete() {
     .from(regrasTiposLogisticosFreteTable)
     .innerJoin(
       tiposLogisticosTable,
-      eq(regrasTiposLogisticosFreteTable.tipoLogisticoId, tiposLogisticosTable.id),
+      eq(
+        regrasTiposLogisticosFreteTable.tipoLogisticoId,
+        tiposLogisticosTable.id,
+      ),
     )
     .leftJoin(
       provedoresFreteTable,
-      eq(regrasTiposLogisticosFreteTable.provedorFreteId, provedoresFreteTable.id),
+      eq(
+        regrasTiposLogisticosFreteTable.provedorFreteId,
+        provedoresFreteTable.id,
+      ),
     )
     .leftJoin(
       transportadorasFreteTable,
@@ -47,6 +58,8 @@ export async function listarRegrasTiposLogisticosFrete() {
       servicosFreteTable,
       eq(regrasTiposLogisticosFreteTable.servicoFreteId, servicosFreteTable.id),
     )
-    .orderBy(asc(tiposLogisticosTable.nome), asc(regrasTiposLogisticosFreteTable.createdAt));
+    .orderBy(
+      asc(tiposLogisticosTable.nome),
+      asc(regrasTiposLogisticosFreteTable.createdAt),
+    );
 }
-

@@ -9,7 +9,8 @@ import {
   regrasCategoriasProgramaFidelidadeTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
-import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { prepararOverridesCategorias } from "../lib/preparar-overrides-categorias";
 import { salvarProgramaFidelidadeSchema } from "../schemas/salvar-programa-fidelidade.schema";
@@ -22,13 +23,7 @@ type ResultadoSalvar =
 export async function salvarProgramaFidelidade(
   entrada: unknown,
 ): Promise<ResultadoSalvar> {
-  const sessao = await buscarSessaoAdmin();
-  if (!sessao.autorizado) {
-    return {
-      sucesso: false,
-      mensagem: "Sessão de administrador inválida ou expirada.",
-    };
-  }
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.FIDELIDADE.ADMINISTRAR);
 
   const validacao = salvarProgramaFidelidadeSchema.safeParse(entrada);
   if (!validacao.success) {

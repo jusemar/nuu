@@ -5,16 +5,21 @@
  */
 "use server";
 
-import { db } from "@/db/connection";
-import { states } from "@/db/table/logistics/states/states";
-import { cities } from "@/db/table/logistics/cities/cities";
 import { eq, sql } from "drizzle-orm";
+
+import { db } from "@/db/connection";
+import { cities } from "@/db/table/logistics/cities/cities";
+import { states } from "@/db/table/logistics/states/states";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import type { State } from "../types/states";
 
 /**
  * Busca todos os estados com contagem de cidades
  */
 export async function getStates(): Promise<State[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const statesData = await db.query.states.findMany({
     orderBy: (states, { asc }) => [asc(states.name)],
   });
@@ -43,6 +48,7 @@ export async function getStates(): Promise<State[]> {
  * Busca estado por UF
  */
 export async function getStateByUf(uf: string): Promise<State | null> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const state = await db.query.states.findFirst({
     where: eq(states.uf, uf),
   });
@@ -69,6 +75,7 @@ export async function getStateByUf(uf: string): Promise<State | null> {
 export async function createState(
   state: Omit<State, "createdAt">,
 ): Promise<State> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [newState] = await db
     .insert(states)
     .values({
@@ -94,6 +101,7 @@ export async function updateStateStatus(
   uf: string,
   isActive: boolean,
 ): Promise<State> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const [updatedState] = await db
     .update(states)
     .set({ isActive, updatedAt: new Date() })
@@ -120,5 +128,6 @@ export async function updateStateStatus(
  * Remove estado
  */
 export async function deleteState(uf: string): Promise<void> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db.delete(states).where(eq(states.uf, uf));
 }

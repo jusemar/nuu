@@ -11,6 +11,8 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-acesso-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { validarAssinaturaPreview } from "../lib/alteracao-em-massa/assinatura-preview-alteracao-em-massa";
 import { calcularPlanoAlteracaoEmMassa } from "../lib/alteracao-em-massa/calcular-preview-alteracao-em-massa";
@@ -57,6 +59,8 @@ function dividirEmLotes<T>(itens: T[], tamanho: number) {
 }
 
 export async function aplicarAlteracaoEmMassa(input: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.PUBLICAR);
   const acesso = await validarAcessoAdmin();
   if (!acesso.sucesso) return { sucesso: false as const, erro: acesso.erro };
 
@@ -211,12 +215,12 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
           ? "validacao_da_variante_tecnica"
           : conflitoEntregaPropria
             ? "validacao_da_entrega_propria"
-          : "validacao_da_modalidade",
+            : "validacao_da_modalidade",
         orientacao: conflitoEstoque
           ? "Corrija o registro técnico do produto simples antes de alterar seu estoque em massa."
           : conflitoEntregaPropria
             ? "Configure os destinos no produto individualmente antes de alterar a Entrega Própria em massa."
-          : "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
+            : "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
       };
     }),
   ];
@@ -318,10 +322,7 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
               .from(productOwnDeliveryPrices)
               .where(
                 and(
-                  eq(
-                    productOwnDeliveryPrices.productId,
-                    plano.produto.id,
-                  ),
+                  eq(productOwnDeliveryPrices.productId, plano.produto.id),
                   inArray(productOwnDeliveryPrices.id, idsEntregaPropria),
                 ),
               )
@@ -335,8 +336,7 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
               );
               const conflito = compararVersaoEntidade({
                 entidade: "entrega_propria",
-                esperada:
-                  esperado?.versaoConcorrencia ?? "regra inexistente",
+                esperada: esperado?.versaoConcorrencia ?? "regra inexistente",
                 encontrada:
                   encontrado?.versao ?? "regra de entrega não encontrada",
               });
@@ -451,25 +451,17 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                   scheduledDeliveryActive: entrega.entregaProgramadaAtiva,
                 }),
                 ...(entrega.prazoMinimoProgramadaDias !== undefined && {
-                  scheduledDeliveryMinDays:
-                    entrega.prazoMinimoProgramadaDias,
+                  scheduledDeliveryMinDays: entrega.prazoMinimoProgramadaDias,
                 }),
                 ...(entrega.precoProgramadaEmCentavos !== undefined && {
-                  scheduledDeliveryPrice:
-                    entrega.precoProgramadaEmCentavos,
+                  scheduledDeliveryPrice: entrega.precoProgramadaEmCentavos,
                 }),
                 updatedAt: agora,
               })
               .where(
                 and(
-                  eq(
-                    productOwnDeliveryPrices.id,
-                    entrega.precoEntregaId,
-                  ),
-                  eq(
-                    productOwnDeliveryPrices.productId,
-                    plano.produto.id,
-                  ),
+                  eq(productOwnDeliveryPrices.id, entrega.precoEntregaId),
+                  eq(productOwnDeliveryPrices.productId, plano.produto.id),
                 ),
               );
           }

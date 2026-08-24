@@ -21,4 +21,3 @@ describe("acoes admin regras por produto", () => {
     assert.equal(resposta.sucesso, false);
   });
 });
-

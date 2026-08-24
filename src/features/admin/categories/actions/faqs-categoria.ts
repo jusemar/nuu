@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
 import { categoryFaqTable, categoryTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { validarEscopoOrdemFaqs } from "../lib/faqs-categoria";
 import { consultarFaqsCategoria } from "../queries/faqs/listar-faqs-categoria";
@@ -25,10 +27,12 @@ function revalidarCategoria(categoriaId: string) {
 
 /** Adaptador de leitura necessário para o Client Component chamar a query server-only. */
 export async function listarFaqsCategoria(categoriaId: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.VISUALIZAR);
   return consultarFaqsCategoria(categoriaId);
 }
 
 export async function criarFaqCategoria(dados: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   const entrada = criarFaqCategoriaSchema.parse(dados);
   const [categoria] = await db
     .select({ id: categoryTable.id })
@@ -48,6 +52,7 @@ export async function atualizarFaqCategoria(
   faqId: string,
   dados: unknown,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   const idCategoria = categoriaIdSchema.parse(categoriaId);
   const idFaq = faqIdSchema.parse(faqId);
   const entrada = atualizarFaqCategoriaSchema.parse(dados);
@@ -74,11 +79,13 @@ export async function alterarStatusFaqCategoria(
   faqId: string,
   isActive: boolean,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   const entrada = alterarStatusFaqCategoriaSchema.parse({ isActive });
   return atualizarFaqCategoria(categoriaId, faqId, entrada);
 }
 
 export async function excluirFaqCategoria(categoriaId: string, faqId: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   const idCategoria = categoriaIdSchema.parse(categoriaId);
   const idFaq = faqIdSchema.parse(faqId);
   const [faq] = await db
@@ -100,6 +107,7 @@ export async function reordenarFaqsCategoria(
   categoriaId: string,
   itens: unknown,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.ADMINISTRAR);
   const idCategoria = categoriaIdSchema.parse(categoriaId);
   const ordem = reordenarFaqsCategoriaSchema.parse(itens);
   const ids = ordem.map((item) => item.id);

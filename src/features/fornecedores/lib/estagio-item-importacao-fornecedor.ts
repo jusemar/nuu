@@ -55,7 +55,10 @@ export function derivarEstagioItemImportacaoFornecedor(
 ): EstagioItemImportacaoFornecedor {
   if (entrada.publicadoNestaImportacao) return "publicado";
   if (entrada.statusStaging === "ignorado") return "ignorado";
-  if (entrada.statusStaging === "erro" || entrada.statusStaging === "rejeitado") {
+  if (
+    entrada.statusStaging === "erro" ||
+    entrada.statusStaging === "rejeitado"
+  ) {
     return "erro";
   }
   if (entrada.marcadoComoNovo) return "novo";

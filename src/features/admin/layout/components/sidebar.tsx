@@ -54,6 +54,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { PermissaoAdministrativaChave } from "@/features/autenticacao/constants/permissoes-administrativas";
 
 import { useSidebar } from "../hooks/useSidebar";
 
@@ -454,6 +455,12 @@ export const menuAdmin: EntradaMenuAdmin[] = [
         href: "/admin/configuracoes/paginas-da-loja",
         icon: "Files",
       },
+      {
+        id: "usuarios-e-permissoes",
+        label: "Usuários e permissões",
+        href: "/admin/configuracoes/usuarios-e-permissoes",
+        icon: "Users",
+      },
     ],
   },
 
@@ -467,7 +474,59 @@ export const menuAdmin: EntradaMenuAdmin[] = [
   },
 ];
 
-export function AdminSidebar() {
+const permissaoPorItem: Partial<Record<string, PermissaoAdministrativaChave>> =
+  {
+    dashboard: "painel.visualizar",
+    products: "produtos.visualizar",
+    "products-bulk-edit": "produtos.publicar",
+    categories: "categorias.visualizar",
+    marcas: "marcas.administrar",
+    precificacao: "precificacao.administrar",
+    "visao-geral-logistica": "logistica.visualizar",
+    "integracoes-logistica": "logistica.visualizar",
+    "servicos-entrega-logistica": "logistica.visualizar",
+    "regras-disponibilidade-logistica": "logistica.visualizar",
+    "pagamento-na-entrega-logistica": "pagamentos_entrega.administrar",
+    "retirada-local": "logistica.visualizar",
+    shipping: "logistica.visualizar",
+    "fornecedores-visao-geral": "fornecedores.visualizar",
+    "fornecedores-catalogos": "fornecedores.visualizar",
+    "fornecedores-produtos": "fornecedores.visualizar",
+    "fornecedores-configuracoes": "fornecedores.administrar",
+    "importacoes-arquivo-excel": "fornecedores.importar",
+    "importacoes-historico": "fornecedores.visualizar",
+    "integracoes-fornecedores-api-laquila": "fornecedores.visualizar",
+    orders: "pedidos.visualizar",
+    "treinamento-atendente-ia": "atendente_ia.acessar",
+    promocoes: "marketing.administrar",
+    "cupons-promocao": "marketing.administrar",
+    "programa-fidelidade": "fidelidade.administrar",
+    "auditoria-cupons": "marketing.auditoria",
+    "auditoria-frete-gratis": "marketing.auditoria",
+    "dados-loja": "loja_configuracoes.administrar",
+    "banners-home": "banners.administrar",
+    "paginas-da-loja": "paginas.administrar",
+    "usuarios-e-permissoes": "administradores.visualizar",
+  };
+
+export function filtrarMenuAdmin(
+  entradas: EntradaMenuAdmin[],
+  permissoes: ReadonlySet<string>,
+): EntradaMenuAdmin[] {
+  return entradas.reduce<EntradaMenuAdmin[]>((filtradas, entrada) => {
+    if ("href" in entrada) {
+      const permissao = permissaoPorItem[entrada.id];
+      if (!permissao || permissoes.has(permissao)) filtradas.push(entrada);
+      return filtradas;
+    }
+    const items = filtrarMenuAdmin(entrada.items, permissoes);
+    if (items.length) filtradas.push({ ...entrada, items });
+    return filtradas;
+  }, []);
+}
+
+export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
+  const menuPermitido = filtrarMenuAdmin(menuAdmin, new Set(permissoes));
   // Hook que controla estado (aberto/fechado, expandido/recolhido)
   const {
     isCollapsed,
@@ -651,7 +710,7 @@ export function AdminSidebar() {
           aria-label="Navegação principal"
           className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-3"
         >
-          {menuAdmin.map((item) =>
+          {menuPermitido.map((item) =>
             "href" in item ? renderItem(item) : renderGroup(item),
           )}
         </nav>
@@ -676,7 +735,7 @@ export function AdminSidebar() {
             aria-label="Todos os módulos"
             className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
-            {menuAdmin.map((item) =>
+            {menuPermitido.map((item) =>
               "href" in item ? renderItem(item) : renderGroup(item),
             )}
           </nav>
@@ -687,25 +746,28 @@ export function AdminSidebar() {
         aria-label="Navegação rápida"
         className="bg-background/95 fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       >
-        {[
-          { label: "Início", href: "/admin", icon: LayoutDashboard },
-          { label: "Pedidos", href: "/admin/orders", icon: ShoppingCart },
-          { label: "Produtos", href: "/admin/products", icon: Package },
-        ].map((item) => {
-          const ativo = isActive(item.href);
-          const Icone = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={ativo ? "page" : undefined}
-              className={`focus-visible:ring-ring flex min-h-12 flex-col items-center justify-center gap-1 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none ${ativo ? "text-primary" : "text-muted-foreground"}`}
-            >
-              <Icone className="size-5" aria-hidden="true" />
-              {item.label}
-            </Link>
-          );
-        })}
+        {menuPermitido
+          .flatMap((entrada) => ("href" in entrada ? [entrada] : entrada.items))
+          .filter(
+            (entrada): entrada is ItemMenuAdmin =>
+              "href" in entrada &&
+              ["dashboard", "orders", "products"].includes(entrada.id),
+          )
+          .map((item) => {
+            const ativo = isActive(item.href);
+            const Icone = iconMap[item.icon];
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={ativo ? "page" : undefined}
+                className={`focus-visible:ring-ring flex min-h-12 flex-col items-center justify-center gap-1 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none ${ativo ? "text-primary" : "text-muted-foreground"}`}
+              >
+                <Icone className="size-5" aria-hidden="true" />
+                {item.label}
+              </Link>
+            );
+          })}
         <button
           type="button"
           onClick={openMobile}

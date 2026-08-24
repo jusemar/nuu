@@ -70,154 +70,161 @@ async function filaAtiva(importacaoId: string) {
   return resultado.rows[0].total;
 }
 
-describe("isolamento entre execuções da API Laquila", { skip: !destinoPermitido }, () => {
-  before(async () => {
-    cliente = new Client({ connectionString: url });
-    await cliente.connect();
+describe(
+  "isolamento entre execuções da API Laquila",
+  { skip: !destinoPermitido },
+  () => {
+    before(async () => {
+      cliente = new Client({ connectionString: url });
+      await cliente.connect();
 
-    await cliente.query(
-      "insert into fornecedores (id, nome, tipo_integracao, status) values ($1, 'Laquila Teste', 'api', 'ativo')",
-      [fornecedorId],
-    );
-    await cliente.query(
-      `insert into fornecedor_integracoes_api (id, fornecedor_id, provedor, url_base, cnpj_empresa)
-       values ($1, $2, 'laquila', 'https://exemplo.teste', '00000000000000')`,
-      [integracaoId, fornecedorId],
-    );
-
-    for (const id of [importacaoA, importacaoB]) {
       await cliente.query(
-        `insert into importacoes_fornecedor (id, fornecedor_id, tipo_arquivo, status, configuracao_fluxo_json)
-         values ($1, $2, 'api', 'em_staging', jsonb_build_object('origem','api','provedor','laquila'))`,
-        [id, fornecedorId],
+        "insert into fornecedores (id, nome, tipo_integracao, status) values ($1, 'Laquila Teste', 'api', 'ativo')",
+        [fornecedorId],
       );
       await cliente.query(
-        `insert into fornecedor_produtos_api_staging
+        `insert into fornecedor_integracoes_api (id, fornecedor_id, provedor, url_base, cnpj_empresa)
+       values ($1, $2, 'laquila', 'https://exemplo.teste', '00000000000000')`,
+        [integracaoId, fornecedorId],
+      );
+
+      for (const id of [importacaoA, importacaoB]) {
+        await cliente.query(
+          `insert into importacoes_fornecedor (id, fornecedor_id, tipo_arquivo, status, configuracao_fluxo_json)
+         values ($1, $2, 'api', 'em_staging', jsonb_build_object('origem','api','provedor','laquila'))`,
+          [id, fornecedorId],
+        );
+        await cliente.query(
+          `insert into fornecedor_produtos_api_staging
            (integracao_api_id, importacao_id, codigo_fornecedor, nome_produto, ultima_consulta_em)
          values ($1, $2, $3, 'Produto da execução', now())`,
-        [integracaoId, id, CODIGO],
+          [integracaoId, id, CODIGO],
+        );
+      }
+    });
+
+    after(async () => {
+      // Só as fixtures deste teste; o cascade da execução leva o staging junto.
+      await cliente.query(
+        "delete from produto_rascunhos where integracao_api_id = $1",
+        [integracaoId],
       );
-    }
-  });
+      await cliente.query(
+        "delete from importacoes_fornecedor where fornecedor_id = $1",
+        [fornecedorId],
+      );
+      await cliente.query(
+        "delete from fornecedor_integracoes_api where id = $1",
+        [integracaoId],
+      );
+      await cliente.query("delete from fornecedores where id = $1", [
+        fornecedorId,
+      ]);
+      await cliente.end();
+    });
 
-  after(async () => {
-    // Só as fixtures deste teste; o cascade da execução leva o staging junto.
-    await cliente.query(
-      "delete from produto_rascunhos where integracao_api_id = $1",
-      [integracaoId],
-    );
-    await cliente.query(
-      "delete from importacoes_fornecedor where fornecedor_id = $1",
-      [fornecedorId],
-    );
-    await cliente.query(
-      "delete from fornecedor_integracoes_api where id = $1",
-      [integracaoId],
-    );
-    await cliente.query("delete from fornecedores where id = $1", [
-      fornecedorId,
-    ]);
-    await cliente.end();
-  });
-
-  test("CENÁRIO B: o mesmo código existe nas duas execuções sem conflito", async () => {
-    const resultado = await cliente.query<{ total: number; execucoes: number }>(
-      `select count(*)::int as total, count(distinct importacao_id)::int as execucoes
+    test("CENÁRIO B: o mesmo código existe nas duas execuções sem conflito", async () => {
+      const resultado = await cliente.query<{
+        total: number;
+        execucoes: number;
+      }>(
+        `select count(*)::int as total, count(distinct importacao_id)::int as execucoes
          from fornecedor_produtos_api_staging
         where integracao_api_id = $1 and codigo_fornecedor = $2`,
-      [integracaoId, CODIGO],
-    );
+        [integracaoId, CODIGO],
+      );
 
-    assert.equal(resultado.rows[0].total, 2);
-    assert.equal(resultado.rows[0].execucoes, 2);
-  });
-
-  test("CENÁRIO B: staging de uma execução não vaza para a outra", async () => {
-    const daA = await cliente.query<{ total: number }>(
-      "select count(*)::int as total from fornecedor_produtos_api_staging where importacao_id = $1",
-      [importacaoA],
-    );
-
-    assert.equal(daA.rows[0].total, 1);
-  });
-
-  test("CENÁRIO A: rascunho pertence à execução que o criou", async () => {
-    await criarRascunho({
-      importacaoId: importacaoA,
-      status: "pendente_conciliacao",
+      assert.equal(resultado.rows[0].total, 2);
+      assert.equal(resultado.rows[0].execucoes, 2);
     });
 
-    assert.equal(await filaAtiva(importacaoA), 1);
-    assert.equal(await filaAtiva(importacaoB), 0);
-  });
+    test("CENÁRIO B: staging de uma execução não vaza para a outra", async () => {
+      const daA = await cliente.query<{ total: number }>(
+        "select count(*)::int as total from fornecedor_produtos_api_staging where importacao_id = $1",
+        [importacaoA],
+      );
 
-  test("CENÁRIO C: publicado sai da fila da própria execução", async () => {
-    const rascunhoId = await criarRascunho({
-      importacaoId: importacaoA,
-      status: "pronto_para_publicar",
+      assert.equal(daA.rows[0].total, 1);
     });
 
-    assert.equal(await filaAtiva(importacaoA), 2);
+    test("CENÁRIO A: rascunho pertence à execução que o criou", async () => {
+      await criarRascunho({
+        importacaoId: importacaoA,
+        status: "pendente_conciliacao",
+      });
 
-    await cliente.query(
-      "update produto_rascunhos set status = 'publicado' where id = $1",
-      [rascunhoId],
-    );
-
-    assert.equal(await filaAtiva(importacaoA), 1);
-  });
-
-  test("CENÁRIO D: o mesmo produto reaparece na execução seguinte", async () => {
-    await criarRascunho({
-      importacaoId: importacaoB,
-      status: "pendente_conciliacao",
+      assert.equal(await filaAtiva(importacaoA), 1);
+      assert.equal(await filaAtiva(importacaoB), 0);
     });
 
-    // A #B tem o item de volta; a #A continua com o que tinha, sem alteração.
-    assert.equal(await filaAtiva(importacaoB), 1);
-    assert.equal(await filaAtiva(importacaoA), 1);
-  });
+    test("CENÁRIO C: publicado sai da fila da própria execução", async () => {
+      const rascunhoId = await criarRascunho({
+        importacaoId: importacaoA,
+        status: "pronto_para_publicar",
+      });
 
-  test("ignorado sai da fila mas permanece no histórico da execução", async () => {
-    const rascunhoId = await criarRascunho({
-      importacaoId: importacaoB,
-      status: "pendente_conciliacao",
+      assert.equal(await filaAtiva(importacaoA), 2);
+
+      await cliente.query(
+        "update produto_rascunhos set status = 'publicado' where id = $1",
+        [rascunhoId],
+      );
+
+      assert.equal(await filaAtiva(importacaoA), 1);
     });
-    await cliente.query(
-      "update produto_rascunhos set status = 'ignorado' where id = $1",
-      [rascunhoId],
-    );
 
-    assert.equal(await filaAtiva(importacaoB), 1);
+    test("CENÁRIO D: o mesmo produto reaparece na execução seguinte", async () => {
+      await criarRascunho({
+        importacaoId: importacaoB,
+        status: "pendente_conciliacao",
+      });
 
-    const historico = await cliente.query<{ total: number }>(
-      `select count(*)::int as total from produto_rascunhos
+      // A #B tem o item de volta; a #A continua com o que tinha, sem alteração.
+      assert.equal(await filaAtiva(importacaoB), 1);
+      assert.equal(await filaAtiva(importacaoA), 1);
+    });
+
+    test("ignorado sai da fila mas permanece no histórico da execução", async () => {
+      const rascunhoId = await criarRascunho({
+        importacaoId: importacaoB,
+        status: "pendente_conciliacao",
+      });
+      await cliente.query(
+        "update produto_rascunhos set status = 'ignorado' where id = $1",
+        [rascunhoId],
+      );
+
+      assert.equal(await filaAtiva(importacaoB), 1);
+
+      const historico = await cliente.query<{ total: number }>(
+        `select count(*)::int as total from produto_rascunhos
         where dados_origem_json->'origemFluxoFornecedor'->>'importacaoId' = $1`,
-      [importacaoB],
-    );
-    assert.equal(historico.rows[0].total, 2);
-  });
+        [importacaoB],
+      );
+      assert.equal(historico.rows[0].total, 2);
+    });
 
-  test("linhas legadas sem execução ficam fora de qualquer ciclo", async () => {
-    await cliente.query(
-      `insert into fornecedor_produtos_api_staging
+    test("linhas legadas sem execução ficam fora de qualquer ciclo", async () => {
+      await cliente.query(
+        `insert into fornecedor_produtos_api_staging
          (integracao_api_id, codigo_fornecedor, nome_produto, ultima_consulta_em)
        values ($1, 'LEGADO-1', 'Produto legado', now())`,
-      [integracaoId],
-    );
+        [integracaoId],
+      );
 
-    const porExecucao = await cliente.query<{ total: number }>(
-      `select count(*)::int as total from fornecedor_produtos_api_staging
+      const porExecucao = await cliente.query<{ total: number }>(
+        `select count(*)::int as total from fornecedor_produtos_api_staging
         where importacao_id in ($1, $2)`,
-      [importacaoA, importacaoB],
-    );
-    const legado = await cliente.query<{ total: number }>(
-      `select count(*)::int as total from fornecedor_produtos_api_staging
+        [importacaoA, importacaoB],
+      );
+      const legado = await cliente.query<{ total: number }>(
+        `select count(*)::int as total from fornecedor_produtos_api_staging
         where integracao_api_id = $1 and importacao_id is null`,
-      [integracaoId],
-    );
+        [integracaoId],
+      );
 
-    assert.equal(porExecucao.rows[0].total, 2);
-    assert.equal(legado.rows[0].total, 1);
-  });
-});
+      assert.equal(porExecucao.rows[0].total, 2);
+      assert.equal(legado.rows[0].total, 1);
+    });
+  },
+);

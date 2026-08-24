@@ -3,6 +3,9 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import {
   regrasPromocaoCategoriasTable,
   regrasPromocaoFretesGratisTable,
@@ -38,6 +41,8 @@ function obterRegioesFreteGratisParaPersistencia({
 }
 
 export async function salvarPromocaoAdmin(entrada: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.PUBLICAR);
   const dados = salvarPromocaoAdminSchema.parse(entrada);
   const agora = new Date();
 

@@ -1,11 +1,15 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
 import { regrasProdutosFreteTable } from "@/db/schema";
 import { criarRegraProdutoFreteSchema } from "@/features/admin/logistica/schemas/regras-produtos-frete-admin.schema";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function criarRegraProdutoFrete(entrada: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const validacao = criarRegraProdutoFreteSchema.safeParse(entrada);
   if (!validacao.success) {
     return {
@@ -24,7 +28,9 @@ export async function criarRegraProdutoFrete(entrada: unknown) {
     return { sucesso: true as const, dados: { id: registro.id } };
   } catch (erro) {
     console.error("[criarRegraProdutoFrete]", erro);
-    return { sucesso: false as const, erro: "Falha ao criar regra por produto" };
+    return {
+      sucesso: false as const,
+      erro: "Falha ao criar regra por produto",
+    };
   }
 }
-

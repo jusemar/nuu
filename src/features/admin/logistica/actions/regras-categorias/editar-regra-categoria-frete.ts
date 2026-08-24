@@ -1,15 +1,19 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
 import { regrasCategoriasFreteTable } from "@/db/schema";
 import { editarRegraCategoriaFreteSchema } from "@/features/admin/logistica/schemas/regras-categorias-frete-admin.schema";
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function editarRegraCategoriaFrete(
   regraCategoriaFreteId: string,
   entrada: unknown,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   if (!regraCategoriaFreteId) {
     return { sucesso: false as const, erro: "ID da regra é obrigatório" };
   }
@@ -33,13 +37,16 @@ export async function editarRegraCategoriaFrete(
       .where(eq(regrasCategoriasFreteTable.id, regraCategoriaFreteId))
       .returning({ id: regrasCategoriasFreteTable.id });
 
-    if (!registro) return { sucesso: false as const, erro: "Regra não encontrada" };
+    if (!registro)
+      return { sucesso: false as const, erro: "Regra não encontrada" };
 
     revalidatePath("/admin/logistica/transportadoras-integracoes");
     return { sucesso: true as const, dados: { id: registro.id } };
   } catch (erro) {
     console.error("[editarRegraCategoriaFrete]", erro);
-    return { sucesso: false as const, erro: "Falha ao editar regra por categoria" };
+    return {
+      sucesso: false as const,
+      erro: "Falha ao editar regra por categoria",
+    };
   }
 }
-

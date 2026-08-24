@@ -7,7 +7,6 @@ import { sessionTable, userTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
 import { normalizarWhatsappAdmin } from "../lib/normalizar-whatsapp-admin";
-import { emailPossuiPermissaoAdmin } from "../lib/permissoes-admin";
 import { buscarSessaoAdmin } from "../queries/sessao/buscar-sessao-admin";
 import { dadosMinhaContaAdminSchema } from "../schemas/dados-minha-conta-admin.schema";
 
@@ -44,15 +43,6 @@ export async function atualizarDadosMinhaContaAdmin(entrada: unknown) {
     : null;
   const emailAnterior = acesso.sessao.user.email.toLowerCase();
   const emailFoiAlterado = email !== emailAnterior;
-
-  if (emailFoiAlterado && !emailPossuiPermissaoAdmin(email)) {
-    return {
-      sucesso: false as const,
-      mensagem:
-        "O novo e-mail precisa estar autorizado em ADMIN_EMAILS antes da alteração.",
-    };
-  }
-
   try {
     await dbTransacional.transaction(async (tx) => {
       const outroUsuarioComMesmoEmail = await tx.query.userTable.findFirst({

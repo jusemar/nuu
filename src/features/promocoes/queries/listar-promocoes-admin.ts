@@ -2,6 +2,9 @@ import "server-only";
 
 import { and, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { db } from "../../../db/connection";
 import {
   categoryTable,
@@ -563,6 +566,7 @@ async function listarPromocoesAdminSemRetry(
 export async function listarPromocoesAdmin(
   filtrosEntrada: FiltrosPromocoesAdmin = {},
 ): Promise<ResultadoPromocoesAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   return executarConsultaLeituraAdminComRetry(() =>
     listarPromocoesAdminSemRetry(filtrosEntrada),
   );

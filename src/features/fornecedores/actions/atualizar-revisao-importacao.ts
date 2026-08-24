@@ -3,12 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { correcaoRevisaoImportacaoFornecedorSchema } from "../schemas/fornecedores.schema";
 import { atualizarRevisaoImportacaoFornecedor } from "../services/atualizar-revisao-importacao.service";
 
 export async function atualizarRevisaoImportacaoFornecedorAction(
   formData: FormData,
 ) {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const stagingIds = formData.getAll("stagingIds").map(String);
   const retornoBusca = String(formData.get("retornoBusca") ?? "");
   const retornoCategoriaRevisao = String(

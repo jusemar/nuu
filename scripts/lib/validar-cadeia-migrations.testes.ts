@@ -6,6 +6,8 @@ import {
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
   type SnapshotDrizzle,
+  validarDeltaSnapshotConviteAdministrativo,
+  validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
   validarHistoricoAplicado,
   validarIdentidadeBanco,
@@ -29,9 +31,46 @@ function cadeiaValida() {
   return { entradas, migrations };
 }
 
-test("aceita somente a cadeia legítima ancorada em 0033", () => {
+test("aceita somente a cadeia legítima ancorada em 0035", () => {
   const { entradas, migrations } = cadeiaValida();
   assert.doesNotThrow(() => validarSequenciaLocal(migrations, entradas));
+});
+
+test("0035 acrescenta somente o nome do destinatário ao convite", () => {
+  const anterior: SnapshotDrizzle = {
+    id: "snapshot-34",
+    prevId: "snapshot-33",
+    tables: {
+      "public.convites_administrativos": {
+        columns: { id: { name: "id", notNull: true } },
+      },
+      "public.user": { columns: { id: { name: "id" } } },
+    },
+    enums: {},
+    schemas: {},
+    sequences: {},
+    roles: {},
+    policies: {},
+    views: {},
+  };
+  const atual = structuredClone(anterior);
+  atual.id = "snapshot-35";
+  atual.prevId = anterior.id;
+  const convite = atual.tables["public.convites_administrativos"] as {
+    columns: Record<string, unknown>;
+  };
+  convite.columns.nome_destinatario = {
+    name: "nome_destinatario",
+    notNull: true,
+  };
+
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotConviteAdministrativo(anterior, atual),
+  );
+  atual.tables["public.user"] = { alterada: true };
+  assert.throws(() =>
+    validarDeltaSnapshotConviteAdministrativo(anterior, atual),
+  );
 });
 
 test("rejeita migration ausente, duplicada ou fora de sequência", () => {
@@ -57,11 +96,11 @@ test("rejeita migration ausente, duplicada ou fora de sequência", () => {
 
 test("rejeita última tag, índice ou correspondência com o journal divergentes", () => {
   const tag = cadeiaValida();
-  tag.entradas.at(-1)!.tag = "0033_nao_autorizada";
+  tag.entradas.at(-1)!.tag = "0035_nao_autorizada";
   assert.throws(() => validarSequenciaLocal(tag.migrations, tag.entradas));
 
   const indice = cadeiaValida();
-  indice.entradas.at(-1)!.idx = 34;
+  indice.entradas.at(-1)!.idx = 36;
   assert.throws(() =>
     validarSequenciaLocal(indice.migrations, indice.entradas),
   );
@@ -71,6 +110,54 @@ test("rejeita última tag, índice ou correspondência com o journal divergentes
   assert.throws(() =>
     validarSequenciaLocal(timestamp.migrations, timestamp.entradas),
   );
+});
+
+test("aceita somente as tabelas e enums da fundação global em 0034", () => {
+  const anterior: SnapshotDrizzle = {
+    id: "snapshot-33",
+    prevId: "snapshot-32",
+    tables: { "public.user": { nome: "user" } },
+    enums: {},
+    schemas: {},
+    sequences: {},
+    roles: {},
+    policies: {},
+    views: {},
+  };
+  const tabelas = [
+    "administradores",
+    "administradores_funcoes",
+    "administradores_permissoes",
+    "auditorias_administrativas",
+    "convites_administrativos",
+    "convites_funcoes",
+    "convites_permissoes",
+    "funcoes_administrativas",
+    "funcoes_permissoes",
+    "permissoes_administrativas",
+  ];
+  const enums = [
+    "administrador_status",
+    "auditoria_administrativa_resultado",
+    "convite_administrativo_status",
+    "efeito_permissao_administrador",
+    "funcao_administrativa_status",
+    "permissao_administrativa_status",
+  ];
+  const atual: SnapshotDrizzle = {
+    ...structuredClone(anterior),
+    id: "snapshot-34",
+    prevId: anterior.id,
+    tables: Object.fromEntries([
+      ...Object.entries(anterior.tables),
+      ...tabelas.map((nome) => [`public.${nome}`, {}]),
+    ]),
+    enums: Object.fromEntries(enums.map((nome) => [`public.${nome}`, {}])),
+  };
+
+  assert.doesNotThrow(() => validarDeltaSnapshotRbacGlobal(anterior, atual));
+  atual.tables["public.user"] = { alterada: true };
+  assert.throws(() => validarDeltaSnapshotRbacGlobal(anterior, atual));
 });
 
 test("rejeita hash antigo divergente e aceita somente prefixo íntegro do banco", () => {

@@ -255,7 +255,8 @@ export async function consultarProdutosLaquila(
       operacao: "consultar_produtos_laquila",
       status: "sucesso",
       codigoHttp: resultado.codigoHttp,
-      mensagem: "Produtos Laquila consultados para diagnóstico da configuração.",
+      mensagem:
+        "Produtos Laquila consultados para diagnóstico da configuração.",
       requestResumo: {
         pagina,
         itensPorPagina,

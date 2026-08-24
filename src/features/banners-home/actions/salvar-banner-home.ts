@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { bannersHomeTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { salvarBannerHomeSchema } from "../schemas/banner-home.schema";
 
@@ -15,6 +17,7 @@ function revalidarBannersHome() {
 }
 
 export async function salvarBannerHome(data: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.BANNERS.ADMINISTRAR);
   const dados = salvarBannerHomeSchema.parse(data);
   const agora = new Date();
 

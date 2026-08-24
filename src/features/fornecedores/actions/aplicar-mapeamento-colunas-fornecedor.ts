@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { ErroLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { aplicarMapeamentoColunasFornecedor } from "../services/aplicar-mapeamento-colunas-fornecedor.service";
 import type { CampoMapeamentoColunaFornecedor } from "../types/fornecedores.types";
 
@@ -43,6 +45,7 @@ export async function aplicarMapeamentoColunasFornecedorAction(
   _estadoAnterior: EstadoAplicarMapeamentoFornecedor,
   formData: FormData,
 ): Promise<EstadoAplicarMapeamentoFornecedor> {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const importacaoId = String(formData.get("importacaoId") ?? "");
   const salvarParaFornecedor =
     String(formData.get("salvarParaFornecedor") ?? "") === "true";

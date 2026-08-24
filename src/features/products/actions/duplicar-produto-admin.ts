@@ -24,6 +24,8 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-acesso-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { gerarSkuDisponivel } from "@/features/products/lib/gerar-sku-disponivel";
 import { buildVariantSku } from "@/features/products/lib/variant-editor";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
@@ -37,6 +39,7 @@ function gerarSlugCopia(slugOriginal: string) {
 }
 
 export async function duplicarProdutoAdmin(produtoId: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
   const acesso = await validarAcessoAdmin();
   if (!acesso.sucesso) {
     return { sucesso: false as const, erro: acesso.erro };

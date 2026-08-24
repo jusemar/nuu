@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { configuracoesLojaTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { configuracaoLojaSchema } from "../schemas/configuracao-loja.schema";
 
@@ -21,6 +23,7 @@ function revalidarPathSeguro(path: string, type?: "page") {
 }
 
 export async function salvarConfiguracaoLoja(data: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOJA_CONFIGURACOES.ADMINISTRAR);
   const dados = configuracaoLojaSchema.parse(data);
   const nomeComercial = dados.nomeComercial.trim() || null;
   const agora = new Date();

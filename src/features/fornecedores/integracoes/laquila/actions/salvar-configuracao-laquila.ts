@@ -4,7 +4,9 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
-import { fornecedoresTable,fornecedorIntegracoesApiTable } from "@/db/schema";
+import { fornecedoresTable, fornecedorIntegracoesApiTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirAcessoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import {
   FORNECEDOR_LAQUILA_NOME,
@@ -198,6 +200,9 @@ async function buscarOuCriarFornecedorLaquila(fornecedorId?: string) {
 export async function salvarConfiguracaoLaquila(
   dadosEntrada: unknown,
 ): Promise<ResultadoSalvarConfiguracaoLaquila> {
+  await exigirAcessoFornecedoresAdmin(
+    PERMISSOES_ADMIN.FORNECEDORES.ADMINISTRAR,
+  );
   try {
     const validacao = configuracaoLaquilaSchema.safeParse(
       normalizarEntradaConfiguracaoLaquila(dadosEntrada),

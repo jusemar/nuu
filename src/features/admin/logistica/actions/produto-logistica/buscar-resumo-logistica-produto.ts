@@ -1,18 +1,22 @@
 "use server";
 
+import { eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
   produtosTiposLogisticosTable,
+  provedoresFreteTable,
   regrasProdutosFreteTable,
   servicosFreteTable,
   tiposLogisticosTable,
   transportadorasFreteTable,
-  provedoresFreteTable,
 } from "@/db/schema";
 import { erroConexaoLogisticaIndisponivel } from "@/features/admin/logistica/lib/erro-tabela-logistica-ausente";
-import { eq } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function buscarResumoLogisticaProduto(produtoId?: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   try {
     const tiposDisponiveis = await db
       .select({

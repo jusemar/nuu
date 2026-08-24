@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+
 import {
   montarMensagemArquivoAcimaDoLimite,
   TAMANHO_MAXIMO_ARQUIVO_IMPORTACAO_BYTES,
 } from "../constants/importacao-arquivo";
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { importarPlanilhaFornecedorParaStaging } from "../services/importacao-planilha-fornecedor.service";
 import type { EstadoEnvioPlanilhaFornecedor } from "../types/fornecedores.types";
 
@@ -19,6 +22,7 @@ import type { EstadoEnvioPlanilhaFornecedor } from "../types/fornecedores.types"
 async function processarEnvioPlanilhaFornecedor(
   formData: FormData,
 ): Promise<{ importacaoId: string } | { erro: string }> {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const fornecedorId = String(formData.get("fornecedorId") ?? "");
   const arquivo = formData.get("arquivo");
 

@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
 import { fornecedoresTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { fornecedorSchema } from "../schemas/fornecedores.schema";
 
 function normalizarEntradaFornecedor(dadosEntrada: unknown) {
@@ -24,6 +26,9 @@ function normalizarEntradaFornecedor(dadosEntrada: unknown) {
 }
 
 export async function salvarFornecedor(dadosEntrada: unknown) {
+  await exigirAcessoFornecedoresAdmin(
+    PERMISSOES_ADMIN.FORNECEDORES.ADMINISTRAR,
+  );
   const dados = fornecedorSchema.parse(
     normalizarEntradaFornecedor(dadosEntrada),
   );

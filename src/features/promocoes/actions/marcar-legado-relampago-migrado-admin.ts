@@ -3,6 +3,9 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { productPricingTable } from "../../../db/schema";
 import { dbTransacional } from "../../../db/transaction";
 import { diagnosticarOfertasRelampagoAdmin } from "../queries";
@@ -17,6 +20,7 @@ function revalidarDiagnosticoRelampagoAdmin() {
 }
 
 export async function marcarLegadoRelampagoMigradoAdmin(entrada: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const dados = marcarLegadoRelampagoMigradoAdminSchema.parse(entrada);
   const diagnostico = await diagnosticarOfertasRelampagoAdmin();
   const item = diagnostico.itens.find(

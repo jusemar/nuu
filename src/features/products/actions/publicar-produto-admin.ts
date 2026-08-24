@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db/connection";
@@ -11,7 +11,8 @@ import {
   productTable,
   productVariantTable,
 } from "@/db/schema";
-import { validarAcessoAdmin } from "@/features/autenticacao/actions/validar-acesso-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 const produtoIdSchema = z.string().uuid();
 
@@ -20,8 +21,8 @@ function camposPositivos(...valores: Array<number | null>) {
 }
 
 export async function publicarProdutoAdmin(produtoId: string) {
-  const acesso = await validarAcessoAdmin();
-  if (!acesso.sucesso) return { sucesso: false as const, erro: acesso.erro };
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.PUBLICAR);
 
   const idValidado = produtoIdSchema.safeParse(produtoId);
   if (!idValidado.success) {

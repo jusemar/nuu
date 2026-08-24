@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { configuracoesPagamentoTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
 
 import type { EstadoKillSwitchPagamentoNaEntrega } from "../../types/pagamento-na-entrega.types";
@@ -27,6 +29,7 @@ export async function alternarKillSwitchPagamentoNaEntregaAdmin(
   _estadoAtual: EstadoKillSwitchPagamentoNaEntrega,
   formData: FormData,
 ): Promise<EstadoKillSwitchPagamentoNaEntrega> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAGAMENTOS_ENTREGA.ADMINISTRAR);
   const sessao = await buscarSessaoAdmin();
 
   if (!sessao.autorizado) {

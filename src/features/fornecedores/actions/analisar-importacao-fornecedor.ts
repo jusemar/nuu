@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { ErroLeituraFornecedores } from "@/features/fornecedores/lib/leitura-segura-fornecedores";
 
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { analiseImportacaoFornecedorSchema } from "../schemas/fornecedores.schema";
 import { analisarProdutosImportadosFornecedor } from "../services/analise-produtos-importados.service";
 
 export async function analisarImportacaoFornecedor(formData: FormData) {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const dados = analiseImportacaoFornecedorSchema.parse({
     importacaoId: formData.get("importacaoId"),
   });

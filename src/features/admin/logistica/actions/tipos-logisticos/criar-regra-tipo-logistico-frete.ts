@@ -1,14 +1,21 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { db } from "@/db/connection";
 import { regrasTiposLogisticosFreteTable } from "@/db/schema";
 import { criarRegraTipoLogisticoFreteSchema } from "@/features/admin/logistica/schemas/tipos-logisticos-admin.schema";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function criarRegraTipoLogisticoFrete(entrada: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const validacao = criarRegraTipoLogisticoFreteSchema.safeParse(entrada);
   if (!validacao.success) {
-    return { sucesso: false as const, erro: validacao.error.issues.map((e) => e.message).join(", ") };
+    return {
+      sucesso: false as const,
+      erro: validacao.error.issues.map((e) => e.message).join(", "),
+    };
   }
   try {
     const [registro] = await db
@@ -19,7 +26,9 @@ export async function criarRegraTipoLogisticoFrete(entrada: unknown) {
     return { sucesso: true as const, dados: { id: registro.id } };
   } catch (erro) {
     console.error("[criarRegraTipoLogisticoFrete]", erro);
-    return { sucesso: false as const, erro: "Falha ao criar regra por tipo logístico" };
+    return {
+      sucesso: false as const,
+      erro: "Falha ao criar regra por tipo logístico",
+    };
   }
 }
-

@@ -845,6 +845,9 @@ export {
 // Persistência própria do Atendente IA.
 export * from "./tables/atendimento-ia";
 
+// Fundação independente do RBAC global do painel administrativo.
+export * from "./tables/autorizacao-admin";
+
 // Configurações e overrides do Programa de Fidelidade (sem carteira ou pontos).
 export * from "./tables/programa-fidelidade";
 export * from "./tables/programa-fidelidade-carteira";

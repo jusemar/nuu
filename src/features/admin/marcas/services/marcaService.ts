@@ -1,8 +1,11 @@
 "use server";
 
+import { and, asc, eq, sql } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { marcaTable, productTable } from "@/db/schema";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 function slugify(valor: string) {
   return valor
@@ -15,6 +18,7 @@ function slugify(valor: string) {
 }
 
 export async function listarMarcas() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARCAS.ADMINISTRAR);
   const marcas = await db
     .select({
       id: marcaTable.id,
@@ -66,6 +70,7 @@ export async function criarMarca(entrada: {
   descricao?: string;
   logoUrl?: string;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARCAS.ADMINISTRAR);
   const nome = entrada.nome.trim();
   if (!nome) throw new Error("Nome da marca é obrigatório");
 
@@ -80,19 +85,22 @@ export async function criarMarca(entrada: {
 
   if (existeSlug) throw new Error("Já existe marca com este nome");
 
-  const [marcaCriada] = await db.insert(marcaTable).values({
-    nome,
-    slug,
-    descricao: entrada.descricao?.trim() || null,
-    logoUrl: entrada.logoUrl?.trim() || null,
-    ativo: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }).returning({
-    id: marcaTable.id,
-    nome: marcaTable.nome,
-    slug: marcaTable.slug,
-  });
+  const [marcaCriada] = await db
+    .insert(marcaTable)
+    .values({
+      nome,
+      slug,
+      descricao: entrada.descricao?.trim() || null,
+      logoUrl: entrada.logoUrl?.trim() || null,
+      ativo: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning({
+      id: marcaTable.id,
+      nome: marcaTable.nome,
+      slug: marcaTable.slug,
+    });
 
   return {
     success: true,
@@ -104,6 +112,7 @@ export async function editarMarca(
   id: string,
   entrada: { nome: string; descricao?: string; logoUrl?: string },
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARCAS.ADMINISTRAR);
   const nome = entrada.nome.trim();
   if (!nome) throw new Error("Nome da marca é obrigatório");
 
@@ -141,6 +150,7 @@ export async function editarMarca(
 }
 
 export async function alternarAtivoMarca(id: string, ativo: boolean) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARCAS.ADMINISTRAR);
   const [marca] = await db
     .select({ slug: marcaTable.slug })
     .from(marcaTable)
@@ -161,6 +171,7 @@ export async function alternarAtivoMarca(id: string, ativo: boolean) {
 }
 
 export async function excluirMarca(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARCAS.ADMINISTRAR);
   const [marca] = await db
     .select({ slug: marcaTable.slug, nome: marcaTable.nome })
     .from(marcaTable)

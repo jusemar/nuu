@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { alterarTriagemProdutosStagingFornecedorSchema } from "../schemas/fornecedores.schema";
 import { alterarTriagemProdutosStagingFornecedor } from "../services/alterar-triagem-produtos-staging-fornecedor.service";
 
@@ -14,6 +17,7 @@ type EntradaAlterarTriagemProdutosStagingFornecedor = {
 export async function alterarTriagemProdutosStagingFornecedorAction(
   entrada: EntradaAlterarTriagemProdutosStagingFornecedor,
 ) {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const validacao =
     alterarTriagemProdutosStagingFornecedorSchema.safeParse(entrada);
 

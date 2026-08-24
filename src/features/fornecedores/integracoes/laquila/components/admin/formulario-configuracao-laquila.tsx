@@ -316,7 +316,9 @@ export function FormularioConfiguracaoLaquila({
             <Button
               type="button"
               variant="outline"
-              disabled={isPending || isTestando || isConsultando || !integracaoId}
+              disabled={
+                isPending || isTestando || isConsultando || !integracaoId
+              }
               onClick={consultarProdutos}
             >
               <PlugZap className="mr-2 h-4 w-4" />

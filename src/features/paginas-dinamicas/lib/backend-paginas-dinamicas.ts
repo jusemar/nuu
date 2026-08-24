@@ -1,12 +1,10 @@
 import "server-only";
 
-import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function exigirAdministradorPaginasDinamicas() {
-  const resultado = await buscarSessaoAdmin();
-  if (!resultado.autorizado || !resultado.sessao)
-    throw new Error("NAO_AUTORIZADO");
-  return resultado.sessao;
+  return exigirPermissaoAdmin(PERMISSOES_ADMIN.PAGINAS.ADMINISTRAR);
 }
 
 export function ehViolacaoUnicidade(erro: unknown) {

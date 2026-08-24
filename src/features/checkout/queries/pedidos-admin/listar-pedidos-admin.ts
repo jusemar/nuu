@@ -8,6 +8,8 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { PEDIDOS_ADMIN_PAGE_SIZE } from "../../constants/admin-pedidos";
 import type { FiltrosPedidosAdmin } from "../../schemas/admin-pedidos.schema";
@@ -87,6 +89,7 @@ function montarFiltrosPedidos({
 export async function listarPedidosAdmin(
   filtros: FiltrosPedidosAdmin,
 ): Promise<ResultadoListaPedidosAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PEDIDOS.VISUALIZAR);
   const [clientesIds, pedidosIdsPorPagamento] = await Promise.all([
     buscarClientesIdsPorEmail(filtros.emailCliente),
     buscarPedidosIdsPorPagamento(filtros),

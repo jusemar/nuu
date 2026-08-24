@@ -12,4 +12,3 @@ describe("produto logistica actions", () => {
     assert.equal(resposta.sucesso, false);
   });
 });
-

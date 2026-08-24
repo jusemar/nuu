@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { productTable, produtosVendaCruzadaTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
-import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { salvarVendaCruzadaSchema } from "../schemas/venda-cruzada.schema";
 import type { ResultadoSalvarVendaCruzada } from "../types/venda-cruzada.types";
@@ -17,13 +18,7 @@ import type { ResultadoSalvarVendaCruzada } from "../types/venda-cruzada.types";
 export async function salvarVendaCruzadaAdmin(
   entrada: unknown,
 ): Promise<ResultadoSalvarVendaCruzada> {
-  const sessao = await buscarSessaoAdmin();
-  if (!sessao.autorizado) {
-    return {
-      sucesso: false,
-      mensagem: "Sessão de administrador inválida ou expirada.",
-    };
-  }
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
 
   const validacao = salvarVendaCruzadaSchema.safeParse(entrada);
   if (!validacao.success) {

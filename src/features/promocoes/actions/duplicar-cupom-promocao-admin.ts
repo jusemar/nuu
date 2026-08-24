@@ -3,8 +3,11 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-import { dbTransacional } from "../../../db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { cuponsPromocaoTable } from "../../../db/schema";
+import { dbTransacional } from "../../../db/transaction";
 import { idPromocaoAdminSchema } from "../schemas";
 
 function criarCodigoDuplicado(codigo: string) {
@@ -12,6 +15,7 @@ function criarCodigoDuplicado(codigo: string) {
 }
 
 export async function duplicarCupomPromocaoAdmin(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const cupomId = idPromocaoAdminSchema.parse(id);
   const agora = new Date();
 

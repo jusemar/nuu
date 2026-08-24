@@ -19,6 +19,8 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import type {
   PedidoAuditoriaFreteGratisAdmin,
@@ -189,6 +191,7 @@ function mapearLinhaAuditoriaFreteGratis(
 export async function listarAuditoriaFreteGratisAdmin(
   filtrosEntrada: FiltrosAuditoriaFreteGratisAdmin = {},
 ): Promise<ResultadoAuditoriaFreteGratisAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.AUDITORIA);
   const pagina = normalizarPagina(filtrosEntrada.pagina);
   const limite = normalizarLimite(filtrosEntrada.limite);
   const deslocamento = (pagina - 1) * limite;

@@ -10,6 +10,7 @@ import {
   fornecedorProdutosApiStagingTable,
   importacoesFornecedorTable,
 } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import { METODOS_LAQUILA, PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
@@ -69,7 +70,11 @@ async function buscarIntegracaoLaquilaAtual() {
  * a API devolveu naquele momento.
  */
 export async function iniciarSincronizacaoLaquila(): Promise<ResultadoIniciarSincronizacaoLaquila> {
-  if (!(await possuiSessaoFornecedoresAdmin())) {
+  if (
+    !(await possuiSessaoFornecedoresAdmin(
+      PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR,
+    ))
+  ) {
     return {
       sucesso: false,
       erro: "Sua sessão não está ativa. Entre novamente para sincronizar.",
@@ -169,7 +174,11 @@ export async function iniciarSincronizacaoLaquila(): Promise<ResultadoIniciarSin
       atualizadoEm: agora,
     }));
 
-    for (let inicio = 0; inicio < linhas.length; inicio += TAMANHO_LOTE_STAGING_API) {
+    for (
+      let inicio = 0;
+      inicio < linhas.length;
+      inicio += TAMANHO_LOTE_STAGING_API
+    ) {
       await db
         .insert(fornecedorProdutosApiStagingTable)
         .values(linhas.slice(inicio, inicio + TAMANHO_LOTE_STAGING_API));

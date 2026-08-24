@@ -11,8 +11,8 @@ import {
   isNull,
   ne,
   or,
-  sql,
   type SQL,
+  sql,
 } from "drizzle-orm";
 
 import {
@@ -25,6 +25,8 @@ import {
   usosCuponsPromocaoTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { filtrosAuditoriaCuponsAdminSchema } from "../schemas";
 import type {
@@ -322,6 +324,7 @@ export async function buscarInconsistenciasAuditoriaCuponsAdmin(): Promise<
 export async function listarAuditoriaCuponsAdmin(
   filtrosEntrada: FiltrosAuditoriaCuponsAdmin = {},
 ): Promise<ResultadoAuditoriaCuponsAdmin> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.AUDITORIA);
   const filtros = filtrosAuditoriaCuponsAdminSchema.parse(filtrosEntrada);
   const condicoes = criarCondicoesAuditoriaCupons(filtros);
   const deslocamento = (filtros.pagina - 1) * filtros.limite;

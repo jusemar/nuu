@@ -3,6 +3,9 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import {
   regrasPromocaoCategoriasTable,
   regrasPromocaoFretesGratisTable,
@@ -19,6 +22,7 @@ function criarSlugDuplicado(slug: string) {
 }
 
 export async function duplicarPromocaoAdmin(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const promocaoId = idPromocaoAdminSchema.parse(id);
   const agora = new Date();
 

@@ -1,15 +1,18 @@
 // TODO: Implementar
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 // Action: cria novo modelo de retirada
 // Retorno padronizado: { success, data, error }
-
 import { db } from "@/db/connection";
 import { modelosRetiradaTable } from "@/db/table/retirada/modelos-retirada";
 import { criarModeloRetiradaSchema } from "@/features/admin/logistica/schemas/retiradaLocal.schema";
-import { revalidatePath } from "next/cache";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function criarModeloRetirada(dados: unknown) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const parse = criarModeloRetiradaSchema.safeParse(dados);
   if (!parse.success) {
     return {

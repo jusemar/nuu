@@ -1,18 +1,33 @@
 "use server";
 
-import { db } from "@/db/connection";
-import { tiposLogisticosTable } from "@/db/schema";
-import { editarTipoLogisticoSchema } from "@/features/admin/logistica/schemas/tipos-logisticos-admin.schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-export async function editarTipoLogistico(tipoLogisticoId: string, entrada: unknown) {
-  if (!tipoLogisticoId) return { sucesso: false as const, erro: "ID do tipo logístico é obrigatório" };
+import { db } from "@/db/connection";
+import { tiposLogisticosTable } from "@/db/schema";
+import { editarTipoLogisticoSchema } from "@/features/admin/logistica/schemas/tipos-logisticos-admin.schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
+export async function editarTipoLogistico(
+  tipoLogisticoId: string,
+  entrada: unknown,
+) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
+  if (!tipoLogisticoId)
+    return {
+      sucesso: false as const,
+      erro: "ID do tipo logístico é obrigatório",
+    };
   const validacao = editarTipoLogisticoSchema.safeParse(entrada);
   if (!validacao.success) {
-    return { sucesso: false as const, erro: validacao.error.issues.map((e) => e.message).join(", ") };
+    return {
+      sucesso: false as const,
+      erro: validacao.error.issues.map((e) => e.message).join(", "),
+    };
   }
-  if (Object.keys(validacao.data).length === 0) return { sucesso: false as const, erro: "Nenhum campo para atualizar" };
+  if (Object.keys(validacao.data).length === 0)
+    return { sucesso: false as const, erro: "Nenhum campo para atualizar" };
 
   try {
     const [registro] = await db
@@ -20,7 +35,8 @@ export async function editarTipoLogistico(tipoLogisticoId: string, entrada: unkn
       .set({ ...validacao.data, updatedAt: new Date() })
       .where(eq(tiposLogisticosTable.id, tipoLogisticoId))
       .returning({ id: tiposLogisticosTable.id });
-    if (!registro) return { sucesso: false as const, erro: "Tipo logístico não encontrado" };
+    if (!registro)
+      return { sucesso: false as const, erro: "Tipo logístico não encontrado" };
     revalidatePath("/admin/logistica/transportadoras-integracoes");
     return { sucesso: true as const, dados: { id: registro.id } };
   } catch (erro) {
@@ -28,4 +44,3 @@ export async function editarTipoLogistico(tipoLogisticoId: string, entrada: unkn
     return { sucesso: false as const, erro: "Falha ao editar tipo logístico" };
   }
 }
-

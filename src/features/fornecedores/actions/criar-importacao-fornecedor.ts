@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
 import { importacoesFornecedorTable } from "@/db/schema";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 
+import { exigirAcessoFornecedoresAdmin } from "../lib/sessao-fornecedores-admin";
 import { importacaoFornecedorSchema } from "../schemas/fornecedores.schema";
 
 export async function criarImportacaoFornecedor(dadosEntrada: unknown) {
+  await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
   const dados = importacaoFornecedorSchema.parse(dadosEntrada);
   const agora = new Date();
 

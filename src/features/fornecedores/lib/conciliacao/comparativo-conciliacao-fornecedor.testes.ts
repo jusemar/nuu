@@ -37,15 +37,7 @@ test("cobre os sete campos exigidos pela comparação", () => {
 
   assert.deepEqual(
     linhas.map((linha) => linha.campo),
-    [
-      "Preço",
-      "Estoque",
-      "Categoria",
-      "Marca",
-      "Seções",
-      "Modalidade",
-      "Prazo",
-    ],
+    ["Preço", "Estoque", "Categoria", "Marca", "Seções", "Modalidade", "Prazo"],
   );
 });
 

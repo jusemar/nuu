@@ -160,7 +160,7 @@ test("Revisor e Visualizador consultam métricas, mas não executam retenção",
         papel,
         usuarioId: "usuario",
       },
-      emailAutorizado: true,
+      acessoGlobalAutorizado: true,
     });
     assert.ok(acesso?.capacidades.includes("metricas_leitura"));
     assert.ok(!acesso?.capacidades.includes("acoes_criticas_execucao"));

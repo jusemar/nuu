@@ -9,6 +9,8 @@ import {
   usosCuponsPromocaoTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { filtrosExportacaoAuditoriaCuponsAdminSchema } from "../schemas";
 import {
@@ -115,6 +117,7 @@ function normalizarTipoInconsistencia(tipo?: string) {
 export async function exportarAuditoriaCuponsAdminCsv(
   filtrosEntrada: FiltrosExportacaoAuditoriaCuponsAdmin = {},
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.AUDITORIA);
   const filtros =
     filtrosExportacaoAuditoriaCuponsAdminSchema.parse(filtrosEntrada);
   const condicoes = criarCondicoesExportacao(filtros);

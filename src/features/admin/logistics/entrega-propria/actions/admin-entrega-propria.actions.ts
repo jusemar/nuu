@@ -16,6 +16,8 @@ import {
 } from "@/db/table/logistics/entrega-propria";
 import { dbTransacional } from "@/db/transaction";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
 import { agendaEntregaPropriaSchema } from "../schemas/agenda-entrega-propria.schema";
@@ -75,6 +77,7 @@ export async function criarRegiaoEntregaPropria(data: {
   city: string;
   state: string;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const nome = data.name.trim();
   const cidade = data.city.trim();
   const uf = data.state.trim().toUpperCase();
@@ -108,6 +111,7 @@ export async function atualizarRegiaoEntregaPropria(
     description?: string;
   },
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const nome = data.name.trim();
 
   if (!nome) {
@@ -128,6 +132,7 @@ export async function atualizarRegiaoEntregaPropria(
 }
 
 export async function alternarStatusRegiaoEntregaPropria(id: number) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regiao = await buscarRegiaoObrigatoria(id);
 
   await db
@@ -146,6 +151,7 @@ export async function salvarAgendaEntregaPropria(
   regiaoId: number,
   entrada: unknown,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const validacao = agendaEntregaPropriaSchema.safeParse(entrada);
 
   if (!validacao.success) {
@@ -212,6 +218,7 @@ export async function adicionarBairroNaRegiaoEntregaPropria(
   regiaoId: number,
   neighborhood: string,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const bairro = neighborhood.trim();
 
   if (!bairro) {
@@ -253,6 +260,7 @@ export async function adicionarBairroDaBaseNaRegiaoEntregaPropria(
   regiaoId: number,
   neighborhood: string,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regiao = await buscarRegiaoObrigatoria(regiaoId);
   const bairro = neighborhood.trim();
 
@@ -283,6 +291,7 @@ export async function adicionarBairroPorCepNaRegiaoEntregaPropria(
   regiaoId: number,
   cep: string,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const cleanCep = cep.replace(/\D/g, "");
 
   if (cleanCep.length !== 8) {
@@ -339,6 +348,7 @@ export async function adicionarBairroPorCepNaRegiaoEntregaPropria(
 }
 
 export async function gerarFaixasCepRegiaoEntregaPropria(regiaoId: number) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regiao = await buscarRegiaoObrigatoria(regiaoId);
   const bairros = await db.query.regioBairros.findMany({
     where: eq(regioBairros.regiaoId, regiaoId),
@@ -406,6 +416,7 @@ export async function adicionarFaixaCepRegiaoEntregaPropria(data: {
   cepStart: string;
   cepEnd: string;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await buscarRegiaoObrigatoria(data.regiaoId);
   const cepStart = data.cepStart.replace(/\D/g, "");
   const cepEnd = data.cepEnd.replace(/\D/g, "");
@@ -432,6 +443,7 @@ export async function removerFaixaCepRegiaoEntregaPropria(
   regiaoId: number,
   rangeId: number,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db
     .delete(shippingRegionCepRanges)
     .where(
@@ -451,6 +463,7 @@ export async function registrarBairroPendenteEntregaPropria(data: {
   city: string;
   state: string;
 }) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const cleanCep = data.cep.replace(/\D/g, "");
   const neighborhood = data.neighborhood.trim();
   const city = data.city.trim();
@@ -495,6 +508,7 @@ export async function vincularBairroPendenteNaRegiaoEntregaPropria(
   regiaoId: number,
   bairroPendenteId: number,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const bairroPendente = await db.query.shippingPendingNeighborhoods.findFirst({
     where: and(
       eq(shippingPendingNeighborhoods.id, bairroPendenteId),
@@ -526,6 +540,7 @@ export async function vincularBairroPendenteNaRegiaoEntregaPropria(
 export async function cadastrarBairroPendenteComoAvulsoEntregaPropria(
   bairroPendenteId: number,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const bairroPendente = await db.query.shippingPendingNeighborhoods.findFirst({
     where: and(
       eq(shippingPendingNeighborhoods.id, bairroPendenteId),
@@ -571,6 +586,7 @@ export async function cadastrarBairroPendenteComoAvulsoEntregaPropria(
 export async function ignorarBairroPendenteEntregaPropria(
   bairroPendenteId: number,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db
     .update(shippingPendingNeighborhoods)
     .set({
@@ -616,10 +632,13 @@ export async function salvarPrecosEntregaPropriaProduto(
   productId: string,
   items: ProductOwnDeliveryPriceFormItem[] = [],
   opcoes?: {
+    // Aceita tanto a conexão quanto a transação Drizzle já usada pelos chamadores.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     executor?: any;
     revalidar?: boolean;
   },
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const executor = opcoes?.executor ?? db;
 
   await executor
@@ -643,6 +662,7 @@ export async function removerBairroDaRegiaoEntregaPropria(
   regiaoId: number,
   bairroId: number,
 ) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db
     .delete(regioBairros)
     .where(

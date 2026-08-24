@@ -12,6 +12,8 @@ import {
 } from "@/db/schema";
 import { mapearCatalogoFrenet } from "@/features/admin/logistica/lib/mapear-catalogo-frenet";
 import type { RespostaAcaoAdminFrete } from "@/features/admin/logistica/types/frete-admin.types";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { consultarCotacaoFrenet } from "@/features/logistica/lib/provedores/frenet/consultar-cotacao-frenet";
 import { obterConfiguracaoFrenet } from "@/features/logistica/lib/provedores/frenet/obter-configuracao-frenet";
 import type { SolicitacaoCotacaoFrete } from "@/features/logistica/types/contratos-frete";
@@ -41,6 +43,7 @@ export async function sincronizarCatalogoFrenet(
 ): Promise<
   RespostaAcaoAdminFrete<{ transportadoras: number; servicos: number }>
 > {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.SINCRONIZAR);
   const validacao = sincronizarCatalogoFrenetSchema.safeParse(entrada);
   if (!validacao.success) {
     return {

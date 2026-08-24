@@ -1,5 +1,7 @@
 import "server-only";
 
+import { asc, eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
   categoryTable,
@@ -8,9 +10,11 @@ import {
   servicosFreteTable,
   transportadorasFreteTable,
 } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function listarRegrasCategoriasFrete() {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   return db
     .select({
       id: regrasCategoriasFreteTable.id,
@@ -28,13 +32,27 @@ export async function listarRegrasCategoriasFrete() {
       updatedAt: regrasCategoriasFreteTable.updatedAt,
     })
     .from(regrasCategoriasFreteTable)
-    .innerJoin(categoryTable, eq(regrasCategoriasFreteTable.categoriaId, categoryTable.id))
-    .leftJoin(provedoresFreteTable, eq(regrasCategoriasFreteTable.provedorFreteId, provedoresFreteTable.id))
+    .innerJoin(
+      categoryTable,
+      eq(regrasCategoriasFreteTable.categoriaId, categoryTable.id),
+    )
+    .leftJoin(
+      provedoresFreteTable,
+      eq(regrasCategoriasFreteTable.provedorFreteId, provedoresFreteTable.id),
+    )
     .leftJoin(
       transportadorasFreteTable,
-      eq(regrasCategoriasFreteTable.transportadoraFreteId, transportadorasFreteTable.id),
+      eq(
+        regrasCategoriasFreteTable.transportadoraFreteId,
+        transportadorasFreteTable.id,
+      ),
     )
-    .leftJoin(servicosFreteTable, eq(regrasCategoriasFreteTable.servicoFreteId, servicosFreteTable.id))
-    .orderBy(asc(categoryTable.name), asc(regrasCategoriasFreteTable.createdAt));
+    .leftJoin(
+      servicosFreteTable,
+      eq(regrasCategoriasFreteTable.servicoFreteId, servicosFreteTable.id),
+    )
+    .orderBy(
+      asc(categoryTable.name),
+      asc(regrasCategoriasFreteTable.createdAt),
+    );
 }
-

@@ -9,10 +9,10 @@ import { classificarRecuperacaoEmail } from "@/features/autenticacao/lib/classif
 import { emailEhTecnicoTelefone } from "@/features/autenticacao/lib/email-tecnico-telefone";
 import { enviarEmailRedefinicaoSenhaAdmin } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-admin";
 import { enviarEmailRedefinicaoSenhaCliente } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-cliente";
-import { emailPossuiPermissaoAdmin } from "@/features/autenticacao/lib/permissoes-admin";
 import { pluginConfirmacaoEmailCliente } from "@/features/autenticacao/lib/plugin-confirmacao-email-cliente";
 import { pluginFluxosTelefoneNuu } from "@/features/autenticacao/lib/plugin-fluxos-telefone-nuu";
 import { pluginLoginIdentificadorAdmin } from "@/features/autenticacao/lib/plugin-login-identificador-admin";
+import { buscarVinculoAdministrativoBasico } from "@/features/autenticacao/queries/autorizacao-admin/buscar-vinculo-administrativo-basico";
 import { comunicacaoWhatsapp } from "@/features/comunicacao/whatsapp";
 
 function lerVariavelAmbienteObrigatoria(nome: string) {
@@ -62,7 +62,8 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 30 * 60,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      const administrador = emailPossuiPermissaoAdmin(user.email);
+      const vinculo = await buscarVinculoAdministrativoBasico(user.id);
+      const administrador = vinculo?.status === "ativo";
       const publico = classificarRecuperacaoEmail({
         urlRedefinicao: url,
         origemPermitida: urlBaseAutenticacao,

@@ -135,9 +135,13 @@ function ehFalhaTransitoria(erro: unknown): boolean {
     if (codigo && CODIGOS_FALHA_TRANSITORIA.has(codigo)) return true;
 
     const mensagem =
-      typeof registro.message === "string" ? registro.message.toLowerCase() : "";
+      typeof registro.message === "string"
+        ? registro.message.toLowerCase()
+        : "";
 
-    return TRECHOS_FALHA_TRANSITORIA.some((trecho) => mensagem.includes(trecho));
+    return TRECHOS_FALHA_TRANSITORIA.some((trecho) =>
+      mensagem.includes(trecho),
+    );
   });
 }
 

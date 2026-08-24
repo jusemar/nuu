@@ -8,6 +8,10 @@ export const loginTelefoneSchema = z.object({
 
 export const telefoneSchema = z.object({ phoneNumber: z.string() });
 
+export const codigoOtpSchema = z.object({
+  code: z.string().regex(/^[0-9]{6}$/),
+});
+
 export const reautenticarSenhaSchema = z.object({
   password: z.string().min(1).max(128),
 });

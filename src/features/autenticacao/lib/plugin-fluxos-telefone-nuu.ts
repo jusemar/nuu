@@ -16,6 +16,7 @@ import { dbTransacional } from "@/db/transaction";
 import { comunicacaoWhatsapp } from "@/features/comunicacao/whatsapp";
 
 import {
+  codigoOtpSchema,
   concluirCadastroTelefoneSchema,
   confirmarTelefoneSchema,
   loginTelefoneSchema,
@@ -75,6 +76,20 @@ async function solicitarOtp(
     finalidade,
     ip: obterIpRequisicaoOtp(requisicao),
   });
+}
+
+async function renovarSessao(
+  contexto: Parameters<typeof getSessionFromCtx>[0],
+  sessao: NonNullable<Awaited<ReturnType<typeof getSessionFromCtx>>>,
+) {
+  const novaSessao = await contexto.context.internalAdapter.createSession(
+    sessao.user.id,
+    contexto,
+    false,
+  );
+  if (!novaSessao) throw new APIError("INTERNAL_SERVER_ERROR");
+  await setSessionCookie(contexto, { session: novaSessao, user: sessao.user });
+  await contexto.context.internalAdapter.deleteSession(sessao.session.token);
 }
 
 export function pluginFluxosTelefoneNuu() {
@@ -258,20 +273,63 @@ export function pluginFluxosTelefoneNuu() {
             });
           }
 
-          const novaSessao =
-            await contexto.context.internalAdapter.createSession(
-              sessao.user.id,
-              contexto,
-              false,
-            );
-          if (!novaSessao) throw new APIError("INTERNAL_SERVER_ERROR");
-          await setSessionCookie(contexto, {
-            session: novaSessao,
-            user: sessao.user,
+          await renovarSessao(contexto, sessao);
+          return contexto.json({ sucesso: true });
+        },
+      ),
+
+      solicitarReautenticacaoWhatsappCliente: createAuthEndpoint(
+        "/cliente/reautenticar-whatsapp/solicitar",
+        { method: "POST" },
+        async (contexto) => {
+          const sessao = await getSessionFromCtx(contexto);
+          if (!sessao) throw new APIError("UNAUTHORIZED");
+          const usuario = await db.query.userTable.findFirst({
+            where: and(
+              eq(userTable.id, sessao.user.id),
+              eq(userTable.phoneNumberVerified, true),
+            ),
           });
-          await contexto.context.internalAdapter.deleteSession(
-            sessao.session.token,
+          if (!usuario?.phoneNumber)
+            throw new APIError("BAD_REQUEST", {
+              message: "METODO_INDISPONIVEL",
+            });
+          await solicitarOtp(
+            usuario.phoneNumber,
+            "verificacao",
+            contexto.request,
           );
+          return contexto.json({ sucesso: true });
+        },
+      ),
+
+      confirmarReautenticacaoWhatsappCliente: createAuthEndpoint(
+        "/cliente/reautenticar-whatsapp/confirmar",
+        { method: "POST", body: codigoOtpSchema },
+        async (contexto) => {
+          const sessao = await getSessionFromCtx(contexto);
+          if (!sessao) throw new APIError("UNAUTHORIZED");
+          const usuario = await db.query.userTable.findFirst({
+            where: and(
+              eq(userTable.id, sessao.user.id),
+              eq(userTable.phoneNumberVerified, true),
+            ),
+          });
+          if (!usuario?.phoneNumber)
+            throw new APIError("BAD_REQUEST", {
+              message: "METODO_INDISPONIVEL",
+            });
+          const resultado = await obterServico().confirmar({
+            telefone: usuario.phoneNumber,
+            codigo: contexto.body.code,
+            finalidade: "verificacao",
+            ip: obterIpRequisicaoOtp(contexto.request),
+          });
+          if (resultado !== "VALIDO")
+            throw new APIError("BAD_REQUEST", {
+              message: "REAUTENTICACAO_INVALIDA",
+            });
+          await renovarSessao(contexto, sessao);
           return contexto.json({ sucesso: true });
         },
       ),

@@ -13,6 +13,10 @@ const fonteComponente = readFileSync(
   "src/features/autenticacao/components/store/minha-conta/acesso-seguranca-cliente.tsx",
   "utf8",
 );
+const fonteGestaoEmail = readFileSync(
+  "src/features/autenticacao/components/store/minha-conta/gestao-email-cliente.tsx",
+  "utf8",
+);
 const fontePlugin = readFileSync(
   "src/features/autenticacao/lib/plugin-fluxos-telefone-nuu.ts",
   "utf8",
@@ -32,8 +36,8 @@ test("exibe conta com e-mail real e preserva seu estado de verificação", () =>
 
 test("conta com e-mail técnico nunca expõe o endereço", () => {
   assert.equal(apresentarEmailCliente("conta-hash@telefone.nuu.invalid"), null);
-  assert.match(fonteComponente, /E-mail não adicionado/);
-  assert.doesNotMatch(fonteComponente, /telefone\.nuu\.invalid/);
+  assert.match(fonteGestaoEmail, /E-mail não adicionado/);
+  assert.doesNotMatch(fonteGestaoEmail, /telefone\.nuu\.invalid/);
 });
 
 test("telefone verificado e não verificado refletem user como fonte", () => {

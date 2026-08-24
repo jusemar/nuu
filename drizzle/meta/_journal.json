@@ -232,6 +232,13 @@
       "when": 1787494818667,
       "tag": "0032_desafios-otp-telefone-seguros",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1787592917417,
+      "tag": "0033_confirmacao_email_cliente",
+      "breakpoints": true
     }
   ]
 }

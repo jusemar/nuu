@@ -1,9 +1,14 @@
 export { clienteTipoPessoaEnum } from "./enums";
 export {
+  desafiosConfirmacaoEmailRelations,
   enderecosClientesRelations,
   perfisClientesRelations,
   usuariosRelations,
 } from "./relacoes";
+export {
+  desafiosConfirmacaoEmailTable,
+  tentativasConfirmacaoEmailTable,
+} from "./tabelas/desafios-confirmacao-email";
 export {
   desafiosOtpTelefoneTable,
   emissoesOtpTelefoneTable,

@@ -29,7 +29,7 @@ function cadeiaValida() {
   return { entradas, migrations };
 }
 
-test("aceita somente a cadeia legítima ancorada em 0032", () => {
+test("aceita somente a cadeia legítima ancorada em 0033", () => {
   const { entradas, migrations } = cadeiaValida();
   assert.doesNotThrow(() => validarSequenciaLocal(migrations, entradas));
 });
@@ -57,11 +57,11 @@ test("rejeita migration ausente, duplicada ou fora de sequência", () => {
 
 test("rejeita última tag, índice ou correspondência com o journal divergentes", () => {
   const tag = cadeiaValida();
-  tag.entradas.at(-1)!.tag = "0032_nao_autorizada";
+  tag.entradas.at(-1)!.tag = "0033_nao_autorizada";
   assert.throws(() => validarSequenciaLocal(tag.migrations, tag.entradas));
 
   const indice = cadeiaValida();
-  indice.entradas.at(-1)!.idx = 33;
+  indice.entradas.at(-1)!.idx = 34;
   assert.throws(() =>
     validarSequenciaLocal(indice.migrations, indice.entradas),
   );

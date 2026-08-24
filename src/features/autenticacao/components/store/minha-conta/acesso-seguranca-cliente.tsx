@@ -3,7 +3,6 @@
 import {
   CheckCircle2,
   Loader2,
-  Mail,
   MessageCircle,
   ShieldCheck,
 } from "lucide-react";
@@ -20,6 +19,7 @@ import {
 } from "../../../lib/normalizar-identificador-cliente";
 import type { AcessoSegurancaCliente } from "../../../queries/acesso-seguranca/buscar-acesso-seguranca-cliente";
 import { CampoSenha } from "../autenticacao/campo-senha";
+import { GestaoEmailCliente } from "./gestao-email-cliente";
 
 type EtapaAlteracao = "fechado" | "numero" | "codigo" | "reautenticar";
 
@@ -211,32 +211,10 @@ export function AcessoSegurancaCliente({
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <Mail className="size-4" /> E-mail
-          </div>
-          <p className="mt-2 text-sm break-words text-slate-700">
-            {acesso.email ?? "E-mail não adicionado"}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            {acesso.email
-              ? acesso.emailVerificado
-                ? "E-mail verificado"
-                : "E-mail não verificado"
-              : "A adição segura será habilitada junto da verificação de e-mail."}
-          </p>
-          {!acesso.email ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              disabled
-            >
-              Adicionar e-mail
-            </Button>
-          ) : null}
-        </div>
+        <GestaoEmailCliente
+          acesso={acesso}
+          sessaoRecenteInicial={sessaoRecenteInicial}
+        />
 
         <div className="rounded-lg border p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">

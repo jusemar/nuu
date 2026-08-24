@@ -593,10 +593,13 @@ export { productTable } from "./table/products/products";
 export { productVariantImageTable } from "./table/products/variant-images";
 export {
   clienteTipoPessoaEnum,
+  desafiosConfirmacaoEmailRelations,
+  desafiosConfirmacaoEmailTable,
   enderecosClientesRelations,
   enderecosClientesTable,
   perfisClientesRelations,
   perfisClientesTable,
+  tentativasConfirmacaoEmailTable,
   userTable,
 } from "./tables/autenticacao";
 export {

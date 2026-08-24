@@ -10,6 +10,7 @@ import { emailEhTecnicoTelefone } from "@/features/autenticacao/lib/email-tecnic
 import { enviarEmailRedefinicaoSenhaAdmin } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-admin";
 import { enviarEmailRedefinicaoSenhaCliente } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-cliente";
 import { emailPossuiPermissaoAdmin } from "@/features/autenticacao/lib/permissoes-admin";
+import { pluginConfirmacaoEmailCliente } from "@/features/autenticacao/lib/plugin-confirmacao-email-cliente";
 import { pluginFluxosTelefoneNuu } from "@/features/autenticacao/lib/plugin-fluxos-telefone-nuu";
 import { pluginLoginIdentificadorAdmin } from "@/features/autenticacao/lib/plugin-login-identificador-admin";
 import { comunicacaoWhatsapp } from "@/features/comunicacao/whatsapp";
@@ -171,6 +172,7 @@ export const auth = betterAuth({
       },
     }),
     pluginFluxosTelefoneNuu(),
+    pluginConfirmacaoEmailCliente(),
     pluginLoginIdentificadorAdmin(),
   ],
 });

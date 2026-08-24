@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 
+import { desafiosConfirmacaoEmailTable } from "./tabelas/desafios-confirmacao-email";
 import { enderecosClientesTable } from "./tabelas/enderecos-clientes";
 import { perfisClientesTable } from "./tabelas/perfis-clientes";
 import { userTable } from "./tabelas/usuarios";
@@ -10,7 +11,18 @@ export const usuariosRelations = relations(userTable, ({ many, one }) => ({
     references: [perfisClientesTable.userId],
   }),
   enderecosCliente: many(enderecosClientesTable),
+  desafiosConfirmacaoEmail: many(desafiosConfirmacaoEmailTable),
 }));
+
+export const desafiosConfirmacaoEmailRelations = relations(
+  desafiosConfirmacaoEmailTable,
+  ({ one }) => ({
+    usuario: one(userTable, {
+      fields: [desafiosConfirmacaoEmailTable.userId],
+      references: [userTable.id],
+    }),
+  }),
+);
 
 export const perfisClientesRelations = relations(
   perfisClientesTable,

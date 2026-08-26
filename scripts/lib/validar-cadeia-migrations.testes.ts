@@ -6,6 +6,7 @@ import {
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
   type SnapshotDrizzle,
+  validarDeltaSnapshotAmbientesLaquila,
   validarDeltaSnapshotConviteAdministrativo,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
@@ -31,7 +32,7 @@ function cadeiaValida() {
   return { entradas, migrations };
 }
 
-test("aceita somente a cadeia legítima ancorada em 0035", () => {
+test("aceita somente a cadeia legítima ancorada em 0036", () => {
   const { entradas, migrations } = cadeiaValida();
   assert.doesNotThrow(() => validarSequenciaLocal(migrations, entradas));
 });
@@ -73,6 +74,37 @@ test("0035 acrescenta somente o nome do destinatário ao convite", () => {
   );
 });
 
+test("0036 altera somente as estruturas de ambiente Laquila", () => {
+  const anterior: SnapshotDrizzle = {
+    id: "snapshot-35",
+    prevId: "snapshot-34",
+    tables: {
+      "public.fornecedor_integracoes_api": { columns: { id: {} } },
+      "public.fornecedor_pedido_integracoes": { columns: { id: {} } },
+      "public.user": { columns: { id: {} } },
+    },
+    enums: {},
+    schemas: {},
+    sequences: {},
+    roles: {},
+    policies: {},
+    views: {},
+  };
+  const atual = structuredClone(anterior);
+  atual.id = "snapshot-36";
+  atual.prevId = anterior.id;
+  const pedido = atual.tables["public.fornecedor_pedido_integracoes"] as {
+    columns: Record<string, unknown>;
+  };
+  pedido.columns.ambiente = { name: "ambiente", notNull: true };
+
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotAmbientesLaquila(anterior, atual),
+  );
+  atual.tables["public.user"] = { alterada: true };
+  assert.throws(() => validarDeltaSnapshotAmbientesLaquila(anterior, atual));
+});
+
 test("rejeita migration ausente, duplicada ou fora de sequência", () => {
   const ausente = cadeiaValida();
   ausente.entradas.splice(10, 1);
@@ -96,11 +128,11 @@ test("rejeita migration ausente, duplicada ou fora de sequência", () => {
 
 test("rejeita última tag, índice ou correspondência com o journal divergentes", () => {
   const tag = cadeiaValida();
-  tag.entradas.at(-1)!.tag = "0035_nao_autorizada";
+  tag.entradas.at(-1)!.tag = "0036_nao_autorizada";
   assert.throws(() => validarSequenciaLocal(tag.migrations, tag.entradas));
 
   const indice = cadeiaValida();
-  indice.entradas.at(-1)!.idx = 36;
+  indice.entradas.at(-1)!.idx = 37;
   assert.throws(() =>
     validarSequenciaLocal(indice.migrations, indice.entradas),
   );

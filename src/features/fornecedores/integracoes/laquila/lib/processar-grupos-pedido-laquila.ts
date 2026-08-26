@@ -1,5 +1,6 @@
 import type { StatusFornecedorPedidoIntegracao } from "@/db/schema";
 
+import type { AmbienteLaquila } from "./ambiente-laquila";
 import type {
   CorpoInserirPedidoLaquila,
   ResultadoChamadaLaquila,
@@ -11,6 +12,7 @@ import type { ResultadoRevalidacaoEstoqueLaquila } from "./revalidar-estoque-ped
 export type GrupoPedidoLaquilaPreparado = {
   pedidoId: string;
   fornecedorId: string;
+  ambiente: AmbienteLaquila;
   chaveGrupo: string;
   chaveIdempotencia: string;
   hashPayload: string;
@@ -21,6 +23,7 @@ export type GrupoPedidoLaquilaPreparado = {
     tokenCliente: string;
     configuracao: {
       id: string;
+      ambiente: AmbienteLaquila;
       urlBase: string | null;
       cnpjEmpresa: string;
     };

@@ -13,6 +13,7 @@ import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessa
 import { salvarProdutoRascunhoFornecedor } from "@/features/fornecedores/services/salvar-produto-rascunho-fornecedor.service";
 
 import { PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import { buscarImportacaoApiLaquila } from "../queries/buscar-importacao-api-laquila";
 
 const produtoRecebidoRascunhoSchema = z.object({
@@ -226,6 +227,7 @@ async function buscarLinhaStagingDaImportacao({
 }
 
 async function buscarIntegracaoLaquilaAtual() {
+  const ambiente = obterAmbienteAplicacaoLaquila();
   const [integracao] = await db
     .select({
       id: fornecedorIntegracoesApiTable.id,
@@ -233,7 +235,10 @@ async function buscarIntegracaoLaquilaAtual() {
     })
     .from(fornecedorIntegracoesApiTable)
     .where(
-      eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+      and(
+        eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+        eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
+      ),
     )
     .limit(1);
 

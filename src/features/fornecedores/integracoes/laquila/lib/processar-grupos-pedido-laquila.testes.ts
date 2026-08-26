@@ -11,6 +11,7 @@ import {
 import type { ResultadoRevalidacaoEstoqueLaquila } from "./revalidar-estoque-pedido-laquila";
 
 const grupo: GrupoPedidoLaquilaPreparado = {
+  ambiente: "homologacao",
   pedidoId: "11111111-1111-4111-8111-111111111111",
   fornecedorId: "22222222-2222-4222-8222-222222222222",
   chaveGrupo: "expedicao:fornecedor:laquila",
@@ -34,6 +35,7 @@ const grupo: GrupoPedidoLaquilaPreparado = {
     tokenCliente: "token-teste",
     configuracao: {
       id: "integracao-teste",
+      ambiente: "homologacao",
       urlBase: "https://example.test",
       cnpjEmpresa: "00000000000000",
     },

@@ -7,6 +7,7 @@ import { fornecedorPedidoIntegracoesTable } from "@/db/schema";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirAcessoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import {
   consultarSaldoPrecoLaquila,
   criarClienteLaquila,
@@ -21,7 +22,8 @@ import { prepararPedidoLaquila } from "../queries/preparar-pedido-laquila";
  */
 export async function prepararPedidoLaquilaDryRun(pedidoId: string) {
   await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
-  const grupos = await prepararPedidoLaquila(pedidoId);
+  const ambiente = obterAmbienteAplicacaoLaquila();
+  const grupos = await prepararPedidoLaquila(pedidoId, ambiente);
   const resultados = [];
 
   for (const grupo of grupos) {
@@ -31,6 +33,7 @@ export async function prepararPedidoLaquilaDryRun(pedidoId: string) {
         pedidoId: grupo.pedidoId,
         fornecedorId: grupo.fornecedorId,
         provedor: "laquila",
+        ambiente: grupo.ambiente,
         chaveGrupo: grupo.chaveGrupo,
         chaveIdempotencia: grupo.chaveIdempotencia,
         hashPayload: grupo.hashPayload,
@@ -47,6 +50,7 @@ export async function prepararPedidoLaquilaDryRun(pedidoId: string) {
         and(
           eq(fornecedorPedidoIntegracoesTable.pedidoId, grupo.pedidoId),
           eq(fornecedorPedidoIntegracoesTable.provedor, "laquila"),
+          eq(fornecedorPedidoIntegracoesTable.ambiente, grupo.ambiente),
           eq(fornecedorPedidoIntegracoesTable.chaveGrupo, grupo.chaveGrupo),
         ),
       )
@@ -71,6 +75,7 @@ export async function prepararPedidoLaquilaDryRun(pedidoId: string) {
     const cliente = criarClienteLaquila(
       {
         id: grupo.credenciais.configuracao.id,
+        ambiente: grupo.ambiente,
         urlBase: grupo.credenciais.configuracao.urlBase,
         cnpjEmpresa: grupo.credenciais.configuracao.cnpjEmpresa,
         tokenClienteCriptografado: null,

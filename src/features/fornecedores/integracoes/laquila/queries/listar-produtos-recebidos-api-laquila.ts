@@ -4,6 +4,7 @@ import {
   CLASSIFICACOES_RECEBIDOS_API_LAQUILA,
   METODOS_LAQUILA,
 } from "../constants";
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import {
   consultarProdutosLaquila,
   consultarSaldoPrecoLaquila,
@@ -1035,7 +1036,8 @@ export async function listarProdutosRecebidosApiLaquila(
     });
   }
 
-  const configuracao = await buscarConfiguracaoLaquilaAdmin();
+  const ambiente = obterAmbienteAplicacaoLaquila();
+  const configuracao = await buscarConfiguracaoLaquilaAdmin({ ambiente });
 
   if (!configuracao) {
     const resultadoStale = obterUltimoResultadoValidoRecebidosLaquila({
@@ -1088,6 +1090,7 @@ export async function listarProdutosRecebidosApiLaquila(
   const cliente = criarClienteLaquila(
     {
       id: configuracao.id,
+      ambiente: configuracao.ambiente,
       urlBase: configuracao.urlBase,
       cnpjEmpresa: configuracao.cnpjEmpresa,
       tokenClienteCriptografado: null,

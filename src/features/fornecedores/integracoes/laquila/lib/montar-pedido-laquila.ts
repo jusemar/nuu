@@ -134,7 +134,8 @@ export function gerarHashPayloadPedidoLaquila(
 
 export function criarChaveIdempotenciaPedidoLaquila(
   pedidoId: string,
+  ambiente: "homologacao" | "producao",
   chaveGrupo: string,
 ) {
-  return `pedido:${pedidoId}:provedor:laquila:grupo:${chaveGrupo}`;
+  return `pedido:${pedidoId}:provedor:laquila:ambiente:${ambiente}:grupo:${chaveGrupo}`;
 }

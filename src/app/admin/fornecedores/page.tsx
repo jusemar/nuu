@@ -1,4 +1,5 @@
 import { PaginaFornecedoresAdmin } from "@/features/fornecedores/components/admin/pagina-fornecedores-admin";
+import { obterAmbienteAplicacaoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/ambiente-laquila";
 import {
   buscarProdutosParaVinculoFornecedor,
   listarFornecedoresAdmin,
@@ -13,6 +14,7 @@ type PageProps = {
 };
 
 export default async function Page({ searchParams }: PageProps) {
+  const ambienteLaquila = obterAmbienteAplicacaoLaquila();
   const filtros = await searchParams;
   const fornecedores = await listarFornecedoresAdmin();
   const fornecedorBuscaProdutoId = filtros?.fornecedorVinculoId ?? null;
@@ -33,6 +35,7 @@ export default async function Page({ searchParams }: PageProps) {
       produtosParaVinculo={produtosParaVinculo}
       fornecedorBuscaProdutoId={fornecedorBuscaProdutoId}
       buscaProdutoVinculo={buscaProdutoVinculo}
+      ambienteLaquila={ambienteLaquila}
     />
   );
 }

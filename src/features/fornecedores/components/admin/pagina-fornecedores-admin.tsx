@@ -46,6 +46,7 @@ import {
   salvarVinculoProdutoFornecedorManual,
 } from "../../actions";
 import { FormularioConfiguracaoLaquila } from "../../integracoes/laquila/components/admin/formulario-configuracao-laquila";
+import type { AmbienteLaquila } from "../../integracoes/laquila/lib/ambiente-laquila";
 import type { ConfiguracaoLaquilaAdmin } from "../../integracoes/laquila/types";
 import {
   ordenarFornecedoresPorStatusENome,
@@ -66,6 +67,7 @@ type PaginaFornecedoresAdminProps = {
   fornecedorBuscaProdutoId?: string | null;
   buscaProdutoVinculo?: string;
   configuracaoLaquila?: ConfiguracaoLaquilaAdmin | null;
+  ambienteLaquila: AmbienteLaquila;
 };
 
 const estilosEstado = {
@@ -171,6 +173,7 @@ export function PaginaFornecedoresAdmin({
   fornecedorBuscaProdutoId = null,
   buscaProdutoVinculo = "",
   configuracaoLaquila = null,
+  ambienteLaquila,
 }: PaginaFornecedoresAdminProps) {
   const fornecedoresOrdenados = ordenarFornecedoresPorStatusENome(fornecedores);
   const vinculosPorFornecedor = new Map<
@@ -726,6 +729,7 @@ export function PaginaFornecedoresAdmin({
                                     <SheetDescription>Laquila</SheetDescription>
                                   </SheetHeader>
                                   <FormularioConfiguracaoLaquila
+                                    ambiente={ambienteLaquila}
                                     configuracao={configuracaoFornecedor}
                                     fornecedorId={fornecedor.id}
                                     modo="drawer"

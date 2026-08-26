@@ -12,6 +12,10 @@ import {
   FORNECEDOR_LAQUILA_NOME,
   PROVEDOR_INTEGRACAO_LAQUILA,
 } from "../constants";
+import {
+  resolverUrlBaseLaquila,
+  validarAmbienteLaquilaAplicacao,
+} from "../lib/ambiente-laquila";
 import { criptografarTokenLaquila } from "../lib/mascarar-segredos-laquila";
 import {
   configuracaoLaquilaSchema,
@@ -218,11 +222,16 @@ export async function salvarConfiguracaoLaquila(
     }
 
     const dados = validacao.data;
+    validarAmbienteLaquilaAplicacao(dados.ambiente);
     const fornecedorId = await buscarOuCriarFornecedorLaquila(
       dados.fornecedorId,
     );
     const agora = new Date();
     const cnpjEmpresa = dados.cnpjEmpresa.replace(/\D/g, "");
+    const urlBase = resolverUrlBaseLaquila(
+      dados.ambiente,
+      dados.urlBase ?? null,
+    );
     let integracaoId = dados.id;
 
     const [configuracaoAtual] = await executarBancoLaquila(() =>
@@ -240,6 +249,7 @@ export async function salvarConfiguracaoLaquila(
               fornecedorIntegracoesApiTable.provedor,
               PROVEDOR_INTEGRACAO_LAQUILA,
             ),
+            eq(fornecedorIntegracoesApiTable.ambiente, dados.ambiente),
           ),
         )
         .limit(1),
@@ -257,7 +267,7 @@ export async function salvarConfiguracaoLaquila(
           .update(fornecedorIntegracoesApiTable)
           .set({
             ambiente: dados.ambiente,
-            urlBase: dados.urlBase ?? null,
+            urlBase,
             cnpjEmpresa,
             tokenClienteCriptografado,
             ativo: dados.ativo,
@@ -273,7 +283,7 @@ export async function salvarConfiguracaoLaquila(
             fornecedorId,
             provedor: PROVEDOR_INTEGRACAO_LAQUILA,
             ambiente: dados.ambiente,
-            urlBase: dados.urlBase ?? null,
+            urlBase,
             cnpjEmpresa,
             tokenClienteCriptografado,
             ativo: dados.ativo,

@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 
 import { PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import type { TriagemProdutoRecebidoLaquila } from "../types/produto-laquila-mock.types";
 import type { ProdutoApiStagingLaquilaCatalogo } from "./listar-produtos-api-staging-laquila";
 
@@ -160,6 +161,7 @@ function possuiMudancaRelevante(
 export async function enriquecerTriagemProdutosLaquila(
   produtos: ProdutoApiStagingLaquilaCatalogo[],
 ): Promise<ProdutoRecebidoComTriagem[]> {
+  const ambiente = obterAmbienteAplicacaoLaquila();
   if (produtos.length === 0) return [];
 
   const codigos = Array.from(
@@ -193,6 +195,7 @@ export async function enriquecerTriagemProdutosLaquila(
             fornecedorIntegracoesApiTable.provedor,
             PROVEDOR_INTEGRACAO_LAQUILA,
           ),
+          eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
           eq(fornecedorProdutoVinculosTable.status, "ativo"),
           inArray(fornecedorProdutoVinculosTable.codigoFornecedor, codigos),
         ),

@@ -29,6 +29,7 @@ import {
   salvarConfiguracaoLaquila,
   testarConexaoLaquila,
 } from "../../actions";
+import type { AmbienteLaquila } from "../../lib/ambiente-laquila";
 import type { ProdutoApiStagingLaquilaPrevia } from "../../queries";
 import type { ConfiguracaoLaquilaSchema } from "../../schemas";
 import { configuracaoLaquilaSchema } from "../../schemas";
@@ -42,6 +43,7 @@ type FormularioConfiguracaoLaquilaProps = {
   produtosPreviaInicial?: ProdutoApiStagingLaquilaPrevia[];
   fornecedorId?: string;
   modo?: "pagina" | "drawer";
+  ambiente: AmbienteLaquila;
 };
 
 export function FormularioConfiguracaoLaquila({
@@ -49,6 +51,7 @@ export function FormularioConfiguracaoLaquila({
   produtosPreviaInicial = [],
   fornecedorId,
   modo = "pagina",
+  ambiente,
 }: FormularioConfiguracaoLaquilaProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -82,7 +85,7 @@ export function FormularioConfiguracaoLaquila({
     defaultValues: {
       id: configuracao?.id,
       fornecedorId: configuracao?.fornecedorId ?? fornecedorId,
-      ambiente: "producao",
+      ambiente,
       urlBase: configuracao?.urlBase ?? "",
       cnpjEmpresa: configuracao?.cnpjEmpresa ?? "",
       tokenCliente: configuracao?.tokenCliente ?? undefined,
@@ -209,6 +212,8 @@ export function FormularioConfiguracaoLaquila({
     sucesso: "Sucesso",
     erro: "Erro",
   };
+  const rotuloAmbiente =
+    ambiente === "homologacao" ? "Homologação" : "Produção";
 
   const conteudoFormulario = (
     <Form {...form}>
@@ -220,7 +225,8 @@ export function FormularioConfiguracaoLaquila({
           </div>
           <Badge variant="outline" className="w-fit gap-2">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Token: {tokenConfigurado ? "Configurado" : "Não configurado"}
+            {rotuloAmbiente} · Token:{" "}
+            {tokenConfigurado ? "Configurado" : "Não configurado"}
           </Badge>
         </div>
 

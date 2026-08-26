@@ -11,6 +11,7 @@ import {
   ANCORA_MIGRATIONS,
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
+  validarDeltaSnapshotAmbientesLaquila,
   validarDeltaSnapshotConviteAdministrativo,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
@@ -539,6 +540,10 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
       JSON.parse(readFileSync("drizzle/meta/0034_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0035_snapshot.json", "utf8")),
     );
+    validarDeltaSnapshotAmbientesLaquila(
+      JSON.parse(readFileSync("drizzle/meta/0035_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0036_snapshot.json", "utf8")),
+    );
   } catch {
     throw new ErroFluxoMigration(
       "arquivos-locais",
@@ -550,7 +555,7 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   if (hash !== migrations.at(-1)?.hash) {
     throw new ErroFluxoMigration(
       "arquivos-locais",
-      "O hash da migration 0035 diverge do migrator.",
+      "O hash da migration 0036 diverge do migrator.",
     );
   }
 }

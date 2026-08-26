@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import type { SnapshotFreteCheckoutVersao2 } from "@/features/checkout/types/snapshot-frete.types";
 
+import type { AmbienteLaquila } from "../lib/ambiente-laquila";
 import {
   criarChaveIdempotenciaPedidoLaquila,
   gerarHashPayloadPedidoLaquila,
@@ -22,8 +23,11 @@ import { buscarConfiguracaoLaquilaAdmin } from "./buscar-configuracao-laquila";
 import { prepararContextoTransportadorLaquila } from "./preparar-contexto-transportador-laquila";
 
 /** Prepara exclusivamente com snapshots e dados históricos persistidos no servidor. */
-export async function prepararPedidoLaquila(pedidoId: string) {
-  const configuracao = await buscarConfiguracaoLaquilaAdmin();
+export async function prepararPedidoLaquila(
+  pedidoId: string,
+  ambiente: AmbienteLaquila,
+) {
+  const configuracao = await buscarConfiguracaoLaquilaAdmin({ ambiente });
   if (!configuracao?.ativo || !configuracao.tokenCliente) {
     throw new Error("Integração Laquila ativa e credenciada não encontrada.");
   }
@@ -112,7 +116,10 @@ export async function prepararPedidoLaquila(pedidoId: string) {
 
   return Promise.all(
     grupos.map(async (grupo) => {
-      const transportador = await prepararContextoTransportadorLaquila(grupo);
+      const transportador = await prepararContextoTransportadorLaquila(
+        grupo,
+        ambiente,
+      );
       if (transportador.estado !== "resolvido") {
         throw new Error(
           `Transportador Laquila não resolvido: ${transportador.motivo}.`,
@@ -161,9 +168,11 @@ export async function prepararPedidoLaquila(pedidoId: string) {
       return {
         pedidoId,
         fornecedorId: configuracao.fornecedorId,
+        ambiente,
         chaveGrupo: grupo.chaveGrupo,
         chaveIdempotencia: criarChaveIdempotenciaPedidoLaquila(
           pedidoId,
+          ambiente,
           grupo.chaveGrupo,
         ),
         hashPayload: gerarHashPayloadPedidoLaquila(pedidoSemCredenciais),

@@ -3,6 +3,7 @@ import "server-only";
 import type { SnapshotGrupoEntrega } from "@/features/checkout/types/snapshot-frete.types";
 import { obterCepOrigemLaquila } from "@/features/logistica/lib/origens/obter-cep-origem-laquila";
 
+import type { AmbienteLaquila } from "../lib/ambiente-laquila";
 import { montarContextoTransportadorLaquila } from "../lib/montar-contexto-transportador-laquila";
 import { resolverCdTransportadorLaquila } from "../lib/resolver-cd-transportador-laquila";
 import { listarTransportadorasLaquila } from "./listar-transportadoras-laquila";
@@ -14,6 +15,7 @@ import { listarTransportadorasLaquila } from "./listar-transportadoras-laquila";
  */
 export async function prepararContextoTransportadorLaquila(
   grupo: SnapshotGrupoEntrega,
+  ambiente: AmbienteLaquila,
 ) {
   const cepOrigemLaquila = obterCepOrigemLaquila();
   const validacaoPrevia = resolverCdTransportadorLaquila({
@@ -36,7 +38,7 @@ export async function prepararContextoTransportadorLaquila(
     return validacaoPrevia;
   }
 
-  const catalogo = await listarTransportadorasLaquila();
+  const catalogo = await listarTransportadorasLaquila(ambiente);
   if (catalogo.situacao === "erro") {
     return {
       estado: "nao_resolvido" as const,

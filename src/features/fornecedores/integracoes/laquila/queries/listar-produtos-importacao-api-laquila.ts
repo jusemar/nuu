@@ -1,11 +1,12 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedorIntegracoesApiTable } from "@/db/schema";
 
 import { PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import type { ImportacaoApiLaquila } from "./buscar-importacao-api-laquila";
 import {
   listarProdutosApiStagingLaquilaCatalogo,
@@ -28,7 +29,10 @@ async function resolverIntegracaoApiId(importacao: ImportacaoApiLaquila) {
     .select({ id: fornecedorIntegracoesApiTable.id })
     .from(fornecedorIntegracoesApiTable)
     .where(
-      eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+      and(
+        eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+        eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
+      ),
     )
     .limit(1);
 
@@ -60,3 +64,4 @@ export async function listarProdutosImportacaoApiLaquila(
       importacao.criadoEm.toISOString(),
   };
 }
+const ambiente = obterAmbienteAplicacaoLaquila();

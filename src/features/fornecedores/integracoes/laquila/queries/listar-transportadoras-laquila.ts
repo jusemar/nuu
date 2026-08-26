@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { AmbienteLaquila } from "../lib/ambiente-laquila";
 import {
   consultarTransportadorasLaquila,
   criarClienteLaquila,
@@ -24,12 +25,15 @@ declare global {
   var __cacheTransportadorasLaquila:
     | {
         integracaoId: string;
+        ambiente: AmbienteLaquila;
         expiraEm: number;
         resultado: ResultadoListaTransportadorasLaquila;
       }
     | undefined;
   var __consultaTransportadorasLaquila:
-    | Promise<ResultadoListaTransportadorasLaquila>
+    | Partial<
+        Record<AmbienteLaquila, Promise<ResultadoListaTransportadorasLaquila>>
+      >
     | undefined;
 }
 
@@ -47,6 +51,7 @@ async function consultarTransportadorasSemCache(
   const resultado = await consultarTransportadorasLaquila({
     cliente: criarClienteLaquila({
       id: configuracao.id,
+      ambiente: configuracao.ambiente,
       urlBase: configuracao.urlBase,
       cnpjEmpresa: configuracao.cnpjEmpresa,
       // O cliente não usa o valor criptografado durante a chamada. O token
@@ -74,27 +79,31 @@ async function consultarTransportadorasSemCache(
  * Mantém a API como fonte e evita repetir o método 00015 entre renderizações.
  * Falhas não entram no cache para permitir recuperação na próxima abertura.
  */
-export async function listarTransportadorasLaquila() {
-  const configuracao = await buscarConfiguracaoLaquilaAdmin();
+export async function listarTransportadorasLaquila(ambiente: AmbienteLaquila) {
+  const configuracao = await buscarConfiguracaoLaquilaAdmin({ ambiente });
   const cache = globalThis.__cacheTransportadorasLaquila;
 
   if (
     configuracao &&
     cache?.integracaoId === configuracao.id &&
+    cache.ambiente === ambiente &&
     cache.expiraEm > Date.now()
   ) {
     return cache.resultado;
   }
 
-  globalThis.__consultaTransportadorasLaquila ??=
+  globalThis.__consultaTransportadorasLaquila ??= {};
+  globalThis.__consultaTransportadorasLaquila[ambiente] ??=
     consultarTransportadorasSemCache(configuracao);
 
   try {
-    const resultado = await globalThis.__consultaTransportadorasLaquila;
+    const resultado =
+      await globalThis.__consultaTransportadorasLaquila[ambiente];
 
     if (configuracao && resultado.situacao === "sucesso") {
       globalThis.__cacheTransportadorasLaquila = {
         integracaoId: configuracao.id,
+        ambiente,
         expiraEm: Date.now() + DURACAO_CACHE_TRANSPORTADORAS_LAQUILA_MS,
         resultado,
       };
@@ -102,6 +111,6 @@ export async function listarTransportadorasLaquila() {
 
     return resultado;
   } finally {
-    globalThis.__consultaTransportadorasLaquila = undefined;
+    delete globalThis.__consultaTransportadorasLaquila[ambiente];
   }
 }

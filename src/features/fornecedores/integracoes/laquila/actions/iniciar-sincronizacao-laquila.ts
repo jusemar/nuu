@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
@@ -14,6 +14,7 @@ import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-a
 import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import { METODOS_LAQUILA, PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import { normalizarProdutosLaquila } from "../lib/normalizar-produto-laquila";
 import { registrarLogIntegracaoFornecedorApi } from "../lib/registrar-log-integracao-fornecedor-api";
 import { listarProdutosRecebidosApiLaquila } from "../queries/listar-produtos-recebidos-api-laquila";
@@ -31,6 +32,7 @@ type ResultadoIniciarSincronizacaoLaquila = {
 const TAMANHO_LOTE_STAGING_API = 200;
 
 async function buscarIntegracaoLaquilaAtual() {
+  const ambiente = obterAmbienteAplicacaoLaquila();
   const [integracao] = await db
     .select({
       id: fornecedorIntegracoesApiTable.id,
@@ -43,7 +45,10 @@ async function buscarIntegracaoLaquilaAtual() {
       eq(fornecedorIntegracoesApiTable.fornecedorId, fornecedoresTable.id),
     )
     .where(
-      eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+      and(
+        eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+        eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
+      ),
     )
     .limit(1);
 

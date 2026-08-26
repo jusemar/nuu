@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 36,
-  ultimoIndice: 35,
-  ultimaTag: "0035_convite_administrativo_nome_destinatario",
-  ultimoArquivo: "drizzle/0035_convite_administrativo_nome_destinatario.sql",
+  total: 37,
+  ultimoIndice: 36,
+  ultimaTag: "0036_separar_ambientes_laquila",
+  ultimoArquivo: "drizzle/0036_separar_ambientes_laquila.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -298,6 +298,71 @@ export function validarDeltaSnapshotConviteAdministrativo(
   for (const [nome, definicao] of Object.entries(colunasAnteriores)) {
     if (JSON.stringify(definicao) !== JSON.stringify(colunasAtuais[nome]))
       falhar("0035 alterou coluna preexistente do convite.");
+  }
+}
+
+/** Restringe 0036 às duas tabelas que recebem o isolamento Laquila. */
+export function validarDeltaSnapshotAmbientesLaquila(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0035 e 0036 não estão encadeados.");
+  }
+
+  for (const grupo of [
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    if (
+      JSON.stringify(snapshotAnterior[grupo] ?? {}) !==
+      JSON.stringify(snapshotAtual[grupo] ?? {})
+    ) {
+      falhar(`Delta inesperado dos ambientes Laquila para ${grupo}.`);
+    }
+  }
+
+  const tabelasPermitidas = new Set([
+    "public.fornecedor_integracoes_api",
+    "public.fornecedor_pedido_integracoes",
+  ]);
+  for (const [nome, definicao] of Object.entries(snapshotAnterior.tables)) {
+    if (tabelasPermitidas.has(nome)) continue;
+    if (
+      JSON.stringify(definicao) !== JSON.stringify(snapshotAtual.tables[nome])
+    ) {
+      falhar("0036 alterou tabela fora do isolamento Laquila.");
+    }
+  }
+  if (
+    Object.keys(snapshotAnterior.tables).length !==
+    Object.keys(snapshotAtual.tables).length
+  ) {
+    falhar("0036 adicionou ou removeu tabela.");
+  }
+
+  const pedidoAnterior = snapshotAnterior.tables[
+    "public.fornecedor_pedido_integracoes"
+  ] as { columns?: Record<string, unknown> };
+  const pedidoAtual = snapshotAtual.tables[
+    "public.fornecedor_pedido_integracoes"
+  ] as { columns?: Record<string, unknown> };
+  const colunasAnteriores = pedidoAnterior.columns ?? {};
+  const colunasAtuais = pedidoAtual.columns ?? {};
+  const adicionadas = Object.keys(colunasAtuais).filter(
+    (nome) => !(nome in colunasAnteriores),
+  );
+  if (JSON.stringify(adicionadas) !== JSON.stringify(["ambiente"])) {
+    falhar("0036 não adicionou somente ambiente ao pedido fornecedor.");
+  }
+  for (const [nome, definicao] of Object.entries(colunasAnteriores)) {
+    if (JSON.stringify(definicao) !== JSON.stringify(colunasAtuais[nome])) {
+      falhar("0036 alterou coluna preexistente do pedido fornecedor.");
+    }
   }
 }
 

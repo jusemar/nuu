@@ -139,11 +139,13 @@ export type ExecucaoRecenteLaquila = {
 type PaginaIntegracaoLaquilaAdminProps = {
   configuracao: ConfiguracaoLaquilaAdmin | null;
   execucoesRecentes: ExecucaoRecenteLaquila[];
+  ambiente: "homologacao" | "producao";
 };
 
 export function PaginaIntegracaoLaquilaAdmin({
   configuracao,
   execucoesRecentes,
+  ambiente,
 }: PaginaIntegracaoLaquilaAdminProps) {
   const conectado = Boolean(configuracao?.tokenConfigurado);
   const ultimaExecucao = execucoesRecentes[0] ?? null;
@@ -259,6 +261,7 @@ export function PaginaIntegracaoLaquilaAdmin({
             <FormularioConfiguracaoLaquila
               configuracao={configuracao}
               modo="drawer"
+              ambiente={ambiente}
             />
 
             <SheetFooter className="border-t px-5 py-4">

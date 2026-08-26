@@ -8,8 +8,11 @@ import {
   normalizarTransportadorasLaquila,
 } from "./cliente-laquila";
 
+process.env.APP_ENVIRONMENT = "producao";
+
 const configuracao = {
   id: "integracao-teste",
+  ambiente: "producao" as const,
   urlBase: "https://api-dropshipping.laquila.com.br/token-rota",
   cnpjEmpresa: "00000000000000",
   tokenClienteCriptografado: null,

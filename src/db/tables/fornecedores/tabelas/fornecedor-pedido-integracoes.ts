@@ -11,7 +11,10 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { checkoutPedidosTable } from "../../checkout/tabelas/pedidos";
-import { fornecedorIntegracaoApiProvedorEnum } from "../enums";
+import {
+  fornecedorIntegracaoApiAmbienteEnum,
+  fornecedorIntegracaoApiProvedorEnum,
+} from "../enums";
 import { fornecedoresTable } from "./fornecedores";
 
 export type StatusFornecedorPedidoIntegracao =
@@ -33,6 +36,7 @@ export const fornecedorPedidoIntegracoesTable = pgTable(
       .notNull()
       .references(() => fornecedoresTable.id, { onDelete: "restrict" }),
     provedor: fornecedorIntegracaoApiProvedorEnum("provedor").notNull(),
+    ambiente: fornecedorIntegracaoApiAmbienteEnum("ambiente").notNull(),
     chaveGrupo: text("chave_grupo").notNull(),
     chaveIdempotencia: text("chave_idempotencia").notNull(),
     hashPayload: text("hash_payload").notNull(),
@@ -52,14 +56,19 @@ export const fornecedorPedidoIntegracoesTable = pgTable(
     uniqueIndex("fornecedor_pedido_integracoes_grupo_unique").on(
       table.pedidoId,
       table.provedor,
+      table.ambiente,
       table.chaveGrupo,
     ),
     uniqueIndex("fornecedor_pedido_integracoes_idempotencia_unique").on(
       table.chaveIdempotencia,
     ),
     uniqueIndex("fornecedor_pedido_integracoes_externo_unique")
-      .on(table.provedor, table.idPedidoExterno)
+      .on(table.provedor, table.ambiente, table.idPedidoExterno)
       .where(sql`${table.idPedidoExterno} is not null`),
+    index("fornecedor_pedido_integracoes_ambiente_status_idx").on(
+      table.ambiente,
+      table.status,
+    ),
     index("fornecedor_pedido_integracoes_status_idx").on(table.status),
   ],
 );

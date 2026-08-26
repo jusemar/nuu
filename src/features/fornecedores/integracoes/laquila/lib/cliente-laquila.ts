@@ -1,5 +1,6 @@
 import { METODOS_LAQUILA } from "../constants";
 import type { ConfiguracaoLaquilaSegura } from "../types/laquila.types";
+import { resolverUrlBaseLaquila } from "./ambiente-laquila";
 
 export type ClienteLaquila = {
   configuracao: ConfiguracaoLaquilaSegura;
@@ -152,7 +153,13 @@ export function criarClienteLaquila(
   timeoutMs = TIMEOUT_PADRAO_MS,
 ): ClienteLaquila {
   return {
-    configuracao,
+    configuracao: {
+      ...configuracao,
+      urlBase: resolverUrlBaseLaquila(
+        configuracao.ambiente,
+        configuracao.urlBase,
+      ),
+    },
     timeoutMs,
   };
 }

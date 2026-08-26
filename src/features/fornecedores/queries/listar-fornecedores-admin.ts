@@ -9,6 +9,7 @@ import {
   importacoesFornecedorTable,
 } from "@/db/schema";
 
+import { obterAmbienteAplicacaoLaquila } from "../integracoes/laquila/lib/ambiente-laquila";
 import type { FornecedorComResumoImportacoes } from "../types/fornecedores.types";
 
 type ErroComCausa = Error & {
@@ -95,6 +96,7 @@ async function executarConsultaFornecedores<T>(
 export async function listarFornecedoresAdmin(): Promise<
   FornecedorComResumoImportacoes[]
 > {
+  const ambienteLaquila = obterAmbienteAplicacaoLaquila();
   const [fornecedores, resumos, importacoesOrdenadas, integracoesApi] =
     await Promise.all([
       executarConsultaFornecedores(() =>
@@ -146,7 +148,8 @@ export async function listarFornecedoresAdmin(): Promise<
             criadoEm: fornecedorIntegracoesApiTable.criadoEm,
             atualizadoEm: fornecedorIntegracoesApiTable.atualizadoEm,
           })
-          .from(fornecedorIntegracoesApiTable),
+          .from(fornecedorIntegracoesApiTable)
+          .where(eq(fornecedorIntegracoesApiTable.ambiente, ambienteLaquila)),
       ),
     ]);
 

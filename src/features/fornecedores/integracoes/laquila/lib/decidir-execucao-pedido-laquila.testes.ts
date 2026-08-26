@@ -51,8 +51,24 @@ describe("idempotência do pedido Laquila", () => {
       "hash_divergente",
     );
     assert.notEqual(
-      criarChaveIdempotenciaPedidoLaquila("pedido-1", "grupo-a"),
-      criarChaveIdempotenciaPedidoLaquila("pedido-1", "grupo-b"),
+      criarChaveIdempotenciaPedidoLaquila("pedido-1", "homologacao", "grupo-a"),
+      criarChaveIdempotenciaPedidoLaquila("pedido-1", "homologacao", "grupo-b"),
+    );
+  });
+
+  it("mantém a chave estável no mesmo ambiente e distinta entre ambientes", () => {
+    const homologacao = criarChaveIdempotenciaPedidoLaquila(
+      "pedido-1",
+      "homologacao",
+      "grupo-a",
+    );
+    assert.equal(
+      homologacao,
+      criarChaveIdempotenciaPedidoLaquila("pedido-1", "homologacao", "grupo-a"),
+    );
+    assert.notEqual(
+      homologacao,
+      criarChaveIdempotenciaPedidoLaquila("pedido-1", "producao", "grupo-a"),
     );
   });
 });

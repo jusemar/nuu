@@ -46,10 +46,9 @@ export const fornecedorIntegracoesApiTable = pgTable(
     index("fornecedor_integracoes_api_provedor_idx").on(table.provedor),
     index("fornecedor_integracoes_api_ambiente_idx").on(table.ambiente),
     index("fornecedor_integracoes_api_ativo_idx").on(table.ativo),
-    uniqueIndex("fornecedor_integracoes_api_fornecedor_provedor_unique").on(
-      table.fornecedorId,
-      table.provedor,
-    ),
+    uniqueIndex(
+      "fornecedor_integracoes_api_fornecedor_provedor_ambiente_unique",
+    ).on(table.fornecedorId, table.provedor, table.ambiente),
   ],
 );
 

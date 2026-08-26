@@ -10,6 +10,10 @@ import { auth } from "@/lib/auth";
 
 import { METODOS_LAQUILA } from "../constants";
 import {
+  resolverUrlBaseLaquila,
+  validarAmbienteLaquilaAplicacao,
+} from "../lib/ambiente-laquila";
+import {
   consultarProdutosLaquila as consultarProdutosLaquilaApi,
   consultarSaldoPrecoLaquila as consultarSaldoPrecoLaquilaApi,
   criarClienteLaquila,
@@ -55,6 +59,7 @@ async function buscarConfiguracaoConsulta(integracaoId: string) {
   const [configuracao] = await db
     .select({
       id: fornecedorIntegracoesApiTable.id,
+      ambiente: fornecedorIntegracoesApiTable.ambiente,
       urlBase: fornecedorIntegracoesApiTable.urlBase,
       cnpjEmpresa: fornecedorIntegracoesApiTable.cnpjEmpresa,
       tokenClienteCriptografado:
@@ -69,7 +74,15 @@ async function buscarConfiguracaoConsulta(integracaoId: string) {
     )
     .limit(1);
 
-  return configuracao ?? null;
+  if (!configuracao) return null;
+  validarAmbienteLaquilaAplicacao(configuracao.ambiente);
+  return {
+    ...configuracao,
+    urlBase: resolverUrlBaseLaquila(
+      configuracao.ambiente,
+      configuracao.urlBase,
+    ),
+  };
 }
 
 function montarPrevia(produtos: ReturnType<typeof normalizarProdutosLaquila>) {

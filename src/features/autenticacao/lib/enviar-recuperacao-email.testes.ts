@@ -36,6 +36,97 @@ test("admin válido usa somente o transporte Resend administrativo simulado", as
   assert.equal(chamadasCliente, 0);
 });
 
+test("cenário de produção: admin ativo e callback relativo recebido pelo Better Auth enviam o template administrativo", async () => {
+  let chamadasAdmin = 0;
+  let chamadasCliente = 0;
+
+  // O Better Auth 1.3.34 entrega ao callback sendResetPassword esta URL:
+  // baseURL + token interno + callbackURL relativo codificado.
+  const urlRecebidaPeloSendResetPassword =
+    `${origem}/api/auth/reset-password/token-nao-logado` +
+    "?callbackURL=%2Fadmin%2Fredefinir-senha";
+
+  const publico = await enviarRecuperacaoEmailPorPublico(
+    {
+      administrador: true,
+      destinatario: "admin-ativo@exemplo.com",
+      emailTecnico: false,
+      origemPermitida: origem,
+      urlRedefinicao: urlRecebidaPeloSendResetPassword,
+    },
+    {
+      enviarAdmin: async () => {
+        chamadasAdmin += 1;
+      },
+      enviarCliente: async () => {
+        chamadasCliente += 1;
+      },
+    },
+  );
+
+  assert.equal(publico, "admin");
+  assert.equal(chamadasAdmin, 1);
+  assert.equal(chamadasCliente, 0);
+});
+
+test("matriz de público e callback preserva a separação entre admin e cliente", async () => {
+  const casos = [
+    {
+      administrador: false,
+      callback: "/authentication/recuperar/redefinir",
+      esperado: "cliente",
+    },
+    {
+      administrador: false,
+      callback: "/admin/redefinir-senha",
+      esperado: null,
+    },
+    {
+      administrador: true,
+      callback: "/authentication/recuperar/redefinir",
+      esperado: null,
+    },
+    {
+      administrador: true,
+      callback: "/admin/redefinir-senha",
+      esperado: "admin",
+    },
+    {
+      administrador: true,
+      callback: `${origem}/admin/redefinir-senha`,
+      esperado: "admin",
+    },
+    {
+      administrador: true,
+      callback: "https://malicioso.test/admin/redefinir-senha",
+      esperado: null,
+    },
+    {
+      administrador: true,
+      callback: "/destino-desconhecido",
+      esperado: null,
+    },
+  ] as const;
+
+  for (const caso of casos) {
+    const publico = await enviarRecuperacaoEmailPorPublico(
+      {
+        administrador: caso.administrador,
+        destinatario: "identidade-nao-logada@exemplo.com",
+        emailTecnico: false,
+        origemPermitida: origem,
+        urlRedefinicao: urlReset(caso.callback),
+      },
+      {
+        enviarAdmin: async () => undefined,
+        enviarCliente: async () => undefined,
+      },
+    );
+
+    assert.equal(publico, caso.esperado);
+  }
+});
+
 test("cliente válido usa somente o transporte de cliente", async () => {
   let chamadasAdmin = 0;
   let chamadasCliente = 0;

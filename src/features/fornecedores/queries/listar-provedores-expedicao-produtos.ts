@@ -7,6 +7,7 @@ import {
   fornecedorIntegracoesApiTable,
   fornecedorProdutoVinculosTable,
 } from "@/db/schema";
+import { obterAmbienteAplicacaoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/ambiente-laquila";
 
 /**
  * Resolve em uma unica leitura os provedores associados aos vinculos ativos.
@@ -16,6 +17,7 @@ export async function listarProvedoresExpedicaoProdutos(
   produtosIds: readonly string[],
 ) {
   const produtosUnicosIds = [...new Set(produtosIds)];
+  const ambiente = obterAmbienteAplicacaoLaquila();
 
   if (produtosUnicosIds.length === 0) {
     return new Map<string, string>();
@@ -38,6 +40,7 @@ export async function listarProvedoresExpedicaoProdutos(
       and(
         inArray(fornecedorProdutoVinculosTable.produtoId, produtosUnicosIds),
         eq(fornecedorProdutoVinculosTable.status, "ativo"),
+        eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
       ),
     );
 

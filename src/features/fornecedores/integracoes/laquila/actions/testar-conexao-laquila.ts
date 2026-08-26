@@ -10,6 +10,10 @@ import { exigirAcessoFornecedoresAdmin } from "@/features/fornecedores/lib/sessa
 
 import { METODOS_LAQUILA } from "../constants";
 import {
+  resolverUrlBaseLaquila,
+  validarAmbienteLaquilaAplicacao,
+} from "../lib/ambiente-laquila";
+import {
   criarClienteLaquila,
   testarConexaoTransportadorasLaquila,
   TIMEOUT_TESTE_CONEXAO_LAQUILA_MS,
@@ -150,6 +154,7 @@ async function buscarConfiguracaoSegura(
     db
       .select({
         id: fornecedorIntegracoesApiTable.id,
+        ambiente: fornecedorIntegracoesApiTable.ambiente,
         urlBase: fornecedorIntegracoesApiTable.urlBase,
         cnpjEmpresa: fornecedorIntegracoesApiTable.cnpjEmpresa,
         tokenClienteCriptografado:
@@ -160,7 +165,15 @@ async function buscarConfiguracaoSegura(
       .limit(1),
   );
 
-  return configuracao ?? null;
+  if (!configuracao) return null;
+  validarAmbienteLaquilaAplicacao(configuracao.ambiente);
+  return {
+    ...configuracao,
+    urlBase: resolverUrlBaseLaquila(
+      configuracao.ambiente,
+      configuracao.urlBase,
+    ),
+  };
 }
 
 export async function testarConexaoLaquila(

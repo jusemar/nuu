@@ -25,6 +25,7 @@ import {
   variantesTiposLogisticosTable,
 } from "@/db/schema";
 import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/queries/admin-entrega-propria.queries";
+import { obterAmbienteAplicacaoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/ambiente-laquila";
 import { listarTransportadorasLaquila } from "@/features/fornecedores/integracoes/laquila/queries/listar-transportadoras-laquila";
 import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
@@ -98,6 +99,7 @@ async function carregarClassificacoesLogisticasVariantes(
  * @returns Objeto com { success, message, data } onde data contém o produto completo
  */
 export async function getProductById(id: string) {
+  const ambienteLaquila = obterAmbienteAplicacaoLaquila();
   try {
     // ---------------------------------------------------------------
     // 1. BUSCAR O PRODUTO PRINCIPAL
@@ -350,7 +352,9 @@ export async function getProductById(id: string) {
     const [precosEntregaPropria, resultadoTransportadorasLaquila] =
       await Promise.all([
         listarPrecosEntregaPropriaProduto(id),
-        usaLogisticaLaquila ? listarTransportadorasLaquila() : null,
+        usaLogisticaLaquila
+          ? listarTransportadorasLaquila(ambienteLaquila)
+          : null,
       ]);
 
     // Montar o objeto de modalidades no formato que o frontend espera

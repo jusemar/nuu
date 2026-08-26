@@ -118,7 +118,7 @@ describe("integração logística na edição de produto", () => {
     );
     assert.equal(
       conteudoIdentificacao.includes(
-        'eq(fornecedorProdutoVinculosTable.status, "ativo")',
+        "listarProvedoresExpedicaoProdutos",
       ),
       true,
     );
@@ -177,9 +177,7 @@ describe("integração logística na edição de produto", () => {
     const conteudoEntrega = readFileSync(caminhoEntregaTab, "utf-8");
 
     assert.equal(
-      conteudoBusca.includes(
-        "usaLogisticaLaquila ? listarTransportadorasLaquila() : null",
-      ),
+      conteudoBusca.includes("listarTransportadorasLaquila(ambienteLaquila)"),
       true,
     );
     assert.equal(conteudoEntrega.includes("Transportadoras Laquila"), true);

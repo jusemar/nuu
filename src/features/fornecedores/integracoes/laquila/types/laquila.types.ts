@@ -28,6 +28,7 @@ export type ResultadoTestarConexaoLaquila = {
 
 export type ConfiguracaoLaquilaSegura = {
   id: string;
+  ambiente: "homologacao" | "producao";
   urlBase: string | null;
   cnpjEmpresa: string;
   tokenClienteCriptografado: string | null;

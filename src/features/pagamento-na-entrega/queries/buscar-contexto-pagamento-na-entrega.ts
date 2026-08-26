@@ -10,6 +10,7 @@ import {
   productTable,
   productVariantTable,
 } from "@/db/schema";
+import { obterAmbienteAplicacaoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/ambiente-laquila";
 
 import type {
   ConfiguracaoPagamentoNaEntregaServico,
@@ -62,6 +63,7 @@ export async function buscarContextoPagamentoNaEntrega(
   },
   executor: ExecutorConsultaPagamentoNaEntrega = db,
 ): Promise<ContextoPagamentoNaEntrega> {
+  const ambienteLaquila = obterAmbienteAplicacaoLaquila();
   const [configuracaoGlobalAtiva, servicos] = await Promise.all([
     carregarKillSwitchPagamentoNaEntrega(executor),
     carregarServicosComConfiguracaoPagamentoNaEntrega(executor),
@@ -141,6 +143,7 @@ export async function buscarContextoPagamentoNaEntrega(
             inArray(fornecedorProdutoVinculosTable.produtoId, produtoIds),
             eq(fornecedorProdutoVinculosTable.status, "ativo"),
             eq(fornecedorIntegracoesApiTable.provedor, "laquila"),
+            eq(fornecedorIntegracoesApiTable.ambiente, ambienteLaquila),
             eq(fornecedorIntegracoesApiTable.ativo, true),
           ),
         ),

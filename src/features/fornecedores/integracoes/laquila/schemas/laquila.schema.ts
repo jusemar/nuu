@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ambientesIntegracaoLaquila = ["producao"] as const;
+export const ambientesIntegracaoLaquila = ["homologacao", "producao"] as const;
 
 const cnpjNumericoSchema = z
   .string()
@@ -80,7 +80,7 @@ export function normalizarFormularioConfiguracaoLaquila(dados: FormData) {
   return {
     id: id || undefined,
     fornecedorId: dados.get("fornecedorId") || undefined,
-    ambiente: dados.get("ambiente") || "producao",
+    ambiente: dados.get("ambiente"),
     urlBase: dados.get("urlBase"),
     cnpjEmpresa: dados.get("cnpjEmpresa"),
     tokenCliente: dados.get("tokenCliente"),

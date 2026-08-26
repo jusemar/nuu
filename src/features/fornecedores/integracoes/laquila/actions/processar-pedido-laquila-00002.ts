@@ -7,6 +7,7 @@ import { fornecedorPedidoIntegracoesTable } from "@/db/schema";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirAcessoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import {
   consultarSaldoPrecoLaquila,
   criarClienteLaquila,
@@ -27,6 +28,7 @@ const repositorio: RepositorioPedidoLaquila = {
         pedidoId: grupo.pedidoId,
         fornecedorId: grupo.fornecedorId,
         provedor: "laquila",
+        ambiente: grupo.ambiente,
         chaveGrupo: grupo.chaveGrupo,
         chaveIdempotencia: grupo.chaveIdempotencia,
         hashPayload: grupo.hashPayload,
@@ -45,6 +47,7 @@ const repositorio: RepositorioPedidoLaquila = {
         and(
           eq(fornecedorPedidoIntegracoesTable.pedidoId, grupo.pedidoId),
           eq(fornecedorPedidoIntegracoesTable.provedor, "laquila"),
+          eq(fornecedorPedidoIntegracoesTable.ambiente, grupo.ambiente),
           eq(fornecedorPedidoIntegracoesTable.chaveGrupo, grupo.chaveGrupo),
         ),
       )
@@ -117,7 +120,8 @@ const repositorio: RepositorioPedidoLaquila = {
 /** Não é chamada pelos webhooks até a execução real ser aprovada. */
 export async function processarPedidoLaquila00002(pedidoId: string) {
   await exigirAcessoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
-  const grupos = await prepararPedidoLaquila(pedidoId);
+  const ambiente = obterAmbienteAplicacaoLaquila();
+  const grupos = await prepararPedidoLaquila(pedidoId, ambiente);
 
   return processarGruposPedidoLaquila(grupos, {
     repositorio,
@@ -125,6 +129,7 @@ export async function processarPedidoLaquila00002(pedidoId: string) {
       const cliente = criarClienteLaquila(
         {
           id: grupo.credenciais.configuracao.id,
+          ambiente: grupo.ambiente,
           urlBase: grupo.credenciais.configuracao.urlBase,
           cnpjEmpresa: grupo.credenciais.configuracao.cnpjEmpresa,
           tokenClienteCriptografado: null,
@@ -152,6 +157,7 @@ export async function processarPedidoLaquila00002(pedidoId: string) {
     async enviarPedido(grupo, corpo) {
       const cliente = criarClienteLaquila({
         id: grupo.credenciais.configuracao.id,
+        ambiente: grupo.ambiente,
         urlBase: grupo.credenciais.configuracao.urlBase,
         cnpjEmpresa: grupo.credenciais.configuracao.cnpjEmpresa,
         tokenClienteCriptografado: null,

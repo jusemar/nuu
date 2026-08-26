@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { fornecedoresTable, fornecedorIntegracoesApiTable } from "@/db/schema";
@@ -9,6 +9,11 @@ import {
   FORNECEDOR_LAQUILA_NOME,
   PROVEDOR_INTEGRACAO_LAQUILA,
 } from "../constants";
+import {
+  type AmbienteLaquila,
+  resolverUrlBaseLaquila,
+  validarAmbienteLaquilaAplicacao,
+} from "../lib/ambiente-laquila";
 import { descriptografarTokenLaquila } from "../lib/mascarar-segredos-laquila";
 import type { ConfiguracaoLaquilaAdmin } from "../types";
 
@@ -49,20 +54,26 @@ type ErroBancoLaquila = Error & {
 
 declare global {
   var __configuracaoLaquilaAdminCache:
-    | {
-        valor: ConfiguracaoLaquilaAdmin | null;
-        atualizadoEm: number;
-      }
+    | Partial<
+        Record<
+          AmbienteLaquila,
+          {
+            valor: ConfiguracaoLaquilaAdmin | null;
+            atualizadoEm: number;
+          }
+        >
+      >
     | undefined;
 }
 
-function obterStoreConfiguracaoLaquila() {
-  globalThis.__configuracaoLaquilaAdminCache ??= {
+function obterStoreConfiguracaoLaquila(ambiente: AmbienteLaquila) {
+  globalThis.__configuracaoLaquilaAdminCache ??= {};
+  globalThis.__configuracaoLaquilaAdminCache[ambiente] ??= {
     valor: null,
     atualizadoEm: 0,
   };
 
-  return globalThis.__configuracaoLaquilaAdminCache;
+  return globalThis.__configuracaoLaquilaAdminCache[ambiente];
 }
 
 function clonarConfiguracaoLaquila(
@@ -81,14 +92,14 @@ function clonarConfiguracaoLaquila(
 function salvarConfiguracaoLaquilaEmMemoria(
   configuracao: ConfiguracaoLaquilaAdmin,
 ) {
-  const store = obterStoreConfiguracaoLaquila();
+  const store = obterStoreConfiguracaoLaquila(configuracao.ambiente);
 
   store.valor = clonarConfiguracaoLaquila(configuracao);
   store.atualizadoEm = Date.now();
 }
 
-function obterConfiguracaoLaquilaEmMemoria() {
-  const configuracao = obterStoreConfiguracaoLaquila().valor;
+function obterConfiguracaoLaquilaEmMemoria(ambiente: AmbienteLaquila) {
+  const configuracao = obterStoreConfiguracaoLaquila(ambiente).valor;
 
   return configuracao ? clonarConfiguracaoLaquila(configuracao) : null;
 }
@@ -214,7 +225,7 @@ function montarConfiguracaoLaquilaAdmin(registro: {
     fornecedorId: registro.fornecedorId,
     provedor: registro.provedor,
     ambiente: registro.ambiente,
-    urlBase: registro.urlBase,
+    urlBase: resolverUrlBaseLaquila(registro.ambiente, registro.urlBase),
     cnpjEmpresa: registro.cnpjEmpresa,
     ativo: registro.ativo,
     ultimoTesteStatus: registro.ultimoTesteStatus,
@@ -229,8 +240,11 @@ function montarConfiguracaoLaquilaAdmin(registro: {
   };
 }
 
-function obterConfiguracaoLaquilaFallback(erro: unknown) {
-  const configuracao = obterConfiguracaoLaquilaEmMemoria();
+function obterConfiguracaoLaquilaFallback(
+  erro: unknown,
+  ambiente: AmbienteLaquila,
+) {
+  const configuracao = obterConfiguracaoLaquilaEmMemoria(ambiente);
 
   if (!configuracao) return null;
 
@@ -241,7 +255,12 @@ function obterConfiguracaoLaquilaFallback(erro: unknown) {
   return configuracao;
 }
 
-export async function buscarConfiguracaoLaquilaAdmin(): Promise<ConfiguracaoLaquilaAdmin | null> {
+export async function buscarConfiguracaoLaquilaAdmin({
+  ambiente,
+}: {
+  ambiente: AmbienteLaquila;
+}): Promise<ConfiguracaoLaquilaAdmin | null> {
+  validarAmbienteLaquilaAplicacao(ambiente);
   try {
     const [registro] = await executarConsultaConfiguracaoLaquila(() =>
       db
@@ -267,9 +286,12 @@ export async function buscarConfiguracaoLaquilaAdmin(): Promise<ConfiguracaoLaqu
           eq(fornecedorIntegracoesApiTable.fornecedorId, fornecedoresTable.id),
         )
         .where(
-          eq(
-            fornecedorIntegracoesApiTable.provedor,
-            PROVEDOR_INTEGRACAO_LAQUILA,
+          and(
+            eq(
+              fornecedorIntegracoesApiTable.provedor,
+              PROVEDOR_INTEGRACAO_LAQUILA,
+            ),
+            eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
           ),
         )
         .orderBy(
@@ -288,7 +310,7 @@ export async function buscarConfiguracaoLaquilaAdmin(): Promise<ConfiguracaoLaqu
     return configuracao;
   } catch (erro) {
     const configuracaoFallback = erroTransitorioBancoLaquila(erro)
-      ? obterConfiguracaoLaquilaFallback(erro)
+      ? obterConfiguracaoLaquilaFallback(erro, ambiente)
       : null;
 
     if (configuracaoFallback) return configuracaoFallback;

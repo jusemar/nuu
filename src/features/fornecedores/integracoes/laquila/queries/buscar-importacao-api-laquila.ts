@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 
 import { PROVEDOR_INTEGRACAO_LAQUILA } from "../constants";
+import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 
 export type ImportacaoApiLaquila = {
   id: string;
@@ -94,11 +95,15 @@ export async function buscarImportacaoApiLaquila(
 export async function buscarUltimaImportacaoApiLaquila(): Promise<
   string | null
 > {
+  const ambiente = obterAmbienteAplicacaoLaquila();
   const [integracao] = await db
     .select({ fornecedorId: fornecedorIntegracoesApiTable.fornecedorId })
     .from(fornecedorIntegracoesApiTable)
     .where(
-      eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+      and(
+        eq(fornecedorIntegracoesApiTable.provedor, PROVEDOR_INTEGRACAO_LAQUILA),
+        eq(fornecedorIntegracoesApiTable.ambiente, ambiente),
+      ),
     )
     .limit(1);
 

@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCarrinho } from "@/features/carrinho";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 
 import { calcularResumoCheckoutAction } from "../../../actions/calcular-resumo-checkout";
 import { consultarEnderecoCep } from "../../../actions/consultar-endereco-cep";
@@ -482,11 +483,13 @@ export function CheckoutVisitante({
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2.5">
               <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-lg shadow-sm">
-                <span className="text-sm font-bold text-white">DR</span>
+                <span className="text-sm font-bold text-white">
+                  {DADOS_EMPRESA.iniciaisMarca}
+                </span>
               </div>
               <div>
                 <span className="block text-[17px] font-bold text-zinc-800">
-                  Do Rocha
+                  {DADOS_EMPRESA.marca}
                 </span>
                 <span className="block text-[11px] text-zinc-500">
                   Sua loja
@@ -531,11 +534,13 @@ export function CheckoutVisitante({
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-lg shadow-sm">
-              <span className="text-sm font-bold text-white">DR</span>
+              <span className="text-sm font-bold text-white">
+                {DADOS_EMPRESA.iniciaisMarca}
+              </span>
             </div>
             <div>
               <span className="block text-[17px] font-bold text-zinc-800">
-                Do Rocha
+                {DADOS_EMPRESA.marca}
               </span>
               <span className="block text-[11px] text-zinc-500">Sua loja</span>
             </div>
@@ -686,7 +691,9 @@ export function CheckoutVisitante({
 
       <footer className="border-border bg-card mt-16 border-t py-8">
         <div className="text-muted-foreground mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs md:flex-row">
-          <p>© 2026 NUU STORE</p>
+          <p>
+            © {new Date().getFullYear()} {DADOS_EMPRESA.marca}
+          </p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-foreground">
               Termos

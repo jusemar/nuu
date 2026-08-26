@@ -8,7 +8,7 @@ export const conhecimentosControladosAdmin = conhecimentoAdminSchema
     {
       categoria: "Empresa",
       conteudo:
-        "A Nuu atende clientes pelos canais oficiais informados no site. Dados variáveis devem ser consultados nas fontes reais da loja.",
+        "A Nooo atende clientes pelos canais oficiais informados no site. Dados variáveis devem ser consultados nas fontes reais da loja.",
       estado: "publicado",
       origem: "Documento institucional aprovado",
       resumoAlteracao: "Versão publicada usada como referência visual.",

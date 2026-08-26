@@ -5,6 +5,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 import { ContextoCepLogisticaProvider } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 import { obterUrlBaseSite } from "@/lib/seo/url-site";
 import { CategoriesProvider } from "@/providers/categories-provider";
@@ -29,11 +30,10 @@ export const metadata: Metadata = {
   // Open Graph) em URLs absolutas. Vem da configuração única do projeto.
   metadataBase: new URL(obterUrlBaseSite()),
   title: {
-    default: "Do Rocha | Sua Loja Virtual",
-    template: "%s | Do Rocha", // páginas filhas: "Produto X | Do Rocha"
+    default: `${DADOS_EMPRESA.marca} | Loja Online`,
+    template: `%s | ${DADOS_EMPRESA.marca}`,
   },
-  description:
-    "Encontre os melhores produtos com qualidade, garantia e entrega rápida na Do Rocha. Frete grátis acima de R$ 299.",
+  description: `Encontre os melhores produtos com qualidade, garantia e entrega rápida na ${DADOS_EMPRESA.marca}. Frete grátis acima de R$ 299.`,
   keywords: [
     "loja virtual",
     "e-commerce",
@@ -41,14 +41,14 @@ export const metadata: Metadata = {
     "entrega rápida",
     "frete grátis",
   ],
-  authors: [{ name: "Do Rocha" }],
-  creator: "Do Rocha",
+  authors: [{ name: DADOS_EMPRESA.marca }],
+  creator: DADOS_EMPRESA.marca,
   // Open Graph — aparência ao compartilhar no WhatsApp, Facebook etc.
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "Do Rocha",
-    title: "Do Rocha | Sua Loja Virtual",
+    siteName: DADOS_EMPRESA.marca,
+    title: `${DADOS_EMPRESA.marca} | Loja Online`,
     description:
       "Encontre os melhores produtos com qualidade e entrega rápida.",
   },

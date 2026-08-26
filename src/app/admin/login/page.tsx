@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PaginaLoginAdmin } from "@/features/autenticacao/components/admin/pagina-login-admin";
@@ -6,6 +7,12 @@ import {
   normalizarRedirecionamentoAdmin,
 } from "@/features/autenticacao/lib/normalizar-redirecionamento-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
+
+export const metadata: Metadata = {
+  // O título já contém a marca e não deve receber novamente o template global.
+  title: { absolute: `Painel Administrativo | ${DADOS_EMPRESA.marca}` },
+};
 
 type LoginAdminPageProps = {
   searchParams: Promise<{ redirect?: string; erro?: string; error?: string }>;

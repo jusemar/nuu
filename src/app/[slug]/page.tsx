@@ -5,6 +5,7 @@ import { cache } from "react";
 import { Footer } from "@/components/common/footer";
 import { Container } from "@/components/ui/container";
 import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 import { Header } from "@/features/header";
 import { ConteudoPaginaDinamica } from "@/features/paginas-dinamicas/components/store/conteudo-pagina-dinamica";
 import { buscarPaginaPublicadaPorSlug } from "@/features/paginas-dinamicas/queries/buscar-pagina-publicada";
@@ -22,7 +23,8 @@ export async function generateMetadata({
   if (!pagina) return {};
   const titulo = pagina.tituloSeo || pagina.titulo;
   const descricao =
-    pagina.descricaoSeo || `Conheça mais sobre ${pagina.titulo} na Do Rocha.`;
+    pagina.descricaoSeo ||
+    `Conheça mais sobre ${pagina.titulo} na ${DADOS_EMPRESA.marca}.`;
   const canonical = montarUrlAbsoluta(`/${pagina.slug}`);
   return {
     title: titulo,

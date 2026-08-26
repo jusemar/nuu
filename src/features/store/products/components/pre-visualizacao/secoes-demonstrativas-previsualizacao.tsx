@@ -32,16 +32,19 @@ export function CardAssistenteVirtualPrevisualizacao({
               id="titulo-assistente-virtual-pdp"
               className="text-foreground text-sm font-bold"
             >
-              Assistente Do Rocha
+              Assistente Nooo
             </h2>
             <span className="text-primary inline-flex items-center gap-1 text-[11px] font-semibold">
-              <span className="bg-primary size-1.5 rounded-full" aria-hidden="true" />
+              <span
+                className="bg-primary size-1.5 rounded-full"
+                aria-hidden="true"
+              />
               IA disponível agora
             </span>
           </div>
           <p className="text-muted-foreground mt-1 text-xs leading-5">
-            IA consultiva da loja para ajudar você a escolher a opção ideal
-            para sua compra.
+            IA consultiva da loja para ajudar você a escolher a opção ideal para
+            sua compra.
           </p>
         </div>
       </div>
@@ -58,7 +61,9 @@ export function CardAssistenteVirtualPrevisualizacao({
         aria-label={`Conversar com o assistente virtual sobre ${nomeProduto}`}
         disabled={!modoPreVisualizacao}
       >
-        {modoPreVisualizacao ? "Conversar com o assistente" : "Falar com o assistente — em breve"}
+        {modoPreVisualizacao
+          ? "Conversar com o assistente"
+          : "Falar com o assistente — em breve"}
       </Button>
     </section>
   );
@@ -137,7 +142,10 @@ export function SecaoCompreJuntoPrevisualizacao({
             nome={nomeProduto}
             preco="R$ 793,99"
           />
-          <Plus className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+          <Plus
+            className="text-muted-foreground size-4 shrink-0"
+            aria-hidden="true"
+          />
           <ProdutoDemonstrativo
             inicial="+"
             nome="Item complementar"
@@ -160,7 +168,11 @@ export function SecaoCompreJuntoPrevisualizacao({
           <p className="text-success mt-0.5 text-xs font-semibold">
             Economia de R$ 109,90
           </p>
-          <Button type="button" className="mt-3 min-h-11 w-full" onClick={() => {}}>
+          <Button
+            type="button"
+            className="mt-3 min-h-11 w-full"
+            onClick={() => {}}
+          >
             Aproveitar o combo
           </Button>
         </aside>
@@ -195,10 +207,10 @@ function ProdutoDemonstrativo({
           <span className="text-primary text-2xl font-bold">{inicial}</span>
         )}
       </div>
-      <p className="line-clamp-2 text-[11px] font-medium text-foreground/80">
+      <p className="text-foreground/80 line-clamp-2 text-[11px] font-medium">
         {nome}
       </p>
-      <p className="text-xs font-bold text-foreground">{preco}</p>
+      <p className="text-foreground text-xs font-bold">{preco}</p>
     </div>
   );
 }

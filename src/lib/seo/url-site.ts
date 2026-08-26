@@ -27,7 +27,9 @@
  * `NEXT_PUBLIC_APP_URL` configurada, ainda assim geramos uma URL real
  * (nunca um domínio de exemplo). O caminho normal continua sendo a env.
  */
-const URL_PRODUCAO_PADRAO = "https://nuu-app.vercel.app";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
+
+const URL_PRODUCAO_PADRAO = DADOS_EMPRESA.site;
 
 /** Domínio usado em desenvolvimento local quando nada estiver configurado. */
 const URL_DESENVOLVIMENTO_PADRAO = "http://localhost:3000";
@@ -45,7 +47,7 @@ const HOSTS_LOCAIS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"];
  * Corrige os erros mais comuns de digitação/configuração:
  * - espaços em volta (`" http://localhost:3000 "`);
  * - protocolo duplicado (`"https://https://site.com"`);
- * - domínio sem protocolo (`"nuu-app.vercel.app"` → `"https://nuu-app.vercel.app"`);
+ * - domínio sem protocolo (`"nooo.com.br"` → `"https://nooo.com.br"`);
  * - barra(s) no final (`"https://site.com/"` → `"https://site.com"`).
  *
  * @param valorBruto - Valor cru (pode vir `undefined` do `process.env`).
@@ -135,7 +137,7 @@ function ehAmbienteDeProducao(): boolean {
  * - em desenvolvimento, o fallback é `http://localhost:3000`.
  *
  * @example
- * obterUrlBaseSite(); // "https://nuu-app.vercel.app" (produção)
+ * obterUrlBaseSite(); // "https://nooo.com.br" (produção)
  * obterUrlBaseSite(); // "http://localhost:3000"      (desenvolvimento)
  */
 export function obterUrlBaseSite(): string {
@@ -163,7 +165,7 @@ export function obterUrlBaseSite(): string {
  *
  * @example
  * montarUrlAbsoluta("/product/racao-magnus");
- * // "https://nuu-app.vercel.app/product/racao-magnus"
+ * // "https://nooo.com.br/product/racao-magnus"
  */
 export function montarUrlAbsoluta(caminho: string): string {
   const base = obterUrlBaseSite();

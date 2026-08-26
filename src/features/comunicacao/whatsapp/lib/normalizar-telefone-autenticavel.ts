@@ -1,7 +1,7 @@
 import { telefoneAutenticavelSchema } from "../schemas/envio-otp-whatsapp.schema";
 import { ErroComunicacaoWhatsapp } from "./erros-whatsapp";
 
-/** Aceita somente o formato canônico definido para a identidade da Nuu. */
+/** Aceita somente o formato canônico definido para a identidade técnica da aplicação. */
 export function normalizarTelefoneAutenticavel(numero: string): string {
   const resultado = telefoneAutenticavelSchema.safeParse(numero);
 

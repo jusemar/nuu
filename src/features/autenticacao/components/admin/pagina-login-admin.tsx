@@ -114,7 +114,7 @@ export function PaginaLoginAdmin({
           <div className="mx-auto mt-6 flex h-11 w-11 items-center justify-center rounded-lg bg-slate-950 text-white shadow-sm">
             <LockKeyhole className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-slate-600">Do Rocha</p>
+          <p className="mt-3 text-sm font-semibold text-slate-600">Nooo</p>
         </div>
 
         <Card className="border-slate-200 shadow-sm">

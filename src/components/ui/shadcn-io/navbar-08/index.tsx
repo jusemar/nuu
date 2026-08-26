@@ -1,71 +1,69 @@
 // components/ui/shadcn-io/navbar-08/index.tsx
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
-import { UserIcon, SearchIcon, MenuIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { authClient } from '@/lib/auth-client'; // USE O MESMO DO HEADER
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // USE O MESMO DO HEADER
+import { MenuIcon,SearchIcon, UserIcon } from "lucide-react";
+import { ChevronDownIcon, LogOutIcon } from "lucide-react"; // Adicione estes ícones
+import Link from "next/link";
+import * as React from "react";
+import { useEffect, useRef,useState } from "react";
+
+import { Cart } from "@/components/common/cart";
 import type { Category } from "@/components/common/categories-menu";
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from '@/components/ui/navigation-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { CategoriesMenu } from "@/components/common/categories-menu";
+import { MobileCategoriesMenu } from "@/components/common/categories-menu/mobile-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // USE O MESMO DO HEADER
+import { Button } from "@/components/ui/button";
 // No topo do arquivo, adicione:
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ChevronDownIcon, LogOutIcon } from 'lucide-react'; // Adicione estes ícones
-import { cn } from '@/lib/utils';
-import { Cart } from '@/components/common/cart';
-import { CategoriesMenu } from '@/components/common/categories-menu';
-import { useCategories } from '@/providers/categories-provider-client';
-import { MobileCategoriesMenu } from '@/components/common/categories-menu/mobile-menu';
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { authClient } from "@/lib/auth-client"; // USE O MESMO DO HEADER
+import { cn } from "@/lib/utils";
+import { useCategories } from "@/providers/categories-provider-client";
 
 // Logo Component (no mesmo arquivo)
 const Logo = () => {
   return (
-    <svg width='24' height='24' viewBox='0 0 324 323' fill='currentColor'>
+    <svg width="24" height="24" viewBox="0 0 324 323" fill="currentColor">
       <rect
-        x='88.1023'
-        y='144.792'
-        width='151.802'
-        height='36.5788'
-        rx='18.2894'
-        transform='rotate(-38.5799 88.1023 144.792)'
-        fill='currentColor'
+        x="88.1023"
+        y="144.792"
+        width="151.802"
+        height="36.5788"
+        rx="18.2894"
+        transform="rotate(-38.5799 88.1023 144.792)"
+        fill="currentColor"
       />
       <rect
-        x='85.3459'
-        y='244.537'
-        width='151.802'
-        height='36.5788'
-        rx='18.2894'
-        transform='rotate(-38.5799 85.3459 244.537)'
-        fill='currentColor'
+        x="85.3459"
+        y="244.537"
+        width="151.802"
+        height="36.5788"
+        rx="18.2894"
+        transform="rotate(-38.5799 85.3459 244.537)"
+        fill="currentColor"
       />
     </svg>
   );
 };
 
-
-
 export const Navbar08 = () => {
-
-   const categories = useCategories();
+  const categories = useCategories();
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLElement>(null);
@@ -96,7 +94,7 @@ export const Navbar08 = () => {
     <header
       ref={containerRef}
       className={cn(
-        'sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur px-4 md:px-6'
+        "bg-background/95 sticky top-0 z-50 w-full border-b px-4 backdrop-blur md:px-6",
       )}
     >
       <div className="container mx-auto max-w-screen-2xl">
@@ -104,63 +102,78 @@ export const Navbar08 = () => {
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Left side */}
           <div className="flex flex-1 items-center gap-2">
-               {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2 text-primary">
+            {/* Logo */}
+            <Link href="/" className="text-primary flex items-center space-x-2">
               <Logo />
-              <span className="hidden font-bold text-xl sm:inline-block">Do Rocha</span>
+              <span className="hidden text-xl font-bold sm:inline-block">
+                Nooo
+              </span>
             </Link>
             {/* Mobile menu trigger */}
-            {isMobile &&   (
+            {isMobile && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MenuIcon className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
-                 {/* TODO o conteúdo do Popover mobile */}
-                 
+                {/* TODO o conteúdo do Popover mobile */}
+
                 <PopoverContent align="start" className="w-64 p-0">
                   <div className="p-2">
                     {/* Links principais */}
-                    <Link href="/" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-accent">
+                    <Link
+                      href="/"
+                      className="hover:bg-accent flex items-center rounded-md px-3 py-2 text-sm"
+                    >
                       Home
                     </Link>
-                    <Link href="/about" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-accent">
+                    <Link
+                      href="/about"
+                      className="hover:bg-accent flex items-center rounded-md px-3 py-2 text-sm"
+                    >
                       Sobre
                     </Link>
-                    
+
                     {/* Categorias com submenu */}
                     <MobileCategoriesMenu />
                   </div>
                 </PopoverContent>
               </Popover>
-            )}              
-         
-
-          </div>  
-            {/* Bottom navigation - Desktop */}
-        {!isMobile && (
-          <div>
-            <div className="flex gap-6">
-              <Link href="/" className="text-sm font-medium hover:text-primary">Home</Link>
-              <Link href="/about" className="text-sm font-medium hover:text-primary">Sobre</Link>
-            </div>
+            )}
           </div>
-        )}
+          {/* Bottom navigation - Desktop */}
+          {!isMobile && (
+            <div>
+              <div className="flex gap-6">
+                <Link
+                  href="/"
+                  className="hover:text-primary text-sm font-medium"
+                >
+                  Home
+                </Link>
+                <Link
+                  href="/about"
+                  className="hover:text-primary text-sm font-medium"
+                >
+                  Sobre
+                </Link>
+              </div>
+            </div>
+          )}
 
-            {!isMobile && <CategoriesMenu categories={categories} />}  
+          {!isMobile && <CategoriesMenu categories={categories} />}
 
           {/* Middle area - Search */}
 
-          <div className="grow">       
-            <div className="relative mx-auto max-w-xs">              
+          <div className="grow">
+            <div className="relative mx-auto max-w-xs">
               <Input
                 className="h-8 ps-8 pe-10"
                 placeholder="Search..."
                 type="search"
               />
               <div className="absolute inset-y-0 left-0 flex items-center pl-2">
-                
                 <SearchIcon size={16} />
               </div>
             </div>
@@ -169,42 +182,47 @@ export const Navbar08 = () => {
           {/* Right side - Botão de Login SIMPLES */}
           <div className="flex flex-1 items-center justify-end gap-2">
             <Cart />
-  {!session?.user ? (
-    <Button asChild variant="ghost" size="sm" className="h-8 gap-2">
-      <Link href="/authentication">
-        <UserIcon className="h-4 w-4" />
-        <span className="hidden sm:inline">Entrar</span>
-      </Link>
-    </Button>
- // Right side - Substitua TODO o bloco do usuário logado por:
-) : (
-  <div className="flex items-center gap-2">
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 gap-2 hover:bg-accent">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={session?.user?.image as string | undefined} />
-            <AvatarFallback>
-              {session?.user?.name?.split(' ')[0]?.[0]}
-            </AvatarFallback>
-          </Avatar>
-          <span className="hidden sm:inline">{session?.user?.name?.split(' ')[0]}</span>
-          <ChevronDownIcon className="h-4 w-4 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => authClient.signOut()}>
-          <LogOutIcon className="h-4 w-4 mr-2" />
-          Sair
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </div>
-)}
+            {!session?.user ? (
+              <Button asChild variant="ghost" size="sm" className="h-8 gap-2">
+                <Link href="/authentication">
+                  <UserIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">Entrar</span>
+                </Link>
+              </Button>
+            ) : (
+              // Right side - Substitua TODO o bloco do usuário logado por:
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="hover:bg-accent h-8 gap-2"
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage
+                          src={session?.user?.image as string | undefined}
+                        />
+                        <AvatarFallback>
+                          {session?.user?.name?.split(" ")[0]?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="hidden sm:inline">
+                        {session?.user?.name?.split(" ")[0]}
+                      </span>
+                      <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => authClient.signOut()}>
+                      <LogOutIcon className="mr-2 h-4 w-4" />
+                      Sair
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
-        </div>   
-
-      
+        </div>
       </div>
     </header>
   );

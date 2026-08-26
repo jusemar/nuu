@@ -682,7 +682,7 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
               </span>
               <div>
                 <h1 className="text-foreground truncate text-sm font-semibold">
-                  Do Rocha
+                  Nooo
                 </h1>
                 <p className="text-muted-foreground text-[10px] font-medium tracking-wider uppercase">
                   Admin

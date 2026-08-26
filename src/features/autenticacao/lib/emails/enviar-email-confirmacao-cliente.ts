@@ -1,5 +1,6 @@
 import "server-only";
 
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 import {
   obterRemetenteEmailTransacional,
   obterResend,
@@ -31,12 +32,12 @@ export async function enviarEmailConfirmacaoCliente({
   const resultado = await obterResend().emails.send({
     from: obterRemetenteEmailTransacional(),
     to: destinatario,
-    subject: "Confirme seu novo e-mail da Nuu",
-    text: `Confirme seu novo e-mail da Nuu usando este link em até 30 minutos: ${urlConfirmacao}\n\nSeu endereço atual continuará válido até a confirmação.`,
+    subject: `Confirme seu novo e-mail da ${DADOS_EMPRESA.marca}`,
+    text: `Confirme seu novo e-mail da ${DADOS_EMPRESA.marca} usando este link em até 30 minutos: ${urlConfirmacao}\n\nSeu endereço atual continuará válido até a confirmação.`,
     html: `
       <div style="font-family:Arial,sans-serif;color:#0f172a;line-height:1.6">
         <h1 style="font-size:20px">Confirme seu novo e-mail</h1>
-        <p>Use o botão abaixo para confirmar este endereço na sua conta Nuu.</p>
+        <p>Use o botão abaixo para confirmar este endereço na sua conta ${DADOS_EMPRESA.marca}.</p>
         <p><a href="${escaparHtml(urlConfirmacao)}" style="display:inline-block;border-radius:6px;background:#0c447c;color:#fff;padding:10px 16px;text-decoration:none">Confirmar novo e-mail</a></p>
         <p>O link expira em 30 minutos e pode ser usado somente uma vez.</p>
         <p>Seu endereço atual continuará válido enquanto a confirmação não for concluída.</p>

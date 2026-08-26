@@ -44,7 +44,7 @@ const Home = async () => {
         as="main"
         className="mb-14 space-y-10 pt-4 sm:pt-5 md:space-y-12"
       >
-        <h1 className="sr-only">Do Rocha — sua loja virtual</h1>
+        <h1 className="sr-only">Nooo — loja online</h1>
 
         {/* Banner carousel */}
         <Card

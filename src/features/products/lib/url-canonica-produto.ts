@@ -43,7 +43,7 @@ export function montarCaminhoProduto(slug: string | null | undefined): string {
 /**
  * Monta a URL canônica absoluta do produto usando a URL-base do ambiente.
  *
- * Em produção → https://nuu-app.vercel.app/product/<slug>
+ * Em produção → https://nooo.com.br/product/<slug>
  * Em desenvolvimento → http://localhost:3000/product/<slug>
  *
  * @param slug - Slug do produto. Se vier vazio, devolve apenas a URL-base + rota.

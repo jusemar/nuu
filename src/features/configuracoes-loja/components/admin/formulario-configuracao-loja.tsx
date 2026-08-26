@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { Save, Store } from "lucide-react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 
 import { salvarConfiguracaoLoja } from "../../actions/salvar-configuracao-loja";
 
@@ -69,7 +70,7 @@ export function FormularioConfiguracaoLoja({
                 value={nomeComercial}
                 onChange={(evento) => setNomeComercial(evento.target.value)}
                 maxLength={120}
-                placeholder="Ex.: Do Rocha"
+                placeholder={`Ex.: ${DADOS_EMPRESA.marca}`}
                 autoComplete="organization"
                 disabled={salvando}
               />

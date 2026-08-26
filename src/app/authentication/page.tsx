@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { FluxoAutenticacaoCliente } from "@/features/autenticacao/components/store/autenticacao/fluxo-autenticacao-cliente";
 import { normalizarDestinoAutenticacao } from "@/features/autenticacao/lib/destino-autenticacao-cliente";
+import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 
 export default async function Authentication({
   searchParams,
@@ -19,7 +20,7 @@ export default async function Authentication({
       <div className="flex w-full max-w-md flex-col gap-5">
         <div className="text-center">
           <Link href="/" className="text-base font-semibold text-slate-950">
-            Nuu
+            {DADOS_EMPRESA.marca}
           </Link>
           <p className="mt-1 text-sm text-slate-500">
             Acesse sua conta da loja.

@@ -83,7 +83,7 @@ export function PaginaRecuperacaoAcesso() {
       if (normalizado.tipo === "email") {
         await authClient.requestPasswordReset({
           email: normalizado.valor,
-          redirectTo: `${window.location.origin}/authentication/recuperar/redefinir`,
+          redirectTo: "/authentication/recuperar/redefinir",
         });
         setEtapa("email-enviado");
       } else {

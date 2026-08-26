@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { classificarRecuperacaoEmail } from "./classificar-recuperacao-email";
+import {
+  classificarRecuperacaoEmail,
+  normalizarOrigemAutenticacao,
+} from "./classificar-recuperacao-email";
 import { emailEhTecnicoTelefone } from "./email-tecnico-telefone-compartilhado";
 import { normalizarIdentificadorCliente } from "./normalizar-identificador-cliente";
 
@@ -85,6 +88,22 @@ test("recuperação de cliente real usa template exclusivo do cliente", () => {
     "cliente",
   );
   assert.match(fonteAuth, /enviarEmailRedefinicaoSenhaCliente/);
+});
+
+test("origem oficial é normalizada e callback administrativo relativo é aceito", () => {
+  assert.equal(
+    normalizarOrigemAutenticacao(" https://nooo.com.br/ "),
+    "https://nooo.com.br",
+  );
+  assert.equal(
+    classificarRecuperacaoEmail({
+      urlRedefinicao: urlReset("/admin/redefinir-senha"),
+      origemPermitida: "https://nooo.com.br/",
+      administrador: true,
+      emailTecnico: false,
+    }),
+    "admin",
+  );
 });
 
 test("conta inexistente mantém resposta neutra no cliente", () => {

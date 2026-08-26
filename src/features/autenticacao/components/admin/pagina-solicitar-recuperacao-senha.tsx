@@ -54,11 +54,20 @@ export function PaginaSolicitarRecuperacaoSenha() {
     try {
       const resultado = await authClient.requestPasswordReset({
         email: dados.email,
-        redirectTo: `${window.location.origin}/admin/redefinir-senha`,
+        // Redirect relativo evita divergências entre o domínio canônico e
+        // aliases válidos que possam ter aberto esta página.
+        redirectTo: "/admin/redefinir-senha",
       });
 
       if (resultado.error?.status === 429) {
         setErro("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+        return;
+      }
+
+      if (resultado.error) {
+        // A mensagem permanece neutra; o motivo técnico é registrado apenas
+        // pelo backend, sem expor existência ou papel da conta.
+        setMensagem(MENSAGEM_NEUTRA);
         return;
       }
 

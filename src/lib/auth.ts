@@ -5,10 +5,11 @@ import { phoneNumber } from "better-auth/plugins";
 
 import { db } from "@/db/connection";
 import * as schema from "@/db/schema";
-import { classificarRecuperacaoEmail } from "@/features/autenticacao/lib/classificar-recuperacao-email";
+import { normalizarOrigemAutenticacao } from "@/features/autenticacao/lib/classificar-recuperacao-email";
 import { emailEhTecnicoTelefone } from "@/features/autenticacao/lib/email-tecnico-telefone";
 import { enviarEmailRedefinicaoSenhaAdmin } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-admin";
 import { enviarEmailRedefinicaoSenhaCliente } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-cliente";
+import { enviarRecuperacaoEmailPorPublico } from "@/features/autenticacao/lib/enviar-recuperacao-email";
 import { pluginConfirmacaoEmailCliente } from "@/features/autenticacao/lib/plugin-confirmacao-email-cliente";
 import { pluginFluxosTelefoneNuu } from "@/features/autenticacao/lib/plugin-fluxos-telefone-nuu";
 import { pluginLoginIdentificadorAdmin } from "@/features/autenticacao/lib/plugin-login-identificador-admin";
@@ -25,7 +26,9 @@ function lerVariavelAmbienteObrigatoria(nome: string) {
   return valor;
 }
 
-const urlBaseAutenticacao = lerVariavelAmbienteObrigatoria("BETTER_AUTH_URL");
+const urlBaseAutenticacao = normalizarOrigemAutenticacao(
+  lerVariavelAmbienteObrigatoria("BETTER_AUTH_URL"),
+);
 
 export const auth = betterAuth({
   baseURL: urlBaseAutenticacao,
@@ -64,27 +67,25 @@ export const auth = betterAuth({
     sendResetPassword: async ({ user, url }) => {
       const vinculo = await buscarVinculoAdministrativoBasico(user.id);
       const administrador = vinculo?.status === "ativo";
-      const publico = classificarRecuperacaoEmail({
-        urlRedefinicao: url,
-        origemPermitida: urlBaseAutenticacao,
-        administrador,
-        emailTecnico: emailEhTecnicoTelefone(user.email),
-      });
-
-      // Cada público recebe somente seu próprio template e rota de retorno.
-      if (publico === "admin") {
-        await enviarEmailRedefinicaoSenhaAdmin({
+      await enviarRecuperacaoEmailPorPublico(
+        {
+          administrador,
           destinatario: user.email,
+          emailTecnico: emailEhTecnicoTelefone(user.email),
+          origemPermitida: urlBaseAutenticacao,
           urlRedefinicao: url,
-        });
-        return;
-      }
-      if (publico === "cliente") {
-        await enviarEmailRedefinicaoSenhaCliente({
-          destinatario: user.email,
-          urlRedefinicao: url,
-        });
-      }
+        },
+        {
+          enviarAdmin: enviarEmailRedefinicaoSenhaAdmin,
+          enviarCliente: enviarEmailRedefinicaoSenhaCliente,
+          registrarAviso(evento) {
+            // Não registrar e-mail, URL, token, papel ou existência da conta.
+            console.warn("[autenticacao:recuperacao-senha:bloqueada]", {
+              evento,
+            });
+          },
+        },
+      );
     },
   },
   rateLimit: {

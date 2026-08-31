@@ -81,6 +81,13 @@ export function resumirEventoWebhookWhatsapp(
           destinatarioMascarado: mascararIdentificadorRecebido(
             status.recipient_id,
           ),
+          // Só o diagnóstico da Meta: código, título e detalhe. Nada aqui
+          // deriva do conteúdo da mensagem enviada.
+          erros: (status.errors ?? []).map((erro) => ({
+            codigo: erro.code,
+            titulo: erro.title,
+            detalhe: erro.error_data?.details,
+          })),
         });
       }
     }

@@ -23,11 +23,20 @@ export type ResumoMensagemWebhookWhatsapp = {
   remetenteMascarado: string;
 };
 
+/** Diagnóstico técnico da Meta quando a entrega falha. */
+export type ResumoErroEntregaWebhookWhatsapp = {
+  codigo?: number;
+  titulo?: string;
+  detalhe?: string;
+};
+
 /** Atualização de entrega (`sent`, `delivered`, `read`, `failed`). */
 export type ResumoStatusWebhookWhatsapp = {
   idMensagem: string;
   status: string;
   destinatarioMascarado: string;
+  /** Vazio em entregas bem-sucedidas; preenchido quando `status` é `failed`. */
+  erros: ResumoErroEntregaWebhookWhatsapp[];
 };
 
 export type ResumoEventoWebhookWhatsapp = {

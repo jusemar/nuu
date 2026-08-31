@@ -83,6 +83,22 @@ export const conteudoMudancaWebhookWhatsappSchema = z.object({
         status: z.string().optional(),
         recipient_id: z.string().optional(),
         timestamp: z.string().optional(),
+        /**
+         * Presente quando `status` é `failed`. Só o diagnóstico técnico da
+         * Meta entra aqui — código, título e detalhe —, nunca o conteúdo da
+         * mensagem. Sem isso, uma falha de entrega fica indiagnosticável.
+         */
+        errors: z
+          .array(
+            z.object({
+              code: z.number().optional(),
+              title: z.string().optional(),
+              error_data: z
+                .object({ details: z.string().optional() })
+                .optional(),
+            }),
+          )
+          .optional(),
       }),
     )
     .optional(),

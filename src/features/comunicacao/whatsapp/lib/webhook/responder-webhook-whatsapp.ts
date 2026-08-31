@@ -108,7 +108,11 @@ export async function responderEventoWebhookWhatsapp(request: Request) {
 
   // Etapa atual do projeto: apenas observabilidade segura. A entrega ao
   // atendimento IA entra depois, consumindo este mesmo resumo.
-  console.info("Webhook WhatsApp recebido.", resumo);
+  //
+  // Serializado de propósito: o console do Node colapsa estruturas aninhadas
+  // em `[Array]`, o que esconderia justamente o diagnóstico de falha de
+  // entrega. O resumo já é seguro por construção.
+  console.info("Webhook WhatsApp recebido.", JSON.stringify(resumo));
 
   return NextResponse.json({ received: true });
 }

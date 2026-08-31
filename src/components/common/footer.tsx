@@ -2,14 +2,19 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
+import { LogoDinamica } from "@/features/configuracoes-loja/components/store/logo-dinamica";
 import {
   DADOS_EMPRESA,
   ENDERECO_EMPRESA_FORMATADO,
 } from "@/features/configuracoes-loja/constants/dados-empresa";
+import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { listarGruposRodapePublicos } from "@/features/paginas-dinamicas/queries/listar-grupos-rodape-publicos";
 
 export const Footer = async () => {
-  const grupos = await listarGruposRodapePublicos();
+  const [grupos, configuracao] = await Promise.all([
+    listarGruposRodapePublicos(),
+    buscarConfiguracaoLoja(),
+  ]);
   const anoAtual = new Date().getFullYear();
 
   return (
@@ -19,17 +24,11 @@ export const Footer = async () => {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
           {/* Marca + descrição */}
           <div className="md:col-span-2">
-            <div className="mb-4 flex items-center gap-2.5">
-              {/* Ícone logo */}
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/15">
-                <span className="text-sm font-bold tracking-tight text-white select-none">
-                  {DADOS_EMPRESA.iniciaisMarca}
-                </span>
-              </div>
-              <span className="text-xl font-bold tracking-tight">
-                {DADOS_EMPRESA.marca}
-              </span>
-            </div>
+            <LogoDinamica
+              local="rodape"
+              url={configuracao.logoRodapeUrl}
+              className="mb-4"
+            />
 
             <p className="mb-5 text-sm leading-relaxed text-white/70">
               Sua loja confiável para produtos de qualidade com entrega em todo

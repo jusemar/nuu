@@ -11,6 +11,23 @@ const formatosImagemBannerHomePermitidos = [
   "image/webp",
 ];
 const tamanhoMaximoImagemBytes = 5 * 1024 * 1024;
+const tamanhoMaximoLogoBytes = 2 * 1024 * 1024;
+
+const formatosLogoPermitidos = ["image/jpeg", "image/png", "image/webp"];
+
+async function arquivoTemAssinaturaDeImagem(file: File) {
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const ehJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const ehPng =
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47;
+  const ehWebp =
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  return ehJpeg || ehPng || ehWebp;
+}
 
 function normalizarNomeArquivo(nome: string) {
   return nome
@@ -35,7 +52,12 @@ export async function POST(request: Request) {
               pasta: "banners-home",
               permissao: PERMISSOES_ADMIN.BANNERS.ADMINISTRAR,
             }
-          : null;
+          : contexto === "logo"
+            ? {
+                pasta: "identidade-visual",
+                permissao: PERMISSOES_ADMIN.LOJA_CONFIGURACOES.ADMINISTRAR,
+              }
+            : null;
 
     if (!configuracao) {
       return NextResponse.json(
@@ -79,6 +101,29 @@ export async function POST(request: Request) {
         { error: "A imagem deve ter no máximo 5MB." },
         { status: 400 },
       );
+    }
+
+    if (pasta === "identidade-visual") {
+      if (!formatosLogoPermitidos.includes(file.type)) {
+        return NextResponse.json(
+          { error: "Formatos aceitos: JPG, PNG e WEBP." },
+          { status: 400 },
+        );
+      }
+      if (file.size > tamanhoMaximoLogoBytes) {
+        return NextResponse.json(
+          { error: "A imagem deve ter no máximo 2MB." },
+          { status: 400 },
+        );
+      }
+      if (!(await arquivoTemAssinaturaDeImagem(file))) {
+        return NextResponse.json(
+          {
+            error: "O conteúdo do arquivo não corresponde a uma imagem válida.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const timestamp = Date.now();

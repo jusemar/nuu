@@ -439,7 +439,7 @@ export const menuAdmin: EntradaMenuAdmin[] = [
     items: [
       {
         id: "dados-loja",
-        label: "Dados da loja",
+        label: "Dados e logos da loja",
         href: "/admin/configuracoes/loja",
         icon: "Store",
       },

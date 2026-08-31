@@ -33,16 +33,24 @@ export async function salvarConfiguracaoLoja(data: unknown) {
     .values({
       id: ID_CONFIGURACAO_GLOBAL,
       nomeComercial,
+      logoCabecalhoUrl: dados.logoCabecalhoUrl || null,
+      logoRodapeUrl: dados.logoRodapeUrl || null,
       createdAt: agora,
       updatedAt: agora,
     })
     .onConflictDoUpdate({
       target: configuracoesLojaTable.id,
-      set: { nomeComercial, updatedAt: agora },
+      set: {
+        nomeComercial,
+        logoCabecalhoUrl: dados.logoCabecalhoUrl || null,
+        logoRodapeUrl: dados.logoRodapeUrl || null,
+        updatedAt: agora,
+      },
     });
 
   revalidarPathSeguro("/admin/configuracoes/loja");
   revalidarPathSeguro("/product/[slug]", "page");
+  revalidarPathSeguro("/", "page");
 
   return {
     success: true as const,

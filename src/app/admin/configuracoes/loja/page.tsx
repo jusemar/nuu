@@ -10,6 +10,8 @@ export default async function ConfiguracoesLojaPage() {
   return (
     <FormularioConfiguracaoLoja
       nomeComercialInicial={configuracao.nomeComercial}
+      logoCabecalhoUrlInicial={configuracao.logoCabecalhoUrl}
+      logoRodapeUrlInicial={configuracao.logoRodapeUrl}
     />
   );
 }

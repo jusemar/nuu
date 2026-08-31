@@ -5,7 +5,9 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { ProvedorIdentidadeVisual } from "@/features/configuracoes-loja/components/store/contexto-identidade-visual";
 import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
+import { buscarConfiguracaoLoja } from "@/features/configuracoes-loja/queries/buscar-configuracao-loja";
 import { ContextoCepLogisticaProvider } from "@/features/logistica/components/store/contexto-cep-logistica-provider";
 import { obterUrlBaseSite } from "@/lib/seo/url-site";
 import { CategoriesProvider } from "@/providers/categories-provider";
@@ -70,11 +72,13 @@ export const viewport: Viewport = {
 };
 
 // ─── Layout raiz ──────────────────────────────────────────────────────────────
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const configuracao = await buscarConfiguracaoLoja();
+
   return (
     <html
       lang="pt-BR"
@@ -82,26 +86,28 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground flex min-h-screen flex-col antialiased">
-        <CategoriesProvider>
-          <ReactQueryProvider>
-            <ContextoCepLogisticaProvider>
-              {children}
-            </ContextoCepLogisticaProvider>
+        <ProvedorIdentidadeVisual identidade={configuracao}>
+          <CategoriesProvider>
+            <ReactQueryProvider>
+              <ContextoCepLogisticaProvider>
+                {children}
+              </ContextoCepLogisticaProvider>
 
-            {/* Toaster — notificações globais alinhadas ao design system */}
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                classNames: {
-                  success: "border-none bg-success text-white",
-                  error: "border-none bg-destructive text-white",
-                  warning: "border-none bg-warning text-warning-foreground",
-                  info: "border-none bg-info text-info-foreground",
-                },
-              }}
-            />
-          </ReactQueryProvider>
-        </CategoriesProvider>
+              {/* Toaster — notificações globais alinhadas ao design system */}
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  classNames: {
+                    success: "border-none bg-success text-white",
+                    error: "border-none bg-destructive text-white",
+                    warning: "border-none bg-warning text-warning-foreground",
+                    info: "border-none bg-info text-info-foreground",
+                  },
+                }}
+              />
+            </ReactQueryProvider>
+          </CategoriesProvider>
+        </ProvedorIdentidadeVisual>
       </body>
     </html>
   );

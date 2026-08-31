@@ -4,7 +4,9 @@ export type CodigoErroWhatsapp =
   | "RESPOSTA_INVALIDA"
   | "META_HTTP"
   | "TIMEOUT"
-  | "TRANSPORTE";
+  | "TRANSPORTE"
+  /** Credenciais do webhook ausentes — independentes das credenciais de envio. */
+  | "WEBHOOK_CONFIGURACAO_AUSENTE";
 
 /**
  * Erro público deliberadamente pequeno: não transporta token, OTP, telefone

@@ -1,8 +1,6 @@
-import Link from "next/link";
-
+import { LogoAutenticacao } from "@/components/shared/logo-autenticacao";
 import { FluxoAutenticacaoCliente } from "@/features/autenticacao/components/store/autenticacao/fluxo-autenticacao-cliente";
 import { normalizarDestinoAutenticacao } from "@/features/autenticacao/lib/destino-autenticacao-cliente";
-import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
 
 export default async function Authentication({
   searchParams,
@@ -19,10 +17,9 @@ export default async function Authentication({
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-slate-50 px-4 py-10">
       <div className="flex w-full max-w-md flex-col gap-5">
         <div className="text-center">
-          <Link href="/" className="text-base font-semibold text-slate-950">
-            {DADOS_EMPRESA.marca}
-          </Link>
-          <p className="mt-1 text-sm text-slate-500">
+          {/* Mesma logo do cabeçalho da loja, vinda das configurações. */}
+          <LogoAutenticacao />
+          <p className="mt-2 text-sm text-slate-500">
             Acesse sua conta da loja.
           </p>
         </div>

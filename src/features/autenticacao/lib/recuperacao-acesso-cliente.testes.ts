@@ -8,6 +8,7 @@ import {
 } from "./classificar-recuperacao-email";
 import { emailEhTecnicoTelefone } from "./email-tecnico-telefone-compartilhado";
 import { normalizarIdentificadorCliente } from "./normalizar-identificador-cliente";
+import { usuarioElegivelRecuperacaoTelefone } from "./telefone/usuario-elegivel-recuperacao-telefone";
 
 const fonteFluxo = readFileSync(
   "src/features/autenticacao/components/store/recuperacao/pagina-recuperacao-acesso.tsx",
@@ -50,6 +51,23 @@ test("solicitação WhatsApp é neutra e usa backend seguro", () => {
   assert.match(fonteFluxo, /Se encontrarmos uma conta compatível/);
   assert.match(fonteFluxo, /\/telefone\/recuperacao\/solicitar/);
   assert.match(fontePlugin, /mensagemNeutra/);
+  assert.match(fontePlugin, /buscarUsuarioPorTelefone\(phoneNumber\)/);
+  assert.doesNotMatch(
+    fonteFluxo,
+    /Código enviado para \{mascararTelefoneCliente\(telefone\)\}/,
+  );
+});
+
+test("recuperação emite para telefone existente verificado ou legado, nunca para inexistente", () => {
+  assert.equal(
+    usuarioElegivelRecuperacaoTelefone({ phoneNumberVerified: false }),
+    true,
+  );
+  assert.equal(
+    usuarioElegivelRecuperacaoTelefone({ phoneNumberVerified: true }),
+    true,
+  );
+  assert.equal(usuarioElegivelRecuperacaoTelefone(null), false);
 });
 
 test("redefinição WhatsApp exige OTP de seis dígitos e nova senha", () => {
@@ -75,6 +93,22 @@ test("reset WhatsApp revoga sessões e não cria login automático", () => {
   assert.match(fontePlugin, /deleteSessions\(usuario\.id\)/);
   assert.doesNotMatch(fontePlugin, /recuperacao[\s\S]{0,900}createSession/);
   assert.match(fonteFluxo, /\/authentication\?recuperacao=concluida/);
+});
+
+test("telefone legado só é verificado após OTP de recuperação válido e troca de senha", () => {
+  const inicioReset = fontePlugin.indexOf("redefinirSenhaTelefoneNuu");
+  const trechoReset = fontePlugin.slice(inicioReset);
+  const indiceOtpValido = trechoReset.indexOf('resultado === "VALIDO"');
+  const indiceAtualizarSenha = trechoReset.indexOf("updatePassword(");
+  const indiceVerificarTelefone = trechoReset.indexOf(
+    "phoneNumberVerified: true",
+  );
+
+  assert.ok(indiceOtpValido >= 0);
+  assert.ok(indiceAtualizarSenha > indiceOtpValido);
+  assert.ok(indiceVerificarTelefone > indiceAtualizarSenha);
+  assert.match(trechoReset, /finalidade: "recuperacao"/);
+  assert.match(trechoReset, /buscarUsuarioPorTelefone\(phoneNumber\)/);
 });
 
 test("recuperação de cliente real usa template exclusivo do cliente", () => {

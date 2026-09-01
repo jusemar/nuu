@@ -338,7 +338,9 @@ export function AcessoSegurancaCliente({
           className="mt-4 space-y-3 rounded-lg border bg-slate-50 p-4"
         >
           <p className="text-sm text-slate-600">
-            Código enviado para {mascararTelefoneCliente(telefoneCanonico)}
+            Se este número estiver disponível para alteração, você receberá um
+            código pelo WhatsApp. Destino:{" "}
+            {mascararTelefoneCliente(telefoneCanonico)}
           </p>
           <label
             htmlFor="codigo-alteracao-whatsapp"

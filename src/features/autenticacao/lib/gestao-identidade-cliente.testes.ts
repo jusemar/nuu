@@ -8,6 +8,7 @@ import {
   identificarMetodosAcesso,
 } from "./apresentar-identidade-cliente";
 import { normalizarTelefoneBrasileiroAmigavel } from "./normalizar-identificador-cliente";
+import { telefoneDisponivelParaVinculo } from "./telefone/avaliar-vinculo-telefone";
 
 const fonteComponente = readFileSync(
   "src/features/autenticacao/components/store/minha-conta/acesso-seguranca-cliente.tsx",
@@ -90,9 +91,46 @@ test("reenvio possui cooldown de sessenta segundos", () => {
 });
 
 test("conflito com outro usuário é bloqueado sem transferir o número", () => {
-  assert.match(fontePlugin, /ne\(userTable\.id, sessao\.user\.id\)/);
-  assert.match(fontePlugin, /if \(!conflito\)/);
+  assert.equal(
+    telefoneDisponivelParaVinculo({
+      usuarioId: "usuario-atual",
+      proprietario: { id: "outro-usuario", phoneNumberVerified: false },
+    }),
+    false,
+  );
   assert.match(fonteComponente, /Não foi possível usar este número/);
+});
+
+test("próprio telefone não verificado pode receber OTP e ser confirmado", () => {
+  assert.equal(
+    telefoneDisponivelParaVinculo({
+      usuarioId: "usuario-atual",
+      proprietario: { id: "usuario-atual", phoneNumberVerified: false },
+    }),
+    true,
+  );
+  assert.match(fontePlugin, /finalidade: "alteracao_numero"/);
+  assert.match(fontePlugin, /phoneNumberVerified: true/);
+});
+
+test("próprio telefone já verificado preserva o fluxo atual", () => {
+  assert.equal(
+    telefoneDisponivelParaVinculo({
+      usuarioId: "usuario-atual",
+      proprietario: { id: "usuario-atual", phoneNumberVerified: true },
+    }),
+    true,
+  );
+});
+
+test("telefone livre preserva o fluxo normal de vínculo", () => {
+  assert.equal(
+    telefoneDisponivelParaVinculo({
+      usuarioId: "usuario-atual",
+      proprietario: null,
+    }),
+    true,
+  );
 });
 
 test("sessão não recente exige reautenticação", () => {

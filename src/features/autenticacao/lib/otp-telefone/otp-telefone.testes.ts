@@ -93,16 +93,19 @@ function cenario() {
     [];
   let instante = new Date("2026-08-23T12:00:00.000Z");
   let codigo = "123456";
+  const eventos: Array<Record<string, unknown>> = [];
   const servico = criarServicoOtpTelefone({
     repositorio,
     segredo: "segredo-de-teste-comprido",
     agora: () => instante,
     gerarCodigo: () => codigo,
     enviar: async (entrada) => void envios.push(entrada),
+    registrarEvento: (evento) => eventos.push(evento),
   });
   return {
     repositorio,
     envios,
+    eventos,
     servico,
     avancar(ms: number) {
       instante = new Date(instante.getTime() + ms);
@@ -292,6 +295,20 @@ test("finalidades são isoladas", async () => {
   );
 });
 
+test("alteração de número chega ao transporte com finalidade sanitizada", async () => {
+  const caso = cenario();
+  await caso.servico.emitir({ ...entrada, finalidade: "alteracao_numero" });
+
+  assert.equal(caso.envios.length, 1);
+  assert.equal(caso.envios[0]?.finalidade, "alteracao_numero");
+  assert.deepEqual(
+    caso.eventos.map((evento) => evento.evento),
+    ["EMISSAO_AVALIADA", "ENVIO_INICIADO", "ENVIO_ACEITO"],
+  );
+  assert.equal(caso.eventos[0]?.finalidade, "alteracao_numero");
+  assert.doesNotMatch(JSON.stringify(caso.eventos), /123456|\+5531999991234/);
+});
+
 test("validação de outro IP conta como tentativa inválida", async () => {
   const caso = cenario();
   await caso.servico.emitir(entrada);
@@ -305,18 +322,53 @@ test("validação de outro IP conta como tentativa inválida", async () => {
   );
 });
 
-test("não registra OTP ou telefone e nunca chama Meta real", async () => {
+test("observabilidade registra somente finalidade, estado e identificador sanitizado", async () => {
   const caso = cenario();
-  const registros: unknown[][] = [];
-  const original = console.log;
-  console.log = (...itens) => registros.push(itens);
-  try {
-    await caso.servico.emitir(entrada);
-  } finally {
-    console.log = original;
-  }
-  assert.deepEqual(registros, []);
+  await caso.servico.emitir(entrada);
+  const serializado = JSON.stringify(caso.eventos);
+  assert.doesNotMatch(serializado, /123456|\+5531999991234/);
+  assert.deepEqual(
+    caso.eventos.map((evento) => evento.evento),
+    ["EMISSAO_AVALIADA", "ENVIO_INICIADO", "ENVIO_ACEITO"],
+  );
+  assert.equal(caso.eventos[0]?.finalidade, "verificacao");
+  assert.equal(caso.eventos[0]?.motivo, "PERMITIDO");
+  assert.equal(String(caso.eventos[0]?.identificador).length, 12);
   assert.equal(caso.envios.length, 1);
+});
+
+test("observabilidade informa bloqueio sem iniciar transporte", async () => {
+  const caso = cenario();
+  await caso.servico.emitir(entrada);
+  caso.eventos.length = 0;
+  await caso.servico.emitir(entrada);
+  assert.deepEqual(caso.eventos, [
+    {
+      evento: "EMISSAO_AVALIADA",
+      finalidade: "verificacao",
+      identificador: caso.eventos[0]?.identificador,
+      motivo: "REENVIO",
+    },
+  ]);
+  assert.equal(caso.envios.length, 1);
+});
+
+test("falha de transporte é observada sem expor telefone ou OTP", async () => {
+  const repositorio = new RepositorioOtpMemoria();
+  const eventos: Array<Record<string, unknown>> = [];
+  const servico = criarServicoOtpTelefone({
+    repositorio,
+    segredo: "segredo-de-teste-comprido",
+    gerarCodigo: () => "123456",
+    enviar: async () => {
+      throw new Error("transporte indisponível");
+    },
+    registrarEvento: (evento) => eventos.push(evento),
+  });
+
+  await assert.rejects(() => servico.emitir(entrada));
+  assert.equal(eventos.at(-1)?.evento, "FALHA_TRANSPORTE");
+  assert.doesNotMatch(JSON.stringify(eventos), /123456|\+5531999991234/);
 });
 
 test("recuperação é neutra e revoga sessões no backend", () => {
@@ -338,7 +390,7 @@ test("alteração exige sessão, OTP e revoga outras sessões", () => {
   assert.match(fonte, /finalidade: "alteracao_numero"/);
   assert.match(fonte, /phoneNumberVerified: true/);
   assert.match(fonte, /ne\(sessionTable\.id, sessao\.session\.id\)/);
-  assert.match(fonte, /ne\(userTable\.id, sessao\.user\.id\)/);
+  assert.match(fonte, /telefoneDisponivelParaVinculo/);
 });
 
 test("schema persistente guarda somente hashes, tentativas e estado", () => {

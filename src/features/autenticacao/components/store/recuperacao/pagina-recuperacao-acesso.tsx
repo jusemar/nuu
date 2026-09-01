@@ -232,7 +232,9 @@ export function PaginaRecuperacaoAcesso() {
                 <div className="text-center">
                   <MessageCircle className="mx-auto mb-2 size-8 text-emerald-600" />
                   <p className="text-sm text-slate-600">
-                    Código enviado para {mascararTelefoneCliente(telefone)}
+                    Se este número estiver disponível para recuperação, você
+                    receberá um código pelo WhatsApp. Destino:{" "}
+                    {mascararTelefoneCliente(telefone)}
                   </p>
                 </div>
                 <div className="space-y-1.5">

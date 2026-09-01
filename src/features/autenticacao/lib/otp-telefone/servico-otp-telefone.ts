@@ -22,10 +22,27 @@ type DependenciasServico = {
   }) => Promise<void>;
   agora?: () => Date;
   gerarCodigo?: () => string;
+  registrarEvento?: (evento: EventoOtpTelefone) => void;
+};
+
+type EventoOtpTelefone = {
+  evento:
+    | "EMISSAO_AVALIADA"
+    | "ENVIO_INICIADO"
+    | "ENVIO_ACEITO"
+    | "FALHA_TRANSPORTE";
+  finalidade: FinalidadeOtpTelefone;
+  identificador: string;
+  motivo?: "PERMITIDO" | "REENVIO" | "LIMITE_HORA" | "LIMITE_DIA" | "LIMITE_IP";
 };
 
 export function criarServicoOtpTelefone(dependencias: DependenciasServico) {
   const agora = dependencias.agora ?? (() => new Date());
+  const registrarEvento =
+    dependencias.registrarEvento ??
+    ((evento: EventoOtpTelefone) => {
+      console.info("[autenticacao:otp-telefone]", evento);
+    });
 
   return {
     async emitir(entrada: {
@@ -58,16 +75,39 @@ export function criarServicoOtpTelefone(dependencias: DependenciasServico) {
         ),
       });
 
+      const identificador = telefoneHash.slice(0, 12);
+      registrarEvento({
+        evento: "EMISSAO_AVALIADA",
+        finalidade: entrada.finalidade,
+        identificador,
+        motivo: resultado.permitido ? "PERMITIDO" : resultado.motivo,
+      });
+
       if (!resultado.permitido) return resultado;
 
       try {
+        registrarEvento({
+          evento: "ENVIO_INICIADO",
+          finalidade: entrada.finalidade,
+          identificador,
+        });
         await dependencias.enviar({
           numero: entrada.telefone,
           codigo,
           finalidade: entrada.finalidade,
           identificadorOperacao: gerarIdentificadorOperacaoOtp(),
         });
+        registrarEvento({
+          evento: "ENVIO_ACEITO",
+          finalidade: entrada.finalidade,
+          identificador,
+        });
       } catch (erro) {
+        registrarEvento({
+          evento: "FALHA_TRANSPORTE",
+          finalidade: entrada.finalidade,
+          identificador,
+        });
         await dependencias.repositorio.invalidar(
           telefoneHash,
           entrada.finalidade,

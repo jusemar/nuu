@@ -31,6 +31,8 @@ import { obterIpRequisicaoOtp } from "./otp-telefone/ip-requisicao-otp";
 import { repositorioOtpTelefoneDrizzle } from "./otp-telefone/repositorio-otp-telefone-drizzle";
 import { criarServicoOtpTelefone } from "./otp-telefone/servico-otp-telefone";
 import { autenticarTelefoneSenha } from "./telefone/autenticar-telefone-senha";
+import { telefoneDisponivelParaVinculo } from "./telefone/avaliar-vinculo-telefone";
+import { usuarioElegivelRecuperacaoTelefone } from "./telefone/usuario-elegivel-recuperacao-telefone";
 
 const mensagemNeutra =
   "Se os dados forem elegíveis, a operação será processada.";
@@ -55,6 +57,12 @@ async function buscarUsuarioVerificado(phoneNumber: string) {
       eq(userTable.phoneNumber, phoneNumber),
       eq(userTable.phoneNumberVerified, true),
     ),
+  });
+}
+
+async function buscarUsuarioPorTelefone(phoneNumber: string) {
+  return db.query.userTable.findFirst({
+    where: eq(userTable.phoneNumber, phoneNumber),
   });
 }
 
@@ -230,13 +238,15 @@ export function pluginFluxosTelefoneNuu() {
           const sessao = await getSessionFromCtx(contexto);
           if (!sessao) throw new APIError("UNAUTHORIZED");
           const phoneNumber = normalizarOuErro(contexto.body.phoneNumber);
-          const conflito = await db.query.userTable.findFirst({
-            where: and(
-              eq(userTable.phoneNumber, phoneNumber),
-              ne(userTable.id, sessao.user.id),
-            ),
+          const proprietario = await db.query.userTable.findFirst({
+            where: eq(userTable.phoneNumber, phoneNumber),
           });
-          if (!conflito)
+          if (
+            telefoneDisponivelParaVinculo({
+              usuarioId: sessao.user.id,
+              proprietario,
+            })
+          )
             await solicitarOtp(
               phoneNumber,
               "alteracao_numero",
@@ -395,7 +405,8 @@ export function pluginFluxosTelefoneNuu() {
         { method: "POST", body: telefoneSchema },
         async (contexto) => {
           const phoneNumber = normalizarOuErro(contexto.body.phoneNumber);
-          if (await buscarUsuarioVerificado(phoneNumber))
+          const usuario = await buscarUsuarioPorTelefone(phoneNumber);
+          if (usuarioElegivelRecuperacaoTelefone(usuario))
             await solicitarOtp(phoneNumber, "recuperacao", contexto.request);
           return contexto.json({ mensagem: mensagemNeutra });
         },
@@ -426,7 +437,7 @@ export function pluginFluxosTelefoneNuu() {
             });
           const usuario =
             resultado === "VALIDO"
-              ? await buscarUsuarioVerificado(phoneNumber)
+              ? await buscarUsuarioPorTelefone(phoneNumber)
               : null;
           if (!usuario)
             throw new APIError("BAD_REQUEST", { message: mensagemNeutra });
@@ -446,6 +457,15 @@ export function pluginFluxosTelefoneNuu() {
             hashSenha,
             contexto,
           );
+          await db
+            .update(userTable)
+            .set({ phoneNumberVerified: true, updatedAt: new Date() })
+            .where(
+              and(
+                eq(userTable.id, usuario.id),
+                eq(userTable.phoneNumber, phoneNumber),
+              ),
+            );
           await contexto.context.internalAdapter.deleteSessions(usuario.id);
           await repositorioOtpTelefoneDrizzle.invalidar(
             criarHashIdentificador(

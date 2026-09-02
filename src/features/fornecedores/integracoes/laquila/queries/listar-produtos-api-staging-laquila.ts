@@ -5,7 +5,6 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { fornecedorProdutosApiStagingTable } from "@/db/schema";
 
-import { CLASSIFICACOES_RECEBIDOS_API_LAQUILA } from "../constants";
 import type { StatusProdutoLaquilaMock } from "../types/produto-laquila-mock.types";
 
 export type ProdutoApiStagingLaquilaPrevia = {
@@ -60,56 +59,6 @@ function extrairPrimeiraFoto(valor: unknown) {
       .map((item) => item.trim())
       .find((item) => item.length > 0) ?? null
   );
-}
-
-function normalizarClassificacao(valor: string | null | undefined) {
-  return (valor ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-}
-
-const classificacoesRecebidosPermitidas = new Set(
-  CLASSIFICACOES_RECEBIDOS_API_LAQUILA.flatMap((classificacao) =>
-    classificacao.subgrupos.map((subgrupo) =>
-      [
-        normalizarClassificacao(classificacao.macroGrupo),
-        normalizarClassificacao(classificacao.grupo),
-        normalizarClassificacao(subgrupo),
-      ].join("|||"),
-    ),
-  ),
-);
-
-function obterTextoCampoBruto(
-  dadosBrutosJson: Record<string, unknown>,
-  campo: string,
-) {
-  const valor = dadosBrutosJson[campo];
-
-  if (typeof valor === "string" && valor.trim()) {
-    return valor.trim();
-  }
-
-  if (typeof valor === "number" && Number.isFinite(valor)) {
-    return String(valor);
-  }
-
-  return "";
-}
-
-function produtoPertenceAoRecorteRecebidosLaquila(
-  dadosBrutosJson: Record<string, unknown>,
-) {
-  const chave = [
-    normalizarClassificacao(obterTextoCampoBruto(dadosBrutosJson, "ds_ggrupo")),
-    normalizarClassificacao(obterTextoCampoBruto(dadosBrutosJson, "ds_grupo")),
-    normalizarClassificacao(obterTextoCampoBruto(dadosBrutosJson, "ds_sgrupo")),
-  ].join("|||");
-
-  return classificacoesRecebidosPermitidas.has(chave);
 }
 
 export async function listarProdutosApiStagingLaquilaPrevia(
@@ -182,10 +131,6 @@ export async function listarProdutosApiStagingLaquilaCatalogo(
 
   return produtos.flatMap((produto) => {
     const dadosBrutosJson = obterDadosBrutosComoObjeto(produto.dadosBrutosJson);
-
-    if (!produtoPertenceAoRecorteRecebidosLaquila(dadosBrutosJson)) {
-      return [];
-    }
 
     const imagemRecebida = extrairPrimeiraFoto(dadosBrutosJson.lista_fotos);
 

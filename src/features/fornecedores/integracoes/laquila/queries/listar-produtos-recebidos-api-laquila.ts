@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  CLASSIFICACOES_RECEBIDOS_API_LAQUILA,
-  METODOS_LAQUILA,
-} from "../constants";
+import { METODOS_LAQUILA } from "../constants";
 import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import {
   consultarProdutosLaquila,
@@ -150,35 +147,6 @@ export function obterProgressoRecebidosApiLaquila() {
   return obterStoreCacheRecebidosLaquila().progresso;
 }
 
-function normalizarClassificacao(valor: string | null | undefined) {
-  return (valor ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-}
-
-const classificacoesRecebidosPermitidas = new Set(
-  CLASSIFICACOES_RECEBIDOS_API_LAQUILA.flatMap((classificacao) =>
-    classificacao.subgrupos.map((subgrupo) =>
-      [
-        normalizarClassificacao(classificacao.macroGrupo),
-        normalizarClassificacao(classificacao.grupo),
-        normalizarClassificacao(subgrupo),
-      ].join("|||"),
-    ),
-  ),
-);
-const assinaturaRecorteRecebidosLaquila =
-  CLASSIFICACOES_RECEBIDOS_API_LAQUILA.map((classificacao) =>
-    [
-      normalizarClassificacao(classificacao.macroGrupo),
-      normalizarClassificacao(classificacao.grupo),
-      ...classificacao.subgrupos.map(normalizarClassificacao),
-    ].join(":"),
-  ).join("|");
-
 function montarChaveCacheRecebidosLaquila({
   integracaoId,
   urlBase,
@@ -189,11 +157,10 @@ function montarChaveCacheRecebidosLaquila({
   cnpjEmpresa: string;
 }) {
   return [
-    "laquila-recebidos-v1",
+    "laquila-recebidos-v2",
     integracaoId,
     urlBase ?? "",
     cnpjEmpresa,
-    assinaturaRecorteRecebidosLaquila,
   ].join("::");
 }
 
@@ -443,16 +410,6 @@ function extrairPrimeiraFoto(valor: unknown) {
       .map((item) => item.trim())
       .find((item) => item.length > 0) ?? null
   );
-}
-
-function produtoPertenceAoRecorteRecebidosLaquila(item: ItemProdutoLaquilaApi) {
-  const chave = [
-    normalizarClassificacao(lerTexto(item, ["ds_ggrupo"])),
-    normalizarClassificacao(lerTexto(item, ["ds_grupo"])),
-    normalizarClassificacao(lerTexto(item, ["ds_sgrupo"])),
-  ].join("|||");
-
-  return classificacoesRecebidosPermitidas.has(chave);
 }
 
 function calcularPercentualProgressoCatalogo(
@@ -871,16 +828,13 @@ async function consultarProdutosRecebidosSemCacheLaquila({
     }
 
     const produtosRecebidos = resultadoProdutos.produtosRecebidos;
-    const produtosRecortados = produtosRecebidos.filter(
-      produtoPertenceAoRecorteRecebidosLaquila,
-    );
     atualizarProgressoRecebidosLaquila({
       emAndamento: true,
       etapaAtual: "recorte",
-      mensagem: "Aplicando recorte de produtos.",
+      mensagem: "Validando produtos recebidos.",
       percentual: 74,
       totalBrutoCarregado: produtosRecebidos.length,
-      totalAposRecorte: produtosRecortados.length,
+      totalAposRecorte: produtosRecebidos.length,
       totalEnriquecidoComPrecoEstoque: 0,
       origemDados: "api",
     });
@@ -901,7 +855,7 @@ async function consultarProdutosRecebidosSemCacheLaquila({
         console.info("[laquila:recebidos-api:diagnostico]", {
           origem: "catalogo_atual_saldo_preco_falhou",
           totalBruto00007: produtosRecebidos.length,
-          totalAposRecorte: produtosRecortados.length,
+          totalAposRecorte: produtosRecebidos.length,
           totalBruto00006: 0,
           totalFinalTela: resultadoStale.produtos.length,
           cacheStaleUsado: true,
@@ -922,12 +876,12 @@ async function consultarProdutosRecebidosSemCacheLaquila({
       mensagem: "Combinando catálogo com preço e estoque.",
       percentual: 92,
       totalBrutoCarregado: produtosRecebidos.length,
-      totalAposRecorte: produtosRecortados.length,
+      totalAposRecorte: produtosRecebidos.length,
       totalEnriquecidoComPrecoEstoque: 0,
       origemDados: "api",
     });
 
-    const produtos = produtosRecortados.flatMap((item) => {
+    const produtos = produtosRecebidos.flatMap((item) => {
       const codigoFornecedor = String(lerTexto(item, ["cd_item"])).trim();
       const saldoPreco = resultadoSaldosPrecos.sucesso
         ? resultadoSaldosPrecos.saldosPrecosPorCodigo.get(codigoFornecedor)
@@ -955,14 +909,14 @@ async function consultarProdutosRecebidosSemCacheLaquila({
       mensagem: "Finalizando catálogo recebido.",
       percentual: 96,
       totalBrutoCarregado: produtosRecebidos.length,
-      totalAposRecorte: produtosRecortados.length,
+      totalAposRecorte: produtos.length,
       totalEnriquecidoComPrecoEstoque: totalEnriquecidoComSaldoPreco,
       origemDados: "api",
     });
 
     console.info("[laquila:recebidos-api:diagnostico]", {
       totalBruto00007: produtosRecebidos.length,
-      totalAposRecorte: produtosRecortados.length,
+      totalAposRecorte: produtos.length,
       totalBruto00006: resultadoSaldosPrecos.totalRetornadoSaldoPrecoApi,
       totalEnriquecidoComPrecoEstoque: totalEnriquecidoComSaldoPreco,
       totalFinalTela: produtos.length,
@@ -975,7 +929,7 @@ async function consultarProdutosRecebidosSemCacheLaquila({
     const resultadoFinal: ResultadoProdutosRecebidosApiLaquila = {
       produtos,
       totalRetornadoApi: produtosRecebidos.length,
-      totalAposRecorte: produtosRecortados.length,
+      totalAposRecorte: produtos.length,
       totalRetornadoSaldoPrecoApi:
         resultadoSaldosPrecos.totalRetornadoSaldoPrecoApi,
       totalEnriquecidoComSaldoPreco,

@@ -1,4 +1,5 @@
 import type { ItemSaldoPrecoLaquilaApi } from "./cliente-laquila";
+import { normalizarDecimalLaquila } from "./normalizar-decimal-laquila";
 
 export type SaldoPrecoLaquilaNormalizado = {
   codigoFornecedor: string;
@@ -26,18 +27,10 @@ function lerTexto(
 }
 
 function normalizarDecimal(valor: string | null) {
-  if (!valor) return null;
+  const normalizado = normalizarDecimalLaquila(valor);
+  if (normalizado === null) return null;
 
-  const texto = valor.trim();
-  const temVirgulaDecimal = texto.includes(",");
-  const normalizado = temVirgulaDecimal
-    ? texto.replace(/\./g, "").replace(",", ".")
-    : texto;
-  const numero = Number(normalizado);
-
-  if (!Number.isFinite(numero)) return null;
-
-  return numero.toFixed(2);
+  return Number(normalizado).toFixed(2);
 }
 
 function normalizarInteiro(valor: string | null) {

@@ -3,7 +3,6 @@ import { InfoCards } from "@/components/common/info-cards";
 import SectionTitle from "@/components/common/section-title";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
 import { Secao } from "@/components/ui/secao";
 import { getCategories } from "@/data/categories/get";
 import { CampoMensagemAtendente } from "@/features/atendimento-ia";
@@ -13,6 +12,8 @@ import {
   buscarBannersHomeAtivos,
 } from "@/features/banners-home";
 import { CategorySelector } from "@/features/category-selector/components/CategorySkeleton";
+import { BarraAvisos } from "@/features/configuracoes-loja/components/store/barra-avisos";
+import { buscarBarraAvisos } from "@/features/configuracoes-loja/queries/buscar-barra-avisos";
 import { DealsGrid } from "@/features/deals/components/DealsGrid";
 import { buscarOfertasHome } from "@/features/deals/queries/buscar-ofertas-home";
 import FeaturedProductsCarousel from "@/features/featured-products-carousel/components/FeaturedProductsCarousel";
@@ -21,11 +22,14 @@ import { ProductGridWithLoadMore } from "@/features/product-grid-with-load-more/
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 const Home = async () => {
-  const [categories, ofertasHome, bannersHome] = await Promise.all([
-    getCategories(),
-    buscarOfertasHome(),
-    buscarBannersHomeAtivos(),
-  ]);
+  const [categories, ofertasHome, bannersHome, barraAvisos] = await Promise.all(
+    [
+      getCategories(),
+      buscarOfertasHome(),
+      buscarBannersHomeAtivos(),
+      buscarBarraAvisos(),
+    ],
+  );
   const temBannersSecundariosNovidades = Boolean(
     bannersHome.novidadesSecundarioEsquerdo ||
       bannersHome.novidadesSecundarioDireito,
@@ -34,7 +38,7 @@ const Home = async () => {
   return (
     <>
       {/* ── 1. Marquee ── */}
-      <MarqueeBanner speed={60} />
+      <BarraAvisos configuracao={barraAvisos} />
 
       {/* ── 2. Header ── */}
       <Header />

@@ -618,6 +618,14 @@ export {
   type ConfiguracaoLoja,
   configuracoesLojaTable,
 } from "./tables/configuracoes-loja/tabelas/configuracoes-loja";
+export {
+  configuracoesBarraAvisosTable,
+  mensagensBarraAvisosTable,
+} from "./tables/configuracoes-loja/tabelas/barra-avisos";
+export {
+  configuracoesBarraAvisosRelations,
+  mensagensBarraAvisosRelations,
+} from "./tables/configuracoes-loja/relacoes";
 
 // Tabelas de logística
 export { cities } from "./table/logistics/cities/cities";

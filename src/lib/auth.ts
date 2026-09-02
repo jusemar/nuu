@@ -13,6 +13,7 @@ import { enviarRecuperacaoEmailPorPublico } from "@/features/autenticacao/lib/en
 import { pluginConfirmacaoEmailCliente } from "@/features/autenticacao/lib/plugin-confirmacao-email-cliente";
 import { pluginFluxosTelefoneNuu } from "@/features/autenticacao/lib/plugin-fluxos-telefone-nuu";
 import { pluginLoginIdentificadorAdmin } from "@/features/autenticacao/lib/plugin-login-identificador-admin";
+import { pluginRecuperacaoAdminWhatsapp } from "@/features/autenticacao/lib/plugin-recuperacao-admin-whatsapp";
 import { buscarVinculoAdministrativoBasico } from "@/features/autenticacao/queries/autorizacao-admin/buscar-vinculo-administrativo-basico";
 import { comunicacaoWhatsapp } from "@/features/comunicacao/whatsapp";
 
@@ -99,6 +100,10 @@ export const auth = betterAuth({
         window: 15 * 60,
         max: 3,
       },
+      "/admin/telefone/recuperacao/solicitar": {
+        window: 15 * 60,
+        max: 5,
+      },
     },
   },
   socialProviders: {
@@ -176,5 +181,6 @@ export const auth = betterAuth({
     pluginFluxosTelefoneNuu(),
     pluginConfirmacaoEmailCliente(),
     pluginLoginIdentificadorAdmin(),
+    pluginRecuperacaoAdminWhatsapp(),
   ],
 });

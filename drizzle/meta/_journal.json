@@ -267,6 +267,20 @@
       "when": 1788172973717,
       "tag": "0037_tiny_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1788308700763,
+      "tag": "0038_large_lucky_pierre",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788312775295,
+      "tag": "0039_admin_recuperacao_otp",
+      "breakpoints": true
     }
   ]
 }

@@ -4,8 +4,9 @@ import { cache } from "react";
 
 import { Footer } from "@/components/common/footer";
 import { Container } from "@/components/ui/container";
-import { MarqueeBanner } from "@/components/ui/MarqueeBanner";
+import { BarraAvisos } from "@/features/configuracoes-loja/components/store/barra-avisos";
 import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
+import { buscarBarraAvisos } from "@/features/configuracoes-loja/queries/buscar-barra-avisos";
 import { Header } from "@/features/header";
 import { ConteudoPaginaDinamica } from "@/features/paginas-dinamicas/components/store/conteudo-pagina-dinamica";
 import { buscarPaginaPublicadaPorSlug } from "@/features/paginas-dinamicas/queries/buscar-pagina-publicada";
@@ -41,12 +42,15 @@ export async function generateMetadata({
 
 export default async function PaginaDinamicaPublica({ params }: Propriedades) {
   const { slug } = await params;
-  const pagina = await buscarPagina(slug);
+  const [pagina, barraAvisos] = await Promise.all([
+    buscarPagina(slug),
+    buscarBarraAvisos(),
+  ]);
   if (!pagina) notFound();
 
   return (
     <>
-      <MarqueeBanner speed={60} />
+      <BarraAvisos configuracao={barraAvisos} />
       <Header />
       <Container as="main" className="py-10 sm:py-14 lg:py-16">
         <article className="mx-auto max-w-3xl">

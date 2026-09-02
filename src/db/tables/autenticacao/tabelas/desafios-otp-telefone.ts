@@ -36,7 +36,7 @@ export const desafiosOtpTelefoneTable = pgTable(
     index("desafios_otp_telefone_expira_em_idx").on(table.expiraEm),
     check(
       "desafios_otp_telefone_finalidade_check",
-      sql`${table.finalidade} in ('cadastro', 'verificacao', 'recuperacao', 'alteracao_numero')`,
+      sql`${table.finalidade} in ('cadastro', 'verificacao', 'recuperacao', 'admin_recuperacao', 'alteracao_numero')`,
     ),
     check(
       "desafios_otp_telefone_tentativas_check",

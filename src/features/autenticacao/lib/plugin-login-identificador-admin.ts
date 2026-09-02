@@ -9,7 +9,8 @@ import { db } from "@/db/connection";
 import { userTable } from "@/db/schema";
 import { buscarVinculoAdministrativoBasico } from "@/features/autenticacao/queries/autorizacao-admin/buscar-vinculo-administrativo-basico";
 
-import { normalizarWhatsappAdmin } from "./normalizar-whatsapp-admin";
+import { normalizarPhoneNumberAdmin } from "./normalizar-whatsapp-admin";
+import { telefoneAdminVerificadoParaLogin } from "./validar-telefone-login-admin";
 
 const mensagemCredenciaisInvalidas = "Identificador ou senha inválidos.";
 
@@ -41,24 +42,28 @@ export function pluginLoginIdentificadorAdmin() {
         },
         async (contexto) => {
           const email = normalizarEmail(contexto.body.identificador);
-          const whatsapp = email
+          const phoneNumber = email
             ? null
-            : normalizarWhatsappAdmin(contexto.body.identificador);
+            : normalizarPhoneNumberAdmin(contexto.body.identificador);
 
           const usuario = email
             ? await db.query.userTable.findFirst({
                 where: eq(userTable.email, email),
               })
-            : whatsapp
+            : phoneNumber
               ? await db.query.userTable.findFirst({
-                  where: eq(userTable.whatsapp, whatsapp),
+                  where: eq(userTable.phoneNumber, phoneNumber),
                 })
               : null;
 
           const vinculo = usuario
             ? await buscarVinculoAdministrativoBasico(usuario.id)
             : null;
-          if (!usuario || vinculo?.status !== "ativo") {
+          if (
+            !usuario ||
+            vinculo?.status !== "ativo" ||
+            (phoneNumber !== null && !telefoneAdminVerificadoParaLogin(usuario))
+          ) {
             // Mantém custo semelhante ao caminho válido e reduz enumeração por tempo.
             await contexto.context.password.hash(contexto.body.senha);
             throw erroCredenciaisInvalidas();

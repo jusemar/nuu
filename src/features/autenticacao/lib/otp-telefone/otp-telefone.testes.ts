@@ -295,6 +295,73 @@ test("finalidades são isoladas", async () => {
   );
 });
 
+test("OTP administrativo não pode ser consumido como recuperação de cliente", async () => {
+  const caso = cenario();
+  await caso.servico.emitir({ ...entrada, finalidade: "admin_recuperacao" });
+  assert.equal(
+    await caso.servico.confirmar({
+      ...entrada,
+      finalidade: "recuperacao",
+      codigo: "123456",
+    }),
+    "INEXISTENTE",
+  );
+  assert.equal(
+    await caso.servico.confirmar({
+      ...entrada,
+      finalidade: "admin_recuperacao",
+      codigo: "123456",
+    }),
+    "VALIDO",
+  );
+});
+
+test("OTP de cliente não pode ser consumido na recuperação administrativa", async () => {
+  const caso = cenario();
+  await caso.servico.emitir({ ...entrada, finalidade: "recuperacao" });
+  assert.equal(
+    await caso.servico.confirmar({
+      ...entrada,
+      finalidade: "admin_recuperacao",
+      codigo: "123456",
+    }),
+    "INEXISTENTE",
+  );
+});
+
+test("OTP administrativo incorreto não é validado", async () => {
+  const caso = cenario();
+  const entradaAdmin = { ...entrada, finalidade: "admin_recuperacao" as const };
+  await caso.servico.emitir(entradaAdmin);
+  assert.equal(
+    await caso.servico.confirmar({ ...entradaAdmin, codigo: "000000" }),
+    "INVALIDO",
+  );
+});
+
+test("OTP administrativo expirado não é validado", async () => {
+  const caso = cenario();
+  const entradaAdmin = { ...entrada, finalidade: "admin_recuperacao" as const };
+  await caso.servico.emitir(entradaAdmin);
+  caso.avancar(POLITICA_OTP_TELEFONE.validadeSegundos * 1_000 + 1);
+  assert.equal(
+    await caso.servico.confirmar({ ...entradaAdmin, codigo: "123456" }),
+    "EXPIRADO",
+  );
+});
+
+test("recuperação administrativa preserva cooldown", async () => {
+  const caso = cenario();
+  const entradaAdmin = { ...entrada, finalidade: "admin_recuperacao" as const };
+  assert.deepEqual(await caso.servico.emitir(entradaAdmin), {
+    permitido: true,
+  });
+  assert.deepEqual(await caso.servico.emitir(entradaAdmin), {
+    permitido: false,
+    motivo: "REENVIO",
+  });
+});
+
 test("alteração de número chega ao transporte com finalidade sanitizada", async () => {
   const caso = cenario();
   await caso.servico.emitir({ ...entrada, finalidade: "alteracao_numero" });

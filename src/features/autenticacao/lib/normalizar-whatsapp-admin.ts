@@ -24,6 +24,12 @@ export function normalizarWhatsappAdmin(valor: string) {
   return numeroCompleto;
 }
 
+/** Identidade telefônica canônica do Better Auth, sempre em E.164. */
+export function normalizarPhoneNumberAdmin(valor: string) {
+  const whatsapp = normalizarWhatsappAdmin(valor);
+  return whatsapp ? `+${whatsapp}` : null;
+}
+
 export function formatarWhatsappAdmin(valor: string | null | undefined) {
   if (!valor) return "";
 

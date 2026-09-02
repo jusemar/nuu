@@ -1,0 +1,2 @@
+ALTER TABLE "desafios_otp_telefone" DROP CONSTRAINT "desafios_otp_telefone_finalidade_check";--> statement-breakpoint
+ALTER TABLE "desafios_otp_telefone" ADD CONSTRAINT "desafios_otp_telefone_finalidade_check" CHECK ("desafios_otp_telefone"."finalidade" in ('cadastro', 'verificacao', 'recuperacao', 'admin_recuperacao', 'alteracao_numero'));

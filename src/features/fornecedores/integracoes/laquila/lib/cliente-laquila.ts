@@ -57,6 +57,14 @@ type CorpoConsultarSaldoPrecoLaquila = {
   };
 };
 
+type CorpoListarPedidosLaquila = {
+  filtro: {
+    token: string;
+    cnpj_empresa: string;
+    id_pedido: string;
+  };
+};
+
 export type CorpoInserirPedidoLaquila = {
   pedido: {
     cnpj_empresa: string;
@@ -324,6 +332,7 @@ export async function chamarLaquila(
     | CorpoTesteTransportadorasLaquila
     | CorpoConsultarProdutosLaquila
     | CorpoConsultarSaldoPrecoLaquila
+    | CorpoListarPedidosLaquila
     | CorpoInserirPedidoLaquila,
   opcoes: { permitirRetry?: boolean } = {},
 ): Promise<ResultadoChamadaLaquila> {
@@ -450,6 +459,30 @@ export async function inserirPedidoLaquila(
   return chamarLaquila(cliente, METODOS_LAQUILA.inserirPedido, corpo, {
     permitirRetry: false,
   });
+}
+
+/** Consulta um pedido já criado sem repetir automaticamente a leitura. */
+export async function consultarPedidoLaquila({
+  cliente,
+  tokenCliente,
+  idPedido,
+}: {
+  cliente: ClienteLaquila;
+  tokenCliente: string;
+  idPedido: string;
+}) {
+  return chamarLaquila(
+    cliente,
+    METODOS_LAQUILA.listarPedidos,
+    {
+      filtro: {
+        token: tokenCliente,
+        cnpj_empresa: cliente.configuracao.cnpjEmpresa,
+        id_pedido: idPedido,
+      },
+    },
+    { permitirRetry: false },
+  );
 }
 
 export async function testarConexaoTransportadorasLaquila({

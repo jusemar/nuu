@@ -2,6 +2,8 @@ export type CandidatoRecuperacaoAdmin = {
   usuario: { id: string; phoneNumberVerified: boolean } | null;
   administrador: { status: "ativo" | "desativado" } | null;
   contaCredencial: { id: string; password: string | null } | null;
+  /** Um telefone canônico de outro usuário nunca pode ser promovido pelo legado. */
+  conflitoTelefone?: boolean;
 };
 
 type CandidatoRecuperacaoAdminElegivel = {
@@ -18,8 +20,12 @@ export function candidatoElegivelRecuperacaoAdmin({
   usuario,
   administrador,
   contaCredencial,
+  conflitoTelefone = false,
 }: CandidatoRecuperacaoAdmin) {
   return Boolean(
-    usuario && administrador?.status === "ativo" && contaCredencial?.password,
+    usuario &&
+      administrador?.status === "ativo" &&
+      contaCredencial?.password &&
+      !conflitoTelefone,
   );
 }

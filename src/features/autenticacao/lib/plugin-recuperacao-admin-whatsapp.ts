@@ -1,7 +1,7 @@
 import "server-only";
 
 import { APIError, createAuthEndpoint } from "better-auth/api";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { accountTable, sessionTable, userTable } from "@/db/schema";
@@ -41,16 +41,36 @@ function identificadorSanitizado(valor: string) {
   return criarHashIdentificador(valor, obterSegredo()).slice(0, 12);
 }
 
+type OrigemTelefoneRecuperacao = "PHONE_NUMBER" | "WHATSAPP_LEGADO" | "NAO_LOCALIZADO";
+
+type MotivoEventoRecuperacao =
+  | "NAO_ELEGIVEL"
+  | "CONFLITO_TELEFONE"
+  | "RATE_LIMIT"
+  | "FALHA_TRANSPORTE";
+
 function registrarEvento(
-  evento: "EMISSAO_BLOQUEADA" | "OTP_CONFIRMADO" | "REDEFINICAO_CONCLUIDA",
+  evento:
+    | "LOCALIZADO"
+    | "CONFLITO_TELEFONE"
+    | "ELEGIVEL"
+    | "EMISSAO_BLOQUEADA"
+    | "OTP_EMITIDO"
+    | "FALHA_ENVIO"
+    | "OTP_CONFIRMADO"
+    | "REDEFINICAO_CONCLUIDA",
   identificador: string,
-  motivo?: "NAO_ELEGIVEL",
+  dados?: {
+    origem?: OrigemTelefoneRecuperacao;
+    motivo?: MotivoEventoRecuperacao;
+  },
 ) {
   console.info("[autenticacao:admin:recuperacao-whatsapp]", {
     evento,
     finalidade: FINALIDADE_ADMIN,
     identificador,
-    ...(motivo ? { motivo } : {}),
+    ...(dados?.origem ? { origem: dados.origem } : {}),
+    ...(dados?.motivo ? { motivo: dados.motivo } : {}),
   });
 }
 
@@ -65,14 +85,39 @@ function obterServicoOtp() {
 }
 
 async function buscarCandidato(phoneNumber: string) {
-  const usuario = await db.query.userTable.findFirst({
+  const usuarioPorPhoneNumber = await db.query.userTable.findFirst({
     where: eq(userTable.phoneNumber, phoneNumber),
   });
+
+  // `whatsapp` é um caminho de migração exclusivo desta recuperação. O login
+  // administrativo nunca o consulta; após o OTP, a identidade passa a ser o
+  // `phone_number` canônico do Better Auth.
+  const usuarioPorWhatsappLegado = usuarioPorPhoneNumber
+    ? null
+    : await db.query.userTable.findFirst({
+        where: and(
+          eq(userTable.whatsapp, phoneNumber.slice(1)),
+          isNull(userTable.phoneNumber),
+        ),
+      });
+  const usuario = usuarioPorPhoneNumber ?? usuarioPorWhatsappLegado;
+  const origem: OrigemTelefoneRecuperacao = usuarioPorPhoneNumber
+    ? "PHONE_NUMBER"
+    : usuarioPorWhatsappLegado
+      ? "WHATSAPP_LEGADO"
+      : "NAO_LOCALIZADO";
+
   if (!usuario) {
-    return { usuario: null, administrador: null, contaCredencial: null };
+    return {
+      usuario: null,
+      administrador: null,
+      contaCredencial: null,
+      conflitoTelefone: false,
+      origem,
+    };
   }
 
-  const [administrador, contaCredencial] = await Promise.all([
+  const [administrador, contaCredencial, outroUsuarioComTelefone] = await Promise.all([
     db.query.administradoresTable.findFirst({
       columns: { status: true },
       where: eq(administradoresTable.usuarioId, usuario.id),
@@ -84,12 +129,23 @@ async function buscarCandidato(phoneNumber: string) {
         eq(accountTable.providerId, "credential"),
       ),
     }),
+    origem === "WHATSAPP_LEGADO"
+      ? db.query.userTable.findFirst({
+          columns: { id: true },
+          where: and(
+            eq(userTable.phoneNumber, phoneNumber),
+            ne(userTable.id, usuario.id),
+          ),
+        })
+      : Promise.resolve(null),
   ]);
 
   return {
     usuario,
     administrador: administrador ?? null,
     contaCredencial: contaCredencial ?? null,
+    conflitoTelefone: Boolean(outroUsuarioComTelefone),
+    origem,
   };
 }
 
@@ -105,23 +161,57 @@ export function pluginRecuperacaoAdminWhatsapp() {
           if (!phoneNumber) return contexto.json({ mensagem: MENSAGEM_NEUTRA });
 
           const candidato = await buscarCandidato(phoneNumber);
+          const identificador = identificadorSanitizado(phoneNumber);
+          if (candidato.origem !== "NAO_LOCALIZADO") {
+            registrarEvento("LOCALIZADO", identificador, {
+              origem: candidato.origem,
+            });
+          }
+          if (candidato.conflitoTelefone) {
+            registrarEvento("CONFLITO_TELEFONE", identificador, {
+              origem: candidato.origem,
+              motivo: "CONFLITO_TELEFONE",
+            });
+          }
           if (!candidatoElegivelRecuperacaoAdmin(candidato)) {
             registrarEvento(
               "EMISSAO_BLOQUEADA",
-              identificadorSanitizado(phoneNumber),
-              "NAO_ELEGIVEL",
+              identificador,
+              {
+                origem: candidato.origem,
+                motivo: candidato.conflitoTelefone
+                  ? "CONFLITO_TELEFONE"
+                  : "NAO_ELEGIVEL",
+              },
             );
             return contexto.json({ mensagem: MENSAGEM_NEUTRA });
           }
 
           try {
-            await obterServicoOtp().emitir({
+            registrarEvento("ELEGIVEL", identificador, {
+              origem: candidato.origem,
+            });
+            const emissao = await obterServicoOtp().emitir({
               telefone: phoneNumber,
               finalidade: FINALIDADE_ADMIN,
               ip: obterIpRequisicaoOtp(contexto.request),
             });
+            if (emissao.permitido) {
+              registrarEvento("OTP_EMITIDO", identificador, {
+                origem: candidato.origem,
+              });
+            } else {
+              registrarEvento("EMISSAO_BLOQUEADA", identificador, {
+                origem: candidato.origem,
+                motivo: "RATE_LIMIT",
+              });
+            }
           } catch {
             // A resposta externa permanece neutra inclusive em falha de transporte.
+            registrarEvento("FALHA_ENVIO", identificador, {
+              origem: candidato.origem,
+              motivo: "FALHA_TRANSPORTE",
+            });
           }
           return contexto.json({ mensagem: MENSAGEM_NEUTRA });
         },
@@ -170,6 +260,22 @@ export function pluginRecuperacaoAdminWhatsapp() {
               .limit(1);
             if (!administradorAtivo) throw new Error("ADMIN_INATIVO");
 
+            // Revalida a propriedade enquanto a promoção está bloqueada. Assim,
+            // um telefone legado só é promovido se ainda for do próprio admin e
+            // não tiver sido vinculado canonicamente a outra conta em paralelo.
+            const [conflitoTelefone] = await tx
+              .select({ id: userTable.id })
+              .from(userTable)
+              .where(
+                and(
+                  eq(userTable.phoneNumber, phoneNumber),
+                  ne(userTable.id, candidato.usuario.id),
+                ),
+              )
+              .for("update")
+              .limit(1);
+            if (conflitoTelefone) throw new Error("TELEFONE_EM_CONFLITO");
+
             const [contaAtualizada] = await tx
               .update(accountTable)
               .set({ password: senhaHash, updatedAt: new Date() })
@@ -185,11 +291,21 @@ export function pluginRecuperacaoAdminWhatsapp() {
 
             const [usuarioAtualizado] = await tx
               .update(userTable)
-              .set({ phoneNumberVerified: true, updatedAt: new Date() })
+              .set({
+                phoneNumber,
+                phoneNumberVerified: true,
+                updatedAt: new Date(),
+              })
               .where(
                 and(
                   eq(userTable.id, candidato.usuario.id),
-                  eq(userTable.phoneNumber, phoneNumber),
+                  or(
+                    eq(userTable.phoneNumber, phoneNumber),
+                    and(
+                      isNull(userTable.phoneNumber),
+                      eq(userTable.whatsapp, phoneNumber.slice(1)),
+                    ),
+                  ),
                 ),
               )
               .returning({ id: userTable.id });

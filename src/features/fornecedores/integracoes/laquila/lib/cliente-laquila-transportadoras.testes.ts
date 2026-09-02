@@ -5,6 +5,8 @@ import {
   consultarTransportadorasLaquila,
   criarClienteLaquila,
   inserirPedidoLaquila,
+  mascararUrlLaquila,
+  montarUrlLaquila,
   normalizarTransportadorasLaquila,
 } from "./cliente-laquila";
 
@@ -19,6 +21,53 @@ const configuracao = {
 };
 
 describe("transportadoras Laquila", () => {
+  it("monta métodos Laquila sem preservar chaves literais ou codificadas", () => {
+    const bases = [
+      "https://api-dropshipping.laquila.com.br/token-rota/{metodo}",
+      "https://api-dropshipping.laquila.com.br/token-rota/%7Bmetodo%7D",
+    ];
+
+    for (const base of bases) {
+      for (const metodo of ["00002", "00006", "00007", "00008"]) {
+        const url = montarUrlLaquila(base, metodo);
+
+        assert.equal(new URL(url).pathname, `/token-rota/${metodo}`);
+        assert.doesNotMatch(url, /\{|\}|%7B|%7D/iu);
+      }
+    }
+  });
+
+  it("normaliza método que já estava incorretamente entre chaves", () => {
+    const url = montarUrlLaquila(
+      "https://api-dropshipping.laquila.com.br/token-rota/%7B00007%7D",
+      "00007",
+    );
+
+    assert.equal(new URL(url).pathname, "/token-rota/00007");
+  });
+
+  it("mascara credencial em URL normal e remove parâmetros", () => {
+    const mascarada = mascararUrlLaquila(
+      "https://api-dropshipping.laquila.com.br/credencial-secreta/00007?token=vazamento",
+    );
+
+    assert.doesNotMatch(mascarada, /credencial-secreta|vazamento/u);
+    assert.match(mascarada, /\/00007$/u);
+  });
+
+  it("mascara credencial mesmo com método malformado ou URL inválida", () => {
+    const malformada = mascararUrlLaquila(
+      "https://api-dropshipping.laquila.com.br/credencial-secreta/%7B00007%7D",
+    );
+
+    assert.doesNotMatch(malformada, /credencial-secreta|%7B|%7D/iu);
+    assert.match(malformada, /\/00007$/u);
+    assert.equal(
+      mascararUrlLaquila("url-inválida-com-credencial-secreta"),
+      "[url-laquila-mascarada]",
+    );
+  });
+
   it("00002 não repete automaticamente uma falha após envio potencial", async () => {
     const fetchOriginal = globalThis.fetch;
     let chamadas = 0;

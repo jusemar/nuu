@@ -172,35 +172,67 @@ export function criarClienteLaquila(
   };
 }
 
-function montarUrlLaquila(urlBase: string, metodo: string) {
-  const urlNormalizada = urlBase.trim();
-  const urlComMetodo = urlNormalizada
-    .replace(/\{m[eé]todo\}/gi, metodo)
-    .replace(/M[ÉE]TODO/gi, metodo);
-
-  if (urlComMetodo !== urlNormalizada || /\/\d{5}\/?$/u.test(urlComMetodo)) {
-    return urlComMetodo;
+export function montarUrlLaquila(urlBase: string, metodo: string) {
+  if (!/^\d{5}$/u.test(metodo)) {
+    throw new Error("Método Laquila inválido.");
   }
 
-  return `${urlComMetodo.replace(/\/+$/u, "")}/${metodo}`;
+  const url = new URL(urlBase.trim());
+  const segmentos = url.pathname.split("/").filter(Boolean);
+  const ultimoIndice = segmentos.length - 1;
+  const ultimoSegmento = segmentos[ultimoIndice];
+  let ultimoDecodificado = ultimoSegmento ?? "";
+
+  try {
+    ultimoDecodificado = decodeURIComponent(ultimoDecodificado);
+  } catch {
+    // Segmento inválido não é reutilizado como método; o método correto é
+    // acrescentado abaixo sem propagar chaves ou escapes parciais.
+  }
+
+  const possuiPlaceholderCompleto =
+    /^\{m[eé]todo\}$/iu.test(ultimoDecodificado) ||
+    /^\{\d{5}\}$/u.test(ultimoDecodificado);
+  const possuiMetodoLiteral = /^\d{5}$/u.test(ultimoDecodificado);
+
+  if (possuiPlaceholderCompleto || possuiMetodoLiteral) {
+    segmentos[ultimoIndice] = metodo;
+  } else {
+    segmentos.push(metodo);
+  }
+
+  url.pathname = `/${segmentos.join("/")}`;
+  return url.toString();
 }
 
-function mascararUrlLaquila(url: string) {
+export function mascararUrlLaquila(url: string) {
   try {
     const urlApi = new URL(url);
     const partes = urlApi.pathname.split("/").filter(Boolean);
-    const indiceMetodo = partes.findIndex((parte) => /^\d{5}$/u.test(parte));
+    const ultimoSegmento = partes.at(-1) ?? "";
+    let ultimoDecodificado = ultimoSegmento;
 
-    if (indiceMetodo > 0) {
-      partes[indiceMetodo - 1] = "[token-rota]";
-      urlApi.pathname = `/${partes.join("/")}`;
-      return urlApi.toString();
+    try {
+      ultimoDecodificado = decodeURIComponent(ultimoSegmento);
+    } catch {
+      // Qualquer segmento impossível de decodificar é sensível por padrão.
     }
-  } catch {
-    return url;
-  }
 
-  return url;
+    const metodo = ultimoDecodificado.match(/\d{5}/u)?.[0];
+    urlApi.pathname = partes.length
+      ? `/${partes
+          .map((_, indice) =>
+            indice === partes.length - 1 && metodo ? metodo : "[removido]",
+          )
+          .join("/")}`
+      : "/";
+    urlApi.search = "";
+    urlApi.hash = "";
+
+    return urlApi.toString();
+  } catch {
+    return "[url-laquila-mascarada]";
+  }
 }
 
 function obterUrlBaseLaquila(configuracao: ConfiguracaoLaquilaSegura) {

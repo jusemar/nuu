@@ -1225,19 +1225,13 @@ function ModalEdicaoRascunhos({
   /** Recebe, de uma vez, tudo o que o gestor alterou nesta sessão de edição. */
   aoAplicarLote: (lote: LoteEdicaoConciliacaoFornecedor) => void;
 }) {
-  const [aba, setAba] = useState<
-    "preco" | "estoque" | "comercial" | "classificacao"
-  >("preco");
+  const [aba, setAba] = useState<"preco" | "comercial" | "classificacao">(
+    "preco",
+  );
   const [estoqueInput, setEstoqueInput] = useState("0");
   const [operacaoPreco, setOperacaoPreco] =
     useState<OperacaoAjustePrecoRascunhoFornecedor>("aumentar_percentual");
   const [valorPreco, setValorPreco] = useState("10");
-  const [campoComercial, setCampoComercial] = useState<
-    "modalidade_comercial" | "prazo_entrega" | "secoes_loja"
-  >("modalidade_comercial");
-  const [campoClassificacao, setCampoClassificacao] = useState<
-    "categoria" | "marca"
-  >("categoria");
   const [categoriaId, setCategoriaId] = useState("");
   const [marcaId, setMarcaId] = useState("");
   const [secoesLoja, setSecoesLoja] = useState<string[]>(["general"]);
@@ -1272,21 +1266,16 @@ function ModalEdicaoRascunhos({
       setAba("preco");
     } else if (possuiPendencia("categoria")) {
       setAba("classificacao");
-      setCampoClassificacao("categoria");
     } else if (possuiPendencia("marca")) {
       setAba("classificacao");
-      setCampoClassificacao("marca");
     } else if (possuiPendencia("preço")) {
       setAba("preco");
-    } else if (possuiPendencia("seção")) {
+    } else if (
+      possuiPendencia("seção") ||
+      possuiPendencia("modalidade") ||
+      possuiPendencia("prazo")
+    ) {
       setAba("comercial");
-      setCampoComercial("secoes_loja");
-    } else if (possuiPendencia("modalidade")) {
-      setAba("comercial");
-      setCampoComercial("modalidade_comercial");
-    } else if (possuiPendencia("prazo")) {
-      setAba("comercial");
-      setCampoComercial("prazo_entrega");
     }
 
     setCategoriaId(itemIndividual?.camposRascunho?.categoriaId ?? "");
@@ -1423,10 +1412,8 @@ function ModalEdicaoRascunhos({
           value={aba}
           onValueChange={(valor) => setAba(valor as typeof aba)}
         >
-          {/* Quatro abas para os dois caminhos. O que muda entre "criar" e
-              "atualizar" é o que a publicação faz com cada campo, não o que o
-              gestor pode revisar aqui. Grade de 2 colunas no celular para os
-              rótulos não espremerem. */}
+          {/* As abas agrupam decisões, sem esconder campos relacionados. O que
+              muda entre "criar" e "atualizar" é a publicação, não a revisão. */}
           {itens.length > 1 ? (
             <p className="mb-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
               Os {itens.length} itens podem ter valores diferentes entre si.
@@ -1438,9 +1425,8 @@ function ModalEdicaoRascunhos({
             </p>
           ) : null}
 
-          <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+          <TabsList className="grid h-auto w-full grid-cols-3">
             <TabsTrigger value="preco">Preço</TabsTrigger>
-            <TabsTrigger value="estoque">Estoque</TabsTrigger>
             <TabsTrigger value="classificacao">Classificação</TabsTrigger>
             <TabsTrigger value="comercial">Comercial</TabsTrigger>
           </TabsList>
@@ -1514,48 +1500,8 @@ function ModalEdicaoRascunhos({
             </div>
           </TabsContent>
 
-          <TabsContent value="estoque" className="space-y-4 pt-2">
-            <label className="block space-y-1.5 text-sm">
-              <span className="font-medium text-slate-700">
-                Estoque a aplicar
-              </span>
-              <Input
-                value={estoqueInput}
-                onChange={(evento) => {
-                  setEstoqueInput(evento.target.value);
-                  marcarTocado("estoque");
-                }}
-                inputMode="numeric"
-                placeholder="0"
-              />
-            </label>
-            <p className="text-xs text-slate-500">
-              Este valor substitui o estoque recebido do fornecedor para o item
-              selecionado. Ele será aplicado ao produto real quando a
-              atualização for aprovada e publicada.
-            </p>
-          </TabsContent>
-
           <TabsContent value="comercial" className="space-y-4 pt-2">
-            <label className="block space-y-1.5 text-sm">
-              <span className="font-medium text-slate-700">Campo</span>
-              <select
-                value={campoComercial}
-                onChange={(evento) =>
-                  setCampoComercial(
-                    evento.target.value as typeof campoComercial,
-                  )
-                }
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
-              >
-                <option value="modalidade_comercial">
-                  Modalidade comercial
-                </option>
-                <option value="prazo_entrega">Prazo de entrega</option>
-                <option value="secoes_loja">Seções da Loja</option>
-              </select>
-            </label>
-            {campoComercial === "modalidade_comercial" ? (
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1.5 text-sm">
                 <span className="font-medium text-slate-700">Modalidade</span>
                 <select
@@ -1574,8 +1520,7 @@ function ModalEdicaoRascunhos({
                   <option value="order_basis">Sob encomenda</option>
                 </select>
               </label>
-            ) : null}
-            {campoComercial === "prazo_entrega" ? (
+
               <label className="block space-y-1.5 text-sm">
                 <span className="font-medium text-slate-700">
                   Prazo de entrega
@@ -1590,9 +1535,26 @@ function ModalEdicaoRascunhos({
                   maxLength={160}
                 />
               </label>
-            ) : null}
-            {campoComercial === "secoes_loja" ? (
-              <fieldset className="space-y-2">
+
+              <label className="block space-y-1.5 text-sm">
+                <span className="font-medium text-slate-700">
+                  Estoque a aplicar
+                </span>
+                <Input
+                  value={estoqueInput}
+                  onChange={(evento) => {
+                    setEstoqueInput(evento.target.value);
+                    marcarTocado("estoque");
+                  }}
+                  inputMode="numeric"
+                  placeholder="0"
+                />
+                <span className="block text-xs text-slate-500">
+                  Substitui o estoque recebido para o item selecionado.
+                </span>
+              </label>
+
+              <fieldset className="space-y-2 sm:col-span-2">
                 <legend className="text-sm font-medium text-slate-700">
                   Seções da Loja
                 </legend>
@@ -1618,26 +1580,11 @@ function ModalEdicaoRascunhos({
                   ))}
                 </div>
               </fieldset>
-            ) : null}
+            </div>
           </TabsContent>
 
-          <TabsContent value="classificacao" className="space-y-4 pt-2">
-            <label className="block space-y-1.5 text-sm">
-              <span className="font-medium text-slate-700">Campo</span>
-              <select
-                value={campoClassificacao}
-                onChange={(evento) =>
-                  setCampoClassificacao(
-                    evento.target.value as typeof campoClassificacao,
-                  )
-                }
-                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3"
-              >
-                <option value="categoria">Categoria</option>
-                <option value="marca">Marca</option>
-              </select>
-            </label>
-            {campoClassificacao === "categoria" ? (
+          <TabsContent value="classificacao" className="pt-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1.5 text-sm">
                 <span className="font-medium text-slate-700">Categoria</span>
                 <select
@@ -1656,9 +1603,14 @@ function ModalEdicaoRascunhos({
                   ))}
                 </select>
               </label>
-            ) : (
+
               <label className="block space-y-1.5 text-sm">
-                <span className="font-medium text-slate-700">Marca</span>
+                <span className="flex items-center gap-2 font-medium text-slate-700">
+                  Marca
+                  <span className="text-xs font-normal text-amber-700">
+                    Obrigatória
+                  </span>
+                </span>
                 <select
                   value={marcaId}
                   onChange={(evento) => {
@@ -1675,7 +1627,7 @@ function ModalEdicaoRascunhos({
                   ))}
                 </select>
               </label>
-            )}
+            </div>
           </TabsContent>
         </Tabs>
 

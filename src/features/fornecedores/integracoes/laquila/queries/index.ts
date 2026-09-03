@@ -20,6 +20,12 @@ export {
   type ProdutosImportacaoApiLaquila,
 } from "./listar-produtos-importacao-api-laquila";
 export {
+  type FiltrosProdutosImportacaoLaquila,
+  listarProdutosImportacaoApiLaquilaPaginado,
+  type OrdenacaoProdutosLaquila,
+  ORDENACOES_PRODUTOS_LAQUILA,
+} from "./listar-produtos-importacao-api-laquila-paginado";
+export {
   listarProdutosRecebidosApiLaquila,
   obterProgressoRecebidosApiLaquila,
   type ProgressoRecebidosApiLaquila,

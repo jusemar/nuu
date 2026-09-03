@@ -16,7 +16,8 @@ import {
   Search,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,13 +67,14 @@ import {
 import { CheckboxFornecedor } from "@/features/fornecedores/components/admin/compartilhados/checkbox-fornecedor";
 import { PainelFiltrosResponsivo } from "@/features/fornecedores/components/admin/compartilhados/painel-filtros-responsivo";
 import { CHAVE_PRODUTOS_SELECIONADOS_MAPEAMENTO_LAQUILA } from "@/features/fornecedores/integracoes/laquila/constants";
+import type { PaginacaoFornecedores } from "@/features/fornecedores/lib/paginacao-fornecedores";
 
 import type { ProdutoApiStagingLaquilaCatalogo } from "../../queries";
+import type { FiltrosProdutosImportacaoLaquila } from "../../queries";
 import type { ProdutoLaquilaMock } from "../../types/produto-laquila-mock.types";
 import type { TriagemProdutoRecebidoLaquila } from "../../types/produto-laquila-mock.types";
 
-const ITENS_POR_PAGINA = 10;
-const OPCOES_ITENS_POR_PAGINA = [10, 20, 50, 100] as const;
+const OPCOES_ITENS_POR_PAGINA = [25, 50, 100] as const;
 const IMAGEM_PLACEHOLDER = "/produto-sem-foto.webp";
 const CHAVE_IGNORADOS_RECEBIDOS_LAQUILA = "laquila:recebidos-ignorados";
 
@@ -191,30 +193,6 @@ function obterTextoProduto(
   return (
     lerTextoBruto(produto.dadosBrutosJson ?? {}, chaves) || fallback.trim()
   );
-}
-
-function correspondeFiltro(valor: string, filtro: string) {
-  if (filtro === "todos") return true;
-
-  return normalizarTexto(valor) === normalizarTexto(filtro);
-}
-
-function extrairOpcoesFiltro(
-  produtos: ProdutoComDadosBrutos[],
-  chaves: readonly string[],
-  fallback: (produto: ProdutoComDadosBrutos) => string = () => "",
-) {
-  return Array.from(
-    new Set(
-      produtos
-        .map((produto) => {
-          const valor = lerTextoBruto(produto.dadosBrutosJson ?? {}, chaves);
-          return valor || fallback(produto);
-        })
-        .map((valor) => valor.trim())
-        .filter((valor) => valor.length > 0),
-    ),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
 function formatarSituacaoApi(valor: string) {
@@ -440,76 +418,6 @@ function formatarValorPayload(campo: string, valor: unknown) {
   }
 
   return <span className="break-words">{String(valor)}</span>;
-}
-
-function normalizarTexto(valor: string) {
-  return valor
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function filtrarProdutos({
-  produtos,
-  busca,
-  macroGrupo,
-  grupo,
-  subgrupo,
-  ncm,
-  triagem,
-  triagens,
-}: {
-  produtos: ProdutoLaquilaMock[];
-  busca: string;
-  macroGrupo: string;
-  grupo: string;
-  subgrupo: string;
-  ncm: string;
-  triagem: string;
-  triagens: Record<string, DecisaoFluxoProdutoLaquila>;
-}) {
-  const buscaNormalizada = normalizarTexto(busca.trim());
-
-  return produtos.filter((produto) => {
-    const descricao = obterTextoProduto(produto, ["descricao"], produto.nome);
-    const codigoFornecedor = obterTextoProduto(
-      produto,
-      ["cd_item"],
-      produto.codigo,
-    );
-    const macroGrupoProduto =
-      obterTextoProduto(produto, ["ds_ggrupo"]) || produto.grupo;
-    const grupoProduto =
-      obterTextoProduto(produto, ["ds_grupo"]) || produto.grupo;
-    const subgrupoProduto =
-      obterTextoProduto(produto, ["ds_sgrupo"]) || produto.categoria;
-    const ncmProduto = obterTextoProduto(produto, ["NCM", "ncm"], produto.ncm);
-    const estadoTriagem = obterTriagemProduto(triagens, produto);
-
-    const correspondeBusca =
-      !buscaNormalizada ||
-      normalizarTexto(`${descricao} ${codigoFornecedor}`).includes(
-        buscaNormalizada,
-      );
-
-    const correspondeMacroGrupo = correspondeFiltro(
-      macroGrupoProduto,
-      macroGrupo,
-    );
-    const correspondeGrupo = correspondeFiltro(grupoProduto, grupo);
-    const correspondeSubgrupo = correspondeFiltro(subgrupoProduto, subgrupo);
-    const correspondeNcm = correspondeFiltro(ncmProduto, ncm);
-    const correspondeTriagem = triagem === "todos" || estadoTriagem === triagem;
-
-    return (
-      correspondeBusca &&
-      correspondeMacroGrupo &&
-      correspondeGrupo &&
-      correspondeSubgrupo &&
-      correspondeNcm &&
-      correspondeTriagem
-    );
-  });
 }
 
 function ResumoCard({
@@ -870,6 +778,9 @@ type PreviaProdutosLaquilaMockProps = {
   avisoRecebidos?: string;
   /** Execução dona destes dados. Todo link daqui em diante a carrega. */
   importacaoId: string;
+  filtrosServidor: FiltrosProdutosImportacaoLaquila;
+  opcoesFiltros: { grupos: string[]; subgrupos: string[]; marcas: string[] };
+  paginacaoServidor: PaginacaoFornecedores;
 };
 
 type DadosRecebidosLaquila = {
@@ -915,7 +826,13 @@ export function PreviaProdutosLaquilaMock({
   origemDados,
   avisoRecebidos,
   importacaoId,
+  filtrosServidor,
+  opcoesFiltros,
+  paginacaoServidor,
 }: PreviaProdutosLaquilaMockProps) {
+  const router = useRouter();
+  const caminho = usePathname();
+  const parametrosAtuais = useSearchParams();
   const [dadosRecebidos, setDadosRecebidos] = useState<DadosRecebidosLaquila>(
     () =>
       normalizarDadosRecebidosLaquila({
@@ -931,12 +848,7 @@ export function PreviaProdutosLaquilaMock({
         avisoRecebidos,
       }),
   );
-  const [busca, setBusca] = useState("");
-  const [macroGrupo, setMacroGrupo] = useState("todos");
-  const [grupo, setGrupo] = useState("todos");
-  const [subgrupo, setSubgrupo] = useState("todos");
-  const [ncm, setNcm] = useState("todos");
-  const [triagem, setTriagem] = useState("todos");
+  const [busca, setBusca] = useState(filtrosServidor.busca ?? "");
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [triagens, setTriagens] = useState<
     Record<string, DecisaoFluxoProdutoLaquila>
@@ -947,72 +859,15 @@ export function PreviaProdutosLaquilaMock({
   const [produtoImagem, setProdutoImagem] = useState<ProdutoLaquilaMock | null>(
     null,
   );
-  const [paginaAtual, setPaginaAtual] = useState(1);
-  const [itensPorPagina, setItensPorPagina] = useState(ITENS_POR_PAGINA);
   const produtos = dadosRecebidos.produtos;
-
-  const opcoesMacroGrupo = useMemo(
-    () =>
-      extrairOpcoesFiltro(produtos, ["ds_ggrupo"], (produto) =>
-        obterTextoProduto(produto, ["grupo"], "Sem macro grupo"),
-      ),
-    [produtos],
-  );
-
-  const opcoesGrupo = useMemo(
-    () =>
-      extrairOpcoesFiltro(produtos, ["ds_grupo"], (produto) =>
-        obterTextoProduto(produto, ["grupo"], "Sem grupo"),
-      ),
-    [produtos],
-  );
-
-  const opcoesSubgrupo = useMemo(
-    () =>
-      extrairOpcoesFiltro(produtos, ["ds_sgrupo"], (produto) =>
-        obterTextoProduto(produto, ["categoria"], "Sem subgrupo"),
-      ),
-    [produtos],
-  );
-
-  const opcoesNcm = useMemo(
-    () =>
-      extrairOpcoesFiltro(produtos, ["NCM", "ncm"], (produto) =>
-        obterTextoProduto(produto, ["ncm"], "-"),
-      ),
-    [produtos],
-  );
-
-  const produtosFiltrados = useMemo(
-    () =>
-      filtrarProdutos({
-        produtos,
-        busca,
-        macroGrupo,
-        grupo,
-        subgrupo,
-        ncm,
-        triagem,
-        triagens,
-      }),
-    [busca, macroGrupo, grupo, ncm, produtos, subgrupo, triagem, triagens],
-  );
-
-  const totalPaginas = Math.max(
-    1,
-    Math.ceil(produtosFiltrados.length / itensPorPagina),
-  );
-  const paginaAtualSegura = Math.min(paginaAtual, totalPaginas);
-  const inicioPagina = (paginaAtualSegura - 1) * itensPorPagina;
-  const produtosVisiveis = produtosFiltrados.slice(
-    inicioPagina,
-    inicioPagina + itensPorPagina,
-  );
+  const produtosVisiveis = produtos;
+  const paginaAtualSegura = paginacaoServidor.pagina;
+  const totalPaginas = paginacaoServidor.totalPaginas;
   const intervaloInicial =
-    produtosFiltrados.length === 0 ? 0 : inicioPagina + 1;
+    paginacaoServidor.total === 0 ? 0 : paginacaoServidor.offset + 1;
   const intervaloFinal = Math.min(
-    inicioPagina + itensPorPagina,
-    produtosFiltrados.length,
+    paginacaoServidor.offset + produtos.length,
+    paginacaoServidor.total,
   );
   const todosVisiveisSelecionados =
     produtosVisiveis.length > 0 &&
@@ -1040,27 +895,34 @@ export function PreviaProdutosLaquilaMock({
   ).length;
 
   const totais = {
-    encontrados: produtos.length,
+    encontrados: paginacaoServidor.total,
     selecionados: totalSelecionadosFluxo,
     ignorados: totalIgnoradosFluxo,
     novos: totalNovos,
     publicados: totalPublicados,
     atualizacoes: totalAtualizacoes,
   };
-  const filtrosAtivos =
-    busca.trim().length > 0 ||
-    macroGrupo !== "todos" ||
-    grupo !== "todos" ||
-    subgrupo !== "todos" ||
-    ncm !== "todos" ||
-    triagem !== "todos";
+  const filtrosAtivos = Boolean(
+    filtrosServidor.busca ||
+      filtrosServidor.grupo ||
+      filtrosServidor.subgrupo ||
+      filtrosServidor.marca ||
+      filtrosServidor.situacao ||
+      filtrosServidor.precoMinimo != null ||
+      filtrosServidor.precoMaximo != null ||
+      (filtrosServidor.estoque && filtrosServidor.estoque !== "todos"),
+  );
   const quantidadeFiltrosAtivos = [
-    busca.trim(),
-    macroGrupo !== "todos" ? macroGrupo : "",
-    grupo !== "todos" ? grupo : "",
-    subgrupo !== "todos" ? subgrupo : "",
-    ncm !== "todos" ? ncm : "",
-    triagem !== "todos" ? triagem : "",
+    filtrosServidor.busca,
+    filtrosServidor.grupo,
+    filtrosServidor.subgrupo,
+    filtrosServidor.marca,
+    filtrosServidor.situacao,
+    filtrosServidor.precoMinimo != null ? "min" : "",
+    filtrosServidor.precoMaximo != null ? "max" : "",
+    filtrosServidor.estoque && filtrosServidor.estoque !== "todos"
+      ? filtrosServidor.estoque
+      : "",
   ].filter(Boolean).length;
   const consultadoEmFormatado = formatarHorarioCurto(
     dadosRecebidos.consultadoEm,
@@ -1141,6 +1003,30 @@ export function PreviaProdutosLaquilaMock({
     origemDados,
     avisoRecebidos,
   ]);
+
+  useEffect(() => {
+    setBusca(filtrosServidor.busca ?? "");
+  }, [filtrosServidor.busca]);
+
+  function navegarComFiltros(
+    alteracoes: Record<string, string | number | null | undefined>,
+  ) {
+    const parametros = new URLSearchParams(parametrosAtuais.toString());
+    Object.entries(alteracoes).forEach(([chave, valor]) => {
+      if (
+        valor === null ||
+        valor === undefined ||
+        valor === "" ||
+        valor === "todos"
+      ) {
+        parametros.delete(chave);
+      } else {
+        parametros.set(chave, String(valor));
+      }
+    });
+    if (!("pagina" in alteracoes)) parametros.delete("pagina");
+    router.push(`${caminho}?${parametros.toString()}`);
+  }
 
   function alternarSelecao(id: string) {
     setSelecionados((atuais) =>
@@ -1270,16 +1156,11 @@ export function PreviaProdutosLaquilaMock({
 
   function limparFiltros() {
     setBusca("");
-    setMacroGrupo("todos");
-    setGrupo("todos");
-    setSubgrupo("todos");
-    setNcm("todos");
-    setTriagem("todos");
-    setPaginaAtual(1);
+    router.push(caminho);
   }
 
   function irParaPagina(pagina: number) {
-    setPaginaAtual(Math.min(Math.max(pagina, 1), totalPaginas));
+    navegarComFiltros({ pagina: Math.min(Math.max(pagina, 1), totalPaginas) });
   }
 
   return (
@@ -1404,19 +1285,30 @@ export function PreviaProdutosLaquilaMock({
 
       <PainelFiltrosResponsivo quantidadeAtivos={quantidadeFiltrosAtivos}>
         <div className="flex flex-col gap-3 border-t border-slate-100 p-3 sm:p-4 md:border-t-0">
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <form
+            className="flex flex-col gap-3 sm:flex-row"
+            onSubmit={(evento) => {
+              evento.preventDefault();
+              navegarComFiltros({ busca });
+            }}
+          >
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={busca}
-                onChange={(evento) => {
-                  setBusca(evento.target.value);
-                  setPaginaAtual(1);
-                }}
-                placeholder="Buscar por descrição ou código"
+                onChange={(evento) => setBusca(evento.target.value)}
+                placeholder="Buscar por nome, código Laquila ou NCM"
                 className="pl-9"
               />
             </div>
+
+            <Button
+              type="submit"
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              Buscar
+            </Button>
 
             <Button
               type="button"
@@ -1427,42 +1319,33 @@ export function PreviaProdutosLaquilaMock({
             >
               Limpar filtros
             </Button>
-          </div>
+          </form>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <Select
-              value={macroGrupo}
-              onValueChange={(valor) => {
-                setMacroGrupo(valor);
-                setPaginaAtual(1);
-              }}
+              value={filtrosServidor.estoque ?? "todos"}
+              onValueChange={(valor) => navegarComFiltros({ estoque: valor })}
             >
               <SelectTrigger className="w-full bg-white">
-                <SelectValue placeholder="Macro grupo" />
+                <SelectValue placeholder="Estoque" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os macro grupos</SelectItem>
-                {opcoesMacroGrupo.map((opcao) => (
-                  <SelectItem key={opcao} value={opcao}>
-                    {opcao}
-                  </SelectItem>
-                ))}
+                <SelectItem value="todos">Todo estoque</SelectItem>
+                <SelectItem value="com">Com estoque</SelectItem>
+                <SelectItem value="sem">Sem estoque</SelectItem>
               </SelectContent>
             </Select>
 
             <Select
-              value={grupo}
-              onValueChange={(valor) => {
-                setGrupo(valor);
-                setPaginaAtual(1);
-              }}
+              value={filtrosServidor.grupo || "todos"}
+              onValueChange={(valor) => navegarComFiltros({ grupo: valor })}
             >
               <SelectTrigger className="w-full bg-white">
                 <SelectValue placeholder="Grupo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos grupos</SelectItem>
-                {opcoesGrupo.map((opcao) => (
+                {opcoesFiltros.grupos.map((opcao) => (
                   <SelectItem key={opcao} value={opcao}>
                     {opcao}
                   </SelectItem>
@@ -1471,18 +1354,15 @@ export function PreviaProdutosLaquilaMock({
             </Select>
 
             <Select
-              value={subgrupo}
-              onValueChange={(valor) => {
-                setSubgrupo(valor);
-                setPaginaAtual(1);
-              }}
+              value={filtrosServidor.subgrupo || "todos"}
+              onValueChange={(valor) => navegarComFiltros({ subgrupo: valor })}
             >
               <SelectTrigger className="w-full bg-white">
                 <SelectValue placeholder="Subgrupo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os subgrupos</SelectItem>
-                {opcoesSubgrupo.map((opcao) => (
+                {opcoesFiltros.subgrupos.map((opcao) => (
                   <SelectItem key={opcao} value={opcao}>
                     {opcao}
                   </SelectItem>
@@ -1491,18 +1371,15 @@ export function PreviaProdutosLaquilaMock({
             </Select>
 
             <Select
-              value={ncm}
-              onValueChange={(valor) => {
-                setNcm(valor);
-                setPaginaAtual(1);
-              }}
+              value={filtrosServidor.marca || "todos"}
+              onValueChange={(valor) => navegarComFiltros({ marca: valor })}
             >
               <SelectTrigger className="w-full bg-white">
-                <SelectValue placeholder="NCM" />
+                <SelectValue placeholder="Marca" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os NCMs</SelectItem>
-                {opcoesNcm.map((opcao) => (
+                <SelectItem value="todos">Todas as marcas</SelectItem>
+                {opcoesFiltros.marcas.map((opcao) => (
                   <SelectItem key={opcao} value={opcao}>
                     {opcao}
                   </SelectItem>
@@ -1511,26 +1388,83 @@ export function PreviaProdutosLaquilaMock({
             </Select>
 
             <Select
-              value={triagem}
-              onValueChange={(valor) => {
-                setTriagem(valor);
-                setPaginaAtual(1);
-              }}
+              value={filtrosServidor.situacao || "todos"}
+              onValueChange={(valor) => navegarComFiltros({ situacao: valor })}
             >
               <SelectTrigger className="w-full bg-white">
                 <SelectValue placeholder="Triagem" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="todos">Todas as situações</SelectItem>
                 <SelectItem value="novo">Novo</SelectItem>
-                <SelectItem value="ja_publicado">Já publicado</SelectItem>
-                <SelectItem value="atualizacao_disponivel">
-                  Atualização disponível
-                </SelectItem>
+                <SelectItem value="vinculado">Vinculado</SelectItem>
+                <SelectItem value="atencao">Atenção</SelectItem>
                 <SelectItem value="ignorado">Ignorado</SelectItem>
               </SelectContent>
             </Select>
+
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={filtrosServidor.precoMinimo ?? ""}
+              placeholder="Preço mínimo"
+              onBlur={(evento) =>
+                navegarComFiltros({ precoMinimo: evento.target.value })
+              }
+            />
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={filtrosServidor.precoMaximo ?? ""}
+              placeholder="Preço máximo"
+              onBlur={(evento) =>
+                navegarComFiltros({ precoMaximo: evento.target.value })
+              }
+            />
+
+            <Select
+              value={filtrosServidor.ordem || "recentes"}
+              onValueChange={(valor) => navegarComFiltros({ ordem: valor })}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recentes">Mais recentes</SelectItem>
+                <SelectItem value="antigos">Mais antigos</SelectItem>
+                <SelectItem value="preco-asc">
+                  Preço: menor para maior
+                </SelectItem>
+                <SelectItem value="preco-desc">
+                  Preço: maior para menor
+                </SelectItem>
+                <SelectItem value="estoque-asc">
+                  Estoque: menor para maior
+                </SelectItem>
+                <SelectItem value="estoque-desc">
+                  Estoque: maior para menor
+                </SelectItem>
+                <SelectItem value="nome-asc">Nome: A → Z</SelectItem>
+                <SelectItem value="nome-desc">Nome: Z → A</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {quantidadeFiltrosAtivos > 0 ? (
+            <div className="flex flex-wrap gap-2" aria-label="Filtros ativos">
+              {Array.from(parametrosAtuais.entries())
+                .filter(
+                  ([chave]) => !["pagina", "limite", "ordem"].includes(chave),
+                )
+                .map(([chave, valor]) => (
+                  <Badge key={chave} variant="secondary">
+                    {chave}: {valor}
+                  </Badge>
+                ))}
+            </div>
+          ) : null}
         </div>
       </PainelFiltrosResponsivo>
 
@@ -1815,15 +1749,14 @@ export function PreviaProdutosLaquilaMock({
             <div className="flex flex-col gap-3 border-t border-slate-200 px-3 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
               <p>
                 Exibindo {intervaloInicial}-{intervaloFinal} de{" "}
-                {produtosFiltrados.length}
+                {paginacaoServidor.total}
               </p>
               <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
                 <Select
-                  value={String(itensPorPagina)}
-                  onValueChange={(valor) => {
-                    setItensPorPagina(Number(valor));
-                    setPaginaAtual(1);
-                  }}
+                  value={String(paginacaoServidor.limite)}
+                  onValueChange={(valor) =>
+                    navegarComFiltros({ limite: valor, pagina: 1 })
+                  }
                 >
                   <SelectTrigger className="h-9 w-[110px] bg-white">
                     <SelectValue />

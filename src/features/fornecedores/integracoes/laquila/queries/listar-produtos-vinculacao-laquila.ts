@@ -58,6 +58,18 @@ export async function listarProdutosVinculacaoLaquila({
   const limiteNormalizado = normalizarLimiteFornecedores(limite);
   const offsetInicial = offsetInicialFornecedores(pagina, limite);
   const termo = busca?.trim();
+  // Não interpolar `fornecedorId` nulo em `is not null`: o PostgreSQL não
+  // consegue inferir o tipo desse parâmetro dentro do CASE. A existência do
+  // fornecedor é decidida no TypeScript e o trecho SQL só é emitido quando há
+  // uma identidade válida para consultar os vínculos ativos.
+  const estagioVinculado = fornecedorId
+    ? sql`when exists (
+        select 1 from fornecedor_produto_vinculos v
+         where v.fornecedor_id = ${fornecedorId}
+           and btrim(v.codigo_fornecedor) = btrim("fornecedor_produtos_api_staging"."codigo_fornecedor")
+           and v.status = 'ativo'
+      ) then 'vinculado'`
+    : sql``;
   const estagioSql = sql<EstagioVinculacaoFornecedor>`case
     when exists (
       select 1 from produto_rascunhos pr
@@ -73,12 +85,7 @@ export async function listarProdutosVinculacaoLaquila({
          and pr.produto_atualizado_id is null
          and pr.status <> 'publicado'
     ) then 'novo'
-    when ${fornecedorId} is not null and exists (
-      select 1 from fornecedor_produto_vinculos v
-       where v.fornecedor_id = ${fornecedorId}
-         and btrim(v.codigo_fornecedor) = btrim("fornecedor_produtos_api_staging"."codigo_fornecedor")
-         and v.status = 'ativo'
-    ) then 'vinculado'
+    ${estagioVinculado}
     else 'pendente'
   end`;
   const condicoes = and(

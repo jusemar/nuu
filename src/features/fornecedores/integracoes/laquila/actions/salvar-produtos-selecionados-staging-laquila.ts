@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
@@ -56,7 +56,7 @@ function extrairCodigoSelecionado(valor: unknown) {
  * `importacaoId`, e aqui apenas se marca a triagem do ciclo:
  *
  * - selecionado  → `novo` (segue para Vinculação);
- * - não selecionado → `ignorado` (sai da fila ativa, permanece no histórico).
+ * - não selecionado → permanece sem alteração.
  *
  * Nada fora desta importação é tocado. Linhas já `vinculado` são preservadas:
  * a decisão de vínculo é anterior e não deve ser desfeita por uma reabertura
@@ -108,9 +108,7 @@ export async function salvarProdutosSelecionadosStagingLaquila(
       ),
     );
 
-    // Esta guarda também protege o `notInArray` mais abaixo: no Drizzle,
-    // `notInArray(coluna, [])` vira `where true`, e sem sair aqui uma seleção
-    // vazia marcaria TODA a execução como ignorada de uma vez.
+    // Uma seleção vazia não pode afetar a execução inteira.
     if (codigosSelecionados.length === 0) {
       return {
         sucesso: false,
@@ -140,23 +138,6 @@ export async function salvarProdutosSelecionadosStagingLaquila(
         ),
       )
       .returning({ id: fornecedorProdutosApiStagingTable.id });
-
-    await db
-      .update(fornecedorProdutosApiStagingTable)
-      .set({ status: "ignorado", atualizadoEm: agora })
-      .where(
-        and(
-          escopoDaExecucao,
-          notInArray(
-            fornecedorProdutosApiStagingTable.codigoFornecedor,
-            codigosSelecionados,
-          ),
-          inArray(fornecedorProdutosApiStagingTable.status, [
-            "novo",
-            "atencao",
-          ]),
-        ),
-      );
 
     // Execuções antigas podem não ter a integração no `configuracaoFluxoJson`;
     // nesse caso o log é dispensável, não vale falhar a triagem por ele.

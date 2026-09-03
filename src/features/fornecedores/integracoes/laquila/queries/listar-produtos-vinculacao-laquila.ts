@@ -90,6 +90,10 @@ export async function listarProdutosVinculacaoLaquila({
   end`;
   const condicoes = and(
     eq(fornecedorProdutosApiStagingTable.importacaoId, importacaoId),
+    // A tela não pode inferir o lote da página atual nem exibir toda a
+    // importação: só entram os itens explicitamente encaminhados no
+    // Mapeamento desta execução.
+    sql`${fornecedorProdutosApiStagingTable.dadosBrutosJson}->>'selecionadoParaFluxo' = 'true'`,
     ...(termo
       ? [
           or(

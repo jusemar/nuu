@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
@@ -55,7 +55,7 @@ function extrairCodigoSelecionado(valor: unknown) {
  * o retrato anterior. Agora o staging já foi gravado pela sincronização, com
  * `importacaoId`, e aqui apenas se marca a triagem do ciclo:
  *
- * - selecionado  → `novo` (segue para Vinculação);
+ * - selecionado  → fica marcado no próprio staging desta execução;
  * - não selecionado → permanece sem alteração.
  *
  * Nada fora desta importação é tocado. Linhas já `vinculado` são preservadas:
@@ -126,7 +126,19 @@ export async function salvarProdutosSelecionadosStagingLaquila(
 
     const selecionados = await db
       .update(fornecedorProdutosApiStagingTable)
-      .set({ status: "novo", atualizadoEm: agora })
+      .set({
+        // A seleção precisa sobreviver à navegação entre Mapeamento e
+        // Vinculação. O status continua representando a triagem do catálogo;
+        // esta marca, limitada ao JSON da própria linha, separa apenas o lote
+        // que o gestor decidiu processar sem afetar os demais 7.784 itens.
+        dadosBrutosJson: sql`jsonb_set(
+          ${fornecedorProdutosApiStagingTable.dadosBrutosJson},
+          '{selecionadoParaFluxo}',
+          'true'::jsonb,
+          true
+        )`,
+        atualizadoEm: agora,
+      })
       .where(
         and(
           escopoDaExecucao,
@@ -134,7 +146,6 @@ export async function salvarProdutosSelecionadosStagingLaquila(
             fornecedorProdutosApiStagingTable.codigoFornecedor,
             codigosSelecionados,
           ),
-          eq(fornecedorProdutosApiStagingTable.status, "ignorado"),
         ),
       )
       .returning({ id: fornecedorProdutosApiStagingTable.id });

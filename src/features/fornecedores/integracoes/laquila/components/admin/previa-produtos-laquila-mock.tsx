@@ -496,10 +496,10 @@ function ProdutoMobileCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-950">
+              <p className="text-sm leading-5 font-semibold break-words text-slate-950">
                 {produto.nome}
               </p>
-              <p className="mt-0.5 truncate text-xs text-slate-500">
+              <p className="mt-0.5 text-xs break-words text-slate-500">
                 Código{" "}
                 <span className="font-mono text-slate-600">
                   {codigoFornecedor}
@@ -1563,8 +1563,17 @@ export function PreviaProdutosLaquilaMock({
           </div>
         ) : (
           <>
-            <div className="hidden md:block">
-              <Table>
+            <div className="hidden lg:block">
+              <Table className="table-fixed">
+                <colgroup>
+                  <col className="w-10" />
+                  <col />
+                  <col className="w-52" />
+                  <col className="w-28" />
+                  <col className="w-24" />
+                  <col className="w-32" />
+                  <col className="w-[220px]" />
+                </colgroup>
                 <TableHeader>
                   <TableRow className="bg-slate-50/70">
                     <TableHead className="w-10">
@@ -1574,12 +1583,8 @@ export function PreviaProdutosLaquilaMock({
                         aria-label="Selecionar produtos visíveis"
                       />
                     </TableHead>
-                    <TableHead className="min-w-[320px]">
-                      Produto recebido
-                    </TableHead>
-                    <TableHead className="min-w-[220px]">
-                      Classificação
-                    </TableHead>
+                    <TableHead>Produto recebido</TableHead>
+                    <TableHead>Classificação</TableHead>
                     <TableHead className="w-28">Preço</TableHead>
                     <TableHead className="w-24">Estoque</TableHead>
                     <TableHead className="w-32">Triagem</TableHead>
@@ -1615,8 +1620,8 @@ export function PreviaProdutosLaquilaMock({
                             aria-label={`Selecionar ${produto.nome}`}
                           />
                         </TableCell>
-                        <TableCell>
-                          <div className="flex min-w-0 items-center gap-3">
+                        <TableCell className="min-w-0 whitespace-normal">
+                          <div className="flex min-w-0 items-start gap-3">
                             <ImagemProdutoRecebido
                               imagemUrl={produto.imagemUrl}
                               nome={produto.nome}
@@ -1624,10 +1629,10 @@ export function PreviaProdutosLaquilaMock({
                               onClick={() => setProdutoImagem(produto)}
                             />
                             <div className="min-w-0">
-                              <p className="truncate font-medium text-slate-950">
+                              <p className="leading-5 font-medium break-words text-slate-950">
                                 {produto.nome}
                               </p>
-                              <p className="mt-0.5 truncate text-xs text-slate-500">
+                              <p className="mt-0.5 text-xs break-words text-slate-500">
                                 Código{" "}
                                 <span className="font-mono text-slate-600">
                                   {codigoFornecedor}
@@ -1640,7 +1645,7 @@ export function PreviaProdutosLaquilaMock({
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-normal">
                           <ClassificacaoProdutoRecebido produto={produto} />
                         </TableCell>
                         <TableCell>
@@ -1661,14 +1666,14 @@ export function PreviaProdutosLaquilaMock({
                             {rotulosTriagem[estadoTriagem]}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-wrap justify-end gap-1">
+                        <TableCell className="text-right whitespace-nowrap">
+                          <div className="flex flex-nowrap justify-end gap-1">
                             {triagens[produto.id] === "selecionado" ? (
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-8"
+                                className="h-8 shrink-0"
                                 onClick={() => removerDoFluxo(produto.id)}
                               >
                                 Selecionado
@@ -1678,7 +1683,7 @@ export function PreviaProdutosLaquilaMock({
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-8"
+                                className="h-8 shrink-0"
                                 onClick={() => desfazerTriagem(produto.id)}
                               >
                                 Desfazer
@@ -1687,7 +1692,7 @@ export function PreviaProdutosLaquilaMock({
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-8"
+                                className="h-8 shrink-0"
                                 onClick={() => adicionarAoFluxo(produto.id)}
                               >
                                 Selecionar
@@ -1698,7 +1703,7 @@ export function PreviaProdutosLaquilaMock({
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 px-2 text-slate-600"
+                                className="h-8 shrink-0 px-2 text-slate-600"
                                 onClick={() => ignorarProduto(produto.id)}
                               >
                                 Ignorar
@@ -1711,7 +1716,7 @@ export function PreviaProdutosLaquilaMock({
                                   size="icon"
                                   onClick={() => setProdutoEmDetalhe(produto)}
                                   aria-label="Detalhes"
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 shrink-0"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
@@ -1727,7 +1732,7 @@ export function PreviaProdutosLaquilaMock({
               </Table>
             </div>
 
-            <div className="grid gap-3 p-3 md:hidden">
+            <div className="grid gap-3 p-3 lg:hidden">
               {produtosVisiveis.map((produto) => (
                 <ProdutoMobileCard
                   key={produto.id}

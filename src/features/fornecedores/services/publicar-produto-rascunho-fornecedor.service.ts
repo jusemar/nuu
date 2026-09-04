@@ -12,11 +12,13 @@ import {
   produtoRascunhosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { validarLogisticaProdutoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/validar-logistica-produto-laquila";
 import {
   extrairConfiguracaoComercialRascunhoFornecedor,
   extrairSecoesLojaRascunhoFornecedor,
 } from "@/features/fornecedores/lib/conciliacao/configuracao-rascunho-fornecedor";
 import { prepararDimensoesPublicacaoFornecedor } from "@/features/fornecedores/lib/publicacao/preparar-dimensoes-publicacao-fornecedor";
+import { validarLogisticaProduto } from "@/features/logistica/lib/validar-logistica-produto";
 import { salvarIdentificadorCatalogo } from "@/features/products/actions/salvar-identificador-catalogo";
 import { gerarSkuDisponivel as gerarSkuDisponivelCompartilhado } from "@/features/products/lib/gerar-sku-disponivel";
 import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
@@ -262,6 +264,55 @@ export async function publicarProdutoRascunhoFornecedor(
     },
   });
 
+  const logisticaGeral = validarLogisticaProduto({
+    pesoEmGramas: dimensoesPublicacao.pesoEmKg
+      ? Math.round(Number(dimensoesPublicacao.pesoEmKg) * 1000)
+      : null,
+    alturaEmCm: dimensoesPublicacao.alturaEmCm
+      ? Number(dimensoesPublicacao.alturaEmCm)
+      : null,
+    larguraEmCm: dimensoesPublicacao.larguraEmCm
+      ? Number(dimensoesPublicacao.larguraEmCm)
+      : null,
+    comprimentoEmCm: dimensoesPublicacao.comprimentoEmCm
+      ? Number(dimensoesPublicacao.comprimentoEmCm)
+      : null,
+    tiposEntregaPermitidos: ["own"],
+  });
+  if (!logisticaGeral.valido) {
+    throw new Error(
+      `Produto não pode ser publicado. Dados logísticos incompletos: ${logisticaGeral.problemas.map((problema) => problema.campo).join(", ")}.`,
+    );
+  }
+
+  if (
+    origem.origemTipo === "fornecedor_api" &&
+    origem.origemProvedor === "laquila"
+  ) {
+    const logistica = validarLogisticaProdutoLaquila({
+      pesoEmGramas: dimensoesPublicacao.pesoEmKg
+        ? Math.round(Number(dimensoesPublicacao.pesoEmKg) * 1000)
+        : null,
+      alturaEmCm: dimensoesPublicacao.alturaEmCm
+        ? Number(dimensoesPublicacao.alturaEmCm)
+        : null,
+      larguraEmCm: dimensoesPublicacao.larguraEmCm
+        ? Number(dimensoesPublicacao.larguraEmCm)
+        : null,
+      comprimentoEmCm: dimensoesPublicacao.comprimentoEmCm
+        ? Number(dimensoesPublicacao.comprimentoEmCm)
+        : null,
+      possuiVinculoFornecedor: true,
+      codigoFornecedor,
+      tiposEntregaPermitidos: ["supplier"],
+    });
+    if (!logistica.valido) {
+      throw new Error(
+        `Produto Laquila não pode ser publicado. Dados logísticos incompletos: ${logistica.problemas.map((problema) => problema.campo).join(", ")}.`,
+      );
+    }
+  }
+
   const resultadoProduto = await createProduct({
     name: rascunho.nome,
     slug,
@@ -307,6 +358,11 @@ export async function publicarProdutoRascunhoFornecedor(
     },
     status: "published",
     isActive: true,
+    allowedDeliveryTypes:
+      origem.origemTipo === "fornecedor_api" &&
+      origem.origemProvedor === "laquila"
+        ? ["supplier"]
+        : undefined,
     varianteTecnicaProdutoSimples: {
       precoEmCentavos,
       estoque,

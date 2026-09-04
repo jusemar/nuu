@@ -21,6 +21,7 @@ type ProdutoParaDadosEstruturados = {
   brand: string | null;
   sku: string | null;
   productKind: string | null;
+  logisticaElegivel?: boolean;
   marcaId: string | null;
   identificadoresCatalogo?: IdentificadorCatalogoJsonLd[];
   galleryImages: Array<{
@@ -294,6 +295,7 @@ function montarOfertaProdutoVariavel(
   precos: PrecosProdutoPorModalidade,
   url: string,
   nomeVendedor: string | null,
+  logisticaValida: boolean,
 ): OfertaProduto | OfertaAgregadaProduto | undefined {
   const opcoes = variantes.flatMap((variante) => {
     if (!variante.isActive) return [];
@@ -308,6 +310,7 @@ function montarOfertaProdutoVariavel(
       precoCalculado: preco,
       varianteSelecionada: variante,
       possuiVariantesPublicas: true,
+      logisticaValida,
     });
 
     return [
@@ -381,6 +384,7 @@ function montarOfertaProdutoSimples(
     varianteSelecionada: null,
     possuiVariantesPublicas: produto.variants.some((item) => item.isActive),
     varianteTecnicaProdutoSimples: varianteTecnica,
+    logisticaValida: produto.logisticaElegivel !== false,
   });
 
   return montarOferta({
@@ -420,6 +424,7 @@ export function montarDadosEstruturadosProduto({
           precosCalculadosPorVariante,
           url,
           nomeVendedor,
+          produto.logisticaElegivel !== false,
         )
       : montarOfertaProdutoSimples(
           produto,

@@ -26,12 +26,20 @@ type ResumoCarrinhoProps = {
   itens: ItemCarrinho[];
   subtotalEmCentavos: number;
   onContinuarComprando: () => void;
+  possuiItensIndisponiveis: boolean;
+  validandoDisponibilidade: boolean;
+  disponibilidadeValidada: boolean;
+  erroDisponibilidade: string | null;
 };
 
 export function ResumoCarrinho({
   itens,
   subtotalEmCentavos,
   onContinuarComprando,
+  possuiItensIndisponiveis,
+  validandoDisponibilidade,
+  disponibilidadeValidada,
+  erroDisponibilidade,
 }: ResumoCarrinhoProps) {
   const router = useRouter();
   const [resultadoCupom, setResultadoCupom] =
@@ -68,6 +76,15 @@ export function ResumoCarrinho({
   );
 
   useEffect(() => {
+    if (
+      !disponibilidadeValidada ||
+      possuiItensIndisponiveis ||
+      erroDisponibilidade
+    ) {
+      setPreviaTotais(null);
+      return;
+    }
+
     let consultaCancelada = false;
 
     startTransition(async () => {
@@ -92,10 +109,22 @@ export function ResumoCarrinho({
     return () => {
       consultaCancelada = true;
     };
-  }, [itens, subtotalEmCentavos]);
+  }, [
+    disponibilidadeValidada,
+    erroDisponibilidade,
+    itens,
+    possuiItensIndisponiveis,
+    subtotalEmCentavos,
+  ]);
 
   function finalizarCompra() {
-    if (finalizacaoEmCursoRef.current) return;
+    if (
+      finalizacaoEmCursoRef.current ||
+      !disponibilidadeValidada ||
+      possuiItensIndisponiveis ||
+      erroDisponibilidade
+    )
+      return;
 
     finalizacaoEmCursoRef.current = true;
     setErroValidacao(null);
@@ -209,24 +238,36 @@ export function ResumoCarrinho({
         </div>
 
         <div className="grid gap-2">
-          {erroValidacao ? (
+          {erroDisponibilidade || possuiItensIndisponiveis || erroValidacao ? (
             <div
               className="flex gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"
               role="alert"
             >
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span>{erroValidacao}</span>
+              <span>
+                {erroDisponibilidade ||
+                  (possuiItensIndisponiveis
+                    ? "Remova os itens indisponíveis para continuar."
+                    : erroValidacao)}
+              </span>
             </div>
           ) : null}
 
           <Button
             aria-busy={finalizandoCompra}
             className="h-11 w-full rounded-md"
-            disabled={finalizandoCompra || itens.length === 0}
+            disabled={
+              finalizandoCompra ||
+              validandoDisponibilidade ||
+              !disponibilidadeValidada ||
+              possuiItensIndisponiveis ||
+              Boolean(erroDisponibilidade) ||
+              itens.length === 0
+            }
             type="button"
             onClick={finalizarCompra}
           >
-            {finalizandoCompra ? (
+            {finalizandoCompra || validandoDisponibilidade ? (
               <>
                 <Loader2 className="size-4 animate-spin" aria-hidden />
                 Validando carrinho...

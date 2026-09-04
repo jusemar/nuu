@@ -74,6 +74,7 @@ interface ProductDetailProps {
     sku: string;
     ncmCode: string | null;
     productKind?: string | null;
+    logisticaElegivel?: boolean;
     allowsPickup: boolean | null;
     prazoRetiradaCustom: string | null;
     allowsOwnDelivery: boolean | null;
@@ -252,6 +253,7 @@ export function ProductDetail({
     varianteSelecionada: selectedVariant,
     possuiVariantesPublicas: publicVariants.length > 0,
     varianteTecnicaProdutoSimples,
+    logisticaValida: product.logisticaElegivel !== false,
   });
   const promocaoVisualModalidadeAtiva = formatarPromocaoPrecoPdp(
     precoModalidadeAtivaCalculado,

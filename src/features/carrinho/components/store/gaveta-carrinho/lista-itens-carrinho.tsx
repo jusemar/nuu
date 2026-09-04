@@ -5,6 +5,7 @@ import { ItemCarrinho } from "./item-carrinho";
 
 type ListaItensCarrinhoProps = {
   itens: ItemCarrinhoTipo[];
+  produtosIndisponiveisIds: ReadonlySet<string>;
   itemAtualizandoId: string | null;
   onAumentarQuantidade: (itemId: string) => void;
   onDiminuirQuantidade: (itemId: string) => void;
@@ -13,6 +14,7 @@ type ListaItensCarrinhoProps = {
 
 export function ListaItensCarrinho({
   itens,
+  produtosIndisponiveisIds,
   itemAtualizandoId,
   onAumentarQuantidade,
   onDiminuirQuantidade,
@@ -25,6 +27,7 @@ export function ListaItensCarrinho({
           <ItemCarrinho
             key={item.id}
             atualizando={itemAtualizandoId === item.id}
+            indisponivel={produtosIndisponiveisIds.has(item.produtoId)}
             item={item}
             onAumentar={() => onAumentarQuantidade(item.id)}
             onDiminuir={() => onDiminuirQuantidade(item.id)}

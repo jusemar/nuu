@@ -5,6 +5,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { categoryTable, productTable } from "@/db/schema";
+import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 import { buscarArvoreCategoriaPublica } from "@/features/store/category/queries/buscar-arvore-categoria-publica";
 import {
   descreverErroBancoParaLog,
@@ -65,6 +66,7 @@ export async function getSubcategoryTabs(
                 inArray(productTable.categoryId, categoriasIds),
                 eq(productTable.isActive, true),
                 eq(productTable.status, "published"),
+                condicaoProdutoLogisticamenteElegivel(),
                 sql`coalesce(${productTable.storeProductFlags}, ARRAY[]::text[]) @> ARRAY['general']::text[]`,
               ),
             );

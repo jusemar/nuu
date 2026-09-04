@@ -109,6 +109,7 @@ interface CreateProductData {
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
   };
+  allowedDeliveryTypes?: string[];
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   attributes?: ProductAttributeInput[];
   variants?: ProductVariantFormInput[];
@@ -216,6 +217,9 @@ export async function createProduct(data: CreateProductData) {
         // Configuração de retirada local
         allowsPickup: data.entrega?.permiteRetirada ?? false,
         allowsOwnDelivery: data.entrega?.permiteEntregaPropria ?? false,
+        allowsSupplierDelivery:
+          data.allowedDeliveryTypes?.includes("supplier") ?? false,
+        allowedDeliveryTypes: data.allowedDeliveryTypes ?? ["own"],
         // Opt-in: sem marcação explícita do gestor, o produto não aceita.
         aceitaPagamentoNaEntrega:
           data.entrega?.aceitaPagamentoNaEntrega ?? false,

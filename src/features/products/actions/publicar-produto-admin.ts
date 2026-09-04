@@ -7,12 +7,16 @@ import { z } from "zod";
 import { db } from "@/db/connection";
 import {
   categoryTable,
+  fornecedorIntegracoesApiTable,
+  fornecedorProdutoVinculosTable,
   marcaTable,
   productTable,
   productVariantTable,
 } from "@/db/schema";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { validarLogisticaProdutoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/validar-logistica-produto-laquila";
+import { validarLogisticaProduto } from "@/features/logistica/lib/validar-logistica-produto";
 
 const produtoIdSchema = z.string().uuid();
 
@@ -36,6 +40,60 @@ export async function publicarProdutoAdmin(produtoId: string) {
     });
     if (!produto) {
       return { sucesso: false as const, erro: "Produto não encontrado." };
+    }
+
+    const logisticaGeral = validarLogisticaProduto({
+      pesoEmGramas: produto.weight,
+      alturaEmCm: produto.height,
+      larguraEmCm: produto.width,
+      comprimentoEmCm: produto.length,
+      tiposEntregaPermitidos: produto.allowedDeliveryTypes,
+      permiteSomenteRetirada:
+        Boolean(produto.allowsPickup) &&
+        (produto.allowedDeliveryTypes?.length ?? 0) === 0,
+    });
+    if (!logisticaGeral.valido) {
+      return {
+        sucesso: false as const,
+        erro: `Produto não pode ser publicado. Dados logísticos incompletos: ${logisticaGeral.problemas.map((problema) => problema.mensagemAdmin.toLowerCase()).join(", ")}.`,
+      };
+    }
+
+    const [vinculoLaquila] = await db
+      .select({
+        codigoFornecedor: fornecedorProdutoVinculosTable.codigoFornecedor,
+        vinculoAtivo: fornecedorProdutoVinculosTable.status,
+      })
+      .from(fornecedorProdutoVinculosTable)
+      .innerJoin(
+        fornecedorIntegracoesApiTable,
+        and(
+          eq(
+            fornecedorIntegracoesApiTable.fornecedorId,
+            fornecedorProdutoVinculosTable.fornecedorId,
+          ),
+          eq(fornecedorIntegracoesApiTable.provedor, "laquila"),
+        ),
+      )
+      .where(eq(fornecedorProdutoVinculosTable.produtoId, produto.id))
+      .limit(1);
+
+    if (vinculoLaquila) {
+      const logistica = validarLogisticaProdutoLaquila({
+        pesoEmGramas: produto.weight,
+        alturaEmCm: produto.height,
+        larguraEmCm: produto.width,
+        comprimentoEmCm: produto.length,
+        possuiVinculoFornecedor: vinculoLaquila.vinculoAtivo === "ativo",
+        codigoFornecedor: vinculoLaquila.codigoFornecedor,
+        tiposEntregaPermitidos: produto.allowedDeliveryTypes,
+      });
+      if (!logistica.valido) {
+        return {
+          sucesso: false as const,
+          erro: `Produto não pode ser publicado. Dados logísticos incompletos: ${logistica.problemas.map((problema) => problema.mensagemAdmin.toLowerCase()).join(", ")}.`,
+        };
+      }
     }
 
     if (

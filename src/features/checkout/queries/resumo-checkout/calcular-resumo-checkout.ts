@@ -15,6 +15,7 @@ import { obterCepOrigemLaquila } from "@/features/logistica/lib/origens/obter-ce
 import { obterConfiguracaoFrenet } from "@/features/logistica/lib/provedores/frenet/obter-configuracao-frenet";
 import { resolverItemLogistico } from "@/features/logistica/lib/resolver-item-logistico";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
+import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import type { ItemLogistico } from "@/features/logistica/types/contratos-frete";
 import { avaliarPagamentoNaEntregaComBanco } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-checkout";
 import {
@@ -124,20 +125,28 @@ export async function calcularResumoCheckout({
   }
 
   const produtosIds = [...new Set(itens.map((item) => item.produtoId))];
-  const [configuracaoPagamento, produtos, provedoresExpedicaoPorProdutoId] =
-    await Promise.all([
-      buscarConfiguracaoPagamentoAtiva(),
-      db.query.productTable.findMany({
-        where: inArray(productTable.id, produtosIds),
-        with: {
-          pricing: true,
-          galleryImages: true,
-          variants: true,
-          modeloRetirada: true,
-        },
-      }),
-      listarProvedoresExpedicaoProdutos(produtosIds),
-    ]);
+  const [
+    configuracaoPagamento,
+    produtos,
+    provedoresExpedicaoPorProdutoId,
+    diagnosticosLogisticos,
+  ] = await Promise.all([
+    buscarConfiguracaoPagamentoAtiva(),
+    db.query.productTable.findMany({
+      where: inArray(productTable.id, produtosIds),
+      with: {
+        pricing: true,
+        galleryImages: true,
+        variants: true,
+        modeloRetirada: true,
+      },
+    }),
+    listarProvedoresExpedicaoProdutos(produtosIds),
+    listarDiagnosticosLogisticosProdutos(produtosIds),
+  ]);
+  const diagnosticosLogisticosPorProdutoId = new Map(
+    diagnosticosLogisticos.map((produto) => [produto.id, produto.diagnostico]),
+  );
 
   const itensCalculados = itens.map((item) => {
     const produto = produtos.find(
@@ -146,6 +155,10 @@ export async function calcularResumoCheckout({
 
     if (!produto) {
       throw new Error(`Produto não encontrado: ${item.nome}`);
+    }
+
+    if (!diagnosticosLogisticosPorProdutoId.get(produto.id)?.valido) {
+      throw new Error("Este produto está temporariamente indisponível.");
     }
 
     const itemVendavel = resolverItemVendavelCheckout({ item, produto });

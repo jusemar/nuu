@@ -1,5 +1,7 @@
 import "server-only";
 
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
   marcaTable,
@@ -7,12 +9,12 @@ import {
   productPricingTable,
   productTable,
 } from "@/db/schema";
+import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 import {
   adaptarPrecosVitrine,
   criarPrecoPrincipalCompatibilidadeVitrine,
   type PrecosVitrineNormalizados,
 } from "@/features/precificacao/server";
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
 
 export type TipoPromocaoOferta = "normal" | "flash";
 
@@ -105,6 +107,7 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
         eq(productTable.productKind, "simple"),
         eq(productTable.isActive, true),
         eq(productTable.status, "published"),
+        condicaoProdutoLogisticamenteElegivel(),
         eq(productPricingTable.isActive, true),
         eq(productPricingTable.mainCardPrice, true),
         eq(productPricingTable.hasPromo, true),

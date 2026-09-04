@@ -28,6 +28,7 @@ import { listarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/en
 import { obterAmbienteAplicacaoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/ambiente-laquila";
 import { listarTransportadorasLaquila } from "@/features/fornecedores/integracoes/laquila/queries/listar-transportadoras-laquila";
 import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
+import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 function obterDetalhesErro(error: unknown) {
@@ -146,6 +147,7 @@ export async function getProductById(id: string) {
         height: productTable.height,
         hasFreeShipping: productTable.hasFreeShipping,
         hasLocalPickup: productTable.hasLocalPickup,
+        allowedDeliveryTypes: productTable.allowedDeliveryTypes,
 
         // Garantia
         warrantyPeriod: productTable.warrantyPeriod,
@@ -349,13 +351,19 @@ export async function getProductById(id: string) {
         : null;
 
     const usaLogisticaLaquila = await verificarLogisticaLaquilaProduto(id);
-    const [precosEntregaPropria, resultadoTransportadorasLaquila] =
-      await Promise.all([
-        listarPrecosEntregaPropriaProduto(id),
-        usaLogisticaLaquila
-          ? listarTransportadorasLaquila(ambienteLaquila)
-          : null,
-      ]);
+    const [
+      precosEntregaPropria,
+      resultadoTransportadorasLaquila,
+      diagnosticoLogisticoProduto,
+    ] = await Promise.all([
+      listarPrecosEntregaPropriaProduto(id),
+      usaLogisticaLaquila
+        ? listarTransportadorasLaquila(ambienteLaquila)
+        : null,
+      listarDiagnosticosLogisticosProdutos([id]).then(
+        ([resultado]) => resultado?.diagnostico ?? null,
+      ),
+    ]);
 
     // Montar o objeto de modalidades no formato que o frontend espera
     const modalities: Record<
@@ -503,6 +511,7 @@ export async function getProductById(id: string) {
         // Dado somente administrativo, derivado do vínculo ativo já existente.
         usaLogisticaLaquila,
         resultadoTransportadorasLaquila,
+        diagnosticoLogistico: diagnosticoLogisticoProduto,
       },
     };
   } catch (error: unknown) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { ShoppingCart } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 import { useCarrinho } from "../../../hooks/use-carrinho";
 import { useGavetaCarrinho } from "../../../hooks/use-gaveta-carrinho";
+import { validarDisponibilidadeItensCarrinho } from "../../../queries/validar-disponibilidade-itens-carrinho";
 import { CabecalhoGavetaCarrinho } from "./cabecalho-gaveta-carrinho";
 import { CarrinhoVazio } from "./carrinho-vazio";
 import { EsqueletoCarrinho } from "./esqueleto-carrinho";
@@ -17,6 +19,55 @@ import { ResumoCarrinho } from "./resumo-carrinho";
 export function GavetaCarrinho() {
   const gaveta = useGavetaCarrinho();
   const carrinho = useCarrinho();
+  const [produtosIndisponiveisIds, setProdutosIndisponiveisIds] = useState<
+    Set<string>
+  >(new Set());
+  const [erroDisponibilidade, setErroDisponibilidade] = useState<string | null>(
+    null,
+  );
+  const [chaveProdutosValidada, setChaveProdutosValidada] = useState("");
+  const [validandoDisponibilidade, iniciarValidacao] = useTransition();
+  const chaveProdutos = useMemo(
+    () =>
+      [...new Set(carrinho.itens.map((item) => item.produtoId))]
+        .sort()
+        .join(","),
+    [carrinho.itens],
+  );
+
+  useEffect(() => {
+    if (!gaveta.aberta || !chaveProdutos) {
+      if (!chaveProdutos) setProdutosIndisponiveisIds(new Set());
+      return;
+    }
+
+    let cancelada = false;
+    iniciarValidacao(async () => {
+      const resultado = await validarDisponibilidadeItensCarrinho(
+        chaveProdutos.split(","),
+      );
+      if (cancelada) return;
+      if (!resultado.sucesso) {
+        setErroDisponibilidade(resultado.mensagem);
+        setChaveProdutosValidada(chaveProdutos);
+        return;
+      }
+
+      setErroDisponibilidade(null);
+      setProdutosIndisponiveisIds(
+        new Set(
+          resultado.itens
+            .filter((item) => !item.disponivel)
+            .map((item) => item.produtoId),
+        ),
+      );
+      setChaveProdutosValidada(chaveProdutos);
+    });
+
+    return () => {
+      cancelada = true;
+    };
+  }, [chaveProdutos, gaveta.aberta]);
 
   return (
     // O componente concentra só a experiência visual; regras e persistência ficam no hook/lib.
@@ -56,6 +107,7 @@ export function GavetaCarrinho() {
             <ListaItensCarrinho
               itemAtualizandoId={carrinho.itemAtualizandoId}
               itens={carrinho.itens}
+              produtosIndisponiveisIds={produtosIndisponiveisIds}
               onAumentarQuantidade={carrinho.aumentarQuantidade}
               onDiminuirQuantidade={carrinho.diminuirQuantidade}
               onRemoverItem={carrinho.removerItem}
@@ -64,6 +116,10 @@ export function GavetaCarrinho() {
             <ResumoCarrinho
               itens={carrinho.itens}
               subtotalEmCentavos={carrinho.totais.subtotalEmCentavos}
+              possuiItensIndisponiveis={produtosIndisponiveisIds.size > 0}
+              validandoDisponibilidade={validandoDisponibilidade}
+              disponibilidadeValidada={chaveProdutosValidada === chaveProdutos}
+              erroDisponibilidade={erroDisponibilidade}
               onContinuarComprando={gaveta.fechar}
             />
           </>

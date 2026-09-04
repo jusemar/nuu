@@ -16,17 +16,7 @@ import { and, eq, gte, ilike, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { cities } from "@/db/table/logistics/cities/cities";
 import type {
-  BairroAvulso,
-  CepEspecifico,
-  NewBairroAvulso,
-  NewCepEspecifico,
-  NewRegioBairro,
-  NewShippingBairroAvulsoSlot,
-  NewShippingRegion,
-  NewShippingRegionSlot,
-  RegioBairro,
   ShippingBairroAvulsoSlot,
-  ShippingRegion,
   ShippingRegionSlot,
 } from "@/db/table/logistics/entrega-propria";
 import {
@@ -367,7 +357,8 @@ export async function getProductOwnDeliveryPrice(
   city: string,
   state: string,
 ): Promise<ShippingPriceResult & { pendingEligible?: boolean }> {
-  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
+  // Leitura usada pela cotacao publica da loja e pelo feed. As operacoes de
+  // cadastro/manutencao abaixo continuam protegidas por permissao admin.
   const cleanCep = cep.replace(/\D/g, "");
 
   const [estadoAtivo, cidadeAtiva] = await Promise.all([
@@ -677,7 +668,8 @@ export async function getProductsOwnDeliveryForecasts(
   city: string,
   state: string,
 ) {
-  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
+  // A vitrine consulta somente precos e cobertura ja publicados. Exigir uma
+  // sessao administrativa aqui tornaria o frete proprio indisponivel ao cliente.
   const ids = [...new Set(productIds)].slice(0, 80);
   const cleanCep = cep.replace(/\D/g, "");
   if (ids.length === 0 || cleanCep.length !== 8) return {};

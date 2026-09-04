@@ -152,3 +152,21 @@ test("bloqueia produto sem forma de pagamento com preço válido", () => {
 
   assert.equal(resultado.estado, "indisponivel");
 });
+
+test("bloqueia logística inválida com mensagem pública neutra", () => {
+  const resultado = resolverDisponibilidadeCompraPdp({
+    tipoProduto: "simple",
+    modalidade,
+    precoCalculado: precoValido,
+    varianteSelecionada: null,
+    possuiVariantesPublicas: false,
+    varianteTecnicaProdutoSimples: varianteTecnica,
+    logisticaValida: false,
+  });
+
+  assert.deepEqual(resultado, {
+    estado: "indisponivel",
+    estoqueMaximo: 0,
+    motivo: "Este produto está temporariamente indisponível.",
+  });
+});

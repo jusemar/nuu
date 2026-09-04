@@ -1,14 +1,16 @@
 "use server"; // Indica que esta função roda no servidor (Next.js App Router)
 
+import { and, eq, inArray, sql } from "drizzle-orm"; // Permite escrever SQL puro quando necessário
+
 import { db } from "@/db/connection"; // Conexão com o banco de dados
 import {
-  productTable, // Tabela dos produtos
-  productPricingTable, // Tabela dos preços dos produtos
   productGalleryImagesTable, // Tabela das imagens da galeria dos produtos
+  productPricingTable, // Tabela dos preços dos produtos
+  productTable, // Tabela dos produtos
   productVariantTable,
 } from "@/db/schema";
+import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 
-import { and, eq, inArray, sql } from "drizzle-orm"; // Permite escrever SQL puro quando necessário
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
 const TAMANHOS_PAGINA_PERMITIDOS = new Set([6, 9, 12, 15]);
@@ -46,6 +48,7 @@ export async function getProductsLoadMore(
         and(
           eq(productTable.isActive, true),
           eq(productTable.status, "published"),
+          condicaoProdutoLogisticamenteElegivel(),
           sql`${productTable.storeProductFlags} @> ARRAY['general']::text[]`,
         ),
       )

@@ -1,12 +1,17 @@
 "use server";
 
+import { inArray, sql } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
+import {
+  colunasLogisticaProdutoAliasP,
+  condicaoProdutoLogisticamenteElegivel,
+} from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 import {
   adaptarPrecosVitrine,
   type PrecosVitrineNormalizados,
 } from "@/features/precificacao/server";
-import { inArray, sql } from "drizzle-orm";
 
 export type CategoriaPrincipalBusca = {
   id: string;
@@ -40,6 +45,27 @@ type ParametrosBuscaProdutos = {
   categoriaId?: string | null;
 };
 
+type LinhaCategoriaBusca = {
+  id: unknown;
+  name: unknown;
+  slug: unknown;
+};
+
+type LinhaProdutoBusca = {
+  id: unknown;
+  name: unknown;
+  slug: unknown;
+  category_id: unknown;
+  category_name: unknown;
+  category_slug: unknown;
+  price: unknown;
+  promo_price_in_cents: unknown;
+  destaque: unknown;
+  image_url: unknown;
+};
+
+type LinhaSugestaoBusca = { termo: unknown };
+
 export async function buscarCategoriasPrincipais(): Promise<
   CategoriaPrincipalBusca[]
 > {
@@ -60,7 +86,7 @@ export async function buscarCategoriasPrincipais(): Promise<
     ORDER BY name ASC;
   `);
 
-  return resultado.rows.map((categoria: any) => ({
+  return (resultado.rows as LinhaCategoriaBusca[]).map((categoria) => ({
     id: String(categoria.id),
     nome: String(categoria.name),
     slug: String(categoria.slug),
@@ -83,6 +109,9 @@ export async function buscarProdutosParaAutocomplete({
   const termoLike = `%${termoNormalizado}%`;
   const termoPrefixo = `${termoNormalizado}%`;
   const limitarTermoCurto = termoNormalizado.length === 1;
+  const produtoLogisticamenteElegivel = condicaoProdutoLogisticamenteElegivel(
+    colunasLogisticaProdutoAliasP(),
+  );
 
   const produtos = await db.execute(sql`
     SELECT
@@ -145,6 +174,7 @@ export async function buscarProdutosParaAutocomplete({
     ) preco ON true
     WHERE p.is_active = true
       AND p.status = 'published'
+      AND (${produtoLogisticamenteElegivel})
       AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
       AND (${categoriaId ?? null}::uuid IS NULL OR p.category_id = ${categoriaId ?? null}::uuid)
       AND (
@@ -194,6 +224,7 @@ export async function buscarProdutosParaAutocomplete({
       FROM product p
       WHERE p.is_active = true
         AND p.status = 'published'
+        AND (${produtoLogisticamenteElegivel})
         AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
         AND lower(p.name) LIKE ${termoLike}
 
@@ -204,6 +235,7 @@ export async function buscarProdutosParaAutocomplete({
       LEFT JOIN marca m ON m.id = p.marca_id
       WHERE p.is_active = true
         AND p.status = 'published'
+        AND (${produtoLogisticamenteElegivel})
         AND coalesce(p.store_product_flags, ARRAY[]::text[]) @> ARRAY['general']::text[]
         AND m.nome IS NOT NULL
         AND lower(m.nome) LIKE ${termoLike}
@@ -214,7 +246,8 @@ export async function buscarProdutosParaAutocomplete({
     ORDER BY prioridade ASC, termo ASC
     LIMIT 4;
   `);
-  const idsProdutos = produtos.rows.map((produto: any) => String(produto.id));
+  const linhasProdutos = produtos.rows as LinhaProdutoBusca[];
+  const idsProdutos = linhasProdutos.map((produto) => String(produto.id));
   const produtosPrecificaveis =
     idsProdutos.length > 0
       ? await db.query.productTable.findMany({
@@ -237,7 +270,7 @@ export async function buscarProdutosParaAutocomplete({
   });
 
   return {
-    produtosEncontrados: produtos.rows.map((produto: any) => {
+    produtosEncontrados: linhasProdutos.map((produto) => {
       const produtoId = String(produto.id);
       const precoVitrine =
         precosVitrine.produtosPorId[produtoId]?.precoPrincipal;
@@ -266,8 +299,8 @@ export async function buscarProdutosParaAutocomplete({
         imagemUrl: produto.image_url ? String(produto.image_url) : null,
       };
     }),
-    sugestoesEncontradas: sugestoes.rows
-      .map((sugestao: any) => String(sugestao.termo))
+    sugestoesEncontradas: (sugestoes.rows as LinhaSugestaoBusca[])
+      .map((sugestao) => String(sugestao.termo))
       .filter(Boolean),
   };
 }

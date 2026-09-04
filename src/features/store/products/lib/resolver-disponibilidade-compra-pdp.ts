@@ -27,6 +27,7 @@ export function resolverDisponibilidadeCompraPdp({
   varianteSelecionada,
   possuiVariantesPublicas,
   varianteTecnicaProdutoSimples,
+  logisticaValida = true,
 }: {
   tipoProduto?: string | null;
   modalidade: PrecoModalidade | null | undefined;
@@ -34,7 +35,16 @@ export function resolverDisponibilidadeCompraPdp({
   varianteSelecionada: VarianteProdutoLoja | null;
   possuiVariantesPublicas: boolean;
   varianteTecnicaProdutoSimples?: ResultadoVarianteTecnicaProdutoSimples | null;
+  logisticaValida?: boolean;
 }): DisponibilidadeCompraPdp {
+  if (!logisticaValida) {
+    return {
+      estado: "indisponivel",
+      estoqueMaximo: 0,
+      motivo: "Este produto está temporariamente indisponível.",
+    };
+  }
+
   if (tipoProduto === "variable") {
     if (!possuiVariantesPublicas) {
       return {

@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { productTable, produtosVendaCruzadaTable } from "@/db/schema";
+import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import { adaptarPrecosVitrine } from "@/features/precificacao/server";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
@@ -89,7 +90,7 @@ export async function buscarVendaCruzadaPdp(
     if (!produtoPrincipal?.vendaCruzadaAtiva) return [];
 
     const idsEncontrados = new Set<string>();
-    const produtos = produtoPrincipal.vendasCruzadasConfiguradas
+    const candidatos = produtoPrincipal.vendasCruzadasConfiguradas
       .map((vinculo) => vinculo.produtoOferecido)
       .filter((produto) => {
         if (
@@ -102,7 +103,18 @@ export async function buscarVendaCruzadaPdp(
         }
         idsEncontrados.add(produto.id);
         return true;
-      })
+      });
+
+    const diagnosticos = await listarDiagnosticosLogisticosProdutos(
+      candidatos.map((produto) => produto.id),
+    );
+    const produtosElegiveisIds = new Set(
+      diagnosticos
+        .filter((produto) => produto.diagnostico.valido)
+        .map((produto) => produto.id),
+    );
+    const produtos = candidatos
+      .filter((produto) => produtosElegiveisIds.has(produto.id))
       .slice(0, 4);
 
     if (produtos.length === 0) return [];

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   AlertTriangle,
   ArrowRight,
@@ -21,8 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionCards } from "@/components/ui/section-cards";
 import { GraficoDesempenhoNegocio } from "@/features/admin/components/grafico-desempenho-negocio";
+import { auditarLogisticaProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 
-const alertas = [
+const alertasEstaticos = [
   {
     titulo: "8 produtos com estoque crítico",
     descricao: "Itens de alta saída podem ficar indisponíveis ainda hoje.",
@@ -106,7 +105,41 @@ const modulos = [
   },
 ] as const;
 
-export default function Page() {
+export default async function Page() {
+  let quantidadeProblemasLogisticos: number | null = null;
+  try {
+    const auditoria = await auditarLogisticaProdutos();
+    quantidadeProblemasLogisticos = auditoria.resumo.invalidos;
+  } catch (error) {
+    console.error("[admin:dashboard:auditoria-logistica:erro]", {
+      tipo:
+        error instanceof Error ? error.constructor.name : "ErroDesconhecido",
+    });
+  }
+
+  const alertaLogistico = {
+    titulo:
+      quantidadeProblemasLogisticos === null
+        ? "Não foi possível verificar a logística"
+        : `${quantidadeProblemasLogisticos} produto${quantidadeProblemasLogisticos === 1 ? "" : "s"} com problema logístico`,
+    descricao:
+      quantidadeProblemasLogisticos === null
+        ? "Tente novamente em alguns instantes."
+        : "Produtos com dados necessários ao envio incompletos ou inválidos.",
+    destino: "/admin/products?problemaLogistico=true",
+    prioridade: quantidadeProblemasLogisticos === 0 ? "Tudo certo" : "Atenção",
+    icon: quantidadeProblemasLogisticos === 0 ? CheckCircle2 : Truck,
+    tom:
+      quantidadeProblemasLogisticos === 0
+        ? "sucesso"
+        : quantidadeProblemasLogisticos === null
+          ? "urgente"
+          : "aviso",
+  } as const;
+  const alertas = [alertaLogistico, ...alertasEstaticos];
+  const totalAlertasComOcorrencia =
+    alertasEstaticos.length + (quantidadeProblemasLogisticos === 0 ? 0 : 1);
+
   return (
     <div className="space-y-5 md:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -148,7 +181,7 @@ export default function Page() {
                 Central de alertas
               </h3>
               <p className="text-muted-foreground text-xs">
-                2 pontos pedem sua atenção
+                {totalAlertasComOcorrencia} pontos pedem sua atenção
               </p>
             </div>
           </div>
@@ -156,7 +189,7 @@ export default function Page() {
             Ordenados por prioridade
           </span>
         </div>
-        <div className="divide-border/70 grid divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <div className="divide-border/70 grid divide-y lg:grid-cols-3 lg:divide-x lg:divide-y-0">
           {alertas.map((alerta) => {
             const Icon = alerta.icon;
             return (
@@ -166,7 +199,7 @@ export default function Page() {
                 className="group hover:bg-muted/35 focus-visible:ring-ring flex min-h-24 items-start gap-3 p-4 transition-colors focus-visible:ring-2 focus-visible:outline-none sm:p-5"
               >
                 <span
-                  className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg ${alerta.tom === "urgente" ? "bg-destructive/10 text-destructive" : "bg-warning-light text-warning-foreground"}`}
+                  className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg ${alerta.tom === "urgente" ? "bg-destructive/10 text-destructive" : alerta.tom === "sucesso" ? "bg-success-light text-success-dark" : "bg-warning-light text-warning-foreground"}`}
                 >
                   <Icon className="size-4" />
                 </span>
@@ -177,7 +210,11 @@ export default function Page() {
                     </span>
                     <Badge
                       variant={
-                        alerta.tom === "urgente" ? "destructive" : "warning"
+                        alerta.tom === "urgente"
+                          ? "destructive"
+                          : alerta.tom === "sucesso"
+                            ? "success"
+                            : "warning"
                       }
                     >
                       {alerta.prioridade}

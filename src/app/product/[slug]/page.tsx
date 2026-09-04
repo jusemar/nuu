@@ -231,6 +231,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
           brand: product.brand,
           sku: product.sku,
           productKind: product.productKind,
+          logisticaElegivel: product.logisticaElegivel,
           marcaId: product.marcaId,
           identificadoresCatalogo: product.identificadoresCatalogo,
           galleryImages: product.galleryImages,

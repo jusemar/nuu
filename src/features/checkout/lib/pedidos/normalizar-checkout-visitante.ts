@@ -1,4 +1,5 @@
 import type { ItemCarrinho } from "@/features/carrinho";
+import { validarLogisticaProduto } from "@/features/logistica/lib/validar-logistica-produto";
 import {
   calcularPrecoProduto,
   type ConfiguracaoPagamentoCalculavel,
@@ -31,6 +32,12 @@ type ProdutoCheckout = {
   productKind?: string | null;
   isActive?: boolean | null;
   status?: string | null;
+  weight?: number | null;
+  height?: number | null;
+  width?: number | null;
+  length?: number | null;
+  allowedDeliveryTypes?: string[] | null;
+  allowsPickup?: boolean | null;
   pricing: PrecoProdutoCheckout[];
   galleryImages?: Array<{
     imageUrl: string;
@@ -139,6 +146,20 @@ function validarProdutoCheckout(produto: ProdutoCheckout, quantidade: number) {
 
   if (!Number.isInteger(quantidade) || quantidade <= 0) {
     throw new Error(`Quantidade inválida para ${produto.name}`);
+  }
+
+  const logistica = validarLogisticaProduto({
+    pesoEmGramas: produto.weight,
+    alturaEmCm: produto.height,
+    larguraEmCm: produto.width,
+    comprimentoEmCm: produto.length,
+    tiposEntregaPermitidos: produto.allowedDeliveryTypes,
+    permiteSomenteRetirada:
+      Boolean(produto.allowsPickup) &&
+      (produto.allowedDeliveryTypes?.length ?? 0) === 0,
+  });
+  if (!logistica.valido) {
+    throw new Error("Este produto está temporariamente indisponível.");
   }
 }
 

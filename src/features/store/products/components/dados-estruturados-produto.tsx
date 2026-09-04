@@ -19,6 +19,7 @@ type DadosEstruturadosProdutoProps = {
     brand: string | null;
     sku: string | null;
     productKind: string | null;
+    logisticaElegivel?: boolean;
     marcaId: string | null;
     identificadoresCatalogo?: Array<{
       tipo: "gtin" | "mpn";

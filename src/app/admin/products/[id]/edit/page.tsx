@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertaDiagnosticoLogisticoProduto } from "@/features/logistica/components/admin/alerta-diagnostico-logistico-produto";
 import {
   BotaoDuplicarProduto,
   BotaoPublicarProduto,
@@ -505,6 +506,10 @@ export default function EditProductPage() {
           </div>
         </div>
       </div>
+
+      <AlertaDiagnosticoLogisticoProduto
+        diagnostico={productResponse.data?.diagnosticoLogistico}
+      />
 
       {/* No celular as abas ficam horizontais e deixam o formulário usar toda a tela. */}
       <div className="min-w-0 flex-1 p-0 sm:p-4 lg:p-6">

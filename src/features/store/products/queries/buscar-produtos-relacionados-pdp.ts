@@ -4,6 +4,7 @@ import { and, eq, ne } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
+import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 import { adaptarPrecosVitrine } from "@/features/precificacao/server";
 
 const QUANTIDADE_MINIMA_RELACIONADOS = 2;
@@ -41,6 +42,7 @@ export async function buscarProdutosRelacionadosPdp({
     eq(productTable.isActive, true),
     eq(productTable.status, "published"),
     ne(productTable.id, produtoId),
+    condicaoProdutoLogisticamenteElegivel(),
   ];
   const porCategoria = await db.query.productTable.findMany({
     where: and(...filtrosBase, eq(productTable.categoryId, categoriaId)),

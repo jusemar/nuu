@@ -13,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
+import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
 // ==========================================
@@ -78,6 +79,10 @@ export async function getProductBySlug(slug: string) {
     // Apenas a ausência real do registro segue para o notFound() da página.
     if (!product) return null;
 
+    const [diagnosticoLogistico] = await listarDiagnosticosLogisticosProdutos([
+      product.id,
+    ]);
+
     if (product.productKind === "simple") {
       const identificacao = identificarVarianteTecnicaProdutoSimples({
         skuProduto: product.sku,
@@ -99,7 +104,11 @@ export async function getProductBySlug(slug: string) {
       }
     }
 
-    return { ...product, brand: product.marca?.nome ?? null };
+    return {
+      ...product,
+      brand: product.marca?.nome ?? null,
+      logisticaElegivel: diagnosticoLogistico?.diagnostico.valido === true,
+    };
   } catch (error) {
     const codigo = crypto.randomUUID();
     const tipo =
@@ -131,7 +140,10 @@ export async function getProductBySku(sku: string) {
     });
 
     return product
-      ? { data: { ...product, brand: product.marca?.nome ?? null }, error: null }
+      ? {
+          data: { ...product, brand: product.marca?.nome ?? null },
+          error: null,
+        }
       : { data: null, error: "Produto não encontrado" };
   } catch {
     return { data: null, error: "Não foi possível carregar o produto" };

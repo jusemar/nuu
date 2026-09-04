@@ -1,14 +1,17 @@
 "use server";
 
-import { db } from "@/db/connection";
-import {
-  productTable,
-  productPricingTable,
-  productGalleryImagesTable,
-  productVariantTable,
-} from "@/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { desc } from "drizzle-orm";
+
+import { db } from "@/db/connection";
+import {
+  productGalleryImagesTable,
+  productPricingTable,
+  productTable,
+  productVariantTable,
+} from "@/db/schema";
+import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
+
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
 export async function getProductsByFlag(flags: string[]) {
@@ -70,6 +73,7 @@ export async function getProductsByFlag(flags: string[]) {
         and(
           eq(productTable.isActive, true),
           eq(productTable.status, "published"),
+          condicaoProdutoLogisticamenteElegivel(),
           sql`${productTable.storeProductFlags} && ARRAY[${sql.join(filteredFlags, sql`, `)}]::text[]`,
         ),
       )

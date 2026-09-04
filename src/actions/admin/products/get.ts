@@ -1,11 +1,12 @@
 "use server";
 
-import { desc,eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { categoryTable, marcaTable,productTable } from "@/db/schema";
+import { categoryTable, marcaTable, productTable } from "@/db/schema";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 
 export async function getProducts() {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.VISUALIZAR);
@@ -34,6 +35,12 @@ export async function getProducts() {
         salePrice: productTable.salePrice,
         promoPrice: productTable.promoPrice,
 
+        // Dados persistidos usados pelo diagnóstico administrativo.
+        weight: productTable.weight,
+        height: productTable.height,
+        width: productTable.width,
+        length: productTable.length,
+
         // Categoria
         categoryId: productTable.categoryId,
         categoryName: categoryTable.name,
@@ -47,9 +54,22 @@ export async function getProducts() {
       .leftJoin(marcaTable, eq(productTable.marcaId, marcaTable.id))
       .orderBy(desc(productTable.updatedAt));
 
-    return products;
+    const diagnosticos = await listarDiagnosticosLogisticosProdutos(
+      products.map((produto) => produto.id),
+    );
+    const diagnosticosPorProdutoId = new Map(
+      diagnosticos.map((produto) => [produto.id, produto.diagnostico]),
+    );
+
+    return products.map((produto) => ({
+      ...produto,
+      diagnosticoLogistico: diagnosticosPorProdutoId.get(produto.id) ?? null,
+    }));
   } catch (error) {
-    console.error("Erro ao buscar produtos:", error);
+    console.error("[admin:produtos:listar:erro]", {
+      tipo:
+        error instanceof Error ? error.constructor.name : "ErroDesconhecido",
+    });
     return [];
   }
 }

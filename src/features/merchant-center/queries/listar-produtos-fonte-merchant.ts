@@ -8,13 +8,15 @@ import {
   produtosTiposLogisticosTable,
   variantesTiposLogisticosTable,
 } from "@/db/schema";
+import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 
-/** Mesmos critérios que tornam a PDP pública e acessível por slug. */
+/** Produtos publicados e logisticamente elegíveis para oferta na vitrine. */
 export async function listarProdutosFonteMerchant() {
   const produtos = await db.query.productTable.findMany({
     where: and(
       eq(productTable.isActive, true),
       eq(productTable.status, "published"),
+      condicaoProdutoLogisticamenteElegivel(),
     ),
     orderBy: [asc(productTable.id)],
     with: {

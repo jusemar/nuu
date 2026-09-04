@@ -1,12 +1,14 @@
 "use client";
 
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { ChevronsUpDown, Plus } from "lucide-react";
+import { AlertTriangle, ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EditableSwitch } from "@/components/admin/editable-switch";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -15,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import type { DiagnosticoLogisticoProduto } from "@/features/logistica/lib/diagnosticar-logistica-produto";
 import { SeloSituacaoPublicacao } from "@/features/products";
 import { useProductBulkActions } from "@/hooks/admin/mutations/products/useProductBulkActions";
 import { useProducts } from "@/hooks/admin/queries/products/use-products";
@@ -31,11 +34,25 @@ interface Product {
   status: string | null;
   storeProductFlags: string[] | null;
   brand: string | null;
+  weight: number | null;
+  height: number | null;
+  width: number | null;
+  length: number | null;
+  diagnosticoLogistico: DiagnosticoLogisticoProduto | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export default function ProductsPage() {
+function formatarMedida(valor: number | null, unidade: "g" | "cm") {
+  if (valor === null || valor === undefined) return "Ausente";
+  if (!Number.isFinite(valor) || valor <= 0) return `Inválido (${valor})`;
+  return `${valor} ${unidade}`;
+}
+
+function ProductsPageContent() {
+  const searchParams = useSearchParams();
+  const somenteProblemasLogisticos =
+    searchParams.get("problemaLogistico") === "true";
   const { data: products, isLoading } = useProducts();
   const { handleDeleteSelected } = useProductBulkActions();
   const [categoriaSelecionadaId, setCategoriaSelecionadaId] = useState("");
@@ -43,6 +60,8 @@ export default function ProductsPage() {
   const [popoverCategoriaAberto, setPopoverCategoriaAberto] = useState(false);
   const [localProducts, setLocalProducts] = useState<Product[]>([]);
   const [originalProducts, setOriginalProducts] = useState<Product[]>([]);
+  const [origemSelecionada, setOrigemSelecionada] = useState("");
+  const [problemaSelecionado, setProblemaSelecionado] = useState("");
 
   const categoriasDisponiveis = useMemo(() => {
     const mapa = new Map<string, string>();
@@ -64,11 +83,50 @@ export default function ProductsPage() {
     categoria.nome.toLowerCase().includes(buscaCategoria.toLowerCase()),
   );
 
+  const origensDisponiveis = useMemo(() => {
+    const origens = new Map<string, string>();
+    localProducts.forEach((produto) => {
+      const origem = produto.diagnosticoLogistico?.origem;
+      if (origem) origens.set(origem.chave, origem.rotulo);
+    });
+    return [...origens.entries()].sort((a, b) =>
+      a[1].localeCompare(b[1], "pt-BR"),
+    );
+  }, [localProducts]);
+
+  const problemasDisponiveis = useMemo(() => {
+    const problemas = new Map<string, string>();
+    localProducts.forEach((produto) => {
+      produto.diagnosticoLogistico?.problemas.forEach((problema) =>
+        problemas.set(problema.codigo, problema.mensagemAdmin),
+      );
+    });
+    return [...problemas.entries()].sort((a, b) =>
+      a[1].localeCompare(b[1], "pt-BR"),
+    );
+  }, [localProducts]);
+
   const filteredProducts = localProducts.filter((product) => {
     const correspondeCategoria =
       !categoriaSelecionadaId || product.categoryId === categoriaSelecionadaId;
+    const correspondeLogistica =
+      !somenteProblemasLogisticos ||
+      product.diagnosticoLogistico?.valido === false;
+    const correspondeOrigem =
+      !origemSelecionada ||
+      product.diagnosticoLogistico?.origem.chave === origemSelecionada;
+    const correspondeProblema =
+      !problemaSelecionado ||
+      product.diagnosticoLogistico?.problemas.some(
+        (problema) => problema.codigo === problemaSelecionado,
+      );
 
-    return correspondeCategoria;
+    return (
+      correspondeCategoria &&
+      correspondeLogistica &&
+      correspondeOrigem &&
+      correspondeProblema
+    );
   });
 
   useEffect(() => {
@@ -143,6 +201,76 @@ export default function ProductsPage() {
         </Link>
       ),
     },
+    ...(somenteProblemasLogisticos
+      ? ([
+          {
+            id: "origemLogistica",
+            header: "Origem / fornecedor",
+            cell: ({ row }: CellContext<Product, unknown>) => (
+              <div className="max-w-52 text-sm">
+                <p className="font-medium">
+                  {row.original.diagnosticoLogistico?.origem.rotulo ?? "—"}
+                </p>
+                {row.original.diagnosticoLogistico?.origem.provedor ? (
+                  <p className="text-muted-foreground text-xs">
+                    Provedor:{" "}
+                    {row.original.diagnosticoLogistico.origem.provedor}
+                  </p>
+                ) : null}
+              </div>
+            ),
+          },
+          {
+            id: "problemasLogisticos",
+            header: "Problemas",
+            cell: ({ row }: CellContext<Product, unknown>) => (
+              <ul className="max-w-72 space-y-1 text-xs text-amber-800">
+                {row.original.diagnosticoLogistico?.problemas.map(
+                  (problema) => (
+                    <li key={problema.codigo}>{problema.mensagemAdmin}</li>
+                  ),
+                )}
+              </ul>
+            ),
+          },
+          {
+            accessorKey: "weight",
+            header: "Peso",
+            cell: ({ row }: CellContext<Product, unknown>) => (
+              <span className="text-xs">
+                {formatarMedida(row.original.weight, "g")}
+              </span>
+            ),
+          },
+          {
+            accessorKey: "height",
+            header: "Altura",
+            cell: ({ row }: CellContext<Product, unknown>) => (
+              <span className="text-xs">
+                {formatarMedida(row.original.height, "cm")}
+              </span>
+            ),
+          },
+          {
+            accessorKey: "width",
+            header: "Largura",
+            cell: ({ row }: CellContext<Product, unknown>) => (
+              <span className="text-xs">
+                {formatarMedida(row.original.width, "cm")}
+              </span>
+            ),
+          },
+          {
+            accessorKey: "length",
+            header: "Comprimento",
+            cell: ({ row }: CellContext<Product, unknown>) => (
+              <span className="text-xs">
+                {formatarMedida(row.original.length, "cm")}
+              </span>
+            ),
+          },
+        ] satisfies ColumnDef<Product>[])
+      : []),
     {
       accessorKey: "categoryName",
       header: "Categoria",
@@ -172,11 +300,16 @@ export default function ProductsPage() {
       id: "situacaoPublicacao",
       header: "Publicação",
       cell: ({ row }: CellContext<Product, unknown>) => (
-        <SeloSituacaoPublicacao
-          status={row.original.status}
-          isActive={row.original.isActive}
-          storeProductFlags={row.original.storeProductFlags}
-        />
+        <div className="flex flex-col items-start gap-1.5">
+          <SeloSituacaoPublicacao
+            status={row.original.status}
+            isActive={row.original.isActive}
+            storeProductFlags={row.original.storeProductFlags}
+          />
+          {row.original.diagnosticoLogistico?.valido === false ? (
+            <Badge variant="warning">Bloqueado pela logística</Badge>
+          ) : null}
+        </div>
       ),
     },
 
@@ -286,7 +419,9 @@ export default function ProductsPage() {
           <div className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h2 className="text-lg font-semibold text-gray-900">
-                Lista de Produtos
+                {somenteProblemasLogisticos
+                  ? "Produtos com problema logístico"
+                  : "Lista de Produtos"}
               </h2>
               <p className="text-muted-foreground">
                 {filteredProducts.length} produto(s)
@@ -313,68 +448,131 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div className="min-w-0 [&_[data-slot=table]]:min-w-[38rem]">
+          {somenteProblemasLogisticos ? (
+            <div className="mb-4 flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:mb-6">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <p>
+                Estes produtos permanecem cadastrados, mas não ficam disponíveis
+                para novas compras até que os dados necessários ao envio sejam
+                corrigidos.
+              </p>
+            </div>
+          ) : null}
+
+          <div
+            className={`min-w-0 ${somenteProblemasLogisticos ? "[&_[data-slot=table]]:min-w-[92rem]" : "[&_[data-slot=table]]:min-w-[38rem]"}`}
+          >
             <DataTable
               columns={columns}
               data={filteredProducts}
               colunasPesquisaveis={["name", "sku"]}
               onDeleteSelected={handleDeleteSelected}
               filtroExtra={
-                <Popover
-                  open={popoverCategoriaAberto}
-                  onOpenChange={setPopoverCategoriaAberto}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className="h-10 w-full justify-between sm:w-[280px]"
-                    >
-                      <span className="truncate">
-                        {categoriaSelecionada?.nome || "Selecionar categoria"}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-[calc(100vw-2rem)] p-2 sm:w-[320px]"
-                    align="start"
-                  >
-                    <Input
-                      value={buscaCategoria}
-                      onChange={(e) => setBuscaCategoria(e.target.value)}
-                      placeholder="Buscar categoria..."
-                      className="mb-2 h-9"
-                    />
-                    <div className="max-h-56 overflow-y-auto">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCategoriaSelecionadaId("");
-                          setPopoverCategoriaAberto(false);
-                          setBuscaCategoria("");
-                        }}
-                        className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                  {somenteProblemasLogisticos ? (
+                    <>
+                      <label
+                        className="sr-only"
+                        htmlFor="filtro-origem-logistica"
                       >
-                        Todas as categorias
-                      </button>
-                      {categoriasFiltradas.map((categoria) => (
+                        Filtrar por origem ou fornecedor
+                      </label>
+                      <select
+                        id="filtro-origem-logistica"
+                        value={origemSelecionada}
+                        onChange={(evento) =>
+                          setOrigemSelecionada(evento.target.value)
+                        }
+                        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 rounded-md border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
+                      >
+                        <option value="">Todas as origens</option>
+                        {origensDisponiveis.map(([chave, rotulo]) => (
+                          <option key={chave} value={chave}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </select>
+
+                      <label
+                        className="sr-only"
+                        htmlFor="filtro-problema-logistica"
+                      >
+                        Filtrar por tipo de problema
+                      </label>
+                      <select
+                        id="filtro-problema-logistica"
+                        value={problemaSelecionado}
+                        onChange={(evento) =>
+                          setProblemaSelecionado(evento.target.value)
+                        }
+                        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-10 rounded-md border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
+                      >
+                        <option value="">Todos os problemas</option>
+                        {problemasDisponiveis.map(([codigo, rotulo]) => (
+                          <option key={codigo} value={codigo}>
+                            {rotulo}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : null}
+
+                  <Popover
+                    open={popoverCategoriaAberto}
+                    onOpenChange={setPopoverCategoriaAberto}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="h-10 w-full justify-between sm:w-[280px]"
+                      >
+                        <span className="truncate">
+                          {categoriaSelecionada?.nome || "Selecionar categoria"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[calc(100vw-2rem)] p-2 sm:w-[320px]"
+                      align="start"
+                    >
+                      <Input
+                        value={buscaCategoria}
+                        onChange={(e) => setBuscaCategoria(e.target.value)}
+                        placeholder="Buscar categoria..."
+                        className="mb-2 h-9"
+                      />
+                      <div className="max-h-56 overflow-y-auto">
                         <button
-                          key={categoria.id}
                           type="button"
                           onClick={() => {
-                            setCategoriaSelecionadaId(categoria.id);
+                            setCategoriaSelecionadaId("");
                             setPopoverCategoriaAberto(false);
                             setBuscaCategoria("");
                           }}
                           className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
                         >
-                          {categoria.nome}
+                          Todas as categorias
                         </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                        {categoriasFiltradas.map((categoria) => (
+                          <button
+                            key={categoria.id}
+                            type="button"
+                            onClick={() => {
+                              setCategoriaSelecionadaId(categoria.id);
+                              setPopoverCategoriaAberto(false);
+                              setBuscaCategoria("");
+                            }}
+                            className="w-full rounded px-2 py-2 text-left text-sm hover:bg-slate-100"
+                          >
+                            {categoria.nome}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               }
               actionsContent={(row) => (
                 <Link href={`/admin/products/${row.id}/edit`}>✏️</Link>
@@ -384,5 +582,21 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-64 items-center justify-center p-6">
+          <p className="text-muted-foreground text-sm">
+            Carregando produtos...
+          </p>
+        </div>
+      }
+    >
+      <ProductsPageContent />
+    </Suspense>
   );
 }

@@ -55,10 +55,29 @@ function produtoSimples() {
     productKind: "simple",
     isActive: true,
     status: "published",
+    weight: 1_000,
+    height: 10,
+    width: 20,
+    length: 30,
+    allowedDeliveryTypes: ["own"],
+    allowsPickup: false,
     pricing: [precoBase],
     variants: [varianteTecnica],
   };
 }
+
+test("bloqueia produto sem dimensão logística obrigatória", () => {
+  const produto = produtoSimples();
+
+  assert.throws(
+    () =>
+      resolverItemVendavelCheckout({
+        item: itemBase,
+        produto: { ...produto, height: null },
+      }),
+    /temporariamente indisponível/,
+  );
+});
 
 test("resolve produto simples de estoque próprio pela variante técnica", () => {
   const resultado = resolverItemVendavelCheckout({

@@ -12,6 +12,7 @@ import { ControleQuantidadeCarrinho } from "./controle-quantidade-carrinho";
 type ItemCarrinhoProps = {
   item: ItemCarrinhoTipo;
   atualizando?: boolean;
+  indisponivel?: boolean;
   onAumentar: () => void;
   onDiminuir: () => void;
   onRemover: () => void;
@@ -37,6 +38,7 @@ function textoParecePrazo(texto?: string) {
 export function ItemCarrinho({
   item,
   atualizando,
+  indisponivel = false,
   onAumentar,
   onDiminuir,
   onRemover,
@@ -73,7 +75,7 @@ export function ItemCarrinho({
     <article
       className={cn(
         "grid grid-cols-[84px_1fr] gap-4 rounded-lg border border-zinc-200 bg-white p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900/70",
-        atualizando && "opacity-70",
+        (atualizando || indisponivel) && "opacity-70",
       )}
     >
       {urlProduto ? (
@@ -128,6 +130,12 @@ export function ItemCarrinho({
                 {item.freteEscolhido.valorEmCentavos === 0 ? " · Grátis" : ""}
               </p>
             ) : null}
+            {indisponivel ? (
+              <p className="mt-2 text-xs font-medium text-red-700 dark:text-red-300">
+                Este produto está temporariamente indisponível. Remova-o para
+                continuar.
+              </p>
+            ) : null}
           </div>
 
           <Button
@@ -149,7 +157,7 @@ export function ItemCarrinho({
 
         <div className="mt-4 flex items-end justify-between gap-3">
           <ControleQuantidadeCarrinho
-            desabilitado={atualizando}
+            desabilitado={atualizando || indisponivel}
             quantidade={item.quantidade}
             onAumentar={onAumentar}
             onDiminuir={onDiminuir}

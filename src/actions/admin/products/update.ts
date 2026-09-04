@@ -19,6 +19,7 @@ import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/en
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -194,6 +195,7 @@ interface UpdateProductData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
+    tiposEntregaPermitidos?: string[];
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
   };
@@ -250,6 +252,12 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     if (!existingProduct) {
       return falha("PRODUTO_NAO_ENCONTRADO", "Produto não encontrado.");
     }
+
+    etapaAtual = "identificacao_origem_logistica";
+    const usaLogisticaLaquila = await executarLeituraComRetry(
+      "origem_logistica",
+      () => verificarLogisticaLaquilaProduto(id),
+    );
 
     if (data.categoryId !== undefined) {
       etapaAtual = "validacao_categoria";
@@ -355,11 +363,30 @@ export async function updateProduct(id: string, data: UpdateProductData) {
 
     // Configuração de retirada local (entrega)
     if (data.entrega !== undefined) {
-      updateFields.allowsPickup = data.entrega.permiteRetirada ?? false;
-      updateFields.allowsOwnDelivery =
-        data.entrega.permiteEntregaPropria ?? false;
-      updateFields.aceitaPagamentoNaEntrega =
-        data.entrega.aceitaPagamentoNaEntrega ?? false;
+      const tiposEntregaPermitidos = usaLogisticaLaquila
+        ? ["supplier"]
+        : data.entrega.tiposEntregaPermitidos;
+      if (
+        tiposEntregaPermitidos?.some(
+          (tipo) => !["own", "supplier", "carrier"].includes(tipo),
+        )
+      ) {
+        return falha("DADOS_INVALIDOS", "O tipo de entrega é inválido.");
+      }
+      updateFields.allowsPickup = usaLogisticaLaquila
+        ? false
+        : (data.entrega.permiteRetirada ?? false);
+      updateFields.allowsOwnDelivery = usaLogisticaLaquila
+        ? false
+        : (data.entrega.permiteEntregaPropria ?? false);
+      if (tiposEntregaPermitidos !== undefined) {
+        updateFields.allowedDeliveryTypes = tiposEntregaPermitidos;
+        updateFields.allowsSupplierDelivery =
+          tiposEntregaPermitidos.includes("supplier");
+      }
+      updateFields.aceitaPagamentoNaEntrega = usaLogisticaLaquila
+        ? false
+        : (data.entrega.aceitaPagamentoNaEntrega ?? false);
       updateFields.modeloRetiradaId = data.entrega.modeloRetiradaId || null;
       updateFields.prazoRetiradaCustom = data.entrega.prazoCustom || null;
     }
@@ -569,7 +596,7 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       if (data.entrega !== undefined) {
         await salvarPrecosEntregaPropriaProduto(
           id,
-          data.entrega.permiteEntregaPropria
+          !usaLogisticaLaquila && data.entrega.permiteEntregaPropria
             ? (data.entrega.precosEntregaPropria ?? [])
             : [],
           { executor: tx, revalidar: false },

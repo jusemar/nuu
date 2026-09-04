@@ -1,10 +1,12 @@
 import { AlertTriangle, CheckCircle2, CircleX } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { DiagnosticoLogisticoProduto } from "@/features/logistica/lib/diagnosticar-logistica-produto";
 
 type AlertaDiagnosticoLogisticoProdutoProps = {
   diagnostico: DiagnosticoLogisticoProduto | null | undefined;
+  aoAbrirConfiguracaoTransporte?: () => void;
 };
 
 const campos = [
@@ -35,8 +37,15 @@ const campos = [
 /** Traduz o diagnóstico técnico para ações legíveis pelo gestor. */
 export function AlertaDiagnosticoLogisticoProduto({
   diagnostico,
+  aoAbrirConfiguracaoTransporte,
 }: AlertaDiagnosticoLogisticoProdutoProps) {
   if (!diagnostico || diagnostico.valido) return null;
+  const problemaTransporte = diagnostico.problemas.some((problema) =>
+    [
+      "CONFIGURACAO_TRANSPORTE_INVALIDA",
+      "CONFIGURACAO_LOGISTICA_INVALIDA",
+    ].includes(problema.codigo),
+  );
 
   return (
     <section
@@ -102,6 +111,30 @@ export function AlertaDiagnosticoLogisticoProduto({
               );
             })}
           </dl>
+
+          {problemaTransporte && diagnostico.origem.chave === "laquila" ? (
+            <div className="bg-background/80 mt-4 flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Como corrigir</p>
+                <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                  Produtos Laquila devem usar expedição pelo fornecedor, sem
+                  entrega própria. Acesse Entrega › Expedição Laquila e aplique
+                  a configuração indicada.
+                </p>
+              </div>
+              {aoAbrirConfiguracaoTransporte ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={aoAbrirConfiguracaoTransporte}
+                >
+                  Abrir configuração
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

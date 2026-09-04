@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, Package, Store, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -37,6 +38,7 @@ type Props = {
     modeloRetiradaId?: string | null;
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
+    tiposEntregaPermitidos?: string[];
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
@@ -149,9 +151,27 @@ export function EntregaTab({
   };
 
   const handleOwnDeliveryChange = (checked: boolean) => {
+    const tiposAtuais = data.tiposEntregaPermitidos ?? [];
     onChange?.({
       ...data,
       permiteEntregaPropria: checked,
+      tiposEntregaPermitidos: checked
+        ? Array.from(new Set([...tiposAtuais, "own"]))
+        : tiposAtuais.filter((tipo) => tipo !== "own"),
+    });
+  };
+
+  const configuracaoLaquilaCorreta =
+    data.tiposEntregaPermitidos?.includes("supplier") === true &&
+    !data.tiposEntregaPermitidos.includes("own") &&
+    !data.permiteEntregaPropria;
+
+  const aplicarConfiguracaoLaquila = () => {
+    onChange?.({
+      permiteEntregaPropria: false,
+      aceitaPagamentoNaEntrega: false,
+      precosEntregaPropria: [],
+      tiposEntregaPermitidos: ["supplier"],
     });
   };
 
@@ -203,7 +223,7 @@ export function EntregaTab({
             </TabsTrigger>
             <TabsTrigger value="entrega-propria" className="shrink-0 gap-2">
               <Truck className="h-4 w-4" />
-              Entrega Própria
+              {usaLogisticaLaquila ? "Expedição Laquila" : "Entrega Própria"}
             </TabsTrigger>
             <TabsTrigger value="regras-logisticas" className="shrink-0 gap-2">
               <Package className="h-4 w-4" />
@@ -263,72 +283,115 @@ export function EntregaTab({
         </TabsContent>
 
         <TabsContent value="entrega-propria">
-          <div className="space-y-6">
-            <EntregaPropriaInfoCard />
+          {usaLogisticaLaquila ? (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5" />
-                  Preços por destino
+                  Expedição pelo fornecedor
                 </CardTitle>
                 <CardDescription>
-                  Configure o preço da Entrega Própria deste produto para os
-                  destinos já cadastrados em Logística.
+                  A Laquila separa e expede este produto. Entrega própria e
+                  retirada local não fazem parte deste fluxo.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+              <CardContent className="space-y-4">
+                <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <Label className="font-medium">
-                      Permitir Entrega Própria
-                    </Label>
+                    <p className="font-medium">Configuração exigida</p>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Quando desativado, este produto não oferece Entrega
-                      Própria na loja.
+                      Entrega do fornecedor ativa e entrega própria desativada.
                     </p>
                   </div>
-                  <Switch
-                    checked={data.permiteEntregaPropria ?? false}
-                    onCheckedChange={handleOwnDeliveryChange}
-                  />
+                  <Badge
+                    variant={configuracaoLaquilaCorreta ? "default" : "warning"}
+                    className="w-fit"
+                  >
+                    {configuracaoLaquilaCorreta
+                      ? "Configurada"
+                      : "Ajuste necessário"}
+                  </Badge>
                 </div>
-
-                {/* Pagamento na entrega só existe dentro da entrega própria: é o entregador
-                  da loja que recebe. Por isso o controle vive aqui e só aparece quando a
-                  entrega própria está ligada — mostrá-lo antes sugeriria uma combinação
-                  que o motor de elegibilidade nunca aprovaria. */}
-                {data.permiteEntregaPropria ? (
-                  <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                {!configuracaoLaquilaCorreta ? (
+                  <Button type="button" onClick={aplicarConfiguracaoLaquila}>
+                    Aplicar configuração Laquila
+                  </Button>
+                ) : null}
+                <p className="text-muted-foreground text-xs">
+                  Após aplicar, use “Atualizar” no topo para salvar o produto. A
+                  transportadora do pedido é resolvida no checkout; Jadlog usa o
+                  código Laquila 63993.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              <EntregaPropriaInfoCard />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5" />
+                    Preços por destino
+                  </CardTitle>
+                  <CardDescription>
+                    Configure o preço da Entrega Própria deste produto para os
+                    destinos já cadastrados em Logística.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
                     <div>
                       <Label className="font-medium">
-                        Aceitar pagamento na entrega
+                        Permitir Entrega Própria
                       </Label>
                       <p className="text-muted-foreground mt-1 text-sm">
-                        Permite que o cliente pague ao receber. A
-                        disponibilidade final ainda depende do serviço de
-                        entrega, do valor do pedido e da configuração em
-                        Logística › Pagamento na Entrega.
+                        Quando desativado, este produto não oferece Entrega
+                        Própria na loja.
                       </p>
                     </div>
                     <Switch
-                      checked={data.aceitaPagamentoNaEntrega ?? false}
-                      onCheckedChange={(marcado) =>
-                        onChange?.({ aceitaPagamentoNaEntrega: marcado })
-                      }
+                      checked={data.permiteEntregaPropria ?? false}
+                      onCheckedChange={handleOwnDeliveryChange}
                     />
                   </div>
-                ) : null}
 
-                {data.permiteEntregaPropria ? (
-                  <ProdutoEntregaPropriaPrecos
-                    productId={productId}
-                    value={data.precosEntregaPropria ?? []}
-                    onChange={handleOwnDeliveryPricesChange}
-                  />
-                ) : null}
-              </CardContent>
-            </Card>
-          </div>
+                  {/* Pagamento na entrega só existe dentro da entrega própria: é o entregador
+                  da loja que recebe. Por isso o controle vive aqui e só aparece quando a
+                  entrega própria está ligada — mostrá-lo antes sugeriria uma combinação
+                  que o motor de elegibilidade nunca aprovaria. */}
+                  {data.permiteEntregaPropria ? (
+                    <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                      <div>
+                        <Label className="font-medium">
+                          Aceitar pagamento na entrega
+                        </Label>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          Permite que o cliente pague ao receber. A
+                          disponibilidade final ainda depende do serviço de
+                          entrega, do valor do pedido e da configuração em
+                          Logística › Pagamento na Entrega.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={data.aceitaPagamentoNaEntrega ?? false}
+                        onCheckedChange={(marcado) =>
+                          onChange?.({ aceitaPagamentoNaEntrega: marcado })
+                        }
+                      />
+                    </div>
+                  ) : null}
+
+                  {data.permiteEntregaPropria ? (
+                    <ProdutoEntregaPropriaPrecos
+                      productId={productId}
+                      value={data.precosEntregaPropria ?? []}
+                      onChange={handleOwnDeliveryPricesChange}
+                    />
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="regras-logisticas">

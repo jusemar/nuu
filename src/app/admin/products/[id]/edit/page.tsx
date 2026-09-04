@@ -59,6 +59,7 @@ export default function EditProductPage() {
 
   const [productData, setProductData] =
     useState<ProductFormData>(initialProductData);
+  const [abaAtiva, setAbaAtiva] = useState("basic");
   const carregamentoInicialAplicadoRef = useRef(false);
 
   useEffect(() => {
@@ -252,6 +253,7 @@ export default function EditProductPage() {
           modeloRetiradaId: product.modeloRetiradaId || null,
           prazoCustom: product.prazoRetiradaCustom || "",
           permiteEntregaPropria: product.allowsOwnDelivery ?? false,
+          tiposEntregaPermitidos: product.allowedDeliveryTypes ?? [],
           aceitaPagamentoNaEntrega: product.aceitaPagamentoNaEntrega ?? false,
           precosEntregaPropria: product.precosEntregaPropria || [],
           classificacoesLogisticasIds:
@@ -509,12 +511,17 @@ export default function EditProductPage() {
 
       <AlertaDiagnosticoLogisticoProduto
         diagnostico={productResponse.data?.diagnosticoLogistico}
+        aoAbrirConfiguracaoTransporte={() => setAbaAtiva("entrega")}
       />
 
       {/* No celular as abas ficam horizontais e deixam o formulário usar toda a tela. */}
       <div className="min-w-0 flex-1 p-0 sm:p-4 lg:p-6">
         <div className="w-full min-w-0">
-          <Tabs defaultValue="basic" className="min-w-0 gap-4 lg:flex-row">
+          <Tabs
+            value={abaAtiva}
+            onValueChange={setAbaAtiva}
+            className="min-w-0 gap-4 lg:flex-row"
+          >
             <div className="bg-background overflow-x-auto border-b px-3 py-2 sm:rounded-lg sm:border lg:overflow-visible lg:border-0 lg:p-0">
               <TabsList className="bg-background inline-flex h-auto w-max min-w-max justify-start gap-1 p-0 lg:h-full lg:w-48 lg:min-w-48 lg:flex-col lg:justify-start lg:rounded-none lg:border-l">
                 {tabs.map((tab) => (

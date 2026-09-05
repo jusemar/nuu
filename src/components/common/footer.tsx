@@ -40,20 +40,6 @@ export const Footer = async () => {
                 {DADOS_EMPRESA.razaoSocial} · CNPJ {DADOS_EMPRESA.cnpj}
               </p>
               <p>{ENDERECO_EMPRESA_FORMATADO}</p>
-              <p className="flex flex-wrap gap-x-3 gap-y-1">
-                <a
-                  href={`mailto:${DADOS_EMPRESA.emailAtendimento}`}
-                  className="focus-visible:ring-warning rounded-sm hover:text-white focus-visible:ring-2 focus-visible:outline-none"
-                >
-                  {DADOS_EMPRESA.emailAtendimento}
-                </a>
-                <a
-                  href={`https://wa.me/${DADOS_EMPRESA.telefone.whatsappOperacional}`}
-                  className="focus-visible:ring-warning rounded-sm hover:text-white focus-visible:ring-2 focus-visible:outline-none"
-                >
-                  WhatsApp {DADOS_EMPRESA.telefone.exibicao}
-                </a>
-              </p>
             </address>
 
             {/* Selos de confiança */}

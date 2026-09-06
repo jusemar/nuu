@@ -27,8 +27,13 @@ import {
   resumirProviderResponseAdminPedido,
   serializarProviderResponseAdminPedido,
 } from "../../../lib/admin-pedidos/formatar-admin-pedidos";
+import {
+  ESTADO_VISUAL_PIX_LABEL,
+  resolverEstadoVisualPix,
+} from "../../../lib/gateways/efi/estado-pix";
 import { buscarPedidoAdminPorId } from "../../../queries/pedidos-admin/buscar-pedido-admin";
 import type { PedidoAdminDetalhe } from "../../../types/admin-pedidos.types";
+import { PainelCobrancaPix } from "../../store/pedidos-cliente/painel-cobranca-pix";
 import { FormularioAlterarStatusPedido } from "./formulario-alterar-status-pedido";
 import { FormularioLogisticaPedido } from "./formulario-logistica-pedido";
 import { PagamentoStatusBadge, PedidoStatusBadge } from "./status-pedido-badge";
@@ -170,6 +175,17 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
     notFound();
   }
 
+  const pagamentoPix =
+    pedido.pagamento?.gateway === "efibank" && pedido.pagamento.metodo === "pix"
+      ? pedido.pagamento
+      : null;
+  const estadoVisualPix = pagamentoPix
+    ? resolverEstadoVisualPix({
+        status: pagamentoPix.status,
+        expiresAt: pagamentoPix.expiresAt,
+      })
+    : null;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 rounded-lg border bg-white p-5 shadow-sm lg:flex-row lg:items-start lg:justify-between">
@@ -195,7 +211,18 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
                 <span className="block text-[11px] font-medium tracking-wide text-slate-500 uppercase">
                   Pagamento
                 </span>
-                <PagamentoStatusBadge status={pedido.pagamentoStatus} />
+                <PagamentoStatusBadge
+                  status={
+                    estadoVisualPix === "expirado"
+                      ? "expired"
+                      : pedido.pagamentoStatus
+                  }
+                  label={
+                    estadoVisualPix
+                      ? ESTADO_VISUAL_PIX_LABEL[estadoVisualPix]
+                      : undefined
+                  }
+                />
               </div>
             </div>
           </div>
@@ -285,7 +312,21 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
           </Secao>
 
           <Secao titulo="Pagamento">
-            {pedido.pagamento ? (
+            {pagamentoPix ? (
+              <PainelCobrancaPix
+                numeroPedido={pedido.numeroPedido}
+                totalEmCentavos={pagamentoPix.valorEmCentavos}
+                status={pagamentoPix.status}
+                qrCode={pagamentoPix.qrCode}
+                copiaECola={pagamentoPix.copiaECola}
+                expiresAt={pagamentoPix.expiresAt?.toISOString() ?? null}
+                createdAt={pagamentoPix.createdAt.toISOString()}
+                paidAt={pagamentoPix.paidAt?.toISOString() ?? null}
+                txid={pagamentoPix.pixTxid}
+                exibirDadosOperacionais
+                agoraInicial={new Date().toISOString()}
+              />
+            ) : pedido.pagamento ? (
               <dl className="space-y-4">
                 <CampoDetalhe
                   label="Gateway"
@@ -358,6 +399,7 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
         <pre className="max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
           {serializarProviderResponseAdminPedido(
             pedido.pagamento?.providerResponse,
+            pedido.pagamento?.gateway,
           )}
         </pre>
       </Secao>

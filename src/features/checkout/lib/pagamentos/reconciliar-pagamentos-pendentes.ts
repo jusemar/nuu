@@ -5,6 +5,8 @@ import { and, asc, eq, isNotNull, lte } from "drizzle-orm";
 import { checkoutPagamentosTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
+import { consultarCobrancaPixEfi } from "../gateways/efi/pix-efi";
+import { processarWebhookPixEfi } from "../gateways/efi/webhook-efi";
 import { obterStripe } from "../gateways/stripe/cliente-stripe";
 import { sincronizarPagamentoCheckoutStripe } from "../gateways/stripe/webhook-stripe";
 import { expirarPagamentoPendente } from "./expirar-pagamento-pendente";
@@ -21,6 +23,7 @@ async function reconciliarPix(agora: Date) {
       id: checkoutPagamentosTable.id,
       pedidoId: checkoutPagamentosTable.pedidoId,
       expiresAt: checkoutPagamentosTable.expiresAt,
+      pixTxid: checkoutPagamentosTable.pixTxid,
     })
     .from(checkoutPagamentosTable)
     .where(
@@ -28,6 +31,7 @@ async function reconciliarPix(agora: Date) {
         eq(checkoutPagamentosTable.gateway, "efibank"),
         eq(checkoutPagamentosTable.status, "pending"),
         isNotNull(checkoutPagamentosTable.expiresAt),
+        isNotNull(checkoutPagamentosTable.pixTxid),
         lte(checkoutPagamentosTable.expiresAt, agora),
       ),
     )
@@ -35,6 +39,8 @@ async function reconciliarPix(agora: Date) {
     .limit(LIMITE_POR_EXECUCAO);
 
   let expirados = 0;
+  let confirmados = 0;
+  const erros: Array<{ pagamentoId: string; mensagem: string }> = [];
   for (const pagamento of pagamentos) {
     if (
       !pixPodeExpirar({
@@ -46,19 +52,56 @@ async function reconciliarPix(agora: Date) {
       continue;
     }
 
-    const resultado = await dbTransacional.transaction((tx) =>
-      expirarPagamentoPendente({
-        tx,
-        pedidoId: pagamento.pedidoId,
+    try {
+      const cobranca = await consultarCobrancaPixEfi(pagamento.pixTxid!);
+      const pixConfirmados = (cobranca.pix ?? []).filter(
+        (pix) => pix.txid && pix.endToEndId && !pix.devolucoes?.length,
+      );
+
+      if (pixConfirmados.length > 0) {
+        const resultados = await processarWebhookPixEfi({
+          pix: pixConfirmados,
+        });
+        if (
+          resultados.some(
+            (resultado) => resultado.status === "pagamento_confirmado",
+          )
+        ) {
+          confirmados += 1;
+        }
+        continue;
+      }
+
+      if (cobranca.status?.toUpperCase() === "CONCLUIDA") {
+        erros.push({
+          pagamentoId: pagamento.id,
+          mensagem: "Cobrança concluída sem Pix conciliável na resposta Efí.",
+        });
+        continue;
+      }
+
+      const resultado = await dbTransacional.transaction((tx) =>
+        expirarPagamentoPendente({
+          tx,
+          pedidoId: pagamento.pedidoId,
+          pagamentoId: pagamento.id,
+          gateway: "efibank",
+          referencia: `reconciliacao:pix:${pagamento.id}`,
+        }),
+      );
+      if (resultado.expiradoAgora) expirados += 1;
+    } catch (erro) {
+      erros.push({
         pagamentoId: pagamento.id,
-        gateway: "efibank",
-        referencia: `reconciliacao:pix:${pagamento.id}`,
-      }),
-    );
-    if (resultado.expiradoAgora) expirados += 1;
+        mensagem:
+          erro instanceof Error
+            ? erro.message
+            : "Falha desconhecida ao consultar Pix na Efí.",
+      });
+    }
   }
 
-  return { consultados: pagamentos.length, expirados };
+  return { consultados: pagamentos.length, confirmados, expirados, erros };
 }
 
 async function reconciliarStripe() {

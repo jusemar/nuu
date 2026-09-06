@@ -9,11 +9,15 @@ import {
   PEDIDO_HISTORICO_TIPO_LABEL,
 } from "../../../constants/pedidos-apresentacao";
 import {
+  ESTADO_VISUAL_PIX_LABEL,
+  resolverEstadoVisualPix,
+} from "../../../lib/gateways/efi/estado-pix";
+import {
   formatarDataPedidoCliente,
   formatarMoedaPedidoCliente,
 } from "../../../lib/pedidos-cliente/formatar-pedidos-cliente";
 import type { PedidoClienteDetalhe } from "../../../types/pedidos-cliente.types";
-import { BotaoRetomarPagamentoPix } from "./botao-retomar-pagamento-pix";
+import { PainelCobrancaPix } from "./painel-cobranca-pix";
 import {
   StatusPagamentoClienteBadge,
   StatusPedidoClienteBadge,
@@ -41,6 +45,17 @@ export function PaginaDetalhePedidoCliente({
 }: {
   pedido: PedidoClienteDetalhe;
 }) {
+  const pagamentoPix =
+    pedido.pagamento?.gateway === "efibank" && pedido.pagamento.metodo === "pix"
+      ? pedido.pagamento
+      : null;
+  const estadoVisualPix = pagamentoPix
+    ? resolverEstadoVisualPix({
+        status: pagamentoPix.status,
+        expiresAt: pagamentoPix.expiresAt,
+      })
+    : null;
+
   return (
     <>
       <Header />
@@ -78,7 +93,16 @@ export function PaginaDetalhePedidoCliente({
                     Pagamento
                   </span>
                   <StatusPagamentoClienteBadge
-                    status={pedido.pagamentoStatus}
+                    status={
+                      estadoVisualPix === "expirado"
+                        ? "expired"
+                        : pedido.pagamentoStatus
+                    }
+                    label={
+                      estadoVisualPix
+                        ? ESTADO_VISUAL_PIX_LABEL[estadoVisualPix]
+                        : undefined
+                    }
                   />
                 </div>
               </div>
@@ -190,7 +214,21 @@ export function PaginaDetalhePedidoCliente({
               </SecaoCliente>
 
               <SecaoCliente titulo="Pagamento">
-                {pedido.pagamento ? (
+                {pagamentoPix ? (
+                  <PainelCobrancaPix
+                    pedidoId={pedido.id}
+                    numeroPedido={pedido.numeroPedido}
+                    totalEmCentavos={pedido.totalEmCentavos}
+                    status={pagamentoPix.status}
+                    qrCode={pagamentoPix.qrCode}
+                    copiaECola={pagamentoPix.copiaECola}
+                    expiresAt={pagamentoPix.expiresAt?.toISOString() ?? null}
+                    createdAt={pagamentoPix.createdAt.toISOString()}
+                    paidAt={pagamentoPix.paidAt?.toISOString() ?? null}
+                    acompanharPagamento
+                    agoraInicial={new Date().toISOString()}
+                  />
+                ) : pedido.pagamento ? (
                   <dl className="space-y-3 text-sm">
                     <div>
                       <dt className="text-xs font-medium text-slate-500 uppercase">
@@ -216,10 +254,6 @@ export function PaginaDetalhePedidoCliente({
                     Pagamento ainda não disponível.
                   </p>
                 )}
-                {pedido.pagamento?.metodo === "pix" &&
-                pedido.pagamento.status === "failed" ? (
-                  <BotaoRetomarPagamentoPix pedidoId={pedido.id} />
-                ) : null}
               </SecaoCliente>
 
               <SecaoCliente titulo="Rastreio">

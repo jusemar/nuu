@@ -29,6 +29,8 @@ export async function buscarPixPedidoClientePorId({
       qrCode: checkoutPagamentosTable.qrCode,
       copiaECola: checkoutPagamentosTable.copiaECola,
       expiresAt: checkoutPagamentosTable.expiresAt,
+      paidAt: checkoutPagamentosTable.paidAt,
+      createdAt: checkoutPagamentosTable.createdAt,
     })
     .from(checkoutPedidosTable)
     .innerJoin(
@@ -47,15 +49,7 @@ export async function buscarPixPedidoClientePorId({
     )
     .limit(1);
 
-  if (
-    !pix ||
-    pix.gateway !== "efibank" ||
-    pix.metodo !== "pix" ||
-    !pix.pixTxid ||
-    !pix.qrCode ||
-    !pix.copiaECola ||
-    !pix.expiresAt
-  ) {
+  if (!pix || pix.gateway !== "efibank" || pix.metodo !== "pix") {
     return null;
   }
 
@@ -68,5 +62,7 @@ export async function buscarPixPedidoClientePorId({
     qrCode: pix.qrCode,
     copiaECola: pix.copiaECola,
     expiresAt: pix.expiresAt,
+    paidAt: pix.paidAt,
+    createdAt: pix.createdAt,
   };
 }

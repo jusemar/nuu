@@ -9,10 +9,14 @@ import type {
 import { chamarApiPixEfi } from "./cliente-efi";
 import { obterConfiguracaoEfi } from "./configuracao-efi";
 
-const EXPIRACAO_PIX_EM_SEGUNDOS = 3600;
+export const EXPIRACAO_PIX_EM_SEGUNDOS = 7200;
 
 type CobrancaEfiResponse = {
   txid: string;
+  calendario?: {
+    criacao?: string;
+    expiracao?: number;
+  };
   loc?: {
     id?: number;
   };
@@ -24,8 +28,47 @@ type QrCodeEfiResponse = {
   imagemQrcode: string;
 };
 
+export type ConsultaCobrancaPixEfi = {
+  status?: string;
+  txid?: string;
+  calendario?: {
+    criacao?: string;
+    expiracao?: number;
+  };
+  valor?: {
+    original?: string;
+  };
+  pix?: Array<{
+    endToEndId?: string;
+    txid?: string;
+    valor?: string;
+    horario?: string;
+    devolucoes?: unknown[];
+  }>;
+};
+
 function formatarValorPix(valorEmCentavos: number) {
   return (valorEmCentavos / 100).toFixed(2);
+}
+
+export function resolverExpiracaoCobrancaPixEfi(
+  calendario: CobrancaEfiResponse["calendario"],
+  agora = new Date(),
+) {
+  const expiracaoEmSegundos = calendario?.expiracao;
+  const criacaoEmMilissegundos = calendario?.criacao
+    ? new Date(calendario.criacao).getTime()
+    : Number.NaN;
+
+  if (
+    Number.isFinite(criacaoEmMilissegundos) &&
+    typeof expiracaoEmSegundos === "number" &&
+    expiracaoEmSegundos > 0
+  ) {
+    return new Date(criacaoEmMilissegundos + expiracaoEmSegundos * 1000);
+  }
+
+  return new Date(agora.getTime() + EXPIRACAO_PIX_EM_SEGUNDOS * 1000);
 }
 
 /**
@@ -33,9 +76,17 @@ function formatarValorPix(valorEmCentavos: number) {
  * Derivar o valor do número único do pedido torna o PUT idempotente até quando a rede
  * cai depois de a cobrança nascer e antes de conseguirmos persistir a resposta.
  */
-export function gerarTxidPixEfiDoPedido(numeroPedido: string) {
+export function gerarTxidPixEfiDoPedido(numeroPedido: string, geracao = 1) {
+  if (!Number.isInteger(geracao) || geracao < 1) {
+    throw new Error("A geração do Pix deve ser um inteiro positivo.");
+  }
+
   return createHash("sha256")
-    .update(`nooo:pedido:${numeroPedido}`)
+    .update(
+      geracao === 1
+        ? `nooo:pedido:${numeroPedido}`
+        : `nooo:pedido:${numeroPedido}:geracao:${geracao}`,
+    )
     .digest("hex")
     .slice(0, 32);
 }
@@ -64,9 +115,10 @@ export async function criarCobrancaPixEfi({
   nome,
   documento,
   valorEmCentavos,
+  geracao = 1,
 }: CriarCobrancaPixEfiInput): Promise<CobrancaPixEfi> {
   const configuracao = obterConfiguracaoEfi();
-  const txid = gerarTxidPixEfiDoPedido(numeroPedido);
+  const txid = gerarTxidPixEfiDoPedido(numeroPedido, geracao);
 
   const cobranca = await chamarApiPixEfi<CobrancaEfiResponse>({
     metodo: "PUT",
@@ -113,10 +165,21 @@ export async function criarCobrancaPixEfi({
     txid: cobranca.txid,
     qrCode: qrcode.imagemQrcode,
     copiaECola: qrcode.qrcode || copiaECola,
-    expiresAt: new Date(Date.now() + EXPIRACAO_PIX_EM_SEGUNDOS * 1000),
+    expiresAt: resolverExpiracaoCobrancaPixEfi(cobranca.calendario),
     providerResponse: {
+      controlePix: {
+        geracao,
+        expiracaoEmSegundos: EXPIRACAO_PIX_EM_SEGUNDOS,
+      },
       cobranca,
       qrcode,
     },
   };
+}
+
+export async function consultarCobrancaPixEfi(txid: string) {
+  return chamarApiPixEfi<ConsultaCobrancaPixEfi>({
+    metodo: "GET",
+    path: `/v2/cob/${encodeURIComponent(txid)}`,
+  });
 }

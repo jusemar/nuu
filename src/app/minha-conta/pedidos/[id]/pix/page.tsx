@@ -37,7 +37,12 @@ export default async function PixPedidoClientePage({
       totalEmCentavos={pix.totalEmCentavos}
       qrCode={pix.qrCode}
       copiaECola={pix.copiaECola}
-      expiresAt={pix.expiresAt.toISOString()}
+      expiresAt={pix.expiresAt?.toISOString() ?? null}
+      pedidoId={pix.pedidoId}
+      status={pix.pagamentoStatus}
+      createdAt={pix.createdAt.toISOString()}
+      paidAt={pix.paidAt?.toISOString() ?? null}
+      agoraInicial={new Date().toISOString()}
     />
   );
 }

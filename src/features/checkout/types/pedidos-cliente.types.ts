@@ -1,4 +1,5 @@
 import type {
+  PagamentoGatewayCheckout,
   PagamentoMetodoCheckout,
   PagamentoStatusCheckout,
   PedidoHistoricoOrigemCheckout,
@@ -41,8 +42,14 @@ export type PedidoClienteDetalhe = {
     totalEmCentavos: number;
   }[];
   pagamento: {
+    gateway: PagamentoGatewayCheckout;
     metodo: PagamentoMetodoCheckout;
     status: PagamentoStatusCheckout;
+    qrCode: string | null;
+    copiaECola: string | null;
+    expiresAt: Date | null;
+    paidAt: Date | null;
+    createdAt: Date;
   } | null;
   logistica: {
     transportadora: string | null;

@@ -36,12 +36,14 @@ export function StatusPedidoClienteBadge({
 
 export function StatusPagamentoClienteBadge({
   status,
+  label,
 }: {
   status: PagamentoStatusCheckout;
+  label?: string;
 }) {
   return (
     <Badge variant="outline" className={cn(estilosStatus[status])}>
-      {PAGAMENTO_STATUS_LABEL[status]}
+      {label ?? PAGAMENTO_STATUS_LABEL[status]}
     </Badge>
   );
 }

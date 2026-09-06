@@ -77,8 +77,14 @@ export async function buscarPedidoClientePorId({
     })),
     pagamento: pagamento
       ? {
+          gateway: pagamento.gateway,
           metodo: pagamento.metodo,
           status: pagamento.status,
+          qrCode: pagamento.qrCode,
+          copiaECola: pagamento.copiaECola,
+          expiresAt: pagamento.expiresAt,
+          paidAt: pagamento.paidAt,
+          createdAt: pagamento.createdAt,
         }
       : null,
     logistica: pedido.logistica

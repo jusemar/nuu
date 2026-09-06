@@ -3,6 +3,7 @@ export type CriarCobrancaPixEfiInput = {
   nome: string;
   documento: string;
   valorEmCentavos: number;
+  geracao?: number;
 };
 
 export type CobrancaPixEfi = {
@@ -10,8 +11,5 @@ export type CobrancaPixEfi = {
   qrCode: string;
   copiaECola: string;
   expiresAt: Date;
-  providerResponse: {
-    cobranca: unknown;
-    qrcode: unknown;
-  };
+  providerResponse: unknown;
 };

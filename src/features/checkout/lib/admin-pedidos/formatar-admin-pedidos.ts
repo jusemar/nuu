@@ -56,10 +56,54 @@ export function resumirProviderResponseAdminPedido(providerResponse: unknown) {
 
 export function serializarProviderResponseAdminPedido(
   providerResponse: unknown,
+  gateway?: string,
 ) {
   if (!providerResponse) {
     return "null";
   }
 
-  return JSON.stringify(providerResponse, null, 2);
+  if (gateway !== "efibank") {
+    return JSON.stringify(providerResponse, null, 2);
+  }
+
+  const sanitizar = (valor: unknown, chave = ""): unknown => {
+    const chaveNormalizada = chave.toLowerCase();
+
+    if (
+      /token|authorization|clientsecret|client_secret|certificado|certificate|pfx|password|senha/.test(
+        chaveNormalizada,
+      )
+    ) {
+      return "[SEGREDO REDIGIDO]";
+    }
+
+    if (/devedor|cpf|cnpj|email|telefone|celular/.test(chaveNormalizada)) {
+      return "[DADO PESSOAL REDIGIDO]";
+    }
+
+    if (
+      /imagemqrcode|pixcopiaecola|qrcode|copiaecola|chave/.test(
+        chaveNormalizada,
+      )
+    ) {
+      return "[EXIBIDO NA SEÇÃO PAGAMENTO PIX]";
+    }
+
+    if (Array.isArray(valor)) {
+      return valor.map((item) => sanitizar(item));
+    }
+
+    if (valor && typeof valor === "object") {
+      return Object.fromEntries(
+        Object.entries(valor).map(([nome, conteudo]) => [
+          nome,
+          sanitizar(conteudo, nome),
+        ]),
+      );
+    }
+
+    return valor;
+  };
+
+  return JSON.stringify(sanitizar(providerResponse), null, 2);
 }

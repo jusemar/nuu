@@ -72,6 +72,7 @@ export type PedidoAdminDetalhe = {
     valorEmCentavos: number;
     transactionId: string | null;
     pixTxid: string | null;
+    qrCode: string | null;
     copiaECola: string | null;
     expiresAt: Date | null;
     paidAt: Date | null;

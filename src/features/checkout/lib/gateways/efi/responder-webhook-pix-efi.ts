@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-import {
-  processarWebhookPixEfi,
-  validarTokenWebhookPixEfi,
-} from "./webhook-efi";
+import { validarTokenWebhookPixEfi } from "./seguranca-webhook-efi";
+import { processarWebhookPixEfi } from "./webhook-efi";
 
 export async function responderRequisicaoWebhookPixEfi(request: Request) {
   const url = new URL(request.url);

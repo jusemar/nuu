@@ -88,6 +88,7 @@ export async function buscarPedidoAdminPorId(
           valorEmCentavos: pagamento.valorEmCentavos,
           transactionId: pagamento.transactionId,
           pixTxid: pagamento.pixTxid,
+          qrCode: pagamento.qrCode,
           copiaECola: pagamento.copiaECola,
           expiresAt: pagamento.expiresAt,
           paidAt: pagamento.paidAt,

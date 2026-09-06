@@ -14,6 +14,7 @@ import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-em
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoPixAprovado } from "../../emails/email-service";
 import { resolverStatusOperacionalPedidoAposPagamento } from "../../pedidos/resolver-status-operacional-pedido";
+import { valorPixCorrespondeAoPagamento } from "./validar-valor-pix";
 
 type PixRecebidoWebhookEfi = {
   endToEndId?: string;
@@ -47,20 +48,6 @@ function montarIdentificadorEventoPix(pix: PixRecebidoWebhookEfi) {
 
 function pixRepresentaPagamentoConfirmado(pix: PixRecebidoWebhookEfi) {
   return Boolean(pix.txid && pix.endToEndId && !pix.devolucoes?.length);
-}
-
-export function validarTokenWebhookPixEfi({
-  tokenRecebido,
-}: {
-  tokenRecebido: string | null;
-}) {
-  const tokenConfigurado = process.env.EFI_WEBHOOK_TOKEN?.trim();
-
-  if (!tokenConfigurado) {
-    return true;
-  }
-
-  return tokenRecebido === tokenConfigurado;
 }
 
 async function confirmarPagamentoPixEfi({
@@ -131,6 +118,35 @@ async function confirmarPagamentoPixEfi({
     }
 
     if (
+      !valorPixCorrespondeAoPagamento({
+        valorRecebido: pix.valor,
+        valorEsperadoEmCentavos: pagamentoAtual.valorEmCentavos,
+      })
+    ) {
+      await tx
+        .update(checkoutEfiWebhookEventosTable)
+        .set({
+          statusProcessamento: "erro",
+          erro: "Valor PIX divergente do pagamento historico.",
+          updatedAt: new Date(),
+        })
+        .where(
+          eq(
+            checkoutEfiWebhookEventosTable.identificadorEvento,
+            identificadorEvento,
+          ),
+        );
+
+      return {
+        confirmadoAgora: false,
+        duplicado: false,
+        pedidoId: pedidoAtual.id,
+        pagamentoId: pagamentoAtual.id,
+        erro: "Valor PIX divergente do pagamento histórico.",
+      };
+    }
+
+    if (
       pagamentoAtual.status === "paid" &&
       pedidoAtual.pagamentoStatus === "paid"
     ) {
@@ -162,6 +178,11 @@ async function confirmarPagamentoPixEfi({
         transactionId: pix.endToEndId ?? pagamentoAtual.transactionId,
         paidAt: pix.horario ? new Date(pix.horario) : new Date(),
         providerResponse: {
+          ...(pagamentoAtual.providerResponse &&
+          typeof pagamentoAtual.providerResponse === "object" &&
+          !Array.isArray(pagamentoAtual.providerResponse)
+            ? pagamentoAtual.providerResponse
+            : {}),
           efiWebhook: pix,
         },
         updatedAt: new Date(),
@@ -358,7 +379,13 @@ export async function processarWebhookPixEfi(
           pedidoId: resultado.pedidoId,
         });
       } else {
-        await enviarEmailPagamentoPixAprovado(pedidoEmail);
+        await enviarEmailPagamentoPixAprovado(pedidoEmail).catch((error) => {
+          console.error("Falha ao enviar email do PIX Efí aprovado.", {
+            pedidoId: resultado.pedidoId,
+            message:
+              error instanceof Error ? error.message : "Erro desconhecido",
+          });
+        });
       }
     }
 

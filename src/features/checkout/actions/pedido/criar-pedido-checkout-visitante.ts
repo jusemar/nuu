@@ -1,6 +1,7 @@
 "use server";
 
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import {
   carteirasFidelidadeTable,
@@ -390,6 +391,258 @@ async function marcarFalhaPagamentoGateway({
       })
       .where(eq(checkoutPedidosTable.id, pedidoId));
   });
+}
+
+const retomarPagamentoPixSchema = z.object({
+  pedidoId: z.uuid(),
+});
+
+/**
+ * Retoma uma cobrança Pix que falhou antes de receber qualquer referência externa.
+ *
+ * O pedido não é recriado. A atualização condicional de `failed` para `pending` funciona
+ * como uma trava: somente uma requisição adquire o direito de falar com a Efí. Além
+ * disso, `criarCobrancaPixEfi` usa PUT com txid determinístico, cobrindo o intervalo
+ * entre a resposta externa e a persistência local.
+ */
+export async function retomarPagamentoPixPedidoCliente(data: unknown) {
+  const { pedidoId } = retomarPagamentoPixSchema.parse(data);
+  const sessao = await buscarSessaoCliente();
+
+  if (!sessao?.usuario.id) {
+    throw new Error("Entre na sua conta para retomar o pagamento.");
+  }
+
+  const [contexto] = await dbTransacional
+    .select({
+      pedidoId: checkoutPedidosTable.id,
+      numeroPedido: checkoutPedidosTable.numeroPedido,
+      subtotalEmCentavos: checkoutPedidosTable.subtotalEmCentavos,
+      freteEmCentavos: checkoutPedidosTable.freteEmCentavos,
+      descontoEmCentavos: checkoutPedidosTable.descontoEmCentavos,
+      totalEmCentavos: checkoutPedidosTable.totalEmCentavos,
+      creditoFidelidadeEmCentavos:
+        checkoutPedidosTable.creditoFidelidadeEmCentavos,
+      pagamentoStatusPedido: checkoutPedidosTable.pagamentoStatus,
+      nomeCliente: checkoutClientesTable.nome,
+      emailCliente: checkoutClientesTable.email,
+      documentoCliente: checkoutClientesTable.documento,
+      pagamentoId: checkoutPagamentosTable.id,
+      gateway: checkoutPagamentosTable.gateway,
+      metodo: checkoutPagamentosTable.metodo,
+      pagamentoStatus: checkoutPagamentosTable.status,
+      valorPagamentoEmCentavos: checkoutPagamentosTable.valorEmCentavos,
+      transactionId: checkoutPagamentosTable.transactionId,
+      pixTxid: checkoutPagamentosTable.pixTxid,
+      qrCode: checkoutPagamentosTable.qrCode,
+      copiaECola: checkoutPagamentosTable.copiaECola,
+      expiresAt: checkoutPagamentosTable.expiresAt,
+    })
+    .from(checkoutPedidosTable)
+    .innerJoin(
+      checkoutClientesTable,
+      eq(checkoutClientesTable.id, checkoutPedidosTable.clienteId),
+    )
+    .innerJoin(
+      checkoutPagamentosTable,
+      eq(checkoutPagamentosTable.pedidoId, checkoutPedidosTable.id),
+    )
+    .where(
+      and(
+        eq(checkoutPedidosTable.id, pedidoId),
+        eq(checkoutClientesTable.userId, sessao.usuario.id),
+      ),
+    )
+    .limit(1);
+
+  if (!contexto) {
+    throw new Error("Pedido não encontrado para esta conta.");
+  }
+
+  if (contexto.gateway !== "efibank" || contexto.metodo !== "pix") {
+    throw new Error("Este pedido não possui pagamento Pix Efí.");
+  }
+
+  if (contexto.totalEmCentavos !== contexto.valorPagamentoEmCentavos) {
+    throw new Error("O valor do pagamento não corresponde ao total do pedido.");
+  }
+
+  if (
+    contexto.pixTxid &&
+    contexto.qrCode &&
+    contexto.copiaECola &&
+    contexto.expiresAt
+  ) {
+    return {
+      pedidoId: contexto.pedidoId,
+      numeroPedido: contexto.numeroPedido,
+      totalEmCentavos: contexto.totalEmCentavos,
+      pix: {
+        txid: contexto.pixTxid,
+        qrCode: contexto.qrCode,
+        copiaECola: contexto.copiaECola,
+        expiresAt: contexto.expiresAt.toISOString(),
+      },
+    };
+  }
+
+  if (
+    contexto.transactionId ||
+    contexto.pixTxid ||
+    contexto.qrCode ||
+    contexto.copiaECola ||
+    contexto.expiresAt
+  ) {
+    throw new Error(
+      "A tentativa Pix possui uma referência parcial e exige conciliação antes de novo envio.",
+    );
+  }
+
+  if (
+    contexto.pagamentoStatus !== "failed" ||
+    contexto.pagamentoStatusPedido !== "failed"
+  ) {
+    throw new Error("Este pagamento não está disponível para retomada.");
+  }
+
+  if (contexto.creditoFidelidadeEmCentavos > 0) {
+    throw new Error(
+      "Pagamento com crédito de fidelidade exige uma nova reserva antes da retomada.",
+    );
+  }
+
+  const adquiriuProcessamento = await dbTransacional.transaction(async (tx) => {
+    const [pagamentoAdquirido] = await tx
+      .update(checkoutPagamentosTable)
+      .set({
+        status: "pending",
+        providerResponse: {
+          retomada: "aguardando_resposta_efi",
+        },
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(checkoutPagamentosTable.id, contexto.pagamentoId),
+          eq(checkoutPagamentosTable.status, "failed"),
+          isNull(checkoutPagamentosTable.transactionId),
+          isNull(checkoutPagamentosTable.pixTxid),
+          isNull(checkoutPagamentosTable.qrCode),
+          isNull(checkoutPagamentosTable.copiaECola),
+        ),
+      )
+      .returning({ id: checkoutPagamentosTable.id });
+
+    if (!pagamentoAdquirido) return false;
+
+    await tx
+      .update(checkoutPedidosTable)
+      .set({ pagamentoStatus: "pending", updatedAt: new Date() })
+      .where(
+        and(
+          eq(checkoutPedidosTable.id, contexto.pedidoId),
+          eq(checkoutPedidosTable.pagamentoStatus, "failed"),
+        ),
+      );
+
+    return true;
+  });
+
+  if (!adquiriuProcessamento) {
+    throw new Error("A geração deste Pix já está em processamento.");
+  }
+
+  try {
+    const pix = await criarCobrancaPixEfi({
+      numeroPedido: contexto.numeroPedido,
+      nome: contexto.nomeCliente,
+      documento: contexto.documentoCliente,
+      valorEmCentavos: contexto.totalEmCentavos,
+    });
+
+    const [pagamentoPersistido] = await dbTransacional
+      .update(checkoutPagamentosTable)
+      .set({
+        status: "pending",
+        pixTxid: pix.txid,
+        transactionId: pix.txid,
+        qrCode: pix.qrCode,
+        copiaECola: pix.copiaECola,
+        expiresAt: pix.expiresAt,
+        providerResponse: pix.providerResponse,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(checkoutPagamentosTable.id, contexto.pagamentoId),
+          eq(checkoutPagamentosTable.status, "pending"),
+          isNull(checkoutPagamentosTable.transactionId),
+          isNull(checkoutPagamentosTable.pixTxid),
+        ),
+      )
+      .returning({ id: checkoutPagamentosTable.id });
+
+    if (!pagamentoPersistido) {
+      throw new Error(
+        "A cobrança foi respondida pela Efí, mas o pagamento local exige conciliação.",
+      );
+    }
+
+    const itens = await dbTransacional
+      .select({
+        nome: checkoutPedidoItensTable.nomeProduto,
+        quantidade: checkoutPedidoItensTable.quantidade,
+        precoUnitarioEmCentavos:
+          checkoutPedidoItensTable.precoUnitarioEmCentavos,
+        totalEmCentavos: checkoutPedidoItensTable.totalEmCentavos,
+      })
+      .from(checkoutPedidoItensTable)
+      .where(eq(checkoutPedidoItensTable.pedidoId, contexto.pedidoId));
+
+    // A cobrança já está persistida; indisponibilidade de e-mail não pode invalidá-la.
+    await enviarEmailPixPendente({
+      numeroPedido: contexto.numeroPedido,
+      nomeCliente: contexto.nomeCliente,
+      emailCliente: contexto.emailCliente,
+      subtotalEmCentavos: contexto.subtotalEmCentavos,
+      freteEmCentavos: contexto.freteEmCentavos,
+      descontoEmCentavos: contexto.descontoEmCentavos,
+      totalEmCentavos: contexto.totalEmCentavos,
+      itens,
+      pix: {
+        qrCode: pix.qrCode,
+        copiaECola: pix.copiaECola,
+        expiresAt: pix.expiresAt,
+      },
+    }).catch((error) => {
+      console.error("Falha ao reenviar e-mail do Pix retomado.", {
+        pedidoId: contexto.pedidoId,
+        erro: error instanceof Error ? error.message : "erro_desconhecido",
+      });
+    });
+
+    return {
+      pedidoId: contexto.pedidoId,
+      numeroPedido: contexto.numeroPedido,
+      totalEmCentavos: contexto.totalEmCentavos,
+      pix: {
+        txid: pix.txid,
+        qrCode: pix.qrCode,
+        copiaECola: pix.copiaECola,
+        expiresAt: pix.expiresAt.toISOString(),
+      },
+    };
+  } catch (error) {
+    await marcarFalhaPagamentoGateway({
+      pedidoId: contexto.pedidoId,
+      pagamentoId: contexto.pagamentoId,
+      erro:
+        error instanceof Error
+          ? error.message
+          : "Erro desconhecido ao retomar Pix Efí.",
+    });
+    throw error;
+  }
 }
 
 type CriarPedidoCheckoutVisitanteInternoParams = {

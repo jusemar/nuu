@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ArrowLeft, PackageCheck, Truck } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Header } from "@/features/header";
@@ -13,6 +13,7 @@ import {
   formatarMoedaPedidoCliente,
 } from "../../../lib/pedidos-cliente/formatar-pedidos-cliente";
 import type { PedidoClienteDetalhe } from "../../../types/pedidos-cliente.types";
+import { BotaoRetomarPagamentoPix } from "./botao-retomar-pagamento-pix";
 import {
   StatusPagamentoClienteBadge,
   StatusPedidoClienteBadge,
@@ -215,6 +216,10 @@ export function PaginaDetalhePedidoCliente({
                     Pagamento ainda não disponível.
                   </p>
                 )}
+                {pedido.pagamento?.metodo === "pix" &&
+                pedido.pagamento.status === "failed" ? (
+                  <BotaoRetomarPagamentoPix pedidoId={pedido.id} />
+                ) : null}
               </SecaoCliente>
 
               <SecaoCliente titulo="Rastreio">

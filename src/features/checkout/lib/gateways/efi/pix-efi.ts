@@ -1,11 +1,13 @@
+import { createHash } from "node:crypto";
+
 import QRCode from "qrcode";
 
-import { obterConfiguracaoEfi } from "./configuracao-efi";
-import { chamarApiPixEfi } from "./cliente-efi";
 import type {
   CobrancaPixEfi,
   CriarCobrancaPixEfiInput,
 } from "../../../types/efi-pix.types";
+import { chamarApiPixEfi } from "./cliente-efi";
+import { obterConfiguracaoEfi } from "./configuracao-efi";
 
 const EXPIRACAO_PIX_EM_SEGUNDOS = 3600;
 
@@ -24,6 +26,18 @@ type QrCodeEfiResponse = {
 
 function formatarValorPix(valorEmCentavos: number) {
   return (valorEmCentavos / 100).toFixed(2);
+}
+
+/**
+ * A Efí aceita de 26 a 35 caracteres alfanuméricos no txid informado pelo lojista.
+ * Derivar o valor do número único do pedido torna o PUT idempotente até quando a rede
+ * cai depois de a cobrança nascer e antes de conseguirmos persistir a resposta.
+ */
+export function gerarTxidPixEfiDoPedido(numeroPedido: string) {
+  return createHash("sha256")
+    .update(`nooo:pedido:${numeroPedido}`)
+    .digest("hex")
+    .slice(0, 32);
 }
 
 function montarDevedorPix({
@@ -52,10 +66,11 @@ export async function criarCobrancaPixEfi({
   valorEmCentavos,
 }: CriarCobrancaPixEfiInput): Promise<CobrancaPixEfi> {
   const configuracao = obterConfiguracaoEfi();
+  const txid = gerarTxidPixEfiDoPedido(numeroPedido);
 
   const cobranca = await chamarApiPixEfi<CobrancaEfiResponse>({
-    metodo: "POST",
-    path: "/v2/cob",
+    metodo: "PUT",
+    path: `/v2/cob/${txid}`,
     body: {
       calendario: {
         expiracao: EXPIRACAO_PIX_EM_SEGUNDOS,

@@ -7,6 +7,10 @@ import type {
 } from "./cliente-laquila";
 import { decidirExecucaoPedidoLaquila } from "./decidir-execucao-pedido-laquila";
 import type { PedidoLaquilaSemCredenciais } from "./montar-pedido-laquila";
+import {
+  resumirConsultaPedidoLaquila,
+  type ResumoConsultaPedidoLaquila,
+} from "./resumir-consulta-pedido-laquila";
 import type { ResultadoRevalidacaoEstoqueLaquila } from "./revalidar-estoque-pedido-laquila";
 
 export type GrupoPedidoLaquilaPreparado = {
@@ -35,6 +39,9 @@ export type RegistroPedidoLaquila = {
   status: StatusFornecedorPedidoIntegracao;
   hashPayload: string;
   tentativas: number;
+  idPedidoExterno?: string | null;
+  erroSanitizado?: string | null;
+  payloadSanitizado?: Record<string, unknown>;
   [chave: string]: unknown;
 };
 
@@ -54,6 +61,10 @@ export type RepositorioPedidoLaquila = {
       erroSanitizado?: string;
     },
   ): Promise<RegistroPedidoLaquila>;
+  registrarConsulta(
+    id: string,
+    resumo: ResumoConsultaPedidoLaquila,
+  ): Promise<RegistroPedidoLaquila>;
 };
 
 export type DependenciasProcessamentoPedidoLaquila = {
@@ -65,6 +76,15 @@ export type DependenciasProcessamentoPedidoLaquila = {
     grupo: GrupoPedidoLaquilaPreparado,
     corpo: CorpoInserirPedidoLaquila,
   ): Promise<ResultadoChamadaLaquila>;
+  consultarPedido(
+    grupo: GrupoPedidoLaquilaPreparado,
+    idPedidoExterno: string,
+  ): Promise<ResultadoChamadaLaquila>;
+};
+
+export type OpcoesProcessamentoPedidoLaquila = {
+  /** Somente uma ação administrativa consciente pode repetir um POST já tentado. */
+  permitirReprocessarFalhaComTentativa?: boolean;
 };
 
 function extrairIdPedidoExterno(valor: unknown): string | null {
@@ -101,10 +121,40 @@ function resultadoIndeterminado(resposta: ResultadoChamadaLaquila) {
   );
 }
 
+async function confirmarPedidoCriado(
+  grupo: GrupoPedidoLaquilaPreparado,
+  registro: RegistroPedidoLaquila,
+  dependencias: DependenciasProcessamentoPedidoLaquila,
+) {
+  const idPedidoExterno = registro.idPedidoExterno?.trim();
+  if (registro.status !== "criado" || !idPedidoExterno) return registro;
+
+  const consultaAnterior = registro.payloadSanitizado?.consulta00008;
+  if (
+    consultaAnterior &&
+    typeof consultaAnterior === "object" &&
+    "sucesso" in consultaAnterior &&
+    consultaAnterior.sucesso === true &&
+    "pedidoEncontrado" in consultaAnterior &&
+    consultaAnterior.pedidoEncontrado === true
+  ) {
+    return registro;
+  }
+
+  const resposta = await dependencias.consultarPedido(grupo, idPedidoExterno);
+  const resumo = resumirConsultaPedidoLaquila({
+    resposta,
+    idPedido: idPedidoExterno,
+  });
+
+  return dependencias.repositorio.registrarConsulta(registro.id, resumo);
+}
+
 /** Produção injeta banco/HTTP reais; testes usam fakes sem flag pública. */
 export async function processarGruposPedidoLaquila(
   grupos: readonly GrupoPedidoLaquilaPreparado[],
   dependencias: DependenciasProcessamentoPedidoLaquila,
+  opcoes: OpcoesProcessamentoPedidoLaquila = {},
 ) {
   const resultados: RegistroPedidoLaquila[] = [];
 
@@ -120,6 +170,16 @@ export async function processarGruposPedidoLaquila(
       throw new Error("Payload Laquila divergiu após a preparação inicial.");
     }
     if (decisao === "reutilizar") {
+      resultados.push(
+        await confirmarPedidoCriado(grupo, registro, dependencias),
+      );
+      continue;
+    }
+    if (
+      registro.status === "falha" &&
+      registro.tentativas > 0 &&
+      !opcoes.permitirReprocessarFalhaComTentativa
+    ) {
       resultados.push(registro);
       continue;
     }
@@ -155,11 +215,12 @@ export async function processarGruposPedidoLaquila(
     if (resposta.sucesso) {
       const idPedidoExterno = extrairIdPedidoExterno(resposta.dados);
       if (idPedidoExterno) {
+        const criado = await dependencias.repositorio.finalizar(adquirido.id, {
+          status: "criado",
+          idPedidoExterno,
+        });
         resultados.push(
-          await dependencias.repositorio.finalizar(adquirido.id, {
-            status: "criado",
-            idPedidoExterno,
-          }),
+          await confirmarPedidoCriado(grupo, criado, dependencias),
         );
         continue;
       }

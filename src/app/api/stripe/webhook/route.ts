@@ -6,6 +6,7 @@ import {
 } from "@/features/checkout";
 
 export const runtime = "nodejs";
+export const maxDuration = 180;
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");

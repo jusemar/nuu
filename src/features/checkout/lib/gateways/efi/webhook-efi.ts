@@ -7,6 +7,7 @@ import {
   checkoutPedidosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { processarIntegracoesFornecedoresAposPagamentoSeguro } from "@/features/fornecedores/actions/processar-integracoes-fornecedores-apos-pagamento";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
@@ -329,6 +330,11 @@ export async function processarWebhookPixEfi(
         pedidoId: resultado.pedidoId,
         pagamentoId: resultado.pagamentoId,
       });
+      if (resultado.pedidoId) {
+        await processarIntegracoesFornecedoresAposPagamentoSeguro(
+          resultado.pedidoId,
+        );
+      }
       continue;
     }
 
@@ -360,6 +366,11 @@ export async function processarWebhookPixEfi(
         pedidoId: resultado.pedidoId,
         pagamentoId: resultado.pagamentoId,
       });
+      if (resultado.pedidoId) {
+        await processarIntegracoesFornecedoresAposPagamentoSeguro(
+          resultado.pedidoId,
+        );
+      }
       continue;
     }
 
@@ -369,6 +380,12 @@ export async function processarWebhookPixEfi(
       pedidoId: resultado.pedidoId,
       pagamentoId: resultado.pagamentoId,
     });
+
+    if (resultado.pedidoId) {
+      await processarIntegracoesFornecedoresAposPagamentoSeguro(
+        resultado.pedidoId,
+      );
+    }
 
     if (resultado.pedidoId) {
       const pedidoEmail = await buscarPedidoEmailPorId(resultado.pedidoId);

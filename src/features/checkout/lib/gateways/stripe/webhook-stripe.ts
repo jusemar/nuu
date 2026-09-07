@@ -8,6 +8,7 @@ import {
   checkoutStripeWebhookEventosTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
+import { processarIntegracoesFornecedoresAposPagamentoSeguro } from "@/features/fornecedores/actions/processar-integracoes-fornecedores-apos-pagamento";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
@@ -423,6 +424,10 @@ export async function processarWebhookStripe(
       pagamentoId: metadata.pagamentoId,
     });
 
+    await processarIntegracoesFornecedoresAposPagamentoSeguro(
+      metadata.pedidoId,
+    );
+
     return {
       status: "duplicado",
       eventId: event.id,
@@ -440,6 +445,10 @@ export async function processarWebhookStripe(
       pagamentoId: metadata.pagamentoId,
     });
 
+    await processarIntegracoesFornecedoresAposPagamentoSeguro(
+      metadata.pedidoId,
+    );
+
     return {
       status: "pagamento_ja_confirmado",
       eventId: event.id,
@@ -456,6 +465,8 @@ export async function processarWebhookStripe(
     pagamentoId: metadata.pagamentoId,
     transactionId: metadata.transactionId,
   });
+
+  await processarIntegracoesFornecedoresAposPagamentoSeguro(metadata.pedidoId);
 
   await enviarEmailConfirmacaoPagamentoStripe({
     eventId: event.id,
@@ -515,6 +526,8 @@ export async function sincronizarPagamentoCheckoutStripe({
       stripeCheckoutSessionSincronizada: session,
     },
   });
+
+  await processarIntegracoesFornecedoresAposPagamentoSeguro(pedidoId);
 
   if (resultadoConfirmacao.confirmadoAgora) {
     console.info("Pagamento Stripe confirmado pelo retorno do checkout.", {

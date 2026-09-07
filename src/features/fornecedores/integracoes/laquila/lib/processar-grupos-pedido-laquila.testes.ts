@@ -42,8 +42,8 @@ const grupo: GrupoPedidoLaquilaPreparado = {
   },
 };
 
-function criarRepositorioFake() {
-  let registro: RegistroPedidoLaquila | null = null;
+function criarRepositorioFake(inicial?: RegistroPedidoLaquila) {
+  let registro: RegistroPedidoLaquila | null = inicial ?? null;
   const repositorio: RepositorioPedidoLaquila = {
     async persistirPendente(item) {
       registro ??= {
@@ -83,17 +83,37 @@ function criarRepositorioFake() {
       registro = { ...registro, ...atualizacao };
       return { ...registro };
     },
+    async registrarConsulta(_id, resumo) {
+      if (!registro || registro.status !== "criado") {
+        throw new Error("Registro criado fake ausente.");
+      }
+      registro = {
+        ...registro,
+        erroSanitizado: resumo.sucesso ? null : resumo.erro,
+        payloadSanitizado: {
+          ...registro.payloadSanitizado,
+          consulta00008: resumo,
+        },
+      };
+      return { ...registro };
+    },
   };
 
   return { repositorio, ler: () => registro };
 }
 
-function criarCenario(resposta: ResultadoChamadaLaquila, estoqueValido = true) {
-  const fake = criarRepositorioFake();
-  let chamadas = 0;
+function criarCenario(
+  resposta: ResultadoChamadaLaquila,
+  estoqueValido = true,
+  registroInicial?: RegistroPedidoLaquila,
+) {
+  const fake = criarRepositorioFake(registroInicial);
+  let chamadas00002 = 0;
+  let chamadas00008 = 0;
   return {
     ...fake,
-    chamadas: () => chamadas,
+    chamadas00002: () => chamadas00002,
+    chamadas00008: () => chamadas00008,
     dependencias: {
       repositorio: fake.repositorio,
       async revalidarEstoque(): Promise<ResultadoRevalidacaoEstoqueLaquila> {
@@ -102,9 +122,29 @@ function criarCenario(resposta: ResultadoChamadaLaquila, estoqueValido = true) {
           : { sucesso: false, erro: "Estoque indisponível." };
       },
       async enviarPedido() {
-        chamadas += 1;
+        chamadas00002 += 1;
         await Promise.resolve();
         return resposta;
+      },
+      async consultarPedido(
+        _grupo: GrupoPedidoLaquilaPreparado,
+        idPedidoExterno: string,
+      ) {
+        chamadas00008 += 1;
+        await Promise.resolve();
+        return {
+          sucesso: true as const,
+          codigoHttp: 200,
+          dados: {
+            resultado: {
+              pedido: {
+                id_pedido: idPedidoExterno,
+                situacao: "PROCESSANDO",
+                dt_pedido: "07/09/2026 07:06:57",
+              },
+            },
+          },
+        };
       },
     },
   };
@@ -121,7 +161,8 @@ describe("processamento injetável do pedido Laquila", () => {
     await processarGruposPedidoLaquila([grupo], cenario.dependencias);
     await processarGruposPedidoLaquila([grupo], cenario.dependencias);
 
-    assert.equal(cenario.chamadas(), 1);
+    assert.equal(cenario.chamadas00002(), 1);
+    assert.equal(cenario.chamadas00008(), 1);
     assert.equal(cenario.ler()?.status, "criado");
     assert.equal(cenario.ler()?.idPedidoExterno, "TESTE-00002-123");
     assert.equal(cenario.ler()?.tentativas, 1);
@@ -139,7 +180,8 @@ describe("processamento injetável do pedido Laquila", () => {
       processarGruposPedidoLaquila([grupo], cenario.dependencias),
     ]);
 
-    assert.equal(cenario.chamadas(), 1);
+    assert.equal(cenario.chamadas00002(), 1);
+    assert.equal(cenario.chamadas00008(), 1);
     assert.equal(cenario.ler()?.status, "criado");
   });
 
@@ -185,7 +227,8 @@ describe("processamento injetável do pedido Laquila", () => {
       const cenario = criarCenario(resposta);
       await processarGruposPedidoLaquila([grupo], cenario.dependencias);
       await processarGruposPedidoLaquila([grupo], cenario.dependencias);
-      assert.equal(cenario.chamadas(), 1);
+      assert.equal(cenario.chamadas00002(), 1);
+      assert.equal(cenario.chamadas00008(), 0);
       assert.equal(cenario.ler()?.status, "resultado_indeterminado");
     });
   }
@@ -207,8 +250,76 @@ describe("processamento injetável do pedido Laquila", () => {
       false,
     );
     await processarGruposPedidoLaquila([grupo], cenario.dependencias);
-    assert.equal(cenario.chamadas(), 0);
+    assert.equal(cenario.chamadas00002(), 0);
+    assert.equal(cenario.chamadas00008(), 0);
     assert.equal(cenario.ler()?.status, "falha");
     assert.equal(cenario.ler()?.tentativas, 0);
+  });
+
+  it("webhook repetido não repete uma falha que já alcançou o 00002", async () => {
+    const cenario = criarCenario({
+      sucesso: false,
+      codigoHttp: 400,
+      erro: "Pedido rejeitado pela validação.",
+      diagnostico: { tipo: "http" },
+    });
+
+    await processarGruposPedidoLaquila([grupo], cenario.dependencias);
+    await processarGruposPedidoLaquila([grupo], cenario.dependencias);
+
+    assert.equal(cenario.chamadas00002(), 1);
+    assert.equal(cenario.ler()?.status, "falha");
+    assert.equal(cenario.ler()?.tentativas, 1);
+  });
+
+  it("reprocessamento administrativo consciente pode repetir uma falha segura", async () => {
+    const cenario = criarCenario({
+      sucesso: false,
+      codigoHttp: 400,
+      erro: "Pedido rejeitado pela validação.",
+      diagnostico: { tipo: "http" },
+    });
+
+    await processarGruposPedidoLaquila([grupo], cenario.dependencias);
+    await processarGruposPedidoLaquila([grupo], cenario.dependencias, {
+      permitirReprocessarFalhaComTentativa: true,
+    });
+
+    assert.equal(cenario.chamadas00002(), 2);
+    assert.equal(cenario.ler()?.tentativas, 2);
+  });
+
+  it("reprocessa com segurança o pedido #1011 já criado e consulta somente o 00008", async () => {
+    const cenario = criarCenario(
+      { sucesso: true, codigoHttp: 200, dados: {} },
+      true,
+      {
+        id: "628fa4d6-e5e7-448b-8587-de7c495cb9bf",
+        status: "criado",
+        hashPayload: grupo.hashPayload,
+        tentativas: 1,
+        idPedidoExterno: "1133591",
+        erroSanitizado: null,
+        payloadSanitizado: grupo.payloadSanitizado,
+      },
+    );
+
+    const [resultado] = await processarGruposPedidoLaquila(
+      [grupo],
+      cenario.dependencias,
+    );
+
+    assert.equal(cenario.chamadas00002(), 0);
+    assert.equal(cenario.chamadas00008(), 1);
+    assert.equal(resultado?.idPedidoExterno, "1133591");
+    assert.equal(resultado?.status, "criado");
+    assert.deepEqual(
+      (
+        resultado?.payloadSanitizado?.consulta00008 as {
+          pedidoEncontrado: boolean;
+        }
+      ).pedidoEncontrado,
+      true,
+    );
   });
 });

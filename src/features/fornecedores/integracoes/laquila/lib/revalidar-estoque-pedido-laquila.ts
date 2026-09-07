@@ -1,4 +1,5 @@
 import type { ItemSaldoPrecoLaquilaApi } from "./cliente-laquila";
+import { normalizarDecimalLaquila } from "./normalizar-decimal-laquila";
 
 type ItemSolicitadoLaquila = {
   cd_item: string;
@@ -13,6 +14,7 @@ export type ResultadoRevalidacaoEstoqueLaquila =
         quantidadeSolicitada: number;
         saldoInformado: number;
         situacao: string;
+        precoFornecedor: number;
       }>;
     }
   | { sucesso: false; erro: string };
@@ -26,12 +28,20 @@ function lerTexto(registro: ItemSaldoPrecoLaquilaApi, chave: string) {
 
 function lerSaldo(registro: ItemSaldoPrecoLaquilaApi) {
   const numero = Number(
-    lerTexto(registro, "qt_saldo").replace(/\./gu, "").replace(",", "."),
+    normalizarDecimalLaquila(lerTexto(registro, "qt_saldo")),
   );
   return Number.isFinite(numero) ? numero : null;
 }
 
-/** O preço do 00006 não participa do payload; vale o snapshot do checkout. */
+function lerPrecoFornecedor(registro: ItemSaldoPrecoLaquilaApi) {
+  const normalizado = normalizarDecimalLaquila(lerTexto(registro, "vl_preco"));
+  if (normalizado === null) return null;
+
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+/** O preço do payload continua histórico; o 00006 confirma que o item é vendável. */
 export function revalidarEstoqueItensPedidoLaquila(
   itensSolicitados: readonly ItemSolicitadoLaquila[],
   saldosAtuais: readonly ItemSaldoPrecoLaquilaApi[],
@@ -53,6 +63,7 @@ export function revalidarEstoqueItensPedidoLaquila(
 
     const situacao = lerTexto(saldoAtual, "sit_estoque").toUpperCase();
     const saldoInformado = lerSaldo(saldoAtual);
+    const precoFornecedor = lerPrecoFornecedor(saldoAtual);
     if (situacao !== "DISPONIVEL") {
       return {
         sucesso: false,
@@ -65,12 +76,19 @@ export function revalidarEstoqueItensPedidoLaquila(
         erro: `Saldo Laquila insuficiente para o item ${cdItem}: solicitado ${item.qt_pedida}, disponível ${saldoInformado ?? "inválido"}.`,
       };
     }
+    if (precoFornecedor === null || precoFornecedor <= 0) {
+      return {
+        sucesso: false,
+        erro: `Preço Laquila inválido para o item ${cdItem}.`,
+      };
+    }
 
     itensValidados.push({
       cdItem,
       quantidadeSolicitada: item.qt_pedida,
       saldoInformado,
       situacao,
+      precoFornecedor,
     });
   }
 

@@ -623,6 +623,9 @@ export async function updateProduct(id: string, data: UpdateProductData) {
     });
 
     etapaAtual = "revalidacao_cache";
+    // A home consome flags e promoções diretamente do produto. Sem invalidar
+    // esta rota, Ofertas Especiais e Oferta Relâmpago mantêm o estado anterior.
+    revalidatePathSeguro("/", "home_loja");
     revalidatePathSeguro("/admin/products", "lista_admin");
     revalidatePathSeguro(`/admin/products/${id}/edit`, "edicao_admin");
     revalidatePathSeguro(

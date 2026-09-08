@@ -23,6 +23,8 @@ const VARIANTES_LOGO: Record<
     tamanhosImagem: string;
     prioridade: boolean;
     emblema: string;
+    escalaImagem: string;
+    tamanhoEmblema: string;
     texto: string;
   }
 > = {
@@ -33,6 +35,8 @@ const VARIANTES_LOGO: Record<
     tamanhosImagem: "(max-width: 640px) 112px, 144px",
     prioridade: true,
     emblema: "bg-[#0C447C] text-white",
+    escalaImagem: "",
+    tamanhoEmblema: "size-9",
     texto: "text-slate-800",
   },
   rodape: {
@@ -42,6 +46,8 @@ const VARIANTES_LOGO: Record<
     tamanhosImagem: "176px",
     prioridade: false,
     emblema: "bg-white/15 text-white",
+    escalaImagem: "scale-110",
+    tamanhoEmblema: "size-11",
     texto: "text-white",
   },
   // Telas de login/cadastro: bloco centralizado e um pouco maior, porque a
@@ -53,6 +59,8 @@ const VARIANTES_LOGO: Record<
     tamanhosImagem: "(max-width: 640px) 160px, 192px",
     prioridade: true,
     emblema: "bg-[#0C447C] text-white",
+    escalaImagem: "",
+    tamanhoEmblema: "size-9",
     texto: "text-slate-800",
   },
 };
@@ -86,7 +94,7 @@ export function LogoDinamica({
             fill
             sizes={variante.tamanhosImagem}
             // `object-contain` preserva a proporção original da imagem.
-            className={`object-contain ${variante.alinhamentoImagem}`}
+            className={`object-contain ${variante.alinhamentoImagem} ${variante.escalaImagem}`}
             priority={variante.prioridade}
             onError={() => setImagemFalhou(true)}
           />
@@ -96,7 +104,7 @@ export function LogoDinamica({
         // carregamento da imagem falha.
         <span className="flex items-center gap-2.5">
           <span
-            className={`flex size-9 shrink-0 items-center justify-center rounded-lg font-bold ${variante.emblema}`}
+            className={`flex shrink-0 items-center justify-center rounded-lg font-bold ${variante.tamanhoEmblema} ${variante.emblema}`}
           >
             {DADOS_EMPRESA.iniciaisMarca}
           </span>

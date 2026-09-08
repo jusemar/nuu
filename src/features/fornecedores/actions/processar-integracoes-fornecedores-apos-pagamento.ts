@@ -25,16 +25,27 @@ export async function processarIntegracoesFornecedoresAposPagamento(
   pedidoId: string,
 ) {
   const [pedido] = await db
-    .select({ pagamentoStatus: checkoutPedidosTable.pagamentoStatus })
+    .select({
+      pagamentoStatus: checkoutPedidosTable.pagamentoStatus,
+      status: checkoutPedidosTable.status,
+    })
     .from(checkoutPedidosTable)
     .where(eq(checkoutPedidosTable.id, pedidoId))
     .limit(1);
 
   if (!pedido) throw new Error("Pedido não encontrado no pós-pagamento.");
 
+  if (["canceled", "refunded", "expired"].includes(pedido.status)) {
+    return {
+      estado: "ignorado_pedido_inelegivel" as const,
+      integracoes: [],
+    };
+  }
+
   return orquestrarIntegracoesAposPagamento({
     pedidoId,
     pagamentoStatus: pedido.pagamentoStatus,
+    pedidoStatus: pedido.status,
     dependencias: {
       processarLaquila: (id) => executarPedidoLaquila(id),
     },

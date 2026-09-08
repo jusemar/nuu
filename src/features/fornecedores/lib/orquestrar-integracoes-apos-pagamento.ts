@@ -18,15 +18,27 @@ export type DependenciasIntegracoesAposPagamento<T> = {
 export async function orquestrarIntegracoesAposPagamento<T>({
   pedidoId,
   pagamentoStatus,
+  pedidoStatus,
   dependencias,
 }: {
   pedidoId: string;
   pagamentoStatus: StatusPagamentoParaIntegracoes;
+  pedidoStatus?: string;
   dependencias: DependenciasIntegracoesAposPagamento<T>;
 }) {
   if (pagamentoStatus !== "paid") {
     return {
       estado: "ignorado_pagamento_nao_confirmado" as const,
+      integracoes: [] as readonly T[],
+    };
+  }
+
+  if (
+    pedidoStatus &&
+    ["canceled", "refunded", "expired"].includes(pedidoStatus)
+  ) {
+    return {
+      estado: "ignorado_pedido_inelegivel" as const,
       integracoes: [] as readonly T[],
     };
   }

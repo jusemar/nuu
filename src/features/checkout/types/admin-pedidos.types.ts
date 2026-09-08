@@ -35,6 +35,17 @@ export type PedidoAdminDetalhe = {
   observacao: string | null;
   createdAt: Date;
   updatedAt: Date;
+  cancelamento: {
+    status: "processando" | "concluido" | "falhou" | "bloqueado_fornecedor";
+    motivo: string;
+    complementoMotivo: string | null;
+    solicitadoPorEmail: string;
+    solicitadoEm: Date;
+    gatewayReembolso: PagamentoGatewayCheckout | null;
+    reembolsoStatus: "nao_necessario" | "processando" | "concluido" | "falhou";
+    reembolsoId: string | null;
+    erroOperacional: string | null;
+  } | null;
   cliente: {
     nome: string;
     email: string;

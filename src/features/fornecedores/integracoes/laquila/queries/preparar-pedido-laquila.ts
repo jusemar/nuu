@@ -42,6 +42,7 @@ export async function prepararPedidoLaquila(
   const [pedido] = await db
     .select({
       id: checkoutPedidosTable.id,
+      status: checkoutPedidosTable.status,
       pagamentoStatus: checkoutPedidosTable.pagamentoStatus,
       nome: checkoutClientesTable.nome,
       email: checkoutClientesTable.email,
@@ -62,6 +63,11 @@ export async function prepararPedidoLaquila(
     .limit(1);
 
   if (!pedido) throw new Error("Pedido interno não encontrado.");
+  if (["canceled", "refunded", "expired"].includes(pedido.status)) {
+    throw new Error(
+      "Pedido cancelado ou expirado não pode ser preparado para fornecedor.",
+    );
+  }
   if (pedido.pagamentoStatus !== "paid") {
     throw new Error(
       "O pedido Laquila só pode ser preparado após pagamento confirmado.",

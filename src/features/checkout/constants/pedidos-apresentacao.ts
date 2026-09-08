@@ -29,6 +29,9 @@ export const PEDIDO_HISTORICO_TIPO_LABEL: Record<
   rastreio_atualizado: "Rastreio atualizado",
   pedido_entregue: "Pedido entregue",
   pagamento_recebido_na_entrega: "Pagamento recebido na entrega",
+  cancelamento_solicitado: "Cancelamento solicitado",
+  pedido_cancelado: "Pedido cancelado",
+  reembolso_atualizado: "Reembolso atualizado",
 };
 
 export const PEDIDO_HISTORICO_ORIGEM_LABEL: Record<
@@ -37,6 +40,7 @@ export const PEDIDO_HISTORICO_ORIGEM_LABEL: Record<
 > = {
   system: "Sistema",
   admin: "Admin",
+  cliente: "Cliente",
 };
 
 export const PAGAMENTO_STATUS_LABEL: Record<PagamentoStatusCheckout, string> = {

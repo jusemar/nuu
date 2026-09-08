@@ -35,13 +35,14 @@ export function ContatoDesenvolvedor() {
           </span>
           <DialogTitle className="pt-1">Contato do desenvolvedor</DialogTitle>
           <DialogDescription>
-            Este contato é destinado exclusivamente a assuntos relacionados ao
-            desenvolvimento do site.
+            Este contato é destinado exclusivamente ao desenvolvedor.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 pt-2">
-          <BotaoCanalHumano canal="whatsapp" rotulo="Falar com Junior Rocha" />
-          <BotaoCanalHumano canal="email" rotulo="Enviar mensagem" />
+          <BotaoCanalHumano
+            canal="whatsapp_desenvolvedor"
+            rotulo="Falar com Junior Rocha"
+          />
         </div>
         <p className="text-muted-foreground text-center text-xs leading-relaxed sm:text-left">
           Os dados de contato são carregados somente após escolher uma opção.

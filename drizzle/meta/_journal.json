@@ -281,6 +281,13 @@
       "when": 1788312775295,
       "tag": "0039_admin_recuperacao_otp",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788859869284,
+      "tag": "0040_sistema_cancelamento_pedidos",
+      "breakpoints": true
     }
   ]
 }

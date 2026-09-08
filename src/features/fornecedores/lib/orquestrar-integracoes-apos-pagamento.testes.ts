@@ -4,6 +4,22 @@ import { describe, it } from "node:test";
 import { orquestrarIntegracoesAposPagamento } from "./orquestrar-integracoes-apos-pagamento";
 
 describe("orquestrador de integrações após o pagamento", () => {
+  it("não externaliza pedido cancelado mesmo que o pagamento esteja confirmado", async () => {
+    let chamadas = 0;
+    const resultado = await orquestrarIntegracoesAposPagamento({
+      pedidoId: "pedido-cancelado",
+      pagamentoStatus: "paid",
+      pedidoStatus: "canceled",
+      dependencias: {
+        processarLaquila: async () => {
+          chamadas += 1;
+          return ["indevido"];
+        },
+      },
+    });
+    assert.equal(resultado.estado, "ignorado_pedido_inelegivel");
+    assert.equal(chamadas, 0);
+  });
   for (const status of ["pending", "failed", "expired"] as const) {
     it(`não processa fornecedor com pagamento ${status}`, async () => {
       let chamadas = 0;

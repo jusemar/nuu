@@ -679,6 +679,8 @@ export {
 
 // Checkout visitante, pedidos e pagamentos
 export {
+  checkoutCancelamentoMotivoEnum,
+  checkoutCancelamentoStatusEnum,
   checkoutClientesRelations,
   checkoutClientesTable,
   checkoutEfiWebhookEventosRelations,
@@ -692,6 +694,8 @@ export {
   checkoutPagamentosTable,
   checkoutPagamentoStatusEnum,
   checkoutPedidoHistoricoOrigemEnum,
+  checkoutPedidoCancelamentosRelations,
+  checkoutPedidoCancelamentosTable,
   checkoutPedidoHistoricosRelations,
   checkoutPedidoHistoricosTable,
   checkoutPedidoHistoricoTipoEnum,
@@ -704,6 +708,7 @@ export {
   checkoutPedidosRelations,
   checkoutPedidosTable,
   checkoutPedidoStatusEnum,
+  checkoutReembolsoStatusEnum,
   checkoutStripeWebhookEventosRelations,
   checkoutStripeWebhookEventosTable,
   type SnapshotElegibilidadePagamentoNaEntrega,

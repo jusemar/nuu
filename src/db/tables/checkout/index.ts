@@ -1,4 +1,6 @@
 export {
+  checkoutCancelamentoMotivoEnum,
+  checkoutCancelamentoStatusEnum,
   checkoutPagamentoGatewayEnum,
   checkoutPagamentoMetodoEnum,
   checkoutPagamentoNaEntregaFormaEnum,
@@ -6,12 +8,14 @@ export {
   checkoutPedidoHistoricoOrigemEnum,
   checkoutPedidoHistoricoTipoEnum,
   checkoutPedidoStatusEnum,
+  checkoutReembolsoStatusEnum,
 } from "./enums";
 export {
   checkoutClientesRelations,
   checkoutEfiWebhookEventosRelations,
   checkoutEnderecosRelations,
   checkoutPedidoHistoricosRelations,
+  checkoutPedidoCancelamentosRelations,
   checkoutPedidoItensRelations,
   checkoutPedidoLogisticasRelations,
   checkoutPedidoPagamentoEntregaRelations,
@@ -19,6 +23,7 @@ export {
   checkoutPagamentosRelations,
   checkoutPedidosRelations,
 } from "./relacoes";
+export { checkoutPedidoCancelamentosTable } from "./tabelas/pedido-cancelamentos";
 export { checkoutClientesTable } from "./tabelas/clientes";
 export { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 export { checkoutEnderecosTable } from "./tabelas/enderecos";

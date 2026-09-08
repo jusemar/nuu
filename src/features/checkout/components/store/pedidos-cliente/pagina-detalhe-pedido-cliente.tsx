@@ -18,6 +18,7 @@ import {
 } from "../../../lib/pedidos-cliente/formatar-pedidos-cliente";
 import type { PedidoClienteDetalhe } from "../../../types/pedidos-cliente.types";
 import { PainelCobrancaPix } from "./painel-cobranca-pix";
+import { FormularioCancelamentoPedido } from "./formulario-cancelamento-pedido";
 import {
   StatusPagamentoClienteBadge,
   StatusPedidoClienteBadge,
@@ -111,6 +112,45 @@ export function PaginaDetalhePedidoCliente({
 
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
             <div className="space-y-5">
+              {pedido.cancelamento ? (
+                <SecaoCliente titulo="Cancelamento">
+                  <p className="text-sm font-medium text-slate-950">
+                    {pedido.cancelamento.reembolsoStatus === "processando"
+                      ? "Cancelado — reembolso em processamento"
+                      : pedido.cancelamento.reembolsoStatus === "falhou"
+                        ? "Cancelado — reembolso em revisão"
+                        : pedido.status === "refunded"
+                          ? "Cancelado e reembolsado"
+                          : "Cancelado"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    A situação exibida foi confirmada pelo servidor.
+                  </p>
+                </SecaoCliente>
+              ) : pedido.acaoPosVenda === "solicitar_devolucao" ? (
+                <SecaoCliente titulo="Devolução">
+                  <p className="mb-3 text-sm text-slate-600">
+                    Como o pedido já foi enviado, a solicitação precisa seguir o
+                    fluxo de devolução e direito de arrependimento.
+                  </p>
+                  <Button asChild className="w-full">
+                    <Link href="/contato">Solicitar devolução</Link>
+                  </Button>
+                </SecaoCliente>
+              ) : pedido.acaoPosVenda ? (
+                <SecaoCliente
+                  titulo={
+                    pedido.acaoPosVenda === "cancelar"
+                      ? "Cancelar pedido"
+                      : "Solicitar cancelamento"
+                  }
+                >
+                  <FormularioCancelamentoPedido
+                    pedidoId={pedido.id}
+                    pago={pedido.pagamentoStatus === "paid"}
+                  />
+                </SecaoCliente>
+              ) : null}
               <SecaoCliente titulo="Itens do pedido">
                 <div className="space-y-4">
                   {pedido.itens.map((item) => (

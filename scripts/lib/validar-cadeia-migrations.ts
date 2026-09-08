@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 40,
-  ultimoIndice: 39,
-  ultimaTag: "0039_admin_recuperacao_otp",
-  ultimoArquivo: "drizzle/0039_admin_recuperacao_otp.sql",
+  total: 41,
+  ultimoIndice: 40,
+  ultimaTag: "0040_sistema_cancelamento_pedidos",
+  ultimoArquivo: "drizzle/0040_sistema_cancelamento_pedidos.sql",
 } as const;
 
 export type MigrationLocalValidacao = {

@@ -23,7 +23,7 @@ export function BotaoCanalHumano({
 }: PropriedadesBotaoCanal) {
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciarTransicao] = useTransition();
-  const whatsapp = canal === "whatsapp";
+  const whatsapp = canal === "whatsapp" || canal === "whatsapp_desenvolvedor";
   const Icone = whatsapp ? MessageCircle : Mail;
 
   function abrirCanal() {

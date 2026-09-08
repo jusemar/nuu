@@ -36,6 +36,7 @@ import type { PedidoAdminDetalhe } from "../../../types/admin-pedidos.types";
 import { PainelCobrancaPix } from "../../store/pedidos-cliente/painel-cobranca-pix";
 import { FormularioAlterarStatusPedido } from "./formulario-alterar-status-pedido";
 import { FormularioLogisticaPedido } from "./formulario-logistica-pedido";
+import { PainelCancelamentoPedido } from "./painel-cancelamento-pedido";
 import { PagamentoStatusBadge, PedidoStatusBadge } from "./status-pedido-badge";
 import { TimelineHistoricoPedido } from "./timeline-historico-pedido";
 
@@ -282,6 +283,11 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
         </div>
 
         <div className="space-y-5">
+          {pedido.cancelamento ? (
+            <Secao titulo="Cancelamento e reembolso">
+              <PainelCancelamentoPedido cancelamento={pedido.cancelamento} />
+            </Secao>
+          ) : null}
           <Secao titulo="Operacao">
             <FormularioAlterarStatusPedido
               pedidoId={pedido.id}

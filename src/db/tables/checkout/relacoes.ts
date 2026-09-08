@@ -6,6 +6,7 @@ import { checkoutClientesTable } from "./tabelas/clientes";
 import { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 import { checkoutEnderecosTable } from "./tabelas/enderecos";
 import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
+import { checkoutPedidoCancelamentosTable } from "./tabelas/pedido-cancelamentos";
 import { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 import { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
 import { checkoutPedidoPagamentoEntregaTable } from "./tabelas/pedido-pagamento-entrega";
@@ -50,6 +51,10 @@ export const checkoutPedidosRelations = relations(
     itens: many(checkoutPedidoItensTable),
     pagamentos: many(checkoutPagamentosTable),
     historicos: many(checkoutPedidoHistoricosTable),
+    cancelamento: one(checkoutPedidoCancelamentosTable, {
+      fields: [checkoutPedidosTable.id],
+      references: [checkoutPedidoCancelamentosTable.pedidoId],
+    }),
     efiWebhookEventos: many(checkoutEfiWebhookEventosTable),
     stripeWebhookEventos: many(checkoutStripeWebhookEventosTable),
     logistica: one(checkoutPedidoLogisticasTable, {
@@ -61,6 +66,16 @@ export const checkoutPedidosRelations = relations(
     pagamentoNaEntrega: one(checkoutPedidoPagamentoEntregaTable, {
       fields: [checkoutPedidosTable.id],
       references: [checkoutPedidoPagamentoEntregaTable.pedidoId],
+    }),
+  }),
+);
+
+export const checkoutPedidoCancelamentosRelations = relations(
+  checkoutPedidoCancelamentosTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutPedidoCancelamentosTable.pedidoId],
+      references: [checkoutPedidosTable.id],
     }),
   }),
 );

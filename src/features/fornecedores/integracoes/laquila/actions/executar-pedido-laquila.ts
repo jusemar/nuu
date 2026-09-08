@@ -3,7 +3,10 @@ import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { fornecedorPedidoIntegracoesTable } from "@/db/schema";
+import {
+  checkoutPedidosTable,
+  fornecedorPedidoIntegracoesTable,
+} from "@/db/schema";
 
 import { obterAmbienteAplicacaoLaquila } from "../lib/ambiente-laquila";
 import {
@@ -75,6 +78,14 @@ const repositorio: RepositorioPedidoLaquila = {
             "falha",
           ]),
           eq(fornecedorPedidoIntegracoesTable.hashPayload, hashAtual),
+          // Última barreira imediatamente antes do método 00002. Se o cancelamento
+          // venceu a corrida, a aquisição não ocorre e nenhuma chamada sai.
+          sql`exists (
+            select 1 from ${checkoutPedidosTable}
+            where ${checkoutPedidosTable.id} = ${registro.pedidoId}
+              and ${checkoutPedidosTable.pagamentoStatus} = 'paid'
+              and ${checkoutPedidosTable.status} not in ('canceled', 'refunded', 'expired')
+          )`,
         ),
       )
       .returning();

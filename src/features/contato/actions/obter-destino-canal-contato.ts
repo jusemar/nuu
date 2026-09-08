@@ -2,7 +2,10 @@
 
 import { DADOS_CONTATO_EMPRESA } from "@/features/configuracoes-loja/constants/dados-contato-empresa.server";
 
-export type CanalContatoHumano = "email" | "whatsapp";
+export type CanalContatoHumano =
+  | "email"
+  | "whatsapp"
+  | "whatsapp_desenvolvedor";
 
 type ResultadoDestinoContato =
   | { sucesso: true; destino: string }
@@ -15,11 +18,12 @@ type ResultadoDestinoContato =
 export async function obterDestinoCanalContato(
   canal: CanalContatoHumano,
 ): Promise<ResultadoDestinoContato> {
-  if (canal === "whatsapp") {
-    const numero = DADOS_CONTATO_EMPRESA.telefone.whatsappOperacional.replace(
-      /\D/g,
-      "",
-    );
+  if (canal === "whatsapp" || canal === "whatsapp_desenvolvedor") {
+    const numeroFonte =
+      canal === "whatsapp_desenvolvedor"
+        ? DADOS_CONTATO_EMPRESA.whatsappDesenvolvedor
+        : DADOS_CONTATO_EMPRESA.telefone.whatsappOperacional;
+    const numero = numeroFonte.replace(/\D/g, "");
     if (!/^55\d{10,11}$/.test(numero)) {
       return {
         sucesso: false,
@@ -28,7 +32,9 @@ export async function obterDestinoCanalContato(
     }
 
     const mensagem = encodeURIComponent(
-      "Olá! Vim pelo site da Nooo e gostaria de atendimento.",
+      canal === "whatsapp_desenvolvedor"
+        ? "Olá, Junior Rocha! Vim pelo site da Nooo e gostaria de falar com o desenvolvedor."
+        : "Olá! Vim pelo site da Nooo e gostaria de atendimento.",
     );
     return {
       sucesso: true,

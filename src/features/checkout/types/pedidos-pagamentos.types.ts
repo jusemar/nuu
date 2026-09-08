@@ -93,9 +93,12 @@ export type PedidoHistoricoTipoCheckout =
   | "pedido_enviado"
   | "rastreio_atualizado"
   | "pedido_entregue"
-  | "pagamento_recebido_na_entrega";
+  | "pagamento_recebido_na_entrega"
+  | "cancelamento_solicitado"
+  | "pedido_cancelado"
+  | "reembolso_atualizado";
 
-export type PedidoHistoricoOrigemCheckout = "system" | "admin";
+export type PedidoHistoricoOrigemCheckout = "system" | "admin" | "cliente";
 
 export type PedidoHistoricoCheckout = {
   id: string;

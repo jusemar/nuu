@@ -41,7 +41,7 @@ export const Footer = async () => {
             <LogoDinamica
               local="rodape"
               url={configuracao.logoRodapeUrl}
-              className="mb-2 !h-10 !w-32"
+              className="mb-2 !h-12 !w-40"
             />
             <p className="text-sm leading-relaxed font-semibold text-white/90">
               Da compra à entrega, tudo pensado para você dizer: Nooo! 😲😁
@@ -51,10 +51,10 @@ export const Footer = async () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 md:justify-self-end">
+          <div className="grid grid-cols-2 items-start gap-x-6 gap-y-7 sm:grid-cols-3 md:justify-self-end">
             {gruposExibidos.map((grupo) => (
               <nav key={grupo.id} aria-label={grupo.titulo} className="min-w-0">
-                <h2 className="text-warning mb-2.5 text-xs font-bold tracking-wider uppercase">
+                <h2 className="text-warning mb-2.5 flex min-h-4 items-start text-xs leading-4 font-bold tracking-wider uppercase">
                   {grupo.titulo}
                 </h2>
                 <ul className="space-y-1.5 text-sm text-white/70">
@@ -79,8 +79,8 @@ export const Footer = async () => {
         <Container className="grid gap-2 py-3 text-xs text-white/50 md:grid-cols-[1fr_auto] md:items-center">
           <div className="space-y-1">
             <p>
-              CNPJ: 48.732.308/0001-58 · Av. Perimetral, 3368, Vila Santa Rita,
-              Belo Horizonte/MG
+              CNPJ: 48.732.308/0001-58 · Av. Perimetral, 3368, Santa Rita, Belo
+              Horizonte/MG
             </p>
             <p>
               © {anoAtual} {DADOS_EMPRESA.marca}. Todos os direitos reservados.

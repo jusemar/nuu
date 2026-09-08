@@ -6,6 +6,7 @@ import {
   checkoutClientesTable,
   checkoutPedidoHistoricosTable,
   checkoutPedidosTable,
+  fornecedorPedidoIntegracoesTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
@@ -39,6 +40,7 @@ export async function buscarPedidoClientePorId({
       itens: true,
       pagamentos: true,
       logistica: true,
+      cancelamento: true,
       historicos: {
         orderBy: [asc(checkoutPedidoHistoricosTable.createdAt)],
       },
@@ -50,6 +52,30 @@ export async function buscarPedidoClientePorId({
   }
 
   const pagamento = pedido.pagamentos[0] ?? null;
+  const integracoes = await dbTransacional
+    .select({
+      status: fornecedorPedidoIntegracoesTable.status,
+      idPedidoExterno: fornecedorPedidoIntegracoesTable.idPedidoExterno,
+    })
+    .from(fornecedorPedidoIntegracoesTable)
+    .where(eq(fornecedorPedidoIntegracoesTable.pedidoId, pedido.id));
+  const emFornecedor = integracoes.some(
+    (item) =>
+      ["processando", "criado", "resultado_indeterminado"].includes(
+        item.status,
+      ) || Boolean(item.idPedidoExterno),
+  );
+  const acaoPosVenda =
+    pedido.cancelamento ||
+    ["canceled", "refunded", "expired"].includes(pedido.status)
+      ? null
+      : ["shipped", "delivered"].includes(pedido.status)
+        ? ("solicitar_devolucao" as const)
+        : emFornecedor
+          ? null
+          : pedido.pagamentoStatus === "paid"
+            ? ("solicitar_cancelamento" as const)
+            : ("cancelar" as const);
 
   return {
     id: pedido.id,
@@ -57,6 +83,17 @@ export async function buscarPedidoClientePorId({
     createdAt: pedido.createdAt,
     status: pedido.status,
     pagamentoStatus: pedido.pagamentoStatus,
+    acaoPosVenda,
+    cancelamento: pedido.cancelamento
+      ? {
+          status: pedido.cancelamento.status,
+          reembolsoStatus: pedido.cancelamento.reembolsoStatus,
+          motivo: pedido.cancelamento.motivo,
+          complementoMotivo: pedido.cancelamento.complementoMotivo,
+          solicitadoEm: pedido.cancelamento.solicitadoEm,
+          erroOperacional: pedido.cancelamento.erroOperacional,
+        }
+      : null,
     subtotalEmCentavos: pedido.subtotalEmCentavos,
     freteEmCentavos: pedido.freteEmCentavos,
     descontoEmCentavos: pedido.descontoEmCentavos,

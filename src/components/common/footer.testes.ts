@@ -17,7 +17,9 @@ test("footer apresenta a identidade e os dados legais aprovados", () => {
   assert.match(fonteFooter, /Da compra à entrega/);
   assert.match(fonteFooter, /Uma experiência de compra/);
   assert.match(fonteFooter, /CNPJ: 48\.732\.308\/0001-58/);
-  assert.match(fonteFooter, /Belo Horizonte\/MG/);
+  assert.match(fonteFooter, /3368, Santa Rita/);
+  assert.doesNotMatch(fonteFooter, /Vila Santa Rita/);
+  assert.match(fonteFooter, /Belo\s+Horizonte\/MG/);
 });
 
 test("footer não contém selos ou newsletter removidos", () => {
@@ -36,8 +38,14 @@ test("fallback do footer contém somente rotas públicas comprovadas", () => {
 
 test("contato do desenvolvedor é identificado e reutiliza canais protegidos", () => {
   assert.match(fonteContatoDesenvolvedor, /Contato do desenvolvedor/);
+  assert.match(
+    fonteContatoDesenvolvedor,
+    /Este contato é destinado exclusivamente ao desenvolvedor\./,
+  );
   assert.match(fonteContatoDesenvolvedor, /Falar com Junior Rocha/);
   assert.match(fonteContatoDesenvolvedor, /BotaoCanalHumano/);
+  assert.doesNotMatch(fonteContatoDesenvolvedor, /canal="email"/);
+  assert.doesNotMatch(fonteContatoDesenvolvedor, /Enviar mensagem/);
   assert.doesNotMatch(
     `${fonteFooter}\n${fonteContatoDesenvolvedor}`,
     /contato@nooo\.com\.br|5531988421694/,

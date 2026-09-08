@@ -7,5 +7,6 @@ export const DADOS_CONTATO_EMPRESA = {
     e164: "+5531988421694",
     whatsappOperacional: "5531988421694",
   },
+  whatsappDesenvolvedor: "5531994304473",
   emailAtendimento: "contato@nooo.com.br",
 } as const;

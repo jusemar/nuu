@@ -24,12 +24,15 @@ export const checkoutPedidoHistoricoTipoEnum = pgEnum(
     // a ordem dos valores de um enum é persistida no Postgres, e inserir no meio
     // exigiria recriar o tipo — o oposto de uma migration aditiva.
     "pagamento_recebido_na_entrega",
+    "cancelamento_solicitado",
+    "pedido_cancelado",
+    "reembolso_atualizado",
   ],
 );
 
 export const checkoutPedidoHistoricoOrigemEnum = pgEnum(
   "checkout_pedido_historico_origem",
-  ["system", "admin"],
+  ["system", "admin", "cliente"],
 );
 
 export const checkoutPagamentoGatewayEnum = pgEnum(
@@ -76,3 +79,27 @@ export const checkoutPagamentoStatusEnum = pgEnum("checkout_pagamento_status", [
   "failed",
   "expired",
 ]);
+
+export const checkoutCancelamentoStatusEnum = pgEnum(
+  "checkout_cancelamento_status",
+  ["processando", "concluido", "falhou", "bloqueado_fornecedor"],
+);
+
+export const checkoutReembolsoStatusEnum = pgEnum("checkout_reembolso_status", [
+  "nao_necessario",
+  "processando",
+  "concluido",
+  "falhou",
+]);
+
+export const checkoutCancelamentoMotivoEnum = pgEnum(
+  "checkout_cancelamento_motivo",
+  [
+    "compra_por_engano",
+    "alterar_pedido",
+    "prazo_entrega",
+    "outra_opcao",
+    "problema_pagamento",
+    "outro",
+  ],
+);

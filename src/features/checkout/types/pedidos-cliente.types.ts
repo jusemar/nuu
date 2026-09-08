@@ -23,6 +23,19 @@ export type PedidoClienteDetalhe = {
   createdAt: Date;
   status: PedidoStatusCheckout;
   pagamentoStatus: PagamentoStatusCheckout;
+  acaoPosVenda:
+    | "cancelar"
+    | "solicitar_cancelamento"
+    | "solicitar_devolucao"
+    | null;
+  cancelamento: {
+    status: "processando" | "concluido" | "falhou" | "bloqueado_fornecedor";
+    reembolsoStatus: "nao_necessario" | "processando" | "concluido" | "falhou";
+    motivo: string;
+    complementoMotivo: string | null;
+    solicitadoEm: Date;
+    erroOperacional: string | null;
+  } | null;
   subtotalEmCentavos: number;
   freteEmCentavos: number;
   descontoEmCentavos: number;

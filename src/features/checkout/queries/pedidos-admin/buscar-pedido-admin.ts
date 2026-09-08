@@ -28,6 +28,7 @@ export async function buscarPedidoAdminPorId(
       historicos: {
         orderBy: [asc(checkoutPedidoHistoricosTable.createdAt)],
       },
+      cancelamento: true,
     },
   });
 
@@ -50,6 +51,19 @@ export async function buscarPedidoAdminPorId(
     observacao: pedido.observacao,
     createdAt: pedido.createdAt,
     updatedAt: pedido.updatedAt,
+    cancelamento: pedido.cancelamento
+      ? {
+          status: pedido.cancelamento.status,
+          motivo: pedido.cancelamento.motivo,
+          complementoMotivo: pedido.cancelamento.complementoMotivo,
+          solicitadoPorEmail: pedido.cancelamento.solicitadoPorEmail,
+          solicitadoEm: pedido.cancelamento.solicitadoEm,
+          gatewayReembolso: pedido.cancelamento.gatewayReembolso,
+          reembolsoStatus: pedido.cancelamento.reembolsoStatus,
+          reembolsoId: pedido.cancelamento.reembolsoId,
+          erroOperacional: pedido.cancelamento.erroOperacional,
+        }
+      : null,
     cliente: {
       nome: pedido.cliente.nome,
       email: pedido.cliente.email,

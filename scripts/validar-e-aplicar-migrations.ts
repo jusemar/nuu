@@ -555,7 +555,7 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   if (hash !== migrations.at(-1)?.hash) {
     throw new ErroFluxoMigration(
       "arquivos-locais",
-      "O hash da migration 0036 diverge do migrator.",
+      `O hash da migration ${ANCORA_MIGRATIONS.ultimaTag} diverge do migrator.`,
     );
   }
 }

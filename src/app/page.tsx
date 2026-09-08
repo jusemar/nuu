@@ -60,10 +60,11 @@ const Home = async () => {
         </Card>
 
         <CampoMensagemAtendente
-          titulo="Olá! O que você procura hoje?"
-          placeholder="Digite o que procura ou faça uma pergunta"
+          titulo="Assistente Nooo"
+          placeholder="Escreva aqui. Estou ouvindo você..."
           apoio="Ex.: produto para meu carro, prazo de entrega ou recomendação"
           contexto={{ tipo: "home" }}
+          visual="home-mascote"
         />
 
         {/* Info cards — confiança e conversão */}

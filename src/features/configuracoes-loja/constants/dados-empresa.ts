@@ -19,12 +19,6 @@ export const DADOS_EMPRESA = {
     cep: "31668-635",
     pais: "Brasil",
   },
-  telefone: {
-    exibicao: "(31) 98842-1694",
-    e164: "+5531988421694",
-    whatsappOperacional: "5531988421694",
-  },
-  emailAtendimento: "contato@nooo.com.br",
   site: "https://nooo.com.br",
 } as const;
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { DADOS_EMPRESA } from "@/features/configuracoes-loja/constants/dados-empresa";
+import { DADOS_CONTATO_EMPRESA } from "@/features/configuracoes-loja/constants/dados-contato-empresa.server";
 
 export type CanalContatoHumano = "email" | "whatsapp";
 
@@ -16,7 +16,7 @@ export async function obterDestinoCanalContato(
   canal: CanalContatoHumano,
 ): Promise<ResultadoDestinoContato> {
   if (canal === "whatsapp") {
-    const numero = DADOS_EMPRESA.telefone.whatsappOperacional.replace(
+    const numero = DADOS_CONTATO_EMPRESA.telefone.whatsappOperacional.replace(
       /\D/g,
       "",
     );
@@ -37,7 +37,7 @@ export async function obterDestinoCanalContato(
   }
 
   if (canal === "email") {
-    const email = DADOS_EMPRESA.emailAtendimento.trim();
+    const email = DADOS_CONTATO_EMPRESA.emailAtendimento.trim();
     if (!email.includes("@")) {
       return {
         sucesso: false,

@@ -8,11 +8,9 @@ import { buscarBarraAvisos } from "@/features/configuracoes-loja/queries/buscar-
 import { Header } from "@/features/header";
 
 import { CanaisContato } from "./canais-contato";
+import { FormularioContato } from "./formulario-contato";
 import { HeroContato } from "./hero-contato";
-import {
-  AcompanhamentoPedido,
-  InformacoesContato,
-} from "./informacoes-contato";
+import { AcompanhamentoPedido } from "./informacoes-contato";
 
 export async function PaginaContato() {
   const barraAvisos = await buscarBarraAvisos();
@@ -48,7 +46,7 @@ export async function PaginaContato() {
         <HeroContato />
         <CanaisContato />
         <AcompanhamentoPedido />
-        <InformacoesContato />
+        <FormularioContato />
       </Container>
       <Footer />
     </div>

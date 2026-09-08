@@ -13,9 +13,14 @@ import { cn } from "@/lib/utils";
 type PropriedadesBotaoCanal = {
   canal: CanalContatoHumano;
   className?: string;
+  rotulo?: string;
 };
 
-export function BotaoCanalHumano({ canal, className }: PropriedadesBotaoCanal) {
+export function BotaoCanalHumano({
+  canal,
+  className,
+  rotulo,
+}: PropriedadesBotaoCanal) {
   const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciarTransicao] = useTransition();
   const whatsapp = canal === "whatsapp";
@@ -67,7 +72,7 @@ export function BotaoCanalHumano({ canal, className }: PropriedadesBotaoCanal) {
         ) : (
           <Icone aria-hidden="true" />
         )}
-        {whatsapp ? "Falar no WhatsApp" : "Enviar e-mail"}
+        {rotulo ?? (whatsapp ? "Falar no WhatsApp" : "Enviar e-mail")}
       </Button>
       {erro ? (
         <p

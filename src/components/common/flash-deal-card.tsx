@@ -227,8 +227,22 @@ export const CartaoOfertaRelampago = ({
               <Clock3 className="h-3 w-3" />
               termina em
             </p>
-            <div className="mb-4 flex items-center gap-1.5">
-              <BlocoTempo valor={horas} rotulo="horas" urgente={urgente} />
+            <div className="mb-4 flex w-full max-w-64 items-center gap-1">
+              {tempoRestante.days > 0 && (
+                <>
+                  <BlocoTempo
+                    valor={tempoRestante.days}
+                    rotulo={tempoRestante.days === 1 ? "dia" : "dias"}
+                    urgente={urgente}
+                  />
+                  <SeparadorTempo />
+                </>
+              )}
+              <BlocoTempo
+                valor={tempoRestante.hours}
+                rotulo={tempoRestante.hours === 1 ? "hora" : "horas"}
+                urgente={urgente}
+              />
               <SeparadorTempo />
               <BlocoTempo
                 valor={tempoRestante.minutes}
@@ -308,7 +322,7 @@ const BlocoTempo = ({
   rotulo: string;
   urgente: boolean;
 }) => (
-  <div className="border-border bg-muted flex min-w-[46px] flex-col items-center rounded-md border px-2 py-2">
+  <div className="border-border bg-muted flex min-w-0 flex-1 flex-col items-center rounded-md border px-1 py-2">
     <span
       className={`text-[21px] leading-none font-bold tabular-nums ${urgente ? "text-accent-dark" : "text-foreground"}`}
     >

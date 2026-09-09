@@ -105,7 +105,7 @@ export function CampoMensagemAtendente({
       <div
         className={cn(
           visualHome &&
-            "relative isolate overflow-hidden rounded-3xl border border-sky-200/80 bg-gradient-to-br from-white via-sky-50/80 to-blue-50/90 px-4 pt-5 pb-4 shadow-[0_18px_50px_-30px_rgba(12,68,124,0.55)] sm:px-6 sm:py-5 lg:min-h-64 lg:overflow-visible lg:px-8",
+            "relative isolate overflow-visible rounded-3xl border border-sky-200/80 bg-gradient-to-br from-white via-sky-50/80 to-blue-50/90 px-4 pt-3 pb-3 shadow-[0_18px_50px_-30px_rgba(12,68,124,0.55)] sm:px-6 sm:py-4 lg:min-h-56 lg:px-8",
         )}
       >
         {visualHome ? (
@@ -121,25 +121,25 @@ export function CampoMensagemAtendente({
         ) : null}
 
         {visualHome ? (
-          <div className="relative z-10 grid gap-3.5 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-center lg:gap-7">
-            <div className="relative mx-auto h-40 w-full max-w-72 sm:h-44 lg:h-56 lg:max-w-none">
-              <div className="absolute top-0 right-0 z-20 w-44 sm:w-52 lg:-top-2 lg:-right-8 lg:w-56">
+          <div className="relative z-10 grid gap-2 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-center lg:gap-6">
+            <div className="relative mx-auto h-36 w-full max-w-80 sm:h-40 lg:h-48 lg:max-w-none">
+              <div className="absolute -top-2 left-36 z-30 w-[11.5rem] sm:left-40 sm:w-52 lg:-top-5 lg:left-48 lg:w-52">
                 <BalaoFrasesAssistente />
               </div>
-              <div className="absolute -bottom-5 -left-5 z-10 h-48 w-52 motion-safe:animate-[assistente-respirar_5.5s_ease-in-out_infinite] sm:-left-3 sm:h-52 sm:w-56 lg:-bottom-9 lg:-left-10 lg:h-72 lg:w-72">
+              <div className="absolute -top-3 -bottom-3 -left-2 z-20 w-40 motion-safe:animate-[assistente-respirar_5.5s_ease-in-out_infinite] sm:-top-4 sm:-bottom-4 sm:left-0 sm:w-44 lg:-top-7 lg:-bottom-7 lg:-left-8 lg:w-64">
                 <Image
                   src="/images/mascote-nooo-webp.webp"
                   alt="Mascote Nooo apontando para o campo da assistente"
                   fill
-                  sizes="(max-width: 640px) 208px, (max-width: 1024px) 224px, 288px"
+                  sizes="(max-width: 640px) 160px, (max-width: 1024px) 176px, 256px"
                   className="object-contain"
                 />
               </div>
-              <span className="absolute right-1 bottom-11 z-20 size-3 rounded-full bg-cyan-300 shadow-[0_0_18px_7px_rgba(34,211,238,0.45)] motion-safe:animate-pulse sm:right-4 lg:-right-1 lg:bottom-20" />
+              <span className="absolute bottom-11 left-[9.6rem] z-20 size-2.5 rounded-full bg-cyan-300 shadow-[0_0_16px_6px_rgba(34,211,238,0.42)] motion-safe:animate-pulse sm:left-[10.7rem] lg:bottom-14 lg:left-[14.4rem]" />
             </div>
 
-            <div className="relative z-20 min-w-0 rounded-2xl bg-white/45 p-3 backdrop-blur-[2px] sm:p-4 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-              <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
+            <div className="relative z-20 min-w-0 rounded-2xl bg-white/45 p-3 backdrop-blur-[2px] sm:p-3.5 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+              <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
                 <span>Assistente Nooo</span>
                 <span aria-hidden="true">•</span>
                 <span className="inline-flex items-center gap-1 tracking-normal text-emerald-700 normal-case">
@@ -167,9 +167,9 @@ export function CampoMensagemAtendente({
                 aoPressionarTecla={tratarTecla}
               />
 
-              <p className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-500">
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
                 <Headphones className="size-3.5 shrink-0" aria-hidden="true" />
-                Atendimento humano também está disponível quando você quiser.
+                Atendimento por pessoa disponível. É só solicitar!
               </p>
             </div>
           </div>
@@ -229,6 +229,11 @@ function FormularioMensagem({
   aoDigitar,
   aoPressionarTecla,
 }: PropriedadesFormularioMensagem) {
+  const temApoio = apoio.trim().length > 0;
+  const idsDescricao = [temApoio ? idApoio : null, erro ? idErro : null]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <form className={cn(!visualHome && "mt-4")} onSubmit={aoEnviar}>
       <label className="sr-only" htmlFor={idMensagem}>
@@ -242,7 +247,7 @@ function FormularioMensagem({
           onKeyDown={aoPressionarTecla}
           placeholder={placeholder}
           maxLength={LIMITE_CARACTERES_MENSAGEM_ATENDIMENTO}
-          aria-describedby={`${idApoio}${erro ? ` ${idErro}` : ""}`}
+          aria-describedby={idsDescricao || undefined}
           aria-invalid={Boolean(erro)}
           disabled={enviando}
           rows={visualHome ? 2 : 4}
@@ -269,10 +274,19 @@ function FormularioMensagem({
         </Button>
       </div>
 
-      <div className="mt-2 flex min-h-5 flex-col gap-1 px-1 sm:flex-row sm:items-center sm:justify-between">
-        <p id={idApoio} className="text-muted-foreground text-xs sm:text-sm">
-          {apoio}
-        </p>
+      <div
+        className={cn(
+          "flex px-1",
+          visualHome
+            ? "mt-1 justify-end"
+            : "mt-2 min-h-5 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between",
+        )}
+      >
+        {temApoio ? (
+          <p id={idApoio} className="text-muted-foreground text-xs sm:text-sm">
+            {apoio}
+          </p>
+        ) : null}
         <p className="text-muted-foreground text-xs">
           {mensagem.length}/{LIMITE_CARACTERES_MENSAGEM_ATENDIMENTO}
         </p>

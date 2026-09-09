@@ -62,7 +62,7 @@ const Home = async () => {
         <CampoMensagemAtendente
           titulo="Assistente Nooo"
           placeholder="Escreva aqui. Estou ouvindo você..."
-          apoio="Ex.: produto para meu carro, prazo de entrega ou recomendação"
+          apoio=""
           contexto={{ tipo: "home" }}
           visual="home-mascote"
         />

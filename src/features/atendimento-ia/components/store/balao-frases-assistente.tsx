@@ -49,10 +49,14 @@ export function BalaoFrasesAssistente() {
 
   return (
     <div
-      className="animate-[assistente-flutuar_5s_ease-in-out_infinite] rounded-2xl border border-sky-100 bg-white/95 px-3.5 py-2.5 shadow-[0_12px_35px_-18px_rgba(12,68,124,0.45)] sm:px-4"
+      className="relative animate-[assistente-flutuar_5s_ease-in-out_infinite] rounded-2xl border border-sky-100 bg-white/95 px-3.5 py-2.5 shadow-[0_12px_35px_-18px_rgba(12,68,124,0.45)] sm:px-4"
       onMouseEnter={() => setPausado(true)}
       onMouseLeave={() => setPausado(false)}
     >
+      <span
+        aria-hidden="true"
+        className="absolute bottom-2 -left-2 size-4 rotate-45 border-b border-l border-sky-100 bg-white"
+      />
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {frase}
       </span>

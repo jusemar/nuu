@@ -87,7 +87,7 @@ export function CampoMensagemAtendente({
       aria-labelledby={idTitulo}
       className={cn(
         "mx-auto w-full",
-        visualHome ? "max-w-6xl" : "max-w-4xl",
+        visualHome ? "max-w-6xl pt-16" : "max-w-4xl",
         className,
       )}
     >
@@ -105,45 +105,46 @@ export function CampoMensagemAtendente({
       <div
         className={cn(
           visualHome &&
-            "relative isolate overflow-visible rounded-3xl border border-sky-200/80 bg-gradient-to-br from-white via-sky-50/80 to-blue-50/90 px-4 pt-3 pb-3 shadow-[0_18px_50px_-30px_rgba(12,68,124,0.55)] sm:px-6 sm:py-4 lg:min-h-56 lg:px-8",
+            "bg-card border-border shadow-elevation-2 relative isolate overflow-visible rounded-2xl border px-4 pt-24 pb-3 sm:px-6 sm:pt-28 md:min-h-40 md:px-6 md:py-3.5 lg:px-8",
         )}
       >
         {visualHome ? (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
           >
-            <span className="absolute -top-16 left-16 size-44 rounded-full bg-sky-200/25 blur-2xl" />
-            <span className="absolute right-16 -bottom-24 size-64 rounded-full bg-blue-200/25 blur-3xl" />
-            <span className="absolute top-8 right-[35%] size-2 rounded-full bg-sky-300/45" />
-            <span className="absolute right-[30%] bottom-8 size-1.5 rounded-full bg-blue-300/40" />
+            <span className="bg-primary-light/65 absolute -top-20 left-12 size-48 rounded-full blur-2xl" />
+            <span className="bg-success-light/70 absolute right-16 -bottom-28 size-64 rounded-full blur-3xl" />
+            <span className="bg-primary/15 absolute top-7 right-[36%] size-2 rounded-full" />
+            <span className="bg-success/20 absolute right-[28%] bottom-7 size-1.5 rounded-full" />
           </div>
         ) : null}
 
         {visualHome ? (
-          <div className="relative z-10 grid gap-2 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-center lg:gap-6">
-            <div className="relative mx-auto h-36 w-full max-w-80 sm:h-40 lg:h-48 lg:max-w-none">
-              <div className="absolute -top-2 left-36 z-30 w-[11.5rem] sm:left-40 sm:w-52 lg:-top-5 lg:left-48 lg:w-52">
+          <div className="relative z-10">
+            <div className="pointer-events-none absolute inset-x-0 -top-48 h-44 sm:-top-52 sm:h-48 md:-top-24 md:left-0 md:h-60 md:w-80 lg:w-96">
+              <div className="pointer-events-auto absolute top-0 right-0 z-30 w-[calc(100%-9rem)] max-w-56 min-w-44 max-[359px]:w-40 max-[359px]:min-w-40 sm:w-56 md:-top-4 md:right-auto md:left-44 lg:left-48 lg:w-64 lg:max-w-64">
                 <BalaoFrasesAssistente />
               </div>
-              <div className="absolute -top-3 -bottom-3 -left-2 z-20 w-40 motion-safe:animate-[assistente-respirar_5.5s_ease-in-out_infinite] sm:-top-4 sm:-bottom-4 sm:left-0 sm:w-44 lg:-top-7 lg:-bottom-7 lg:-left-8 lg:w-64">
+              <div className="absolute -bottom-1 -left-3 z-20 h-44 w-44 motion-safe:animate-[assistente-respirar_5.5s_ease-in-out_infinite] max-[359px]:h-40 max-[359px]:w-40 sm:-bottom-2 sm:-left-1 sm:h-48 sm:w-48 md:-bottom-8 md:-left-6 md:h-60 md:w-60 lg:-left-9 lg:h-64 lg:w-64">
                 <Image
                   src="/images/mascote-nooo-webp.webp"
                   alt="Mascote Nooo apontando para o campo da assistente"
                   fill
-                  sizes="(max-width: 640px) 160px, (max-width: 1024px) 176px, 256px"
+                  sizes="(max-width: 640px) 176px, (max-width: 1024px) 192px, 256px"
                   className="object-contain"
                 />
               </div>
-              <span className="absolute bottom-11 left-[9.6rem] z-20 size-2.5 rounded-full bg-cyan-300 shadow-[0_0_16px_6px_rgba(34,211,238,0.42)] motion-safe:animate-pulse sm:left-[10.7rem] lg:bottom-14 lg:left-[14.4rem]" />
+              <span className="bg-info absolute right-[calc(100%-10.35rem)] bottom-12 z-20 size-2.5 rounded-full shadow-[0_0_16px_6px_var(--info-light)] motion-safe:animate-pulse sm:right-[calc(100%-11.35rem)] md:right-auto md:bottom-[4.35rem] md:left-[13.35rem] lg:bottom-[4.6rem] lg:left-[14.35rem]" />
+              <span className="from-primary/30 absolute bottom-[4.6rem] left-[13.8rem] hidden h-px w-28 bg-gradient-to-r to-transparent md:block lg:bottom-[4.85rem] lg:left-[14.8rem] lg:w-40" />
             </div>
 
-            <div className="relative z-20 min-w-0 rounded-2xl bg-white/45 p-3 backdrop-blur-[2px] sm:p-3.5 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-              <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-slate-600 uppercase">
+            <div className="relative z-20 min-w-0 md:ml-80 lg:ml-96">
+              <div className="text-muted-foreground mb-1.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] uppercase">
                 <span>Assistente Nooo</span>
                 <span aria-hidden="true">•</span>
-                <span className="inline-flex items-center gap-1 tracking-normal text-emerald-700 normal-case">
-                  <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.13)]" />
+                <span className="text-success-dark inline-flex items-center gap-1 tracking-normal normal-case">
+                  <span className="bg-success shadow-success/15 size-2 rounded-full shadow-[0_0_0_3px]" />
                   disponível
                 </span>
               </div>
@@ -167,7 +168,7 @@ export function CampoMensagemAtendente({
                 aoPressionarTecla={tratarTecla}
               />
 
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+              <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
                 <Headphones className="size-3.5 shrink-0" aria-hidden="true" />
                 Atendimento por pessoa disponível. É só solicitar!
               </p>
@@ -254,7 +255,7 @@ function FormularioMensagem({
           className={cn(
             "bg-card resize-none px-4 text-base shadow-sm",
             visualHome
-              ? "min-h-24 rounded-2xl border-sky-100 pt-3.5 pr-16 pb-10 shadow-[0_10px_30px_-20px_rgba(12,68,124,0.45)] focus-visible:border-sky-300 focus-visible:ring-sky-200/60 sm:min-h-24 sm:px-5 sm:pt-4 sm:pr-16"
+              ? "border-input shadow-elevation-1 focus-visible:border-ring min-h-20 rounded-xl pt-3 pr-14 pb-8 focus-visible:ring-2 sm:min-h-20 sm:px-4 sm:pt-3 sm:pr-14"
               : "min-h-32 rounded-2xl pt-4 pb-16 sm:min-h-36 sm:px-5 sm:pt-5",
           )}
         />
@@ -264,9 +265,9 @@ function FormularioMensagem({
           aria-label="Enviar mensagem e abrir atendimento"
           disabled={!mensagemValida || enviando}
           className={cn(
-            "absolute rounded-full bg-[#0C447C] shadow-md transition-transform hover:bg-[#0A3A6A] active:scale-95",
+            "bg-primary hover:bg-primary-hover shadow-elevation-1 absolute rounded-full transition-transform active:scale-95",
             visualHome
-              ? "right-3 bottom-3 size-10"
+              ? "right-2.5 bottom-2.5 size-9"
               : "right-3 bottom-3 size-11 sm:right-4 sm:bottom-4",
           )}
         >
@@ -278,7 +279,7 @@ function FormularioMensagem({
         className={cn(
           "flex px-1",
           visualHome
-            ? "mt-1 justify-end"
+            ? "mt-0.5 justify-end"
             : "mt-2 min-h-5 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between",
         )}
       >

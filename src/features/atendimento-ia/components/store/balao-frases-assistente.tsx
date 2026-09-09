@@ -49,20 +49,24 @@ export function BalaoFrasesAssistente() {
 
   return (
     <div
-      className="bg-popover text-popover-foreground shadow-elevation-3 border-border relative animate-[assistente-flutuar_5s_ease-in-out_infinite] rounded-3xl rounded-bl-md border px-4 py-3"
+      className="bg-popover text-popover-foreground shadow-elevation-3 border-border relative animate-[assistente-flutuar_5s_ease-in-out_infinite] rounded-3xl rounded-bl-md border px-3 py-2.5"
       onMouseEnter={() => setPausado(true)}
       onMouseLeave={() => setPausado(false)}
     >
       <span
         aria-hidden="true"
-        className="bg-popover border-border absolute bottom-3 -left-2.5 size-5 rotate-45 rounded-bl-sm border-b border-l"
+        className="bg-border absolute bottom-4 -left-6 h-6 w-7 [clip-path:polygon(100%_0,100%_100%,0_85%)]"
+      />
+      <span
+        aria-hidden="true"
+        className="bg-popover absolute bottom-[17px] -left-[22px] h-[22px] w-[26px] [clip-path:polygon(100%_0,100%_100%,0_85%)]"
       />
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {frase}
       </span>
       <p
         aria-hidden="true"
-        className="text-foreground min-h-10 text-xs leading-relaxed font-normal sm:text-sm"
+        className="text-foreground min-h-10 text-xs leading-relaxed font-normal"
       >
         {frase.slice(0, quantidadeCaracteres)}
         <span

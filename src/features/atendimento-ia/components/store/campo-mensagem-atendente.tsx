@@ -87,7 +87,7 @@ export function CampoMensagemAtendente({
       aria-labelledby={idTitulo}
       className={cn(
         "mx-auto w-full",
-        visualHome ? "max-w-6xl pt-16" : "max-w-4xl",
+        visualHome ? "relative max-w-6xl" : "max-w-4xl",
         className,
       )}
     >
@@ -123,7 +123,7 @@ export function CampoMensagemAtendente({
         {visualHome ? (
           <div className="relative z-10">
             <div className="pointer-events-none absolute inset-x-0 -top-48 h-44 sm:-top-52 sm:h-48 md:-top-24 md:left-0 md:h-60 md:w-80 lg:w-96">
-              <div className="pointer-events-auto absolute top-0 right-0 z-30 w-[calc(100%-9rem)] max-w-56 min-w-44 max-[359px]:w-40 max-[359px]:min-w-40 sm:w-56 md:-top-4 md:right-auto md:left-44 lg:left-48 lg:w-64 lg:max-w-64">
+              <div className="pointer-events-auto absolute top-8 right-0 left-[48%] z-30 sm:left-48 md:top-8 md:right-auto md:left-44 md:w-32 lg:left-48 lg:w-44">
                 <BalaoFrasesAssistente />
               </div>
               <div className="absolute -bottom-1 -left-3 z-20 h-44 w-44 motion-safe:animate-[assistente-respirar_5.5s_ease-in-out_infinite] max-[359px]:h-40 max-[359px]:w-40 sm:-bottom-2 sm:-left-1 sm:h-48 sm:w-48 md:-bottom-8 md:-left-6 md:h-60 md:w-60 lg:-left-9 lg:h-64 lg:w-64">
@@ -134,9 +134,16 @@ export function CampoMensagemAtendente({
                   sizes="(max-width: 640px) 176px, (max-width: 1024px) 192px, 256px"
                   className="object-contain"
                 />
+                {/* O brilho acompanha a imagem e permanece na ponta do dedo. */}
+                <span
+                  aria-hidden="true"
+                  className="bg-info absolute top-[47%] left-[89%] size-2 rounded-full shadow-[0_0_12px_4px_var(--info)] motion-safe:animate-pulse"
+                />
+                <span
+                  aria-hidden="true"
+                  className="border-info/50 absolute top-[49%] left-[94%] w-8 border-t border-dashed md:w-24 lg:w-36"
+                />
               </div>
-              <span className="bg-info absolute right-[calc(100%-10.35rem)] bottom-12 z-20 size-2.5 rounded-full shadow-[0_0_16px_6px_var(--info-light)] motion-safe:animate-pulse sm:right-[calc(100%-11.35rem)] md:right-auto md:bottom-[4.35rem] md:left-[13.35rem] lg:bottom-[4.6rem] lg:left-[14.35rem]" />
-              <span className="from-primary/30 absolute bottom-[4.6rem] left-[13.8rem] hidden h-px w-28 bg-gradient-to-r to-transparent md:block lg:bottom-[4.85rem] lg:left-[14.8rem] lg:w-40" />
             </div>
 
             <div className="relative z-20 min-w-0 md:ml-80 lg:ml-96">
@@ -168,7 +175,7 @@ export function CampoMensagemAtendente({
                 aoPressionarTecla={tratarTecla}
               />
 
-              <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
+              <p className="text-muted-foreground mt-1.5 flex items-center gap-1.5 text-xs">
                 <Headphones className="size-3.5 shrink-0" aria-hidden="true" />
                 Atendimento por pessoa disponível. É só solicitar!
               </p>
@@ -236,7 +243,7 @@ function FormularioMensagem({
     .join(" ");
 
   return (
-    <form className={cn(!visualHome && "mt-4")} onSubmit={aoEnviar}>
+    <form className={cn(visualHome ? "relative" : "mt-4")} onSubmit={aoEnviar}>
       <label className="sr-only" htmlFor={idMensagem}>
         Mensagem para o Atendente IA
       </label>
@@ -279,7 +286,7 @@ function FormularioMensagem({
         className={cn(
           "flex px-1",
           visualHome
-            ? "mt-0.5 justify-end"
+            ? "pointer-events-none absolute bottom-2 left-3 justify-start"
             : "mt-2 min-h-5 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between",
         )}
       >

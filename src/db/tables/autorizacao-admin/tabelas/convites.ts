@@ -10,7 +10,9 @@ import {
 import { userTable } from "../../autenticacao";
 import {
   conviteAdministrativoStatusEnum,
+  conviteAdministrativoTipoIdentificadorEnum,
   efeitoPermissaoAdministradorEnum,
+  provaPosseConviteFinalidadeEnum,
 } from "../enums";
 import {
   administradoresTable,
@@ -24,7 +26,14 @@ export const convitesAdministrativosTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     nomeDestinatario: text("nome_destinatario").notNull(),
-    emailDestinatario: text("email_destinatario").notNull(),
+    // Convites históricos preservam o e-mail; convites WhatsApp o deixam nulo.
+    emailDestinatario: text("email_destinatario"),
+    tipoIdentificador: conviteAdministrativoTipoIdentificadorEnum(
+      "tipo_identificador",
+    )
+      .notNull()
+      .default("email"),
+    identificadorNormalizado: text("identificador_normalizado"),
     usuarioDestinatarioId: text("usuario_destinatario_id").references(
       () => userTable.id,
       { onDelete: "set null" },
@@ -54,6 +63,11 @@ export const convitesAdministrativosTable = pgTable(
       table.emailDestinatario,
       table.status,
     ),
+    index("convites_administrativos_identificador_status_idx").on(
+      table.tipoIdentificador,
+      table.identificadorNormalizado,
+      table.status,
+    ),
     index("convites_administrativos_usuario_destinatario_idx").on(
       table.usuarioDestinatarioId,
     ),
@@ -64,6 +78,38 @@ export const convitesAdministrativosTable = pgTable(
       table.status,
       table.expiraEm,
     ),
+  ],
+);
+
+/** Prova de posse limitada a convite, telefone e contexto seguro. */
+export const provasPosseConvitesAdministrativosTable = pgTable(
+  "provas_posse_convites_administrativos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conviteId: uuid("convite_id")
+      .notNull()
+      .references(() => convitesAdministrativosTable.id, { onDelete: "cascade" }),
+    telefoneNormalizado: text("telefone_normalizado").notNull(),
+    usuarioId: text("usuario_id").references(() => userTable.id, {
+      onDelete: "set null",
+    }),
+    finalidade: provaPosseConviteFinalidadeEnum("finalidade")
+      .notNull()
+      .default("admin_convite"),
+    contextoHash: text("contexto_hash").notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+    expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+    confirmadoEm: timestamp("confirmado_em", { withTimezone: true }),
+    consumidoEm: timestamp("consumido_em", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("provas_posse_convites_contexto_unique").on(
+      table.conviteId,
+      table.contextoHash,
+    ),
+    index("provas_posse_convites_telefone_idx").on(table.telefoneNormalizado),
+    index("provas_posse_convites_usuario_idx").on(table.usuarioId),
+    index("provas_posse_convites_expiracao_idx").on(table.expiraEm),
   ],
 );
 

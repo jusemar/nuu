@@ -11,6 +11,7 @@ import { enviarEmailRedefinicaoSenhaAdmin } from "@/features/autenticacao/lib/em
 import { enviarEmailRedefinicaoSenhaCliente } from "@/features/autenticacao/lib/emails/enviar-email-redefinicao-senha-cliente";
 import { enviarRecuperacaoEmailPorPublico } from "@/features/autenticacao/lib/enviar-recuperacao-email";
 import { pluginConfirmacaoEmailCliente } from "@/features/autenticacao/lib/plugin-confirmacao-email-cliente";
+import { pluginConviteAdminWhatsapp } from "@/features/autenticacao/lib/plugin-convite-admin-whatsapp";
 import { pluginFluxosTelefoneNuu } from "@/features/autenticacao/lib/plugin-fluxos-telefone-nuu";
 import { pluginLoginIdentificadorAdmin } from "@/features/autenticacao/lib/plugin-login-identificador-admin";
 import { pluginRecuperacaoAdminWhatsapp } from "@/features/autenticacao/lib/plugin-recuperacao-admin-whatsapp";
@@ -182,5 +183,6 @@ export const auth = betterAuth({
     pluginConfirmacaoEmailCliente(),
     pluginLoginIdentificadorAdmin(),
     pluginRecuperacaoAdminWhatsapp(),
+    pluginConviteAdminWhatsapp(),
   ],
 });

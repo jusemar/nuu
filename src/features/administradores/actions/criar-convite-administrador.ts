@@ -41,6 +41,9 @@ export async function criarConviteAdministrador(entrada: unknown) {
     PERMISSOES_ADMIN.ADMINISTRADORES.ADMINISTRAR,
   );
   const dados = criarConviteAdministradorSchema.parse(entrada);
+  const emailDestinatario = dados.email;
+  if (dados.tipoIdentificador === "email" && !emailDestinatario)
+    throw new Error("EMAIL_DESTINATARIO_AUSENTE");
   const { token, tokenHash } = gerarTokenConviteAdministrativo();
   const expiraEm = calcularExpiracaoConvite();
 
@@ -80,7 +83,10 @@ export async function criarConviteAdministrador(entrada: unknown) {
         : null,
       tx.query.userTable.findFirst({
         columns: { id: true },
-        where: eq(userTable.email, dados.email),
+        where:
+          dados.tipoIdentificador === "email"
+            ? eq(userTable.email, emailDestinatario!)
+            : eq(userTable.phoneNumber, dados.identificadorNormalizado),
       }),
     ]);
     if (dados.funcaoId && !funcao) throw new Error("FUNCAO_INVALIDA");
@@ -143,6 +149,23 @@ export async function criarConviteAdministrador(entrada: unknown) {
       permissoesDesejadas: desejadas,
       permissoesFuncao: herdadas,
     });
+    const convitePendenteDoMesmoDestinatario =
+      dados.tipoIdentificador === "email"
+        ? and(
+            eq(
+              convitesAdministrativosTable.emailDestinatario,
+              emailDestinatario!,
+            ),
+            eq(convitesAdministrativosTable.status, "pendente"),
+          )
+        : and(
+            eq(convitesAdministrativosTable.tipoIdentificador, "whatsapp"),
+            eq(
+              convitesAdministrativosTable.identificadorNormalizado,
+              dados.identificadorNormalizado,
+            ),
+            eq(convitesAdministrativosTable.status, "pendente"),
+          );
     await tx
       .update(convitesAdministrativosTable)
       .set({
@@ -150,20 +173,17 @@ export async function criarConviteAdministrador(entrada: unknown) {
         status: "revogado",
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(convitesAdministrativosTable.emailDestinatario, dados.email),
-          eq(convitesAdministrativosTable.status, "pendente"),
-        ),
-      );
+      .where(convitePendenteDoMesmoDestinatario);
     const [criado] = await tx
       .insert(convitesAdministrativosTable)
       .values({
-        emailDestinatario: dados.email,
+        emailDestinatario,
         emissorAdministradorId: contexto.administradorId,
         expiraEm,
+        identificadorNormalizado: dados.identificadorNormalizado,
         nomeDestinatario: dados.nome,
         tokenHash,
+        tipoIdentificador: dados.tipoIdentificador,
         usuarioDestinatarioId: usuario?.id ?? null,
       })
       .returning({ id: convitesAdministrativosTable.id });
@@ -195,25 +215,30 @@ export async function criarConviteAdministrador(entrada: unknown) {
     return criado;
   });
 
-  try {
-    await enviarEmailConviteAdministrativo({
-      destinatario: dados.email,
-      nome: dados.nome,
-      url: montarUrlAbsoluta(
-        `/convite-administrativo/${encodeURIComponent(token)}`,
-      ),
-    });
-  } catch {
-    await db
-      .update(convitesAdministrativosTable)
-      .set({
-        revogadoEm: new Date(),
-        status: "revogado",
-        updatedAt: new Date(),
-      })
-      .where(eq(convitesAdministrativosTable.id, convite.id));
-    throw new Error("Não foi possível enviar o convite.");
+  const linkConvite = montarUrlAbsoluta(
+    `/convite-administrativo/${encodeURIComponent(token)}`,
+  );
+  if (dados.tipoIdentificador === "email") {
+    try {
+      await enviarEmailConviteAdministrativo({
+        destinatario: emailDestinatario!,
+        nome: dados.nome,
+        url: linkConvite,
+      });
+    } catch {
+      await db
+        .update(convitesAdministrativosTable)
+        .set({
+          revogadoEm: new Date(),
+          status: "revogado",
+          updatedAt: new Date(),
+        })
+        .where(eq(convitesAdministrativosTable.id, convite.id));
+      throw new Error("Não foi possível enviar o convite.");
+    }
   }
   revalidatePath("/admin/configuracoes/usuarios-e-permissoes");
-  return { sucesso: true as const };
+  return dados.tipoIdentificador === "whatsapp"
+    ? { sucesso: true as const, linkConvite }
+    : { sucesso: true as const };
 }

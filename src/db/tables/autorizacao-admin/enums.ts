@@ -30,6 +30,18 @@ export const conviteAdministrativoStatusEnum = pgEnum(
   ["pendente", "aceito", "expirado", "revogado"],
 );
 
+/** Identidade imutável a que um convite administrativo é destinado. */
+export const conviteAdministrativoTipoIdentificadorEnum = pgEnum(
+  "convite_administrativo_tipo_identificador",
+  ["email", "whatsapp"],
+);
+
+/** Provas persistidas são exclusivas da confirmação de convite administrativo. */
+export const provaPosseConviteFinalidadeEnum = pgEnum(
+  "prova_posse_convite_finalidade",
+  ["admin_convite"],
+);
+
 /** Resultado mínimo e estável para eventos futuros de segurança. */
 export const auditoriaAdministrativaResultadoEnum = pgEnum(
   "auditoria_administrativa_resultado",

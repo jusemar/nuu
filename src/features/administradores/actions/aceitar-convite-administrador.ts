@@ -59,7 +59,7 @@ export async function aceitarConviteAdministrador(tokenEntrada: unknown) {
       }
       if (
         sessao.user.email.toLowerCase() !==
-        convite.emailDestinatario.toLowerCase()
+        (convite.emailDestinatario ?? "").toLowerCase()
       )
         throw new Error("IDENTIDADE_DIVERGENTE");
       const existente = await tx.query.administradoresTable.findFirst({

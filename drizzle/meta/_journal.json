@@ -288,6 +288,13 @@
       "when": 1788859869284,
       "tag": "0040_sistema_cancelamento_pedidos",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1789069619757,
+      "tag": "0041_quiet_human_cannonball",
+      "breakpoints": true
     }
   ]
 }

@@ -215,6 +215,7 @@ export async function listarAdministradores(): Promise<DadosGestaoAdministradore
     ),
     convitesPendentes: convitesPendentes.map((convite) => ({
       ...convite,
+      email: convite.email ?? "",
       expiraEm: convite.expiraEm.toISOString(),
       funcao: convite.funcao ?? "Personalizado",
     })),

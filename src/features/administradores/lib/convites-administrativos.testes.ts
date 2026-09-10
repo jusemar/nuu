@@ -97,3 +97,28 @@ test("convite global permanece isolado do RBAC local do Atendente IA", () => {
     /atendimento_ia_papeis_admin|gestor_principal|atendimento-ia/,
   );
 });
+
+test("schema preserva e-mail legado e prepara identidade WhatsApp isolada", () => {
+  const schema = readFileSync(
+    "src/db/tables/autorizacao-admin/tabelas/convites.ts",
+    "utf8",
+  );
+  const enums = readFileSync("src/db/tables/autorizacao-admin/enums.ts", "utf8");
+  const tiposOtp = readFileSync(
+    "src/features/autenticacao/types/otp-telefone.types.ts",
+    "utf8",
+  );
+
+  assert.match(schema, /emailDestinatario: text\("email_destinatario"\)/);
+  assert.match(schema, /tipoIdentificador/);
+  assert.match(schema, /identificadorNormalizado/);
+  assert.match(schema, /provasPosseConvitesAdministrativosTable/);
+  assert.match(schema, /telefoneNormalizado/);
+  assert.match(schema, /usuarioId/);
+  assert.match(schema, /contextoHash/);
+  assert.match(schema, /confirmadoEm/);
+  assert.match(schema, /consumidoEm/);
+  assert.match(enums, /"email", "whatsapp"/);
+  assert.match(enums, /"admin_convite"/);
+  assert.match(tiposOtp, /"admin_convite"/);
+});

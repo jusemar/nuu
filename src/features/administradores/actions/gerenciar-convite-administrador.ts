@@ -86,7 +86,7 @@ export async function reenviarConviteAdministrador(entrada: unknown) {
     };
   try {
     await enviarEmailConviteAdministrativo({
-      destinatario: convite.email,
+      destinatario: convite.email ?? "",
       nome: convite.nome,
       url: montarUrlAbsoluta(
         `/convite-administrativo/${encodeURIComponent(token)}`,

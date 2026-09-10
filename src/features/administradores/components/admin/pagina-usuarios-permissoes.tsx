@@ -1,6 +1,16 @@
 "use client";
 
-import { ChevronRight, Plus, Save, ShieldCheck, UserRound } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Copy,
+  Mail,
+  MessageCircle,
+  Plus,
+  Save,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -101,12 +111,31 @@ function nomeFuncao(administrador: AdministradorTela) {
   return administrador.funcoes[0] ?? "Personalizado";
 }
 
+function formatarTelefoneBrasileiro(valor: string) {
+  const digitos = valor
+    .replace(/\D/g, "")
+    .replace(/^55(?=\d{11}$)/, "")
+    .slice(0, 11);
+  if (digitos.length <= 2) return digitos;
+  if (digitos.length <= 7)
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+}
+
 function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [pendente, iniciarTransicao] = useTransition();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [tipoIdentificador, setTipoIdentificador] = useState<
+    "email" | "whatsapp"
+  >("email");
+  const [linkConviteWhatsapp, setLinkConviteWhatsapp] = useState<string | null>(
+    null,
+  );
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const [funcaoId, setFuncaoId] = useState("personalizado");
   const [permissoes, setPermissoes] = useState(
     new Set<PermissaoAdministrativaChave>(),
@@ -118,15 +147,44 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
     setPermissoes(new Set(funcao?.permissoes ?? []));
   }
 
+  function trocarTipoIdentificador(tipo: "email" | "whatsapp") {
+    setTipoIdentificador(tipo);
+    setLinkConviteWhatsapp(null);
+    setLinkCopiado(false);
+  }
+
+  function telefoneMascarado() {
+    const digitos = telefone.replace(/\D/g, "");
+    return `•••• ${digitos.slice(-4)}`;
+  }
+
+  async function copiarLinkConvite() {
+    if (!linkConviteWhatsapp) return;
+    try {
+      await navigator.clipboard.writeText(linkConviteWhatsapp);
+      setLinkCopiado(true);
+      toast.success("Link copiado.");
+    } catch {
+      toast.error("Não foi possível copiar o link. Copie-o manualmente.");
+    }
+  }
+
   function enviar() {
     iniciarTransicao(async () => {
       try {
-        await criarConviteAdministrador({
-          email,
+        const resultado = await criarConviteAdministrador({
+          ...(tipoIdentificador === "email" ? { email } : { telefone }),
           funcaoId: funcaoId === "personalizado" ? null : funcaoId,
           nome,
           permissoesEfetivas: [...permissoes],
+          tipoIdentificador,
         });
+        if (typeof resultado.linkConvite === "string") {
+          setLinkConviteWhatsapp(resultado.linkConvite);
+          toast.success("Convite criado com sucesso.");
+          router.refresh();
+          return;
+        }
         toast.success("Convite enviado.");
         setAberto(false);
         router.refresh();
@@ -152,75 +210,166 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
             define a senha dele.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="convite-nome">Nome</Label>
-            <Input
-              id="convite-nome"
-              value={nome}
-              onChange={(evento) => setNome(evento.target.value)}
-              autoComplete="name"
-            />
+        {linkConviteWhatsapp ? (
+          <div className="space-y-5" aria-live="polite">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
+              <p className="font-medium">Convite criado com sucesso</p>
+              <p className="mt-1 text-sm">WhatsApp: {telefoneMascarado()}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="link-convite-whatsapp">Link do convite</Label>
+              <Input
+                id="link-convite-whatsapp"
+                readOnly
+                value={linkConviteWhatsapp}
+              />
+            </div>
+            <Button className="w-full gap-2" onClick={copiarLinkConvite}>
+              {linkCopiado ? (
+                <Check className="size-4" aria-hidden="true" />
+              ) : (
+                <Copy className="size-4" aria-hidden="true" />
+              )}
+              {linkCopiado ? "Link copiado" : "Copiar link"}
+            </Button>
+            <p className="text-muted-foreground text-sm">
+              Envie este link ao convidado. Ele precisará confirmar o WhatsApp
+              com um código de verificação antes de ativar o acesso
+              administrativo.
+            </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="convite-email">E-mail</Label>
-            <Input
-              id="convite-email"
-              value={email}
-              onChange={(evento) => setEmail(evento.target.value)}
-              type="email"
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="convite-funcao">Função</Label>
-            <Select value={funcaoId} onValueChange={selecionarFuncao}>
-              <SelectTrigger id="convite-funcao">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="personalizado">Personalizado</SelectItem>
-                {dados.funcoes.map((funcao) => (
-                  <SelectItem key={funcao.id} value={funcao.id}>
-                    {funcao.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <Label>Permissões globais</Label>
-          <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
-            {dados.permissoes.map((permissao) => (
-              <label
-                key={permissao.chave}
-                className="flex min-h-11 items-center gap-3 rounded-md border p-3 text-sm"
+        ) : (
+          <>
+            <div className="space-y-3">
+              <Label>Forma do convite</Label>
+              <div
+                className="grid grid-cols-2 gap-2"
+                role="group"
+                aria-label="Forma do convite"
               >
-                <Checkbox
-                  checked={permissoes.has(permissao.chave)}
-                  onCheckedChange={(valor) =>
-                    setPermissoes((atuais) => {
-                      const proximas = new Set(atuais);
-                      if (valor === true) proximas.add(permissao.chave);
-                      else proximas.delete(permissao.chave);
-                      return proximas;
-                    })
+                <Button
+                  className="gap-2"
+                  onClick={() => trocarTipoIdentificador("email")}
+                  type="button"
+                  variant={
+                    tipoIdentificador === "email" ? "default" : "outline"
                   }
+                >
+                  <Mail className="size-4" aria-hidden="true" />
+                  E-mail
+                </Button>
+                <Button
+                  className="gap-2"
+                  onClick={() => trocarTipoIdentificador("whatsapp")}
+                  type="button"
+                  variant={
+                    tipoIdentificador === "whatsapp" ? "default" : "outline"
+                  }
+                >
+                  <MessageCircle className="size-4" aria-hidden="true" />
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="convite-nome">Nome</Label>
+                <Input
+                  id="convite-nome"
+                  value={nome}
+                  onChange={(evento) => setNome(evento.target.value)}
+                  autoComplete="name"
                 />
-                <span>{permissao.nome}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={enviar}
-            disabled={pendente || !nome.trim() || !email.trim()}
-          >
-            {pendente ? "Enviando..." : "Enviar convite"}
-          </Button>
-        </DialogFooter>
+              </div>
+              {tipoIdentificador === "email" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="convite-email">E-mail</Label>
+                  <Input
+                    id="convite-email"
+                    value={email}
+                    onChange={(evento) => setEmail(evento.target.value)}
+                    type="email"
+                    autoComplete="email"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="convite-whatsapp">WhatsApp</Label>
+                  <Input
+                    id="convite-whatsapp"
+                    value={telefone}
+                    onChange={(evento) =>
+                      setTelefone(
+                        formatarTelefoneBrasileiro(evento.target.value),
+                      )
+                    }
+                    inputMode="tel"
+                    placeholder="(31) 99999-9999"
+                    autoComplete="tel"
+                  />
+                </div>
+              )}
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="convite-funcao">Função</Label>
+                <Select value={funcaoId} onValueChange={selecionarFuncao}>
+                  <SelectTrigger id="convite-funcao">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="personalizado">Personalizado</SelectItem>
+                    {dados.funcoes.map((funcao) => (
+                      <SelectItem key={funcao.id} value={funcao.id}>
+                        {funcao.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label>Permissões globais</Label>
+              <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
+                {dados.permissoes.map((permissao) => (
+                  <label
+                    key={permissao.chave}
+                    className="flex min-h-11 items-center gap-3 rounded-md border p-3 text-sm"
+                  >
+                    <Checkbox
+                      checked={permissoes.has(permissao.chave)}
+                      onCheckedChange={(valor) =>
+                        setPermissoes((atuais) => {
+                          const proximas = new Set(atuais);
+                          if (valor === true) proximas.add(permissao.chave);
+                          else proximas.delete(permissao.chave);
+                          return proximas;
+                        })
+                      }
+                    />
+                    <span>{permissao.nome}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={enviar}
+                disabled={
+                  pendente ||
+                  !nome.trim() ||
+                  (tipoIdentificador === "email"
+                    ? !email.trim()
+                    : !telefone.trim())
+                }
+              >
+                {pendente
+                  ? "Criando..."
+                  : tipoIdentificador === "email"
+                    ? "Enviar convite"
+                    : "Criar convite"}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

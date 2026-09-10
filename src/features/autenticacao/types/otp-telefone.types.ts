@@ -3,6 +3,7 @@ export type FinalidadeOtpTelefone =
   | "verificacao"
   | "recuperacao"
   | "admin_recuperacao"
+  | "admin_convite"
   | "alteracao_numero";
 
 export type DadosDesafioOtpTelefone = {

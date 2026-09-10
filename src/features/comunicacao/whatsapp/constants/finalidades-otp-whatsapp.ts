@@ -4,5 +4,6 @@ export const FINALIDADES_OTP_WHATSAPP = [
   "verificacao",
   "recuperacao",
   "admin_recuperacao",
+  "admin_convite",
   "alteracao_numero",
 ] as const;

@@ -596,15 +596,15 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
         href={item.href}
         onClick={closeMobile}
         aria-current={active ? "page" : undefined}
-        className={`group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 ${isCollapsed && level === 0 ? "justify-center" : ""} ${level > 0 ? "ml-4 text-sm" : ""} ${
+        className={`group relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 transition-[color,background-color,box-shadow,transform] duration-200 ${isCollapsed && level === 0 ? "justify-center" : ""} ${level > 0 ? "ml-4 text-sm" : ""} ${
           active
-            ? "bg-sidebar-accent text-sidebar-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary)_10%,transparent)]"
-            : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+            ? "bg-sidebar-accent text-sidebar-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary)_12%,transparent),0_1px_2px_oklch(0.2_0.02_256/4%)]"
+            : "text-muted-foreground hover:bg-sidebar-accent/65 hover:text-sidebar-accent-foreground"
         } `}
         title={isCollapsed && level === 0 ? item.label : ""}
       >
         {active && !isCollapsed && level === 0 && (
-          <span className="bg-sidebar-primary absolute inset-y-2 left-0 w-0.5 rounded-full" />
+          <span className="bg-sidebar-primary absolute inset-y-2 left-0 w-[3px] rounded-r-full" />
         )}
         {Icon && (
           <Icon
@@ -638,7 +638,7 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
           type="button"
           onClick={() => toggleGroup(group.id)}
           aria-expanded={expanded}
-          className={`focus-visible:ring-ring flex min-h-10 w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left transition-all duration-200 focus-visible:ring-2 focus-visible:outline-none ${hasActiveChild ? "bg-sidebar-accent text-sidebar-primary" : "text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"} ${isCollapsed && level === 0 ? "justify-center" : ""} `}
+          className={`focus-visible:ring-ring flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-[color,background-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:outline-none ${hasActiveChild ? "bg-sidebar-accent text-sidebar-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary)_8%,transparent)]" : "text-muted-foreground hover:bg-sidebar-accent/65 hover:text-sidebar-accent-foreground"} ${isCollapsed && level === 0 ? "justify-center" : ""} `}
           title={isCollapsed && level === 0 ? group.label : ""}
         >
           <div className="flex items-center gap-3">
@@ -653,7 +653,7 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
 
         {/* Itens do grupo */}
         {expanded && (!isCollapsed || level > 0) && (
-          <div className="mt-1 space-y-1">
+          <div className="border-sidebar-border/65 mt-1 ml-5 space-y-1 border-l pl-1">
             {group.items.map((child) =>
               "href" in child
                 ? renderItem(child, level + 1)
@@ -669,11 +669,11 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
     <>
       {/* A sidebar completa permanece disponível no desktop. */}
       <aside
-        className={`bg-sidebar/95 text-sidebar-foreground border-sidebar-border/80 sticky top-0 hidden h-dvh shrink-0 border-r backdrop-blur-xl transition-[width] duration-300 lg:flex lg:flex-col ${isCollapsed ? "w-16" : "w-64"}`}
+        className={`bg-sidebar/96 text-sidebar-foreground border-sidebar-border/70 sticky top-0 hidden h-dvh shrink-0 border-r shadow-[4px_0_24px_-18px_oklch(0.2_0.02_256/28%)] backdrop-blur-xl transition-[width] duration-300 lg:flex lg:flex-col ${isCollapsed ? "w-16" : "w-64"}`}
       >
         {/* Cabeçalho */}
         <div
-          className={`border-sidebar-border/70 flex h-16 shrink-0 items-center border-b px-3 ${isCollapsed ? "justify-center" : "justify-between"} `}
+          className={`border-sidebar-border/60 flex h-16 shrink-0 items-center border-b px-3.5 ${isCollapsed ? "justify-center" : "justify-between"} `}
         >
           {!isCollapsed && (
             <div className="flex items-center gap-2.5">
@@ -694,7 +694,7 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="text-muted-foreground h-9 w-9 shrink-0"
+            className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-primary size-8 shrink-0 rounded-lg"
             aria-label={isCollapsed ? "Expandir menu" : "Recolher menu"}
           >
             {isCollapsed ? (
@@ -708,7 +708,7 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
         {/* Menu */}
         <nav
           aria-label="Navegação principal"
-          className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-3"
+          className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto px-2.5 py-3.5"
         >
           {menuPermitido.map((item) =>
             "href" in item ? renderItem(item) : renderGroup(item),
@@ -744,7 +744,7 @@ export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
 
       <nav
         aria-label="Navegação rápida"
-        className="bg-background/95 fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+        className="bg-background/90 border-border/60 fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_-24px_oklch(0.2_0.02_256/35%)] backdrop-blur-xl lg:hidden"
       >
         {menuPermitido
           .flatMap((entrada) => ("href" in entrada ? [entrada] : entrada.items))

@@ -161,13 +161,13 @@ export function GraficoDesempenhoNegocio({
 
   return (
     <section className="superficie-admin overflow-hidden">
-      <div className="border-border/70 flex flex-col gap-4 border-b px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="border-border/60 flex flex-col gap-5 border-b px-5 py-5 sm:px-6 sm:py-5.5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Desempenho do negócio
           </p>
-          <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h3 className="text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+            <h3 className="text-2xl font-semibold tracking-[-0.03em] tabular-nums sm:text-[1.75rem]">
               {metrica.total}
             </h3>
             <span className="bg-success-light text-success-dark rounded-md px-1.5 py-0.5 text-xs font-semibold">
@@ -185,13 +185,13 @@ export function GraficoDesempenhoNegocio({
             setMetricaSelecionada(valor as MetricaDesempenho)
           }
         >
-          <TabsList className="grid h-auto w-full grid-cols-4 rounded-xl p-1 lg:w-auto">
+          <TabsList className="border-border/60 bg-muted/55 grid h-auto w-full grid-cols-4 rounded-xl border p-1 lg:w-auto">
             {(Object.keys(configuracaoMetricas) as MetricaDesempenho[]).map(
               (chave) => (
                 <TabsTrigger
                   key={chave}
                   value={chave}
-                  className="rounded-lg px-2.5 py-1.5 text-xs sm:px-4"
+                  className="rounded-lg px-2.5 py-1.5 text-xs transition-all duration-200 data-[state=active]:shadow-sm sm:px-4"
                 >
                   {configuracaoMetricas[chave].rotulo}
                 </TabsTrigger>
@@ -201,10 +201,10 @@ export function GraficoDesempenhoNegocio({
         </Tabs>
       </div>
 
-      <div className="px-1 pt-5 pb-3 sm:px-4 sm:pt-6 sm:pb-4">
+      <div className="px-1 pt-6 pb-4 sm:px-4 sm:pt-7 sm:pb-5">
         <ChartContainer
           config={configuracaoGrafico}
-          className="aspect-auto h-[270px] w-full sm:h-[320px]"
+          className="aspect-auto h-[290px] w-full sm:h-[340px]"
         >
           <AreaChart
             data={dados}
@@ -232,8 +232,8 @@ export function GraficoDesempenhoNegocio({
             </defs>
             <CartesianGrid
               vertical={false}
-              strokeDasharray="3 5"
-              strokeOpacity={0.42}
+              strokeDasharray="2 7"
+              strokeOpacity={0.3}
             />
             <XAxis
               dataKey="periodo"
@@ -241,18 +241,22 @@ export function GraficoDesempenhoNegocio({
               tickLine={false}
               tickMargin={12}
               minTickGap={28}
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
               tickMargin={8}
               width={62}
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickFormatter={metrica.formatar}
             />
             <ChartTooltip
-              cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }}
+              cursor={{
+                stroke: "var(--primary)",
+                strokeOpacity: 0.22,
+                strokeDasharray: "4 5",
+              }}
               content={
                 <ChartTooltipContent
                   indicator="line"
@@ -275,14 +279,14 @@ export function GraficoDesempenhoNegocio({
               type="monotone"
               fill="url(#preenchimento-desempenho)"
               stroke="var(--primary)"
-              strokeWidth={2.25}
+              strokeWidth={2.5}
               activeDot={{
-                r: 4,
+                r: 4.5,
                 fill: "var(--primary)",
                 stroke: "var(--card)",
                 strokeWidth: 2,
               }}
-              animationDuration={500}
+              animationDuration={650}
             />
           </AreaChart>
         </ChartContainer>

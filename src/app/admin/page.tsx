@@ -141,8 +141,8 @@ export default async function Page() {
     alertasEstaticos.length + (quantidadeProblemasLogisticos === 0 ? 0 : 1);
 
   return (
-    <div className="space-y-5 md:space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6 pb-2 md:space-y-7">
+      <header className="flex flex-col gap-4 pt-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-1.5 flex items-center gap-2">
             <span className="bg-success size-2 rounded-full shadow-[0_0_0_4px_var(--success-light)]" />
@@ -150,7 +150,7 @@ export default async function Page() {
               Operação atualizada agora
             </p>
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+          <h2 className="text-foreground text-2xl font-semibold tracking-[-0.035em] md:text-[2rem]">
             Visão geral
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -159,7 +159,7 @@ export default async function Page() {
         </div>
         <Button
           variant="outline"
-          className="bg-card w-fit rounded-xl shadow-none"
+          className="bg-card hover:border-primary/25 w-fit rounded-xl shadow-none transition-[background-color,border-color,box-shadow] hover:shadow-sm"
         >
           Últimos 30 dias <ChevronDown className="size-4" />
         </Button>
@@ -171,9 +171,9 @@ export default async function Page() {
         className="superficie-admin overflow-hidden"
         aria-labelledby="titulo-alertas"
       >
-        <div className="border-border/70 flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+        <div className="border-border/60 flex items-center justify-between border-b px-5 py-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <span className="bg-warning-light text-warning-foreground flex size-8 items-center justify-center rounded-lg">
+            <span className="bg-warning-light text-warning-foreground ring-warning/10 flex size-9 items-center justify-center rounded-xl ring-1">
               <AlertTriangle className="size-4" />
             </span>
             <div>
@@ -189,17 +189,17 @@ export default async function Page() {
             Ordenados por prioridade
           </span>
         </div>
-        <div className="divide-border/70 grid divide-y lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+        <div className="bg-muted/18 grid gap-2 p-2 sm:p-2.5 lg:grid-cols-3">
           {alertas.map((alerta) => {
             const Icon = alerta.icon;
             return (
               <Link
                 key={alerta.titulo}
                 href={alerta.destino}
-                className="group hover:bg-muted/35 focus-visible:ring-ring flex min-h-24 items-start gap-3 p-4 transition-colors focus-visible:ring-2 focus-visible:outline-none sm:p-5"
+                className="bg-card group hover:border-primary/20 hover:shadow-elevation focus-visible:ring-ring flex min-h-28 items-start gap-3.5 rounded-xl border border-transparent p-4 transition-[background-color,border-color,box-shadow,transform] duration-200 hover:-translate-y-px focus-visible:ring-2 focus-visible:outline-none sm:p-4.5"
               >
                 <span
-                  className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg ${alerta.tom === "urgente" ? "bg-destructive/10 text-destructive" : alerta.tom === "sucesso" ? "bg-success-light text-success-dark" : "bg-warning-light text-warning-foreground"}`}
+                  className={`mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl ${alerta.tom === "urgente" ? "bg-destructive/10 text-destructive" : alerta.tom === "sucesso" ? "bg-success-light text-success-dark" : "bg-warning-light text-warning-foreground"}`}
                 >
                   <Icon className="size-4" />
                 </span>
@@ -224,7 +224,7 @@ export default async function Page() {
                     {alerta.descricao}
                   </span>
                 </span>
-                <ArrowRight className="text-muted-foreground mt-2 size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="text-muted-foreground/70 group-hover:text-primary mt-2 size-4 shrink-0 transition-[color,transform] group-hover:translate-x-0.5" />
               </Link>
             );
           })}
@@ -234,7 +234,7 @@ export default async function Page() {
       <GraficoDesempenhoNegocio />
 
       <section aria-labelledby="titulo-operacao">
-        <div className="mb-3">
+        <div className="mb-4">
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Área operacional
           </p>
@@ -242,11 +242,11 @@ export default async function Page() {
             O que precisa acontecer agora
           </h3>
         </div>
-        <div className="grid items-start gap-4 xl:grid-cols-2">
-          <article className="superficie-admin overflow-hidden">
-            <div className="border-border/70 flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <article className="superficie-admin hover:border-primary/15 hover:shadow-elevation overflow-hidden transition-[border-color,box-shadow] duration-200">
+            <div className="border-border/60 flex items-center justify-between border-b px-4 py-4 sm:px-5">
               <div className="flex items-center gap-2.5">
-                <span className="bg-primary-light text-primary flex size-8 items-center justify-center rounded-lg">
+                <span className="bg-primary-light text-primary ring-primary/10 flex size-9 items-center justify-center rounded-xl ring-1">
                   <ShoppingCart className="size-4" />
                 </span>
                 <div>
@@ -266,7 +266,7 @@ export default async function Page() {
               {pedidosRecentes.map((pedido) => (
                 <div
                   key={pedido.codigo}
-                  className="hover:bg-muted/25 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors sm:px-5"
+                  className="hover:bg-primary/[0.025] grid min-h-[4.25rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors sm:px-5"
                 >
                   <span className="text-primary text-xs font-semibold tabular-nums">
                     {pedido.codigo}
@@ -295,10 +295,10 @@ export default async function Page() {
             </div>
           </article>
 
-          <article className="superficie-admin overflow-hidden">
-            <div className="border-border/70 flex items-center justify-between border-b px-4 py-3.5 sm:px-5">
+          <article className="superficie-admin hover:border-primary/15 hover:shadow-elevation overflow-hidden transition-[border-color,box-shadow] duration-200">
+            <div className="border-border/60 flex items-center justify-between border-b px-4 py-4 sm:px-5">
               <div className="flex items-center gap-2.5">
-                <span className="bg-warning-light text-warning-foreground flex size-8 items-center justify-center rounded-lg">
+                <span className="bg-warning-light text-warning-foreground ring-warning/10 flex size-9 items-center justify-center rounded-xl ring-1">
                   <Package className="size-4" />
                 </span>
                 <div>
@@ -318,7 +318,7 @@ export default async function Page() {
               {produtosCriticos.map((produto) => (
                 <div
                   key={produto.sku}
-                  className="hover:bg-muted/25 flex items-center gap-3 px-4 py-3 transition-colors sm:px-5"
+                  className="hover:bg-warning/[0.025] flex min-h-[4.25rem] items-center gap-3 px-4 py-3 transition-colors sm:px-5"
                 >
                   <span className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-lg">
                     <Package className="text-muted-foreground size-4" />
@@ -346,11 +346,11 @@ export default async function Page() {
         </div>
       </section>
 
-      <section className="painel-atendente-ia relative overflow-hidden rounded-2xl p-5 text-white sm:p-6 lg:p-7">
-        <div className="relative z-10 grid items-end gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(22rem,0.75fr)]">
+      <section className="painel-atendente-ia relative overflow-hidden rounded-2xl p-5 text-white sm:p-7 lg:p-8">
+        <div className="relative z-10 grid items-end gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] lg:gap-12">
           <div>
             <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/15 backdrop-blur">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-white/10 shadow-[inset_0_1px_0_oklch(1_0_0/12%)] ring-1 ring-white/15 backdrop-blur">
                 <Bot className="size-5" />
               </span>
               <div>
@@ -362,7 +362,7 @@ export default async function Page() {
                 </p>
               </div>
             </div>
-            <h3 className="mt-6 max-w-2xl text-xl font-semibold tracking-tight sm:text-2xl">
+            <h3 className="mt-7 max-w-2xl text-2xl font-semibold tracking-[-0.03em] sm:text-[1.75rem]">
               Sua loja tem 3 oportunidades de melhoria hoje.
             </h3>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
@@ -371,7 +371,7 @@ export default async function Page() {
             </p>
             <Button
               asChild
-              className="mt-6 bg-white text-slate-900 hover:bg-white/90"
+              className="mt-7 bg-white text-slate-900 shadow-lg shadow-black/10 transition-[transform,background-color,box-shadow] hover:-translate-y-px hover:bg-white/90 hover:shadow-xl"
             >
               <Link href="/admin/atendente-ia/treinamento">
                 Abrir painel da IA <ArrowRight className="size-4" />
@@ -379,12 +379,12 @@ export default async function Page() {
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white/[0.07] p-4 ring-1 ring-white/10">
+            <div className="rounded-2xl bg-white/[0.075] p-4 shadow-[inset_0_1px_0_oklch(1_0_0/8%)] ring-1 ring-white/10 backdrop-blur-sm sm:p-5">
               <CheckCircle2 className="mb-4 size-4 text-emerald-300" />
               <p className="text-2xl font-semibold tabular-nums">87%</p>
               <p className="mt-1 text-xs text-white/55">resolvidas pela IA</p>
             </div>
-            <div className="rounded-xl bg-white/[0.07] p-4 ring-1 ring-white/10">
+            <div className="rounded-2xl bg-white/[0.075] p-4 shadow-[inset_0_1px_0_oklch(1_0_0/8%)] ring-1 ring-white/10 backdrop-blur-sm sm:p-5">
               <Clock3 className="mb-4 size-4 text-blue-300" />
               <p className="text-2xl font-semibold tabular-nums">142</p>
               <p className="mt-1 text-xs text-white/55">conversas hoje</p>
@@ -394,7 +394,7 @@ export default async function Page() {
       </section>
 
       <section aria-labelledby="titulo-modulos">
-        <div className="mb-3">
+        <div className="mb-4">
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
             Resumo dos módulos
           </p>
@@ -402,23 +402,23 @@ export default async function Page() {
             Saúde da operação
           </h3>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
           {modulos.map((modulo) => {
             const Icon = modulo.icon;
             return (
               <article
                 key={modulo.titulo}
-                className="superficie-admin group hover:border-primary/25 hover:shadow-elevation flex min-h-40 flex-col p-4 transition-all duration-200 hover:-translate-y-0.5 sm:p-5"
+                className="superficie-admin group hover:border-primary/25 hover:shadow-elevation flex min-h-44 flex-col p-5 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5"
               >
                 <div className="flex items-start justify-between">
-                  <span className="bg-primary-light text-primary flex size-9 items-center justify-center rounded-lg">
+                  <span className="bg-primary-light text-primary ring-primary/10 flex size-10 items-center justify-center rounded-xl ring-1 transition-transform duration-200 group-hover:scale-105">
                     <Icon className="size-4" />
                   </span>
                   <Button
                     asChild
                     variant="ghost"
                     size="icon"
-                    className="-mt-1 -mr-1 size-8"
+                    className="text-muted-foreground hover:text-primary -mt-1 -mr-1 size-8 rounded-lg"
                   >
                     <Link
                       href={modulo.destino}
@@ -430,7 +430,7 @@ export default async function Page() {
                 </div>
                 <div className="mt-auto pt-5">
                   <h4 className="text-sm font-semibold">{modulo.titulo}</h4>
-                  <p className="mt-1.5 text-sm font-medium">
+                  <p className="mt-2 text-base font-semibold tracking-tight">
                     {modulo.descricao}
                   </p>
                   <p className="text-muted-foreground mt-1 text-xs">

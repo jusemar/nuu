@@ -51,21 +51,25 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
   }
 
   return (
-    <header className="bg-background/80 border-border/70 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur-xl md:px-6">
-      <div className="mx-auto flex max-w-[120rem] flex-wrap items-center justify-between gap-3">
+    <header className="bg-background/82 border-border/60 sticky top-0 z-30 border-b px-4 py-3 backdrop-blur-xl md:px-6">
+      <div className="mx-auto flex max-w-[120rem] flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 lg:hidden">
-          <p className="text-muted-foreground text-xs font-medium">Admin</p>
-          <h1 className="truncate text-base font-semibold">{titulo}</h1>
+          <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+            Admin
+          </p>
+          <h1 className="truncate text-base font-semibold tracking-tight">
+            {titulo}
+          </h1>
         </div>
 
         {/* A busca ocupa uma linha própria no mobile para não comprimir ações. */}
-        <div className="order-3 w-full lg:order-none lg:max-w-2xl lg:flex-1">
+        <div className="order-3 w-full lg:order-none lg:max-w-[40rem] lg:flex-1">
           <div className="relative">
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               placeholder="Pesquisar no admin"
               aria-label="Pesquisar no admin"
-              className="bg-card/75 border-border/80 h-10 w-full rounded-xl pr-10 pl-10 text-sm shadow-none transition-shadow focus-visible:shadow-sm"
+              className="bg-card/80 border-border/70 hover:border-border focus-visible:bg-card h-10 w-full rounded-xl pr-10 pl-10 text-sm shadow-none transition-[border-color,box-shadow,background-color] focus-visible:shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -73,7 +77,7 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2"
+                className="absolute top-1/2 right-1 size-7 -translate-y-1/2 rounded-lg"
                 onClick={() => setSearchQuery("")}
                 aria-label="Limpar pesquisa"
               >
@@ -84,12 +88,12 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
         </div>
 
         {/* User Menu */}
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <div className="relative">
             <Button
               variant="ghost"
               size="icon"
-              className="hover:border-border/70 hover:bg-card relative size-10 rounded-xl border border-transparent"
+              className="hover:border-border/70 hover:bg-card focus-visible:bg-card relative size-10 rounded-xl border border-transparent transition-[background-color,border-color,box-shadow]"
               aria-label="Notificações"
             >
               <Bell className="h-5 w-5" />
@@ -102,7 +106,7 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
               <Button
                 type="button"
                 variant="ghost"
-                className="border-border/70 bg-card/70 hover:bg-card h-10 gap-2.5 rounded-xl border py-1 pr-2 pl-1.5"
+                className="border-border/65 bg-card/75 hover:border-border hover:bg-card h-10 gap-2.5 rounded-xl border py-1 pr-2 pl-1.5 shadow-none transition-[background-color,border-color,box-shadow] hover:shadow-sm"
                 aria-label="Abrir menu da minha conta"
               >
                 <span className="bg-primary-light ring-primary/10 flex size-7 items-center justify-center rounded-lg ring-1">

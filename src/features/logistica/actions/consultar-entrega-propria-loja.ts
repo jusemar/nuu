@@ -12,6 +12,7 @@ import {
   getProductsOwnDeliveryForecasts,
 } from "@/features/admin/logistics/entrega-propria/services/shippingService";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
+import { buscarPoliticaEntregaPropria } from "@/features/logistica/queries/buscar-politica-entrega-propria";
 
 import type { PromessaEntregaProgramada } from "../lib/entrega-propria/calcular-promessa-entrega-programada";
 import type { PromessaEntregaPropria } from "../lib/entrega-propria/calcular-promessa-entrega-propria";
@@ -27,8 +28,9 @@ export type EnderecoEntregaPropriaLoja = {
 export type ResultadoConsultaEntregaPropriaLoja =
   | {
       disponivel: true;
+      entregaRapidaAtiva?: boolean;
       valorEmCentavos: number;
-      nivel: "cep-especifico" | "regiao" | "bairro-avulso" | "cidade";
+      nivel: "cep-especifico" | "regiao" | "bairro-avulso" | "cidade" | "uf";
       descricao: string;
       prazoEntrega?: string | null;
       promessaEntrega?: PromessaEntregaPropria | null;
@@ -120,6 +122,39 @@ async function consultarProdutoNoEndereco({
     cidade,
     uf,
   };
+
+  const politica = await buscarPoliticaEntregaPropria({
+    produtoId,
+    cep: cepLimpo,
+    bairro,
+    cidade,
+    uf,
+  });
+  if (politica) {
+    if (!politica.entregaRapidaAtiva && !politica.entregaProgramada) {
+      return {
+        disponivel: false,
+        mensagem: "Consulte o vendedor",
+        endereco: enderecoConsultado,
+      };
+    }
+    return {
+      disponivel: true,
+      entregaRapidaAtiva: politica.entregaRapidaAtiva,
+      valorEmCentavos: politica.valorRapidaEmCentavos ?? 0,
+      nivel: politica.nivel,
+      descricao:
+        politica.promessaRapida?.texto ?? "Entrega própria configurada",
+      prazoEntrega: politica.promessaRapida?.texto ?? null,
+      promessaEntrega: politica.promessaRapida,
+      entregaProgramada: politica.entregaProgramada,
+      regiaoResolvida: null,
+      bairro,
+      cidade,
+      uf,
+      endereco: enderecoConsultado,
+    };
+  }
 
   let resultado: Awaited<ReturnType<typeof getProductOwnDeliveryPrice>>;
 

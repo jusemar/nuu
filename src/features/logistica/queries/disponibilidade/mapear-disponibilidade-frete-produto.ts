@@ -79,6 +79,8 @@ export type RegistrosDisponibilidadeFreteProduto = {
   varianteId?: string | null;
   categoriaId?: string | null;
   tiposLogisticosIdentificadores: string[];
+  origemExpedicao?: "loja" | "fornecedor";
+  fornecedorProvedor?: string | null;
   provedores: RegistroProvedorFrete[];
   transportadoras: RegistroTransportadoraFrete[];
   servicos: RegistroServicoFrete[];
@@ -109,6 +111,8 @@ export function mapearDisponibilidadeFreteProduto({
   varianteId,
   categoriaId,
   tiposLogisticosIdentificadores,
+  origemExpedicao = "loja",
+  fornecedorProvedor = null,
   provedores,
   transportadoras,
   servicos,
@@ -122,6 +126,8 @@ export function mapearDisponibilidadeFreteProduto({
       varianteId: varianteId ?? null,
       categoriaId: categoriaId ?? null,
       tiposLogisticosIdentificadores,
+      origemExpedicao,
+      fornecedorProvedor,
     },
     configuracao: {
       provedores: provedores.map((provedor) => ({

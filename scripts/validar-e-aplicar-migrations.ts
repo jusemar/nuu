@@ -13,6 +13,7 @@ import {
   type MigrationLocalValidacao,
   validarDeltaSnapshotAmbientesLaquila,
   validarDeltaSnapshotConviteAdministrativo,
+  validarDeltaSnapshotPoliticasEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
   validarHistoricoAplicado,
@@ -543,6 +544,10 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
     validarDeltaSnapshotAmbientesLaquila(
       JSON.parse(readFileSync("drizzle/meta/0035_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0036_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotPoliticasEntregaPropria(
+      JSON.parse(readFileSync("drizzle/meta/0041_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0042_snapshot.json", "utf8")),
     );
   } catch {
     throw new ErroFluxoMigration(

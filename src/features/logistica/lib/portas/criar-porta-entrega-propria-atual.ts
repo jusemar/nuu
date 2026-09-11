@@ -11,6 +11,7 @@ export type ConsultaEntregaPropriaAtual = {
 export type ResultadoEntregaPropriaAtual =
   | {
       disponivel: true;
+      entregaRapidaAtiva?: boolean;
       valorEmCentavos: number;
       prazoMinimoEmDiasUteis?: number | null;
       prazoMaximoEmDiasUteis?: number | null;
@@ -58,21 +59,21 @@ export function criarPortaEntregaPropriaAtual(
     }
 
     const opcaoRapida: OpcaoFrete = {
-        identificador: `entrega-propria:${item.produtoId}:${solicitacao.destino.cep}`,
-        provedor: "entrega-propria",
-        servico: "entrega-propria-atual",
-        nome: "Entrega rápida",
-        tipo: "entrega",
-        valorEmCentavos: resultado.valorEmCentavos,
-        prazoMinimoEmDiasUteis: resultado.prazoMinimoEmDiasUteis ?? null,
-        prazoMaximoEmDiasUteis: resultado.prazoMaximoEmDiasUteis ?? null,
-        descricao: resultado.descricao ?? null,
-        metadados: {
-          origem: "fluxo-atual",
-          produtoId: item.produtoId,
-          ...resultado.metadados,
-        },
-      };
+      identificador: `entrega-propria:${item.produtoId}:${solicitacao.destino.cep}`,
+      provedor: "entrega-propria",
+      servico: "entrega-propria-atual",
+      nome: "Entrega rápida",
+      tipo: "entrega",
+      valorEmCentavos: resultado.valorEmCentavos,
+      prazoMinimoEmDiasUteis: resultado.prazoMinimoEmDiasUteis ?? null,
+      prazoMaximoEmDiasUteis: resultado.prazoMaximoEmDiasUteis ?? null,
+      descricao: resultado.descricao ?? null,
+      metadados: {
+        origem: "fluxo-atual",
+        produtoId: item.produtoId,
+        ...resultado.metadados,
+      },
+    };
 
     const adicionais = (resultado.opcoesAdicionais ?? []).map((opcao) => ({
       identificador: `entrega-propria:${opcao.servico}:${item.produtoId}:${solicitacao.destino.cep}`,
@@ -89,6 +90,9 @@ export function criarPortaEntregaPropriaAtual(
       },
     }));
 
-    return [opcaoRapida, ...adicionais];
+    return [
+      ...(resultado.entregaRapidaAtiva === false ? [] : [opcaoRapida]),
+      ...adicionais,
+    ];
   };
 }

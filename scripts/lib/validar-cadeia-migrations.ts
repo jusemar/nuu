@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 41,
-  ultimoIndice: 40,
-  ultimaTag: "0040_sistema_cancelamento_pedidos",
-  ultimoArquivo: "drizzle/0040_sistema_cancelamento_pedidos.sql",
+  total: 43,
+  ultimoIndice: 42,
+  ultimaTag: "0042_politicas_entrega_propria",
+  ultimoArquivo: "drizzle/0042_politicas_entrega_propria.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -165,6 +165,51 @@ export function validarDeltaSnapshots(
       alteradas.length > 0
     ) {
       falhar(`Delta inesperado nos snapshots para ${grupo}.`);
+    }
+  }
+}
+
+/** Garante que 0042 adiciona somente as políticas da Entrega Própria. */
+export function validarDeltaSnapshotPoliticasEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0041 e 0042 não estão encadeados.");
+  }
+  const tabelasEsperadas = [
+    "public.politicas_entrega_propria",
+    "public.precos_politicas_entrega_propria",
+  ];
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    const anterior = snapshotAnterior[grupo] ?? {};
+    const atual = snapshotAtual[grupo] ?? {};
+    const adicionadas = Object.keys(atual).filter(
+      (chave) => !(chave in anterior),
+    );
+    const removidas = Object.keys(anterior).filter(
+      (chave) => !(chave in atual),
+    );
+    const alteradas = Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        JSON.stringify(anterior[chave]) !== JSON.stringify(atual[chave]),
+    );
+    const esperadas = grupo === "tables" ? tabelasEsperadas : [];
+    if (
+      JSON.stringify(adicionadas.sort()) !== JSON.stringify([...esperadas].sort()) ||
+      removidas.length > 0 ||
+      alteradas.length > 0
+    ) {
+      falhar(`Delta inesperado da política de Entrega Própria para ${grupo}.`);
     }
   }
 }

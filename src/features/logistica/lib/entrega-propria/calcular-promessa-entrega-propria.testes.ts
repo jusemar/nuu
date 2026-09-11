@@ -137,4 +137,24 @@ describe("calcular promessa da Entrega Própria", () => {
     assert.equal(resultado?.dataPrometida, "2026-07-27");
     assert.equal(resultado?.feriadosConsiderados, true);
   });
+
+  it("reutiliza a agenda segunda/quarta/sexta e o corte de 13:00", () => {
+    const agenda = { ...agendaSegundaQuarta, diasDaSemana: [1, 3, 5] };
+    const casos = [
+      ["2026-09-14T15:00:00.000Z", "2026-09-14"],
+      ["2026-09-14T16:01:00.000Z", "2026-09-16"],
+      ["2026-09-15T15:00:00.000Z", "2026-09-16"],
+      ["2026-09-16T15:00:00.000Z", "2026-09-16"],
+      ["2026-09-16T16:01:00.000Z", "2026-09-18"],
+    ] as const;
+    for (const [referencia, esperada] of casos) {
+      assert.equal(
+        calcularPromessaEntregaPropria({
+          agenda,
+          dataReferencia: new Date(referencia),
+        })?.dataPrometida,
+        esperada,
+      );
+    }
+  });
 });

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { eq, inArray } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import {
   productTable,
@@ -9,7 +11,6 @@ import {
   regrasTiposLogisticosFreteTable,
   variantesTiposLogisticosTable,
 } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
 
 import { selecionarClassificacoesLogisticasAplicaveis } from "../../lib/disponibilidade/selecionar-classificacoes-logisticas";
 import { mapearDisponibilidadeFreteProduto } from "./mapear-disponibilidade-frete-produto";
@@ -29,10 +30,14 @@ export async function buscarDisponibilidadeFreteProduto({
   produtoId,
   varianteId,
   categoriaId,
+  origemExpedicao = "loja",
+  fornecedorProvedor = null,
 }: {
   produtoId: string;
   varianteId?: string | null;
   categoriaId?: string | null;
+  origemExpedicao?: "loja" | "fornecedor";
+  fornecedorProvedor?: string | null;
 }) {
   const categoriaProduto =
     categoriaId === undefined
@@ -150,6 +155,8 @@ export async function buscarDisponibilidadeFreteProduto({
     varianteId,
     categoriaId: categoriaProduto,
     tiposLogisticosIdentificadores,
+    origemExpedicao,
+    fornecedorProvedor,
     provedores,
     transportadoras,
     servicos,

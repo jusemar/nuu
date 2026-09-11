@@ -59,6 +59,9 @@ export type ContextoProdutoDisponibilidadeFrete = {
   varianteId?: string | null;
   categoriaId?: string | null;
   tiposLogisticosIdentificadores: string[];
+  /** Origem necessária para isolar contratos logísticos de fornecedores. */
+  origemExpedicao?: "loja" | "fornecedor";
+  fornecedorProvedor?: string | null;
 };
 
 export type VolumesDisponibilidadeFrete = {

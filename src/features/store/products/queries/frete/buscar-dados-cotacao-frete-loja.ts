@@ -1,5 +1,7 @@
 import "server-only";
 
+import { eq } from "drizzle-orm";
+
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
 import type {
@@ -7,7 +9,8 @@ import type {
   RetiradaAtualDisponivel,
   VarianteAtualComDimensoes,
 } from "@/features/logistica";
-import { eq } from "drizzle-orm";
+import { buscarRetiradaPoliticaEntregaPropria } from "@/features/logistica/queries/buscar-politica-entrega-propria";
+
 import { selecionarVarianteCotacaoLoja } from "../../lib/frete/selecionar-variante-cotacao-loja";
 
 export type DadosCotacaoFreteLoja = {
@@ -99,6 +102,19 @@ export async function buscarDadosCotacaoFreteLoja(
     return null;
   }
 
+  const retiradaPolitica = await buscarRetiradaPoliticaEntregaPropria({
+    produtoId: produto.id,
+    categoriaId: produto.categoryId,
+  });
+  const produtoRetirada = retiradaPolitica
+    ? {
+        ...produto,
+        allowsPickup: retiradaPolitica.permiteRetirada,
+        modeloRetirada:
+          retiradaPolitica.modeloRetirada ?? produto.modeloRetirada,
+      }
+    : produto;
+
   return {
     categoriaId: produto.categoryId,
     produtoAtual: {
@@ -113,7 +129,7 @@ export async function buscarDadosCotacaoFreteLoja(
       comprimentoProdutoEmCm: produto.length,
     },
     varianteAtual: selecionarVarianteCotacaoLoja(produto.variants, varianteId),
-    retiradasAtuais: montarRetiradasAtuais(produto),
+    retiradasAtuais: montarRetiradasAtuais(produtoRetirada),
     valorDeclaradoEmCentavos: obterValorDeclaradoProdutoLoja(
       produto,
       varianteId,

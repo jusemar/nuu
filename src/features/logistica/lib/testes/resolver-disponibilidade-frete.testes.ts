@@ -277,6 +277,44 @@ descrever("resolver disponibilidade profissional de frete", () => {
     );
   });
 
+  for (const skuLaquila of ["CAP-GENE-862", "CAP-TEXX-653"]) {
+    verificar(
+      `${skuLaquila} ignora regras comerciais agressivas da loja`,
+      () => {
+        const opcoes = filtrarOpcoesFreteDisponiveis({
+          opcoes: [opcaoPac, opcaoSedex, opcaoJadlog],
+          contextoProduto: {
+            ...contextoProduto,
+            produtoId: skuLaquila,
+            origemExpedicao: "fornecedor",
+            fornecedorProvedor: "laquila",
+          },
+          volumes,
+          configuracao: criarConfiguracao({
+            regrasCategorias: [
+              {
+                categoriaId: contextoProduto.categoriaId!,
+                efeito: "bloquear",
+                provedorIdentificador: "frenet",
+              },
+            ],
+            regrasProdutos: [
+              {
+                produtoId: skuLaquila,
+                efeito: "bloquear",
+                provedorIdentificador: "frenet",
+              },
+            ],
+          }),
+        });
+
+        // Comparação integral: serviço, preço, prazo, transportadora,
+        // disponibilidade e metadados permanecem iguais ao baseline.
+        afirmacoes.deepEqual(opcoes, [opcaoPac, opcaoSedex, opcaoJadlog]);
+      },
+    );
+  }
+
   verificar("categoria colchoes bloqueia PAC e mantem SEDEX e Jadlog", () => {
     const opcoes = filtrar(
       [opcaoPac, opcaoSedex, opcaoJadlog],

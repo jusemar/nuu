@@ -615,17 +615,17 @@ export {
   type NovoBannerHome,
 } from "./tables/banners-home";
 export {
-  type ConfiguracaoLoja,
-  configuracoesLojaTable,
-} from "./tables/configuracoes-loja/tabelas/configuracoes-loja";
+  configuracoesBarraAvisosRelations,
+  mensagensBarraAvisosRelations,
+} from "./tables/configuracoes-loja/relacoes";
 export {
   configuracoesBarraAvisosTable,
   mensagensBarraAvisosTable,
 } from "./tables/configuracoes-loja/tabelas/barra-avisos";
 export {
-  configuracoesBarraAvisosRelations,
-  mensagensBarraAvisosRelations,
-} from "./tables/configuracoes-loja/relacoes";
+  type ConfiguracaoLoja,
+  configuracoesLojaTable,
+} from "./tables/configuracoes-loja/tabelas/configuracoes-loja";
 
 // Tabelas de logística
 export { cities } from "./table/logistics/cities/cities";
@@ -693,9 +693,9 @@ export {
   checkoutPagamentosRelations,
   checkoutPagamentosTable,
   checkoutPagamentoStatusEnum,
-  checkoutPedidoHistoricoOrigemEnum,
   checkoutPedidoCancelamentosRelations,
   checkoutPedidoCancelamentosTable,
+  checkoutPedidoHistoricoOrigemEnum,
   checkoutPedidoHistoricosRelations,
   checkoutPedidoHistoricosTable,
   checkoutPedidoHistoricoTipoEnum,
@@ -835,6 +835,8 @@ export {
 export {
   configuracoesPagamentoNaEntregaServicoRelations,
   configuracoesPagamentoNaEntregaServicoTable,
+  politicasEntregaPropriaTable,
+  precosPoliticasEntregaPropriaTable,
   produtosTiposLogisticosRelations,
   produtosTiposLogisticosTable,
   provedoresFreteRelations,

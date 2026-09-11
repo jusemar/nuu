@@ -58,6 +58,7 @@ function criarConsultaEntregaPropriaLojaParaCotacao(
 
     return {
       disponivel: true as const,
+      entregaRapidaAtiva: resultado.entregaRapidaAtiva ?? true,
       valorEmCentavos: resultado.valorEmCentavos,
       descricao: resultado.descricao,
       metadados: {
@@ -127,6 +128,8 @@ async function consultarFreteOficial(
       produtoId,
       varianteId: entrada.varianteAtual?.identificadorVariante ?? null,
       categoriaId: entrada.categoriaId,
+      origemExpedicao: entrada.contextoOrigemExpedicao.origemExpedicao,
+      fornecedorProvedor: entrada.contextoOrigemExpedicao.fornecedorProvedor,
     });
 
     const resultadoConsultaFrete = adaptarCotacaoDisponivelParaConsultaFrete(

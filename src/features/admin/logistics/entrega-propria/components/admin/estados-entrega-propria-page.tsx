@@ -51,7 +51,7 @@ export function EstadosEntregaPropriaPage({
         </p>
       </div>
 
-      <div className="mb-4 sm:mb-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
         <div className="relative">
           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
@@ -61,6 +61,11 @@ export function EstadosEntregaPropriaPage({
             className="pl-10"
           />
         </div>
+        <Button asChild>
+          <Link href="/admin/logistics/entrega-propria/politicas">
+            Políticas por produto/categoria
+          </Link>
+        </Button>
       </div>
 
       <div className="max-w-full overflow-hidden rounded-lg border border-gray-200 bg-white">

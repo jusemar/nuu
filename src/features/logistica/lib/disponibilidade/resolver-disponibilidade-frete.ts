@@ -1,6 +1,7 @@
 import type { OpcaoFrete } from "../../types/contratos-frete";
 import type {
   ConfiguracaoDisponibilidadeFrete,
+  ContextoProdutoDisponibilidadeFrete,
   LimitesGlobaisFrete,
   RegraDisponibilidadeFrete,
   ResultadoDisponibilidadeOpcaoFrete,
@@ -8,7 +9,6 @@ import type {
   TransportadoraDisponibilidadeFrete,
   VolumeDisponibilidadeFrete,
   VolumesDisponibilidadeFrete,
-  ContextoProdutoDisponibilidadeFrete,
 } from "../../types/disponibilidade-frete";
 
 type DecisaoRegras = "sem-regra" | "permitido" | "bloqueado";
@@ -306,6 +306,16 @@ export function resolverDisponibilidadeOpcaoFrete({
 
   if (motivoLimiteServico) {
     return criarResultadoIndisponivel(opcao, base, motivoLimiteServico);
+  }
+
+  // Regras comerciais por produto, classificação e categoria pertencem à
+  // operação da loja. O fornecedor integrado mantém o próprio contrato de
+  // disponibilidade; catálogo ativo e limites físicos continuam validados.
+  if (
+    contextoProduto.origemExpedicao === "fornecedor" &&
+    contextoProduto.fornecedorProvedor?.trim().toLowerCase() === "laquila"
+  ) {
+    return { opcao, disponivel: true, ...base };
   }
 
   const alvo = montarAlvoDisponibilidade(opcao, servico, transportadora);

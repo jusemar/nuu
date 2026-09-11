@@ -77,6 +77,29 @@ descrever("portas do fluxo atual", () => {
     );
   });
 
+  verificar("permite política somente com entrega programada", async () => {
+    const porta = criarPortaEntregaPropriaAtual({
+      async consultarEntregaPropriaAtual() {
+        return {
+          disponivel: true,
+          entregaRapidaAtiva: false,
+          valorEmCentavos: 0,
+          opcoesAdicionais: [
+            {
+              servico: "entrega-programada",
+              nome: "Entrega programada",
+              valorEmCentavos: 700,
+            },
+          ],
+        };
+      },
+    });
+    const opcoes = await porta(solicitacao);
+    afirmacoes.equal(opcoes.length, 1);
+    afirmacoes.equal(opcoes[0]?.servico, "entrega-programada");
+    afirmacoes.equal(opcoes[0]?.valorEmCentavos, 700);
+  });
+
   verificar("mantem destino sem regra fora das opcoes", async () => {
     const porta = criarPortaEntregaPropriaAtual({
       async consultarEntregaPropriaAtual() {

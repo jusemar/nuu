@@ -7,7 +7,6 @@ import {
   Truck,
 } from "lucide-react";
 import type { ElementType } from "react";
-import { useRef, useState } from "react";
 
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
 
@@ -100,22 +99,8 @@ export function PricingModalities({
   onSelecionarModalidade,
   precosCalculadosPorModalidade,
 }: PricingModalitiesProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function handleMouseEnter() {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => setIsOpen(true), 150);
-  }
-
-  function handleMouseLeave() {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => setIsOpen(false), 200);
-  }
-
   function handleSelect(tipo: Modalidade) {
     onSelecionarModalidade(tipo);
-    setIsOpen(false);
   }
 
   const configAtiva = obterConfigModalidade(modalidadeAtiva.type);
@@ -132,11 +117,8 @@ export function PricingModalities({
         </span>
       </div>
 
-      <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-        <div
-          className="border-primary hover:border-primary-mid flex cursor-pointer items-center gap-2.5 rounded-xl border-[1.5px] bg-white p-3 shadow-[0_0_0_1px_#0C447C] transition-all"
-          onClick={() => setIsOpen((prev) => !prev)}
-        >
+      <div>
+        <div className="border-primary flex items-center gap-2.5 rounded-xl border-[1.5px] bg-white p-3 shadow-[0_0_0_1px_#0C447C]">
           <span
             className="flex size-9 shrink-0 items-center justify-center rounded-lg"
             style={{
@@ -187,23 +169,9 @@ export function PricingModalities({
               no PIX
             </div>
           </div>
-
-          <div
-            className="text-text-hint ml-1 text-xs transition-transform duration-200"
-            style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            ▾
-          </div>
         </div>
 
-        <div className="text-text-hint mt-1.5 hidden items-center gap-1 text-[11px] select-none md:flex">
-          <span>↕</span> Passe o mouse para ver outras modalidades
-        </div>
-        <div className="text-text-hint mt-1.5 flex items-center gap-1 text-[11px] select-none md:hidden">
-          <span>↕</span> Toque para ver outras modalidades de preço
-        </div>
-
-        {isOpen ? (
+        {modalidades.length > 1 ? (
           <div className="mt-2 flex animate-[slideDown_0.2s_ease] flex-col gap-1.5">
             {modalidades
               .filter((mod) => mod.type !== modalidadeAtiva.type)

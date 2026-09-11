@@ -328,10 +328,25 @@ function PaginaConviteWhatsapp({
     setProcessando(true);
     setErro(null);
     try {
-      await chamarEndpoint("/admin/convite/whatsapp/otp/solicitar", { token });
+      const resposta = await chamarEndpoint(
+        "/admin/convite/whatsapp/otp/solicitar",
+        { token },
+      );
+      // O passo do código só avança quando o backend confirma o envio real.
+      if (resposta.sucesso !== true) {
+        // Cooldown ativo: mantém a contagem sem afirmar que houve envio.
+        if (resposta.motivo === "AGUARDE") setSegundosReenvio(60);
+        setMensagem(null);
+        setErro(
+          typeof resposta.mensagem === "string"
+            ? resposta.mensagem
+            : "Não foi possível enviar o código agora. Tente novamente.",
+        );
+        return;
+      }
       setEtapa("codigo");
       setMensagem("Enviamos um código de verificação para o seu WhatsApp.");
-      // O endpoint não expõe o cooldown; aplica-se a mesma janela visual usada nos demais OTPs.
+      // Mesma janela de reenvio aplicada pela política de OTP no servidor.
       setSegundosReenvio(60);
     } catch {
       setErro("Não foi possível enviar o código agora. Tente novamente.");

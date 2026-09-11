@@ -302,6 +302,13 @@
       "when": 1789127730213,
       "tag": "0042_politicas_entrega_propria",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1789169525258,
+      "tag": "0043_confused_warhawk",
+      "breakpoints": true
     }
   ]
 }

@@ -67,3 +67,33 @@ test("cadastro exige prova confirmada e cria somente identidade canônica", () =
   assert.doesNotMatch(fonte, /administradoresTable/);
   assert.doesNotMatch(fonte, /permissoesAdministrativasTable/);
 });
+
+test("toda finalidade aceita pelo transporte também é aceita pela constraint do banco", () => {
+  // Regressão do defeito real: 'admin_convite' existia no código e no tipo, mas
+  // o CHECK de `desafios_otp_telefone` não o listava, então a emissão do OTP
+  // falhava com 23514 antes de qualquer chamada à Meta.
+  const finalidades = readFileSync(
+    "src/features/comunicacao/whatsapp/constants/finalidades-otp-whatsapp.ts",
+    "utf8",
+  );
+  const tabela = readFileSync(
+    "src/db/tables/autenticacao/tabelas/desafios-otp-telefone.ts",
+    "utf8",
+  );
+  const aceitasPeloTransporte = [
+    ...finalidades.matchAll(/"([a-z_]+)",/g),
+  ].map((ocorrencia) => ocorrencia[1]);
+
+  assert.ok(aceitasPeloTransporte.includes("admin_convite"));
+  for (const finalidade of aceitasPeloTransporte)
+    assert.match(tabela, new RegExp(`'${finalidade}'`));
+});
+
+test("envio só é anunciado como concluído quando a Meta aceita a mensagem", () => {
+  assert.match(fonte, /if \(!emissao\.permitido\)/);
+  assert.match(fonte, /motivo: "AGUARDE"/);
+  assert.match(fonte, /motivo: "FALHA_ENVIO"/);
+  assert.match(fonte, /sucesso: true, mensagem: MENSAGEM_ENVIADO/);
+  // O caminho de exceção responde falha, nunca sucesso.
+  assert.match(fonte, /catch \(erro\) \{[^]*?sucesso: false, motivo: "FALHA_ENVIO"/);
+});

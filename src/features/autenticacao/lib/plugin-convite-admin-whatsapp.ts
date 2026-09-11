@@ -11,6 +11,7 @@ import { dbTransacional } from "@/db/transaction";
 import { aceitarConviteWhatsapp } from "@/features/administradores/lib/aceitar-convite-whatsapp";
 import { calcularHashTokenConvite } from "@/features/administradores/lib/token-convite-administrativo";
 import { comunicacaoWhatsapp } from "@/features/comunicacao/whatsapp";
+import { ErroComunicacaoWhatsapp } from "@/features/comunicacao/whatsapp/lib/erros-whatsapp";
 
 import { aceitarConviteAdminSchema, cadastrarUsuarioConviteAdminSchema, confirmarOtpConviteAdminSchema, identificarUsuarioConviteAdminSchema, solicitarOtpConviteAdminSchema } from "../schemas/convite-admin-whatsapp.schema";
 import { criarHashIdentificador } from "./otp-telefone/criptografia-otp-telefone";
@@ -20,6 +21,20 @@ import { criarServicoOtpTelefone } from "./otp-telefone/servico-otp-telefone";
 
 const FINALIDADE = "admin_convite" as const;
 const MENSAGEM_NEUTRA = "Se o convite for elegível, você receberá um código pelo WhatsApp.";
+const MENSAGEM_ENVIADO = "Enviamos um código de verificação para o seu WhatsApp.";
+const MENSAGEM_AGUARDE = "Aguarde alguns segundos antes de pedir um novo código.";
+const MENSAGEM_FALHA = "Não foi possível enviar o código agora. Tente novamente em instantes.";
+
+/**
+ * Resume a falha de envio em um código curto para o log. Nunca inclui token,
+ * telefone, OTP nem resposta bruta da Meta.
+ */
+function resumirFalhaEnvio(erro: unknown) {
+  if (erro instanceof ErroComunicacaoWhatsapp) return erro.codigo;
+  if (erro && typeof erro === "object" && "code" in erro)
+    return String((erro as { code: unknown }).code);
+  return erro instanceof Error ? erro.name : "DESCONHECIDO";
+}
 
 function segredo() {
   const valor = process.env.BETTER_AUTH_SECRET?.trim();
@@ -45,7 +60,7 @@ export function pluginConviteAdminWhatsapp() {
         { method: "POST", body: solicitarOtpConviteAdminSchema },
         async (contexto) => {
           if (!contexto.request)
-            return contexto.json({ sucesso: true, mensagem: MENSAGEM_NEUTRA });
+            return contexto.json({ sucesso: false, motivo: "INDISPONIVEL", mensagem: MENSAGEM_NEUTRA });
           const requisicao = contexto.request;
           const tokenHash = calcularHashTokenConvite(contexto.body.token);
           const sessao = await getSessionFromCtx(contexto);
@@ -69,17 +84,26 @@ export function pluginConviteAdminWhatsapp() {
             });
             return { telefone, mascarado: mascararTelefone(telefone) };
           });
-          if (!prova) return contexto.json({ sucesso: true, mensagem: MENSAGEM_NEUTRA });
+          if (!prova) return contexto.json({ sucesso: false, motivo: "INDISPONIVEL", mensagem: MENSAGEM_NEUTRA });
+          // O envio só é anunciado como concluído quando a emissão é permitida
+          // e o transporte da Meta aceita a mensagem. Falha nunca vira sucesso.
+          const identificador = criarHashIdentificador(prova.telefone, segredo()).slice(0, 12);
           try {
-            await criarServicoOtpTelefone({ repositorio: repositorioOtpTelefoneDrizzle, segredo: segredo(), enviar: async (entrada) => {
+            const emissao = await criarServicoOtpTelefone({ repositorio: repositorioOtpTelefoneDrizzle, segredo: segredo(), enviar: async (entrada) => {
               await comunicacaoWhatsapp.enviarOtp(entrada);
             } }).emitir({
               telefone: prova.telefone, finalidade: FINALIDADE, ip: obterIpRequisicaoOtp(requisicao),
             });
-          } catch {
-            console.warn("[autenticacao:admin:convite-whatsapp]", { evento: "FALHA_ENVIO", finalidade: FINALIDADE, identificador: criarHashIdentificador(prova.telefone, segredo()).slice(0, 12) });
+            if (!emissao.permitido) {
+              console.info("[autenticacao:admin:convite-whatsapp]", { evento: "ENVIO_BLOQUEADO", finalidade: FINALIDADE, motivo: emissao.motivo, identificador });
+              return contexto.json({ sucesso: false, motivo: "AGUARDE", mensagem: MENSAGEM_AGUARDE, telefoneMascarado: prova.mascarado });
+            }
+          } catch (erro) {
+            console.warn("[autenticacao:admin:convite-whatsapp]", { evento: "FALHA_ENVIO", finalidade: FINALIDADE, motivo: resumirFalhaEnvio(erro), identificador });
+            return contexto.json({ sucesso: false, motivo: "FALHA_ENVIO", mensagem: MENSAGEM_FALHA, telefoneMascarado: prova.mascarado });
           }
-          return contexto.json({ sucesso: true, mensagem: MENSAGEM_NEUTRA, telefoneMascarado: prova.mascarado });
+          console.info("[autenticacao:admin:convite-whatsapp]", { evento: "ENVIO_CONCLUIDO", finalidade: FINALIDADE, identificador });
+          return contexto.json({ sucesso: true, mensagem: MENSAGEM_ENVIADO, telefoneMascarado: prova.mascarado });
         },
       ),
       confirmarOtpConviteAdminWhatsapp: createAuthEndpoint(

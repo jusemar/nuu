@@ -264,7 +264,7 @@ function criarOpcaoProgramada(dataPrometida: string, texto: string) {
       promessaEntregaProgramada: {
         dataPrometida,
         texto,
-        prazoMinimoEmDiasCorridos: 3,
+        quantidadeJanelasAposRapida: 3,
         timezone: "America/Sao_Paulo",
       },
     },

@@ -132,6 +132,19 @@ export function formatarDataIsoEntregaPropria(
     .padStart(2, "0")}-${data.dia.toString().padStart(2, "0")}`;
 }
 
+export function obterDataCalendarioEntregaPropriaDeIso(dataIso: string) {
+  const correspondencia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dataIso);
+  if (!correspondencia) return null;
+
+  const [, ano, mes, dia] = correspondencia;
+  const data = adicionarDiasCalendario(
+    { ano: Number(ano), mes: Number(mes), dia: Number(dia) },
+    0,
+  );
+
+  return formatarDataIsoEntregaPropria(data) === dataIso ? data : null;
+}
+
 /** Procura uma data operacional usando o mesmo calendário para as modalidades. */
 export function buscarProximaDataAtendida({
   dataInicial,
@@ -167,4 +180,46 @@ export function buscarProximaDataAtendida({
   }
 
   return null;
+}
+
+/**
+ * Avança uma quantidade de janelas do calendário operacional. A data-base é
+ * considerada a janela zero; cada avanço procura a próxima data atendida e
+ * não bloqueada, sem reaplicar horário de corte.
+ */
+export function avancarJanelasAtendidas({
+  dataBaseIso,
+  quantidadeJanelas,
+  diasAtendidos,
+  datasBloqueadas = [],
+}: {
+  dataBaseIso: string;
+  quantidadeJanelas: number;
+  diasAtendidos: number[];
+  datasBloqueadas?: string[];
+}) {
+  const dias = normalizarDiasAtendidos(diasAtendidos);
+  const quantidade = Math.max(0, Math.trunc(quantidadeJanelas));
+  let dataAtual = obterDataCalendarioEntregaPropriaDeIso(dataBaseIso);
+
+  if (!dataAtual || dias.length === 0) return null;
+  if (quantidade === 0) {
+    return { data: dataAtual, dataIso: dataBaseIso };
+  }
+
+  for (let janela = 0; janela < quantidade; janela += 1) {
+    const proxima = buscarProximaDataAtendida({
+      dataInicial: dataAtual,
+      diferencaInicial: 1,
+      diasAtendidos: dias,
+      datasBloqueadas,
+    });
+    if (!proxima) return null;
+    dataAtual = proxima.data;
+  }
+
+  return {
+    data: dataAtual,
+    dataIso: formatarDataIsoEntregaPropria(dataAtual),
+  };
 }

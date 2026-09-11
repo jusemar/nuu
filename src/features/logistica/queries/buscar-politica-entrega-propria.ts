@@ -250,18 +250,24 @@ export async function buscarPoliticaEntregaPropria({
     diasDaSemana: resolvida.politica.diasAtendidos,
     horarioCorte: resolvida.politica.horarioCorte,
   };
+  const promessaBaseRapida =
+    resolvida.politica.entregaRapidaAtiva ||
+    resolvida.politica.entregaProgramadaAtiva
+      ? calcularPromessaEntregaPropria({
+          agenda,
+          feriados: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
+        })
+      : null;
   const promessaRapida = resolvida.politica.entregaRapidaAtiva
-    ? calcularPromessaEntregaPropria({
-        agenda,
-        feriados: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
-      })
+    ? promessaBaseRapida
     : null;
   const promessaProgramada =
     resolvida.politica.entregaProgramadaAtiva &&
     resolvida.politica.prazoMinimoProgramadaDias !== null
       ? calcularPromessaEntregaProgramada({
           agenda,
-          prazoMinimoEmDiasCorridos:
+          promessaRapida: promessaBaseRapida,
+          quantidadeJanelasAposRapida:
             resolvida.politica.prazoMinimoProgramadaDias,
           datasBloqueadas: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
         })

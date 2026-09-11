@@ -333,7 +333,7 @@ export function ProdutoEntregaPropriaPrecos({
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor={`dias-programada-${index}`}>
-                          Dias corridos
+                          Janelas após a rápida
                         </Label>
                         <Input
                           id={`dias-programada-${index}`}
@@ -488,7 +488,9 @@ export function ProdutoEntregaPropriaPrecos({
                         {item.scheduledDeliveryActive ? (
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs">Dias corridos</Label>
+                              <Label className="text-xs">
+                                Janelas após a rápida
+                              </Label>
                               <Input
                                 aria-label="Prazo mínimo em dias corridos"
                                 type="number"

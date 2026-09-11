@@ -127,7 +127,7 @@ export function PoliticasEntregaPropriaPage({
             </div>
             <div className="space-y-2">
               <Label htmlFor="prazoMinimoProgramadaDias">
-                Mínimo programada (dias)
+                Janelas programadas após a rápida
               </Label>
               <Input
                 id="prazoMinimoProgramadaDias"

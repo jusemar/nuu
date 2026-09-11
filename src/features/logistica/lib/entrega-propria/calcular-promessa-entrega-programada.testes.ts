@@ -10,170 +10,119 @@ const agenda = {
   horarioCorte: "13:00",
 };
 
+function calcularModalidades({
+  dataReferencia,
+  quantidadeJanelas,
+  diasDaSemana = agenda.diasDaSemana,
+  datasBloqueadas = [],
+}: {
+  dataReferencia: string;
+  quantidadeJanelas: number;
+  diasDaSemana?: number[];
+  datasBloqueadas?: string[];
+}) {
+  const agendaDoCenario = { ...agenda, diasDaSemana };
+  const instante = new Date(dataReferencia);
+  const promessaRapida = calcularPromessaEntregaPropria({
+    agenda: agendaDoCenario,
+    dataReferencia: instante,
+    feriados: datasBloqueadas,
+  });
+  const promessaProgramada = calcularPromessaEntregaProgramada({
+    agenda: agendaDoCenario,
+    promessaRapida,
+    quantidadeJanelasAposRapida: quantidadeJanelas,
+    dataReferencia: instante,
+    datasBloqueadas,
+  });
+
+  return { promessaRapida, promessaProgramada };
+}
+
 describe("calcular promessa da Entrega Programada", () => {
-  const cenariosRelogioControlado = [
-    ["terça 12:00", "2026-07-28T15:00:00.000Z", "2026-07-29", "2026-07-31"],
-    ["terça 14:00", "2026-07-28T17:00:00.000Z", "2026-07-29", "2026-07-31"],
-    ["quarta 12:59", "2026-07-29T15:59:00.000Z", "2026-07-29", "2026-08-03"],
-    ["quarta 13:00", "2026-07-29T16:00:00.000Z", "2026-07-31", "2026-08-03"],
-    ["quarta 13:01", "2026-07-29T16:01:00.000Z", "2026-07-31", "2026-08-03"],
-    ["quinta 12:00", "2026-07-30T15:00:00.000Z", "2026-07-31", "2026-08-03"],
-    ["sexta 12:00", "2026-07-31T15:00:00.000Z", "2026-07-31", "2026-08-03"],
-    ["sexta 14:00", "2026-07-31T17:00:00.000Z", "2026-08-03", "2026-08-03"],
-  ] as const;
+  it("trata a promessa rápida como janela zero", () => {
+    const resultado = calcularModalidades({
+      dataReferencia: "2026-07-27T12:00:00.000Z",
+      quantidadeJanelas: 0,
+    });
+    assert.equal(resultado.promessaRapida?.dataPrometida, "2026-07-27");
+    assert.equal(resultado.promessaProgramada?.dataPrometida, "2026-07-27");
+  });
 
-  for (const [
-    nome,
-    instante,
-    dataRapida,
-    dataProgramada,
-  ] of cenariosRelogioControlado) {
-    it(`relógio controlado: ${nome}`, () => {
-      const dataReferencia = new Date(instante);
-      const rapida = calcularPromessaEntregaPropria({ agenda, dataReferencia });
-      const programada = calcularPromessaEntregaProgramada({
-        agenda,
-        prazoMinimoEmDiasCorridos: 3,
-        dataReferencia,
+  it("avança uma janela depois da rápida de segunda-feira", () => {
+    const resultado = calcularModalidades({
+      dataReferencia: "2026-07-27T12:00:00.000Z",
+      quantidadeJanelas: 1,
+    });
+    assert.equal(resultado.promessaRapida?.dataPrometida, "2026-07-27");
+    assert.equal(resultado.promessaProgramada?.dataPrometida, "2026-07-29");
+  });
+
+  for (const [quantidade, dataProgramada] of [
+    [1, "2026-08-05"],
+    [2, "2026-08-07"],
+    [3, "2026-08-10"],
+  ] as const) {
+    it(`sexta após o corte: avança ${quantidade} janela(s) depois da rápida`, () => {
+      const resultado = calcularModalidades({
+        dataReferencia: "2026-07-31T17:00:00.000Z",
+        quantidadeJanelas: quantidade,
       });
-
-      assert.equal(rapida?.dataPrometida, dataRapida);
-      assert.equal(programada?.dataPrometida, dataProgramada);
+      assert.equal(resultado.promessaRapida?.dataPrometida, "2026-08-03");
+      assert.equal(resultado.promessaProgramada?.dataPrometida, dataProgramada);
     });
   }
 
-  it("relógio controlado: recalcula na virada para o dia seguinte", () => {
-    const antes = calcularPromessaEntregaPropria({
-      agenda,
-      dataReferencia: new Date("2026-07-29T02:59:00.000Z"),
+  it("quarta antes do corte avança para sexta com prazo um", () => {
+    const resultado = calcularModalidades({
+      dataReferencia: "2026-07-29T15:00:00.000Z",
+      quantidadeJanelas: 1,
     });
-    const depois = calcularPromessaEntregaPropria({
-      agenda,
-      dataReferencia: new Date("2026-07-29T03:00:00.000Z"),
-    });
-
-    assert.equal(antes?.texto, "Entrega amanhã");
-    assert.equal(depois?.texto, "Entrega hoje");
+    assert.equal(resultado.promessaRapida?.dataPrometida, "2026-07-29");
+    assert.equal(resultado.promessaProgramada?.dataPrometida, "2026-07-31");
   });
 
-  it("relógio controlado: pula feriado entre datas candidatas", () => {
-    const dataReferencia = new Date("2026-07-28T15:00:00.000Z");
-    const rapida = calcularPromessaEntregaPropria({
-      agenda,
-      dataReferencia,
-      feriados: ["2026-07-29"],
+  it("respeita quaisquer dias configurados", () => {
+    const resultado = calcularModalidades({
+      dataReferencia: "2026-07-27T12:00:00.000Z",
+      quantidadeJanelas: 2,
+      diasDaSemana: [2, 4],
     });
-    const programada = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 1,
-      dataReferencia,
+    assert.equal(resultado.promessaRapida?.dataPrometida, "2026-07-28");
+    assert.equal(resultado.promessaProgramada?.dataPrometida, "2026-08-04");
+  });
+
+  it("pula uma janela bloqueada sem perder a contagem", () => {
+    const resultado = calcularModalidades({
+      dataReferencia: "2026-07-27T12:00:00.000Z",
+      quantidadeJanelas: 2,
       datasBloqueadas: ["2026-07-29"],
     });
-
-    assert.equal(rapida?.dataPrometida, "2026-07-31");
-    assert.equal(programada?.dataPrometida, "2026-07-31");
+    assert.equal(resultado.promessaRapida?.dataPrometida, "2026-07-27");
+    assert.equal(resultado.promessaProgramada?.dataPrometida, "2026-08-03");
   });
 
-  it("cenário A: separa rápida após o corte da programada com três dias", () => {
-    const dataReferencia = new Date("2026-07-27T17:00:00.000Z");
-    const rapida = calcularPromessaEntregaPropria({ agenda, dataReferencia });
-    const programada = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 3,
-      dataReferencia,
+  it("não reaplica o corte depois de receber a promessa rápida", () => {
+    const antes = calcularModalidades({
+      dataReferencia: "2026-07-28T15:59:00.000Z",
+      quantidadeJanelas: 1,
     });
-
-    assert.equal(rapida?.dataPrometida, "2026-07-29");
-    assert.equal(programada?.dataPrometida, "2026-07-31");
+    const depois = calcularModalidades({
+      dataReferencia: "2026-07-28T18:00:00.000Z",
+      quantidadeJanelas: 1,
+    });
+    assert.equal(antes.promessaRapida?.dataPrometida, "2026-07-29");
+    assert.equal(depois.promessaRapida?.dataPrometida, "2026-07-29");
+    assert.equal(antes.promessaProgramada?.dataPrometida, "2026-07-31");
+    assert.equal(depois.promessaProgramada?.dataPrometida, "2026-07-31");
   });
 
-  it("cenário B: rápida entrega hoje antes do corte e programada respeita o prazo", () => {
-    const dataReferencia = new Date("2026-07-27T12:00:00.000Z");
-    const rapida = calcularPromessaEntregaPropria({ agenda, dataReferencia });
-    const programada = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 3,
-      dataReferencia,
-    });
-
-    assert.equal(rapida?.texto, "Entrega hoje");
-    assert.equal(programada?.dataPrometida, "2026-07-31");
-  });
-
-  it("cenário C: em dia não atendido cada modalidade parte da própria regra", () => {
-    const dataReferencia = new Date("2026-07-28T15:00:00.000Z");
-    const rapida = calcularPromessaEntregaPropria({ agenda, dataReferencia });
-    const programada = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 3,
-      dataReferencia,
-    });
-
-    assert.equal(rapida?.dataPrometida, "2026-07-29");
-    assert.equal(programada?.dataPrometida, "2026-07-31");
-  });
-
-  it("cenário D: ambas pulam uma data operacional bloqueada", () => {
-    const dataReferencia = new Date("2026-07-27T17:00:00.000Z");
-    const datasBloqueadas = ["2026-07-29"];
-    const rapida = calcularPromessaEntregaPropria({
-      agenda,
-      dataReferencia,
-      feriados: datasBloqueadas,
-    });
-    const programada = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 2,
-      dataReferencia,
-      datasBloqueadas,
-    });
-
-    assert.equal(rapida?.dataPrometida, "2026-07-31");
-    assert.equal(programada?.dataPrometida, "2026-07-31");
-  });
-
-  it("soma dias corridos e ajusta para o primeiro dia atendido", () => {
-    const resultado = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 3,
-      dataReferencia: new Date("2026-07-27T12:00:00.000Z"),
-    });
-
-    assert.equal(resultado?.dataPrometida, "2026-07-31");
-    assert.equal(resultado?.texto, "Receba sexta-feira");
-  });
-
-  it("ignora o horário de corte", () => {
-    const antes = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 2,
-      dataReferencia: new Date("2026-07-27T15:59:00.000Z"),
-    });
-    const depois = calcularPromessaEntregaProgramada({
-      agenda,
-      prazoMinimoEmDiasCorridos: 2,
-      dataReferencia: new Date("2026-07-27T18:00:00.000Z"),
-    });
-
-    assert.equal(antes?.dataPrometida, "2026-07-29");
-    assert.equal(depois?.dataPrometida, "2026-07-29");
-  });
-
-  it("atravessa fim de semana e virada de mês", () => {
-    const resultado = calcularPromessaEntregaProgramada({
-      agenda: { ...agenda, diasDaSemana: [1] },
-      prazoMinimoEmDiasCorridos: 3,
-      dataReferencia: new Date("2026-07-30T12:00:00.000Z"),
-    });
-
-    assert.equal(resultado?.dataPrometida, "2026-08-03");
-  });
-
-  it("não promete sem agenda ativa", () => {
+  it("não promete sem agenda ativa ou sem promessa rápida", () => {
     assert.equal(
       calcularPromessaEntregaProgramada({
         agenda: { ...agenda, ativa: false },
-        prazoMinimoEmDiasCorridos: 3,
+        promessaRapida: null,
+        quantidadeJanelasAposRapida: 1,
       }),
       null,
     );

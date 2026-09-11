@@ -703,9 +703,7 @@ export function ConfiguradorOperacoesProdutos({
               dica="Altera somente regras por destino já existentes. Agenda, dias atendidos, horário de corte, cobertura e prazo permanecem intactos."
               ativo={campos.has("entrega_rapida")}
               onAlternar={alternarCampo}
-              valido={operacoes.some(
-                (item) => item.campo === "entrega_rapida",
-              )}
+              valido={operacoes.some((item) => item.campo === "entrega_rapida")}
               valorAtual={valorAtual(
                 (produto) =>
                   `${produto.precosEntregaPropria.length} destino(s) configurado(s)`,
@@ -800,7 +798,7 @@ export function ConfiguradorOperacoesProdutos({
                   onAlternar={() => alternarCampoFrete("programada_prazo")}
                 >
                   <Input
-                    aria-label="Novo prazo mínimo em dias corridos"
+                    aria-label="Quantidade de janelas após a entrega rápida"
                     type="number"
                     inputMode="numeric"
                     min="0"
@@ -809,7 +807,7 @@ export function ConfiguradorOperacoesProdutos({
                     onChange={(evento) =>
                       definir("entrega_programada_prazo", evento.target.value)
                     }
-                    placeholder="Dias corridos"
+                    placeholder="Janelas após a rápida"
                   />
                 </CampoParcialFrete>
                 <CampoParcialFrete

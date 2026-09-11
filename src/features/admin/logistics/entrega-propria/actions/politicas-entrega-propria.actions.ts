@@ -59,11 +59,11 @@ export async function salvarPoliticaEntregaPropria(formData: FormData) {
   }
   const horarioCorte = texto(formData, "horarioCorte") || null;
   if (
-    entregaRapidaAtiva &&
+    (entregaRapidaAtiva || entregaProgramadaAtiva) &&
     (!horarioCorte || !/^([01]\d|2[0-3]):[0-5]\d$/.test(horarioCorte))
   ) {
     throw new Error(
-      "Informe um horário de corte válido para a entrega rápida.",
+      "Informe um horário de corte válido para calcular as entregas.",
     );
   }
   const prazoMinimoProgramadaDias = inteiroOpcional(
@@ -92,7 +92,9 @@ export async function salvarPoliticaEntregaPropria(formData: FormData) {
     updatedAt: new Date(),
   };
   if (valores.permiteRetirada && !valores.modeloRetiradaId) {
-    throw new Error("Selecione um modelo para permitir retirada pela política.");
+    throw new Error(
+      "Selecione um modelo para permitir retirada pela política.",
+    );
   }
   const existente = await db.query.politicasEntregaPropriaTable.findFirst({
     where:

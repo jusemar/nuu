@@ -1,9 +1,10 @@
 import {
   type AgendaEntregaPropria,
+  type PromessaEntregaPropria,
   TIMEZONE_ENTREGA_PROPRIA,
 } from "./calcular-promessa-entrega-propria";
 import {
-  buscarProximaDataAtendida,
+  avancarJanelasAtendidas,
   normalizarDiasAtendidos,
   obterPartesDataEntregaPropria,
 } from "./calendario-entrega-propria";
@@ -11,7 +12,7 @@ import {
 export type PromessaEntregaProgramada = {
   dataPrometida: string;
   texto: string;
-  prazoMinimoEmDiasCorridos: number;
+  quantidadeJanelasAposRapida: number;
   diasConfigurados: number[];
   timezone: typeof TIMEZONE_ENTREGA_PROPRIA;
   calculadoEm: string;
@@ -34,29 +35,34 @@ function formatarTexto(diferencaEmDias: number, data: Date) {
 }
 
 /**
- * Soma dias corridos e só então procura o primeiro dia atendido. O horário de
- * corte não participa da promessa programada.
+ * Avança janelas válidas a partir da promessa rápida já calculada. O horário
+ * de corte participa somente da rápida e não é reaplicado na programada.
  */
 export function calcularPromessaEntregaProgramada({
   agenda,
-  prazoMinimoEmDiasCorridos,
+  promessaRapida,
+  quantidadeJanelasAposRapida,
   dataReferencia = new Date(),
   datasBloqueadas = [],
 }: {
   agenda: AgendaEntregaPropria | null | undefined;
-  prazoMinimoEmDiasCorridos: number;
+  promessaRapida: PromessaEntregaPropria | null | undefined;
+  quantidadeJanelasAposRapida: number;
   dataReferencia?: Date;
   datasBloqueadas?: string[];
 }): PromessaEntregaProgramada | null {
   const dias = normalizarDiasAtendidos(agenda?.diasDaSemana ?? []);
-  const prazo = Math.max(0, Math.trunc(prazoMinimoEmDiasCorridos));
+  const quantidadeJanelas = Math.max(
+    0,
+    Math.trunc(quantidadeJanelasAposRapida),
+  );
 
-  if (!agenda?.ativa || dias.length === 0) return null;
+  if (!agenda?.ativa || dias.length === 0 || !promessaRapida) return null;
 
   const hoje = obterPartesDataEntregaPropria(dataReferencia);
-  const candidata = buscarProximaDataAtendida({
-    dataInicial: hoje,
-    diferencaInicial: prazo,
+  const candidata = avancarJanelasAtendidas({
+    dataBaseIso: promessaRapida.dataPrometida,
+    quantidadeJanelas,
     diasAtendidos: dias,
     datasBloqueadas,
   });
@@ -64,10 +70,14 @@ export function calcularPromessaEntregaProgramada({
     const dataUtc = new Date(
       Date.UTC(candidata.data.ano, candidata.data.mes - 1, candidata.data.dia),
     );
+    const hojeUtc = Date.UTC(hoje.ano, hoje.mes - 1, hoje.dia);
+    const diferencaEmDias = Math.round(
+      (dataUtc.getTime() - hojeUtc) / 86_400_000,
+    );
     return {
       dataPrometida: candidata.dataIso,
-      texto: formatarTexto(candidata.diferencaEmDias, dataUtc),
-      prazoMinimoEmDiasCorridos: prazo,
+      texto: formatarTexto(diferencaEmDias, dataUtc),
+      quantidadeJanelasAposRapida: quantidadeJanelas,
       diasConfigurados: dias,
       timezone: TIMEZONE_ENTREGA_PROPRIA,
       calculadoEm: dataReferencia.toISOString(),

@@ -315,6 +315,7 @@ async function calcularPromessaDaRegiao(regiaoId: number) {
 async function calcularProgramadaDaRegra(
   regra: typeof productOwnDeliveryPrices.$inferSelect,
   regiaoId: number,
+  promessaRapida: PromessaEntregaPropria | null,
 ) {
   if (
     !regra.scheduledDeliveryActive ||
@@ -338,7 +339,8 @@ async function calcularProgramadaDaRegra(
         .map((slot) => slot.dayOfWeek),
       horarioCorte: regiao.horarioCorte,
     },
-    prazoMinimoEmDiasCorridos: regra.scheduledDeliveryMinDays,
+    promessaRapida,
+    quantidadeJanelasAposRapida: regra.scheduledDeliveryMinDays,
     datasBloqueadas: DATAS_BLOQUEADAS_ENTREGA_PROPRIA,
   });
 
@@ -434,6 +436,7 @@ export async function getProductOwnDeliveryPrice(
         ? await calcularProgramadaDaRegra(
             preco,
             faixaRegiaoCompativel.region.id,
+            promessa,
           )
         : null;
       return {
@@ -502,6 +505,7 @@ export async function getProductOwnDeliveryPrice(
       const entregaProgramada = await calcularProgramadaDaRegra(
         preco,
         faixaRegiaoCompativel.region.id,
+        promessa,
       );
       return {
         found: true,
@@ -528,6 +532,7 @@ export async function getProductOwnDeliveryPrice(
       const entregaProgramada = await calcularProgramadaDaRegra(
         precoCidade,
         faixaRegiaoCompativel.region.id,
+        promessa,
       );
       return {
         found: true,
@@ -586,6 +591,7 @@ export async function getProductOwnDeliveryPrice(
         const entregaProgramada = await calcularProgramadaDaRegra(
           preco,
           regiaoComPreco.regiao.id,
+          promessa,
         );
         return {
           found: true,
@@ -615,6 +621,7 @@ export async function getProductOwnDeliveryPrice(
       const entregaProgramada = await calcularProgramadaDaRegra(
         precoCidade,
         regioesCompativeis[0].regiao.id,
+        promessa,
       );
       return {
         found: true,

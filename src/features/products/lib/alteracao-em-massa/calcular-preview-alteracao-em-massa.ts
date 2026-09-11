@@ -451,8 +451,8 @@ export function calcularPlanoAlteracaoEmMassa(
                   `Entrega programada · ${precoEntrega.destino} · Prazo mínimo`,
                   precoEntrega.prazoMinimoProgramadaDias === null
                     ? "Não informado"
-                    : `${precoEntrega.prazoMinimoProgramadaDias} dia(s) corrido(s)`,
-                  `${operacao.prazoMinimoDias} dia(s) corrido(s)`,
+                    : `${precoEntrega.prazoMinimoProgramadaDias} janela(s) após a rápida`,
+                  `${operacao.prazoMinimoDias} janela(s) após a rápida`,
                 );
                 if (resultadoPrazo.resultado === "alterado") {
                   alteracao.prazoMinimoProgramadaDias =

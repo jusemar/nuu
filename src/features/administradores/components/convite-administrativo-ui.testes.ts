@@ -21,6 +21,22 @@ test("admin alterna o identificador e mostra somente o campo necessário", () =>
   assert.match(paginaAdmin, /formatarTelefoneBrasileiro/);
 });
 
+test("WhatsApp inválido é bloqueado e associado ao campo antes da action", () => {
+  assert.match(paginaAdmin, /criarConviteAdministradorSchema\.safeParse/);
+  assert.match(paginaAdmin, /entradaTemErroTelefone\(entrada\)/);
+  assert.ok(
+    paginaAdmin.indexOf("entradaTemErroTelefone(entrada)") <
+      paginaAdmin.indexOf("iniciarTransicao(async"),
+  );
+  assert.match(paginaAdmin, /Formato incorreto/);
+  assert.match(paginaAdmin, /aria-invalid=\{Boolean\(erroTelefone\)\}/);
+  assert.match(paginaAdmin, /aria-describedby/);
+  assert.match(paginaAdmin, /campoTelefoneRef\.current\?\.focus\(\)/);
+  assert.match(paginaAdmin, /setTelefone\(telefoneFormatado\)/);
+  assert.match(paginaAdmin, /setErroTelefone\(null\)/);
+  assert.match(paginaAdmin, /erroEhValidacaoTelefone\(erro\)/);
+});
+
 test("convite WhatsApp mostra e copia somente o link manual", () => {
   assert.match(paginaAdmin, /linkConvite/);
   assert.match(paginaAdmin, /navigator\.clipboard\.writeText/);

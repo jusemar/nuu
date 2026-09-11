@@ -12,7 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -64,6 +64,7 @@ import {
   revogarConviteAdministrador,
 } from "../../actions/gerenciar-convite-administrador";
 import { salvarAcessoAdministrador } from "../../actions/salvar-acesso-administrador";
+import { criarConviteAdministradorSchema } from "../../schemas/convites-administrativos.schema";
 import type {
   AdministradorTela,
   DadosGestaoAdministradores,
@@ -129,6 +130,8 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [erroTelefone, setErroTelefone] = useState<string | null>(null);
+  const campoTelefoneRef = useRef<HTMLInputElement>(null);
   const [tipoIdentificador, setTipoIdentificador] = useState<
     "email" | "whatsapp"
   >("email");
@@ -149,8 +152,40 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
 
   function trocarTipoIdentificador(tipo: "email" | "whatsapp") {
     setTipoIdentificador(tipo);
+    setErroTelefone(null);
     setLinkConviteWhatsapp(null);
     setLinkCopiado(false);
+  }
+
+  function montarEntradaConvite(telefoneAtual = telefone) {
+    return {
+      ...(tipoIdentificador === "email"
+        ? { email }
+        : { telefone: telefoneAtual }),
+      funcaoId: funcaoId === "personalizado" ? null : funcaoId,
+      nome,
+      permissoesEfetivas: [...permissoes],
+      tipoIdentificador,
+    };
+  }
+
+  function entradaTemErroTelefone(
+    entrada: ReturnType<typeof montarEntradaConvite>,
+  ) {
+    const validacao = criarConviteAdministradorSchema.safeParse(entrada);
+    return (
+      !validacao.success &&
+      validacao.error.issues.some((erro) => erro.path[0] === "telefone")
+    );
+  }
+
+  function destacarErroTelefone() {
+    setErroTelefone("Formato incorreto");
+    requestAnimationFrame(() => campoTelefoneRef.current?.focus());
+  }
+
+  function erroEhValidacaoTelefone(erro: unknown) {
+    return erro instanceof Error && erro.message.includes("Telefone inválido");
   }
 
   function telefoneMascarado() {
@@ -170,15 +205,15 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
   }
 
   function enviar() {
+    const entrada = montarEntradaConvite();
+    if (tipoIdentificador === "whatsapp" && entradaTemErroTelefone(entrada)) {
+      destacarErroTelefone();
+      return;
+    }
+
     iniciarTransicao(async () => {
       try {
-        const resultado = await criarConviteAdministrador({
-          ...(tipoIdentificador === "email" ? { email } : { telefone }),
-          funcaoId: funcaoId === "personalizado" ? null : funcaoId,
-          nome,
-          permissoesEfetivas: [...permissoes],
-          tipoIdentificador,
-        });
+        const resultado = await criarConviteAdministrador(entrada);
         if (typeof resultado.linkConvite === "string") {
           setLinkConviteWhatsapp(resultado.linkConvite);
           toast.success("Convite criado com sucesso.");
@@ -188,7 +223,14 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
         toast.success("Convite enviado.");
         setAberto(false);
         router.refresh();
-      } catch {
+      } catch (erro) {
+        if (
+          tipoIdentificador === "whatsapp" &&
+          (entradaTemErroTelefone(entrada) || erroEhValidacaoTelefone(erro))
+        ) {
+          destacarErroTelefone();
+          return;
+        }
         toast.error("Não foi possível criar o convite.");
       }
     });
@@ -296,17 +338,40 @@ function FormularioConvite({ dados }: { dados: DadosGestaoAdministradores }) {
                 <div className="space-y-2">
                   <Label htmlFor="convite-whatsapp">WhatsApp</Label>
                   <Input
+                    ref={campoTelefoneRef}
                     id="convite-whatsapp"
                     value={telefone}
-                    onChange={(evento) =>
-                      setTelefone(
-                        formatarTelefoneBrasileiro(evento.target.value),
-                      )
-                    }
+                    onChange={(evento) => {
+                      const telefoneFormatado = formatarTelefoneBrasileiro(
+                        evento.target.value,
+                      );
+                      setTelefone(telefoneFormatado);
+                      if (
+                        erroTelefone &&
+                        !entradaTemErroTelefone(
+                          montarEntradaConvite(telefoneFormatado),
+                        )
+                      ) {
+                        setErroTelefone(null);
+                      }
+                    }}
                     inputMode="tel"
                     placeholder="(31) 99999-9999"
                     autoComplete="tel"
+                    aria-describedby={
+                      erroTelefone ? "convite-whatsapp-erro" : undefined
+                    }
+                    aria-invalid={Boolean(erroTelefone)}
                   />
+                  {erroTelefone ? (
+                    <p
+                      id="convite-whatsapp-erro"
+                      className="text-destructive text-sm"
+                      role="alert"
+                    >
+                      {erroTelefone}
+                    </p>
+                  ) : null}
                 </div>
               )}
               <div className="space-y-2 sm:col-span-2">

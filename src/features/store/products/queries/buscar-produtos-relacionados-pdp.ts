@@ -6,6 +6,7 @@ import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
 import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
 import { adaptarPrecosVitrine } from "@/features/precificacao/server";
+import { calcularPontosVitrineProdutos } from "@/features/programa-fidelidade/queries/calcular-pontos-vitrine-produtos";
 
 const QUANTIDADE_MINIMA_RELACIONADOS = 2;
 const LIMITE_RELACIONADOS = 4;
@@ -23,6 +24,7 @@ export type ProdutoRelacionadoPdp = {
   freteGratis: boolean;
   ofertaRelampago: boolean;
   melhorPreco: boolean;
+  pontosFidelidade: string | null;
 };
 
 /**
@@ -74,7 +76,7 @@ export async function buscarProdutosRelacionadosPdp({
 
   const precos = await adaptarPrecosVitrine(produtos);
 
-  return produtos.flatMap((produto) => {
+  const produtosComPreco = produtos.flatMap((produto) => {
     const preco = precos.produtosPorId[produto.id]?.precoPrincipal;
     if (!preco || preco.precoFinalEmCentavos <= 0) return [];
 
@@ -101,7 +103,31 @@ export async function buscarProdutosRelacionadosPdp({
         ofertaRelampago:
           produto.storeProductFlags?.includes("flash_sale") ?? false,
         melhorPreco: produto.storeProductFlags?.includes("best_price") ?? false,
+        categoriaId: produto.categoryId,
       },
     ];
   });
+  const pontosPorProduto = await calcularPontosVitrineProdutos(
+    produtosComPreco.map((produto) => ({
+      chave: produto.id,
+      categoriaId: produto.categoriaId,
+      precoEmCentavos: produto.precoEmCentavos,
+    })),
+  );
+
+  return produtosComPreco.map((produto) => ({
+    id: produto.id,
+    nome: produto.nome,
+    slug: produto.slug,
+    imagemUrl: produto.imagemUrl,
+    precoEmCentavos: produto.precoEmCentavos,
+    precoOriginalEmCentavos: produto.precoOriginalEmCentavos,
+    percentualOff: produto.percentualOff,
+    produtoVariavel: produto.produtoVariavel,
+    destaque: produto.destaque,
+    freteGratis: produto.freteGratis,
+    ofertaRelampago: produto.ofertaRelampago,
+    melhorPreco: produto.melhorPreco,
+    pontosFidelidade: pontosPorProduto[produto.id] ?? null,
+  }));
 }

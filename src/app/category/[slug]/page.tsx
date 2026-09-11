@@ -13,6 +13,7 @@ import {
   adaptarPrecosVitrine,
   type PrecosVitrineNormalizados,
 } from "@/features/precificacao/server";
+import { calcularPontosVitrineProdutos } from "@/features/programa-fidelidade/queries/calcular-pontos-vitrine-produtos";
 // Componentes da feature category
 import { CategoryFilter } from "@/features/store/category/components/CategoryFilter";
 import { CategoryProductCard } from "@/features/store/category/components/CategoryProductCard";
@@ -399,6 +400,13 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
 
         return true;
       });
+  const pontosFidelidadePorProduto = await calcularPontosVitrineProdutos(
+    productsFiltrados.map((product) => ({
+      chave: product.id,
+      categoriaId: product.categoryId,
+      precoEmCentavos: obterPrecoProduto(product),
+    })),
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -541,6 +549,9 @@ const CategoryPage = async ({ params, searchParams }: CategoryPageProps) => {
                       slug={product.slug}
                       imageUrl={primaryImage?.imageUrl}
                       price={productPrice ?? 0}
+                      pontosFidelidade={
+                        pontosFidelidadePorProduto[product.id] ?? null
+                      }
                       fromPrice={product.productKind === "variable"}
                       originalPrice={originalPrice} // Se tiver promoção, mostra preço original riscado
                       discount={precoVitrine?.percentualOff}

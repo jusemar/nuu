@@ -1,8 +1,9 @@
 "use client";
 
-import DealsCarousel from "./DealsCarousel";
 import { CartaoOfertaRelampago } from "@/components/common/flash-deal-card";
 import type { ProdutoPromocionalHome } from "@/features/deals/queries/buscar-ofertas-home";
+
+import DealsCarousel from "./DealsCarousel";
 
 interface DealsGridProps {
   produtosOfertaRelampago: ProdutoPromocionalHome[];
@@ -41,6 +42,7 @@ export const DealsGrid = ({
       isExclusive: false,
       isTrending: produto.storeProductFlags?.includes("trending") || false,
       badgePromocao: precoPromocional?.badgePromocional ?? "promocao",
+      pontosFidelidade: produto.pontosFidelidade,
     };
   });
 

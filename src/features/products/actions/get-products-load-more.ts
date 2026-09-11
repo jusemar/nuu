@@ -10,6 +10,7 @@ import {
   productVariantTable,
 } from "@/db/schema";
 import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
+import { calcularPontosVitrineProdutos } from "@/features/programa-fidelidade/queries/calcular-pontos-vitrine-produtos";
 
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
@@ -34,6 +35,7 @@ export async function getProductsLoadMore(
     const produtosElegiveis = await db
       .select({
         id: productTable.id,
+        categoryId: productTable.categoryId,
         slug: productTable.slug,
         name: productTable.name,
         cardShortText: productTable.cardShortText,
@@ -140,10 +142,24 @@ export async function getProductsLoadMore(
     }));
     const produtosComPrecosVitrine =
       await aplicarPrecosVitrineProdutos(formattedProducts);
+    const pontosPorProduto = await calcularPontosVitrineProdutos(
+      produtosComPrecosVitrine.map((produto) => ({
+        chave: produto.id,
+        categoriaId: produto.categoryId,
+        precoEmCentavos:
+          produto.precoVitrine?.precoFinalEmCentavos ??
+          (produto.mainPrice?.hasPromo
+            ? (produto.mainPrice.promoPrice ?? produto.mainPrice.price)
+            : (produto.mainPrice?.price ?? 0)),
+      })),
+    );
 
     // Retorna os produtos e informa se tem próxima página
     return {
-      products: produtosComPrecosVitrine,
+      products: produtosComPrecosVitrine.map((produto) => ({
+        ...produto,
+        pontosFidelidade: pontosPorProduto[produto.id] ?? null,
+      })),
       nextPage: hasMore ? paginaSegura + 1 : null,
     };
   } catch (error) {

@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { PrevisaoEntregaProdutoCard } from "@/features/logistica/components/store/previsao-entrega-produto-card";
+import { IndicadorPontosProduto } from "@/features/programa-fidelidade/components/store/indicador-pontos-produto";
 import {
   BadgePromocional,
   type TipoBadgePromocionalVisual,
@@ -30,6 +31,7 @@ interface CategoryProductCardProps {
   slug: string;
   imageUrl?: string | null;
   price: number;
+  pontosFidelidade?: string | null;
   fromPrice?: boolean;
   originalPrice?: number | null;
   discount?: number | null;
@@ -51,6 +53,7 @@ export function CategoryProductCard({
   slug,
   imageUrl,
   price,
+  pontosFidelidade,
   fromPrice = false,
   originalPrice,
   discount,
@@ -224,6 +227,7 @@ export function CategoryProductCard({
               </button>
             ) : null}
           </div>
+          <IndicadorPontosProduto pontos={pontosFidelidade} />
         </div>
 
         {mostrarPrevisaoEntrega ? (

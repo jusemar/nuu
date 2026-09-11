@@ -104,6 +104,7 @@ interface ProductDetailProps {
   breadcrumbCategorias: Array<{ id: string; name: string; slug: string }>;
   precosCalculadosPorModalidade: PrecosProdutoPorModalidade;
   precosCalculadosPorVariante: PrecosProdutoPorModalidade;
+  pontosFidelidadePorPreco?: Record<string, string>;
   /** Mantém a PDP pública intacta enquanto a nova composição é validada. */
   modoPreVisualizacao?: boolean;
   /** Legado temporário da composição anterior, preservado sem uso no layout aprovado. */
@@ -132,6 +133,7 @@ export function ProductDetail({
   breadcrumbCategorias,
   precosCalculadosPorModalidade,
   precosCalculadosPorVariante,
+  pontosFidelidadePorPreco = {},
   modoPreVisualizacao = false,
   conteudoComplementar,
   servicosComPagamentoNaEntrega = [],
@@ -246,6 +248,9 @@ export function ProductDetail({
     precosCalculadosPorModalidade[modalidadeAtiva.type];
   const precoCompraCalculado =
     precoVarianteSelecionada ?? precoModalidadeAtivaCalculado;
+  const pontosFidelidadeCompra = selectedVariant
+    ? (pontosFidelidadePorPreco[`variant:${selectedVariant.id}`] ?? null)
+    : (pontosFidelidadePorPreco[modalidadeAtiva.type] ?? null);
   const disponibilidadeCompra = resolverDisponibilidadeCompraPdp({
     tipoProduto: product.productKind,
     modalidade: modalidadeAtiva,
@@ -584,6 +589,7 @@ export function ProductDetail({
             prazoEntrega={prazoEntrega}
             disponibilidadeCompra={disponibilidadeCompra}
             precoCalculado={precoCompraCalculado}
+            pontosFidelidade={pontosFidelidadeCompra}
             selectedVariantLabel={
               selectedVariant
                 ? selectedVariant.name ||
@@ -716,6 +722,7 @@ export function ProductDetail({
           prazoEntrega={prazoEntrega}
           disponibilidadeCompra={disponibilidadeCompra}
           precoCalculado={precoCompraCalculado}
+          pontosFidelidade={pontosFidelidadeCompra}
           selectedVariantLabel={rotuloVarianteSelecionada}
           retiradaLocal={retiradaLocal}
           allowsOwnDelivery={!!product.allowsOwnDelivery}
@@ -928,6 +935,7 @@ export function ProductDetail({
               // Dados reais de entrega
               disponibilidadeCompra={disponibilidadeCompra}
               precoCalculado={precoCompraCalculado}
+              pontosFidelidade={pontosFidelidadeCompra}
               selectedVariantLabel={rotuloVarianteSelecionada}
               retiradaLocal={retiradaLocal}
               allowsOwnDelivery={!!product.allowsOwnDelivery}

@@ -142,12 +142,14 @@ export function PaginaProgramaFidelidadeAdmin({
                 className={`size-2 rounded-full ${configuracao.ativo ? "bg-success" : "bg-muted-foreground/50"}`}
               />
               <span className="text-sm font-medium">
-                {configuracao.ativo ? "Ativo" : "Pausado"}
+                {configuracao.ativo ? "Ativo" : "Desativado"}
               </span>
               <Switch
                 checked={configuracao.ativo}
                 onCheckedChange={(ativo) => alterarConfiguracao({ ativo })}
-                aria-label="Ativar programa"
+                aria-label={
+                  configuracao.ativo ? "Desativar programa" : "Ativar programa"
+                }
               />
             </div>
             <Button

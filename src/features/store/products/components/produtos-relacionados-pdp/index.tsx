@@ -29,6 +29,7 @@ export function ProdutosRelacionadosPdp({
             slug={produto.slug}
             imageUrl={produto.imagemUrl}
             price={produto.precoEmCentavos}
+            pontosFidelidade={produto.pontosFidelidade}
             originalPrice={produto.precoOriginalEmCentavos}
             discount={produto.percentualOff ?? undefined}
             fromPrice={produto.produtoVariavel}

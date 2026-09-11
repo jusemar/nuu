@@ -143,6 +143,9 @@ export async function salvarProgramaFidelidade(
     if (!resultado.sucesso) return resultado;
 
     revalidatePath("/admin/marketing/programa-fidelidade");
+    revalidatePath("/", "page");
+    revalidatePath("/category/[slug]", "page");
+    revalidatePath("/product/[slug]", "page");
     return {
       sucesso: true,
       mensagem: "Configurações do programa salvas com sucesso.",

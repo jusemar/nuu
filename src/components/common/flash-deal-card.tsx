@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useCarrinho } from "@/features/carrinho";
+import { IndicadorPontosProduto } from "@/features/programa-fidelidade/components/store/indicador-pontos-produto";
 import { BadgePromocional } from "@/features/promocoes/components/store/badge-promocional";
 import { formatCentsToBRL } from "@/helpers/money";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -35,6 +36,7 @@ interface ProdutoOfertaRelampago {
     badgePromocional?: "promocao" | "relampago" | null;
     countdownPromocionalDataFim?: Date | string | null;
   }>;
+  pontosFidelidade?: string | null;
 }
 
 interface CartaoOfertaRelampagoProps {
@@ -208,6 +210,12 @@ export const CartaoOfertaRelampago = ({
               )}
             </div>
 
+            {produto.pontosFidelidade ? (
+              <div className="mb-4">
+                <IndicadorPontosProduto pontos={produto.pontosFidelidade} />
+              </div>
+            ) : null}
+
             <div className="mb-4 flex items-center gap-2">
               <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
                 <div
@@ -343,8 +351,19 @@ export const FlashDealCard = ({
   product,
   endDate,
 }: {
-  product: any;
+  product: Pick<ProdutoOfertaRelampago, "id" | "name" | "slug"> &
+    Partial<Omit<ProdutoOfertaRelampago, "id" | "name" | "slug">>;
   endDate: string;
 }) => (
-  <CartaoOfertaRelampago produtos={[product]} dataFinalFallback={endDate} />
+  <CartaoOfertaRelampago
+    produtos={[
+      {
+        ...product,
+        description: product.description ?? null,
+        galleryImages: product.galleryImages ?? [],
+        pricing: product.pricing ?? [],
+      },
+    ]}
+    dataFinalFallback={endDate}
+  />
 );

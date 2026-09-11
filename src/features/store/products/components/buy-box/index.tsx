@@ -21,6 +21,7 @@ import { registrarCepClienteIdentificado } from "@/features/logistica/lib/cep-cl
 import { calcularProximaRevalidacaoEntregaPropria } from "@/features/logistica/lib/entrega-propria/calendario-entrega-propria";
 import { BadgePagamentoNaEntregaPdp } from "@/features/pagamento-na-entrega/components/store/badge-pagamento-na-entrega-pdp";
 import type { PrecoProdutoCalculado } from "@/features/precificacao/client";
+import { IndicadorPontosProduto } from "@/features/programa-fidelidade/components/store/indicador-pontos-produto";
 import { IndicadorFreteGratisProgressivo } from "@/features/promocoes/components/store/indicador-frete-gratis-progressivo";
 
 import type { ConsultaFreteResult } from "../../actions/consultarFreteAction";
@@ -54,6 +55,7 @@ interface BuyBoxProps {
   promocaoVisual?: PromocaoVisualPdp | null;
   disponibilidadeCompra: DisponibilidadeCompraPdp;
   precoCalculado?: PrecoProdutoCalculado | null;
+  pontosFidelidade?: string | null;
   prazoEntrega: string;
   selectedVariantLabel?: string | null;
 
@@ -213,6 +215,7 @@ export function BuyBox({
   promocaoVisual = null,
   disponibilidadeCompra,
   precoCalculado,
+  pontosFidelidade,
   prazoEntrega,
   selectedVariantLabel,
   onAddToCart,
@@ -768,6 +771,8 @@ export function BuyBox({
             Ver todas as formas de pagamento
           </button>
         )}
+
+        <IndicadorPontosProduto pontos={pontosFidelidade} contexto="pdp" />
       </div>
 
       {seletorModalidades ? (

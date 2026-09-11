@@ -11,6 +11,7 @@ import {
   productVariantTable,
 } from "@/db/schema";
 import { condicaoProdutoLogisticamenteElegivel } from "@/features/logistica/queries/condicao-produto-logisticamente-elegivel";
+import { calcularPontosVitrineProdutos } from "@/features/programa-fidelidade/queries/calcular-pontos-vitrine-produtos";
 
 import { aplicarPrecosVitrineProdutos } from "../lib/aplicar-precos-vitrine-produtos";
 
@@ -29,6 +30,7 @@ export async function getProductsByFlag(flags: string[]) {
         // Campos do produto
         product: {
           id: productTable.id,
+          categoryId: productTable.categoryId,
           slug: productTable.slug,
           name: productTable.name,
           cardShortText: productTable.cardShortText,
@@ -119,7 +121,24 @@ export async function getProductsByFlag(flags: string[]) {
       }),
     );
 
-    return await aplicarPrecosVitrineProdutos(produtosFormatados);
+    const produtosComPrecos =
+      await aplicarPrecosVitrineProdutos(produtosFormatados);
+    const pontosPorProduto = await calcularPontosVitrineProdutos(
+      produtosComPrecos.map((produto) => ({
+        chave: produto.id,
+        categoriaId: produto.categoryId,
+        precoEmCentavos:
+          produto.precoVitrine?.precoFinalEmCentavos ??
+          (produto.mainPrice?.hasPromo
+            ? (produto.mainPrice.promoPrice ?? produto.mainPrice.price)
+            : (produto.mainPrice?.price ?? 0)),
+      })),
+    );
+
+    return produtosComPrecos.map((produto) => ({
+      ...produto,
+      pontosFidelidade: pontosPorProduto[produto.id] ?? null,
+    }));
   } catch (error) {
     console.error(`Erro ao buscar produtos com flags ${flags}:`, error);
     return [];

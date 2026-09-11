@@ -18,6 +18,7 @@ interface ProdutoDescoberta {
   description: string | null;
   cardShortText: string | null;
   hasFreeShipping: boolean | null;
+  pontosFidelidade?: string | null;
   storeProductFlags: string[] | null;
   mainImage: { imageUrl: string } | null;
   mainPrice: {
@@ -67,6 +68,7 @@ function formatProductForCard(product: ProdutoDescoberta) {
     description: product.cardShortText || product.description || "",
     originalPrice,
     currentPrice,
+    pontosFidelidade: product.pontosFidelidade,
     discount,
     badgePromocao: normalizarBadgePromocional(
       product.mainPrice?.badgePromocional,

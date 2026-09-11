@@ -15,11 +15,13 @@ import {
   criarPrecoPrincipalCompatibilidadeVitrine,
   type PrecosVitrineNormalizados,
 } from "@/features/precificacao/server";
+import { calcularPontosVitrineProdutos } from "@/features/programa-fidelidade/queries/calcular-pontos-vitrine-produtos";
 
 export type TipoPromocaoOferta = "normal" | "flash";
 
 export interface ProdutoPromocionalHome {
   id: string;
+  categoryId: string;
   sku: string;
   slug: string;
   name: string;
@@ -49,6 +51,7 @@ export interface ProdutoPromocionalHome {
     tipoCampanhaPromocional?: "promocao_normal" | "oferta_relampago" | null;
     countdownPromocionalDataFim?: Date | null;
   }>;
+  pontosFidelidade: string | null;
 }
 
 export interface OfertasHome {
@@ -63,6 +66,7 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
     .select({
       produto: {
         id: productTable.id,
+        categoryId: productTable.categoryId,
         sku: productTable.sku,
         slug: productTable.slug,
         name: productTable.name,
@@ -192,8 +196,26 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
     };
   });
 
+  const pontosPorProduto = await calcularPontosVitrineProdutos(
+    produtosComPrecosVitrine.map((produto) => {
+      const preco = produto.pricing[0];
+      return {
+        chave: produto.id,
+        categoriaId: produto.categoryId,
+        precoEmCentavos:
+          preco?.hasPromo && preco.promoPrice
+            ? preco.promoPrice
+            : (preco?.price ?? 0),
+      };
+    }),
+  );
+  const produtosComPontos = produtosComPrecosVitrine.map((produto) => ({
+    ...produto,
+    pontosFidelidade: pontosPorProduto[produto.id] ?? null,
+  }));
+
   return {
-    produtosOfertaRelampago: produtosComPrecosVitrine.filter((produto) => {
+    produtosOfertaRelampago: produtosComPontos.filter((produto) => {
       const preco = produto.pricing[0];
       const dataFimCountdown =
         preco?.countdownPromocionalDataFim ?? preco?.promoEndDate;
@@ -205,7 +227,7 @@ export async function buscarOfertasHome(): Promise<OfertasHome> {
         new Date(dataFimCountdown!).getTime() > agora.getTime()
       );
     }),
-    produtosPromocaoNormal: produtosComPrecosVitrine.filter(
+    produtosPromocaoNormal: produtosComPontos.filter(
       (produto) =>
         produto.isActive === true &&
         produto.storeProductFlags?.includes("sale") &&

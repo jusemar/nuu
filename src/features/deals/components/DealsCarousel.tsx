@@ -1,6 +1,7 @@
 "use client";
 
-import { FeaturedProductCard } from "@/features/featured-products-carousel/components/FeaturedProductCard";
+import Autoplay from "embla-carousel-autoplay";
+
 import {
   Carousel,
   CarouselContent,
@@ -8,7 +9,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
+import { FeaturedProductCard } from "@/features/featured-products-carousel/components/FeaturedProductCard";
 
 // O carousel de ofertas usa o mesmo contrato visual dos cards de "Mais vendidos".
 interface DealProduct {
@@ -25,6 +26,7 @@ interface DealProduct {
   isExclusive?: boolean;
   isTrending?: boolean;
   badgePromocao?: "promocao" | "relampago" | null;
+  pontosFidelidade?: string | null;
 }
 
 interface DealsCarouselProps {

@@ -23,6 +23,7 @@ import {
 } from "@/features/precificacao/server";
 import { resolverUrlCanonicaProduto } from "@/features/products/lib/url-canonica-produto";
 import { resolverVarianteInicialUrl } from "@/features/products/lib/url-variante-produto";
+import { calcularPontosVitrineProdutos } from "@/features/programa-fidelidade/queries/calcular-pontos-vitrine-produtos";
 import { buscarBreadcrumbCategoriaPorId } from "@/features/store/category/queries/buscar-categoria-publica";
 import { DadosEstruturadosProduto } from "@/features/store/products/components/dados-estruturados-produto";
 import { ProductDetail } from "@/features/store/products/components/ProductDetailsPage";
@@ -173,12 +174,28 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
       return preco ? [[entrada.modalidade, preco]] : [];
     }),
   );
+  const entradasPontosFidelidade = [
+    ...entradasPrecosModalidades,
+    ...entradasPrecosVariantes,
+  ].flatMap((entrada) => {
+    const preco = todosPrecosCalculados[entrada.modalidade];
+    return preco
+      ? [
+          {
+            chave: entrada.modalidade,
+            categoriaId: product.categoryId,
+            precoEmCentavos: preco.precoFinalEmCentavos,
+          },
+        ]
+      : [];
+  });
   const [
     breadcrumbCategorias,
     configuracaoLoja,
     produtosRelacionados,
     bannerInstitucionalProduto,
     produtosVendaCruzada,
+    pontosFidelidadePorPreco,
   ] = await Promise.all([
     buscarBreadcrumbCategoriaPorId(product.categoryId),
     buscarConfiguracaoLoja(),
@@ -189,6 +206,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
     }),
     buscarBannerHomeAtivoPorPosicao("produto_institucional"),
     buscarVendaCruzadaPdp(product.id),
+    calcularPontosVitrineProdutos(entradasPontosFidelidade),
   ]);
 
   // O motor do selo faz várias leituras próprias. Executá-lo dentro do Promise.all acima
@@ -257,6 +275,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
         breadcrumbCategorias={breadcrumbCategorias}
         precosCalculadosPorModalidade={precosCalculadosPorModalidade}
         precosCalculadosPorVariante={precosCalculadosPorVariante}
+        pontosFidelidadePorPreco={pontosFidelidadePorPreco}
         produtosRelacionados={produtosRelacionados}
         produtosVendaCruzada={produtosVendaCruzada}
         servicosComPagamentoNaEntrega={selo.servicosComPagamentoNaEntrega}

@@ -18,6 +18,7 @@ interface RawProductFromDB {
   description?: string; // Descrição completa (opcional)
   storeProductFlags: string[]; // Array de flags: ['featured', 'sale', etc]
   hasFreeShipping?: boolean; // Frete grátis (opcional)
+  pontosFidelidade?: string | null;
   mainImage: {
     imageUrl: string; // URL da imagem principal
     altText?: string; // Texto alternativo (opcional)
@@ -58,6 +59,7 @@ export interface FeaturedProduct {
   badgePromocao?: "promocao" | "relampago" | null;
   rating?: number;
   reviewCount?: number;
+  pontosFidelidade?: string | null;
 }
 
 /**
@@ -131,6 +133,7 @@ export const useFeaturedProducts = () => {
       isExclusive: storeFlags.includes("exclusive"),
       isTrending: storeFlags.includes("trending"),
       badgePromocao: product.mainPrice?.badgePromocional ?? null,
+      pontosFidelidade: product.pontosFidelidade,
 
       // ⭐ AVALIAÇÕES (adicionar quando tiver no banco)
       rating: undefined,

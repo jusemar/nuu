@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { useCarrinho } from "@/features/carrinho";
 import { PrevisaoEntregaProdutoCard } from "@/features/logistica/components/store/previsao-entrega-produto-card";
+import { IndicadorPontosProduto } from "@/features/programa-fidelidade/components/store/indicador-pontos-produto";
 import {
   BadgePromocional,
   type TipoBadgePromocionalVisual,
@@ -20,6 +21,7 @@ interface FeaturedProductCardProps {
   description?: string;
   originalPrice?: number;
   currentPrice: number;
+  pontosFidelidade?: string | null;
   discount?: number;
   hasFreeShipping?: boolean;
   isFeatured?: boolean;
@@ -43,6 +45,7 @@ export const FeaturedProductCard = ({
   description: _description,
   originalPrice,
   currentPrice,
+  pontosFidelidade,
   discount,
   hasFreeShipping,
   isFeatured = true,
@@ -313,6 +316,7 @@ export const FeaturedProductCard = ({
               />
             </button>
           </div>
+          <IndicadorPontosProduto pontos={pontosFidelidade} />
         </div>
 
         <PrevisaoEntregaProdutoCard produtoId={id} />

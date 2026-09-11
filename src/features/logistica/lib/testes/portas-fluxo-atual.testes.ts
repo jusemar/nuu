@@ -56,6 +56,42 @@ descrever("portas do fluxo atual", () => {
     afirmacoes.equal(opcoes[0]?.provedor, "entrega-propria");
   });
 
+  verificar("preserva frete zero como uma opcao gratuita valida", async () => {
+    const porta = criarPortaEntregaPropriaAtual({
+      async consultarEntregaPropriaAtual() {
+        return {
+          disponivel: true,
+          valorEmCentavos: 0,
+          descricao: "Frete gratis definido para o destino",
+        };
+      },
+    });
+
+    const opcoes = await porta(solicitacao);
+
+    afirmacoes.equal(opcoes.length, 1);
+    afirmacoes.equal(opcoes[0]?.valorEmCentavos, 0);
+    afirmacoes.equal(
+      opcoes[0]?.descricao,
+      "Frete gratis definido para o destino",
+    );
+  });
+
+  verificar("mantem destino sem regra fora das opcoes", async () => {
+    const porta = criarPortaEntregaPropriaAtual({
+      async consultarEntregaPropriaAtual() {
+        return {
+          disponivel: false,
+          motivo: "Consulte o vendedor",
+        };
+      },
+    });
+
+    const opcoes = await porta(solicitacao);
+
+    afirmacoes.deepEqual(opcoes, []);
+  });
+
   verificar(
     "nao mistura entrega propria atual com multiplos itens",
     async () => {

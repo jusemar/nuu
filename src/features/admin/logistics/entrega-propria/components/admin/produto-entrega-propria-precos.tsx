@@ -7,13 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -25,6 +18,10 @@ import {
 } from "@/components/ui/table";
 
 import {
+  criarChaveDestinoEntregaPropria,
+  formatarTipoDestinoEntregaPropria,
+} from "../../lib/pesquisar-destinos-entrega-propria";
+import {
   type EntregaPropriaDestinoProduto,
   listarDestinosEntregaPropriaProduto,
   listarPrecosEntregaPropriaProduto,
@@ -33,6 +30,7 @@ import type {
   OwnDeliveryDestinationType,
   ProductOwnDeliveryPriceFormItem,
 } from "../../types/shipping";
+import { SeletorDestinoEntregaPropria } from "./seletor-destino-entrega-propria";
 
 type ProdutoEntregaPropriaPrecosProps = {
   productId?: string;
@@ -41,18 +39,11 @@ type ProdutoEntregaPropriaPrecosProps = {
 };
 
 function formatarTipo(type: OwnDeliveryDestinationType) {
-  const labels: Record<OwnDeliveryDestinationType, string> = {
-    region: "Regiao",
-    "bairro-avulso": "Bairro avulso",
-    "cep-especifico": "CEP especifico",
-    cidade: "Cidade",
-  };
-
-  return labels[type];
+  return formatarTipoDestinoEntregaPropria(type);
 }
 
 function destinoKey(type: OwnDeliveryDestinationType, id: number) {
-  return `${type}:${id}`;
+  return criarChaveDestinoEntregaPropria({ type, id });
 }
 
 function parseDestinoKey(value: string) {
@@ -212,26 +203,13 @@ export function ProdutoEntregaPropriaPrecos({
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_160px_minmax(0,0.8fr)_auto]">
           <div className="space-y-2">
-            <Label>Destino cadastrado</Label>
-            <Select
+            <Label htmlFor="destino-entrega-propria">Destino cadastrado</Label>
+            <SeletorDestinoEntregaPropria
+              id="destino-entrega-propria"
+              destinos={destinosDisponiveis}
               value={selectedDestination}
               onValueChange={setSelectedDestination}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione regiao, bairro ou CEP" />
-              </SelectTrigger>
-              <SelectContent>
-                {destinosDisponiveis.map((destino) => (
-                  <SelectItem
-                    key={destinoKey(destino.type, destino.id)}
-                    value={destinoKey(destino.type, destino.id)}
-                  >
-                    {formatarTipo(destino.type)} - {destino.label} (
-                    {destino.city}/{destino.state})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           <div className="space-y-2">
@@ -430,7 +408,7 @@ export function ProdutoEntregaPropriaPrecos({
         )}
       </div>
 
-      <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white lg:block">
+      <div className="hidden overflow-x-auto rounded-lg border border-gray-200 bg-white lg:block">
         <Table>
           <TableHeader className="bg-gray-50">
             <TableRow>
@@ -473,6 +451,23 @@ export function ProdutoEntregaPropriaPrecos({
                         {formatarTipo(item.destinationType)}
                         {destino ? ` - ${destino.city}/${destino.state}` : ""}
                       </p>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        aria-label={`Valor do frete para ${destino?.label ?? "destino"}`}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.shippingPrice / 100}
+                        onChange={(event) =>
+                          handlePriceChange(index, event.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {item.deliveryDeadline || (
+                        <span className="text-sm text-gray-400">Padrao</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="space-y-2">
@@ -531,22 +526,6 @@ export function ProdutoEntregaPropriaPrecos({
                           </div>
                         ) : null}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.shippingPrice / 100}
-                        onChange={(event) =>
-                          handlePriceChange(index, event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {item.deliveryDeadline || (
-                        <span className="text-sm text-gray-400">Padrao</span>
-                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-2">

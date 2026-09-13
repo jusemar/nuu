@@ -31,7 +31,7 @@ const destinos: DestinoPesquisavelEntregaPropria[] = [
     state: "MG",
   },
   {
-    type: "bairro-avulso",
+    type: "bairro",
     id: 12,
     label: "São Pedro",
     city: "Belo Horizonte",

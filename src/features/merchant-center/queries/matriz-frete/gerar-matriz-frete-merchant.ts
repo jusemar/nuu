@@ -61,7 +61,7 @@ export async function gerarMatrizFreteMerchant(
     },
     resultados,
     limitacoes: [
-      "Faixas usam primeiro, ponto central disponível e último CEP conhecidos; exceções por CEP e bairros avulsos são alvos separados.",
+      "Faixas usam primeiro, ponto central disponível e último CEP conhecidos; exceções por CEP e bairros canônicos são alvos separados.",
       "A análise não consulta ViaCEP e não cria cache: alvos sem endereço local são reportados como não analisáveis.",
       "Frenet é consultada pelo orquestrador oficial; os limites podem tornar o relatório parcial e isso fica indicado nos metadados.",
       "Prazo numérico permanece nulo quando o provedor central fornece apenas uma descrição textual.",

@@ -73,6 +73,10 @@ function parseDestinoKey(value: string) {
   };
 }
 
+/**
+ * Agenda de entrega do destino, SOMENTE LEITURA. Dias e corte vêm da Agenda
+ * Geográfica (mesma resolução do motor público); o Produto define só preços.
+ */
 function ResumoAgendaDestino({
   destino,
 }: {
@@ -82,14 +86,15 @@ function ResumoAgendaDestino({
     return (
       <div className="mt-2 space-y-1.5 text-xs">
         <p className="text-amber-700">
-          Agenda de entrega não configurada para este destino.
+          Sem agenda de entrega para este destino: a Entrega Própria não será
+          oferecida até existir agenda na cidade, região, bairro ou CEP.
         </p>
         {destino?.configuracaoLogisticaHref ? (
           <Link
             href={destino.configuracaoLogisticaHref}
             className="text-primary inline-flex items-center gap-1 font-medium hover:underline"
           >
-            Ver configuração da logística
+            Ver Agenda Geográfica
             <ExternalLink className="h-3 w-3" aria-hidden="true" />
           </Link>
         ) : null}
@@ -102,18 +107,18 @@ function ResumoAgendaDestino({
 
   return (
     <div className="mt-2 space-y-1.5 text-xs text-gray-600">
-      <p className="font-medium text-gray-700">Agenda: {agenda.origem}</p>
+      <p className="font-medium text-gray-700">Agenda de entrega</p>
       <p className="flex items-start gap-1.5">
-        <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <CalendarDays
+          className="mt-0.5 h-3.5 w-3.5 shrink-0"
+          aria-hidden="true"
+        />
         <span>
-          <strong className="font-medium text-gray-700">
-            Dias de entrega:
-          </strong>{" "}
-          {dias}
+          <strong className="font-medium text-gray-700">Dias:</strong> {dias}
         </span>
       </p>
       <p className="flex items-center gap-1.5">
-        <Clock3 className="h-3.5 w-3.5 shrink-0" />
+        <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span>
           <strong className="font-medium text-gray-700">
             Horário de corte:
@@ -121,11 +126,15 @@ function ResumoAgendaDestino({
           {agenda.horarioCorte}
         </span>
       </p>
+      <p>
+        <strong className="font-medium text-gray-700">Origem:</strong>{" "}
+        {agenda.origem}
+      </p>
       <Link
         href={agenda.configuracaoHref}
         className="text-primary inline-flex items-center gap-1 font-medium hover:underline"
       >
-        Ver configuração da logística
+        Ver Agenda Geográfica
         <ExternalLink className="h-3 w-3" aria-hidden="true" />
       </Link>
     </div>
@@ -161,6 +170,7 @@ export function ProdutoEntregaPropriaPrecos({
             destinationType: preco.destinationType,
             destinationId: preco.destinationId,
             shippingPrice: preco.shippingPrice,
+            rapidDeliveryActive: preco.rapidDeliveryActive,
             deliveryDeadline: preco.deliveryDeadline,
             scheduledDeliveryActive: preco.scheduledDeliveryActive,
             scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,
@@ -210,6 +220,7 @@ export function ProdutoEntregaPropriaPrecos({
         destinationType: destino.type,
         destinationId: destino.id,
         shippingPrice: priceInCents,
+        rapidDeliveryActive: true,
         deliveryDeadline: deliveryDeadline.trim() || null,
         scheduledDeliveryActive: false,
         scheduledDeliveryMinDays: null,
@@ -297,9 +308,9 @@ export function ProdutoEntregaPropriaPrecos({
                   <div className="space-y-4 text-sm leading-6 text-gray-700">
                     <p>
                       Os dias de entrega e o horário de corte são definidos na
-                      configuração logística da cidade e da região. Nesta tela
-                      do produto você define os valores e as opções de entrega
-                      para cada destino.
+                      Agenda Geográfica, com herança entre cidade, região,
+                      bairro e CEP. Nesta tela do produto você define os valores
+                      e as opções de entrega para cada destino.
                     </p>
                     <div className="rounded-md bg-gray-50 p-3">
                       <p className="font-medium text-gray-900">Exemplo</p>
@@ -316,15 +327,15 @@ export function ProdutoEntregaPropriaPrecos({
                       ser editado nesta tela.
                     </p>
                     <p className="font-medium text-gray-900">
-                      Caminho da agenda: Logística → Entrega Própria → Cidades →
-                      Regiões.
+                      Caminho da agenda: Logística → Entrega Própria → Agenda
+                      Geográfica.
                     </p>
                   </div>
                 </DialogContent>
               </Dialog>
             </div>
             <p className="text-sm text-gray-500">
-              A logistica define a cobertura. Aqui voce define quanto este
+              A logística define a cobertura. Aqui você define quanto este
               produto custa para cada destino atendido.
             </p>
           </div>
@@ -428,13 +439,27 @@ export function ProdutoEntregaPropriaPrecos({
                         handlePriceChange(index, event.target.value)
                       }
                     />
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`entrega-rapida-${index}`}
+                        checked={item.rapidDeliveryActive ?? true}
+                        onCheckedChange={(checked) =>
+                          handleProgramadaChange(index, {
+                            rapidDeliveryActive: checked,
+                          })
+                        }
+                      />
+                      <Label htmlFor={`entrega-rapida-${index}`}>
+                        Entrega rápida ativa
+                      </Label>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Prazo</p>
                     <p className="flex min-h-10 items-center text-sm text-gray-700">
                       {item.deliveryDeadline || (
-                        <span className="text-gray-400">Padrao</span>
+                        <span className="text-gray-400">Padrão</span>
                       )}
                     </p>
                   </div>
@@ -550,7 +575,7 @@ export function ProdutoEntregaPropriaPrecos({
               <TableHead>Prazo</TableHead>
               <TableHead className="min-w-64">Entrega programada</TableHead>
               <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-right">Acoes</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -587,20 +612,34 @@ export function ProdutoEntregaPropriaPrecos({
                       <ResumoAgendaDestino destino={destino} />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        aria-label={`Valor do frete para ${destino?.label ?? "destino"}`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.shippingPrice / 100}
-                        onChange={(event) =>
-                          handlePriceChange(index, event.target.value)
-                        }
-                      />
+                      <div className="space-y-2">
+                        <Input
+                          aria-label={`Valor do frete para ${destino?.label ?? "destino"}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.shippingPrice / 100}
+                          onChange={(event) =>
+                            handlePriceChange(index, event.target.value)
+                          }
+                        />
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            aria-label={`Ativar entrega rápida para ${destino?.label ?? "destino"}`}
+                            checked={item.rapidDeliveryActive ?? true}
+                            onCheckedChange={(checked) =>
+                              handleProgramadaChange(index, {
+                                rapidDeliveryActive: checked,
+                              })
+                            }
+                          />
+                          <span className="text-xs text-gray-600">Rápida</span>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {item.deliveryDeadline || (
-                        <span className="text-sm text-gray-400">Padrao</span>
+                        <span className="text-sm text-gray-400">Padrão</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -626,7 +665,7 @@ export function ProdutoEntregaPropriaPrecos({
                                 Janelas após a rápida
                               </Label>
                               <Input
-                                aria-label="Prazo mínimo em dias corridos"
+                                aria-label="Janelas válidas após a entrega rápida"
                                 type="number"
                                 min="0"
                                 value={item.scheduledDeliveryMinDays ?? 0}

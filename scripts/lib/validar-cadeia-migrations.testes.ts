@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -7,12 +8,15 @@ import {
   type MigrationLocalValidacao,
   type SnapshotDrizzle,
   validarDeltaSnapshotAmbientesLaquila,
+  validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
+  validarDeltaSnapshotIntegridadeEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
   validarHistoricoAplicado,
   validarIdentidadeBanco,
   validarSequenciaLocal,
+  validarSnapshotMigracaoDadosEntregaPropria,
 } from "./validar-cadeia-migrations";
 
 function cadeiaValida() {
@@ -32,9 +36,38 @@ function cadeiaValida() {
   return { entradas, migrations };
 }
 
-test("aceita somente a cadeia legítima ancorada em 0036", () => {
+test("aceita somente a cadeia legítima ancorada na migration atual", () => {
   const { entradas, migrations } = cadeiaValida();
   assert.doesNotThrow(() => validarSequenciaLocal(migrations, entradas));
+});
+
+function lerSnapshot(numero: string): SnapshotDrizzle {
+  return JSON.parse(
+    readFileSync(`drizzle/meta/${numero}_snapshot.json`, "utf8"),
+  ) as SnapshotDrizzle;
+}
+
+test("restringe a consolidação da Entrega Própria aos deltas revisados", () => {
+  const snapshot43 = lerSnapshot("0043");
+  const snapshot44 = lerSnapshot("0044");
+  const snapshot45 = lerSnapshot("0045");
+  const snapshot46 = lerSnapshot("0046");
+
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotConsolidacaoEntregaPropria(snapshot43, snapshot44),
+  );
+  assert.doesNotThrow(() =>
+    validarSnapshotMigracaoDadosEntregaPropria(snapshot44, snapshot45),
+  );
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotIntegridadeEntregaPropria(snapshot45, snapshot46),
+  );
+
+  const adulterado = structuredClone(snapshot46);
+  adulterado.tables["public.product"] = { alteracaoIndevida: true };
+  assert.throws(() =>
+    validarDeltaSnapshotIntegridadeEntregaPropria(snapshot45, adulterado),
+  );
 });
 
 test("0035 acrescenta somente o nome do destinatário ao convite", () => {

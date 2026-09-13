@@ -8,7 +8,7 @@ export type EnderecoAmostraFreteMerchant = {
 
 export type AlvoMatrizFreteMerchant = {
   id: string;
-  tipo: "faixa-regiao" | "bairro-avulso" | "cep-especifico";
+  tipo: "faixa-regiao" | "bairro" | "cep-especifico";
   nome: string;
   amostras: EnderecoAmostraFreteMerchant[];
   motivoSemAmostra?: string;

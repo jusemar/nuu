@@ -7,12 +7,11 @@ import {
   mapViaCepToEnderecoCep,
 } from "@/features/admin/logistics/entrega-propria/lib/shipping-zip-address-mapper";
 import { buscarEnderecoCepEntregaPropria } from "@/features/admin/logistics/entrega-propria/queries/shipping-zip-addresses.queries";
-import {
-  getProductOwnDeliveryPrice,
-  getProductsOwnDeliveryForecasts,
-} from "@/features/admin/logistics/entrega-propria/services/shippingService";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
-import { buscarPoliticaEntregaPropria } from "@/features/logistica/queries/buscar-politica-entrega-propria";
+import {
+  resolverEntregaPropriaProduto,
+  resolverPrevisoesEntregaPropriaProdutos,
+} from "@/features/logistica/queries/resolver-entrega-propria";
 
 import type { PromessaEntregaProgramada } from "../lib/entrega-propria/calcular-promessa-entrega-programada";
 import type { PromessaEntregaPropria } from "../lib/entrega-propria/calcular-promessa-entrega-propria";
@@ -30,7 +29,7 @@ export type ResultadoConsultaEntregaPropriaLoja =
       disponivel: true;
       entregaRapidaAtiva?: boolean;
       valorEmCentavos: number;
-      nivel: "cep-especifico" | "regiao" | "bairro-avulso" | "cidade" | "uf";
+      nivel: "cep-especifico" | "regiao" | "bairro" | "cidade";
       descricao: string;
       prazoEntrega?: string | null;
       promessaEntrega?: PromessaEntregaPropria | null;
@@ -123,49 +122,12 @@ async function consultarProdutoNoEndereco({
     uf,
   };
 
-  const politica = await buscarPoliticaEntregaPropria({
-    produtoId,
-    cep: cepLimpo,
-    bairro,
-    cidade,
-    uf,
-  });
-  if (politica) {
-    if (!politica.entregaRapidaAtiva && !politica.entregaProgramada) {
-      return {
-        disponivel: false,
-        mensagem: "Consulte o vendedor",
-        endereco: enderecoConsultado,
-      };
-    }
-    return {
-      disponivel: true,
-      entregaRapidaAtiva: politica.entregaRapidaAtiva,
-      valorEmCentavos: politica.valorRapidaEmCentavos ?? 0,
-      nivel: politica.nivel,
-      descricao:
-        politica.promessaRapida?.texto ?? "Entrega própria configurada",
-      prazoEntrega: politica.promessaRapida?.texto ?? null,
-      promessaEntrega: politica.promessaRapida,
-      entregaProgramada: politica.entregaProgramada,
-      regiaoResolvida: null,
-      bairro,
-      cidade,
-      uf,
-      endereco: enderecoConsultado,
-    };
-  }
-
-  let resultado: Awaited<ReturnType<typeof getProductOwnDeliveryPrice>>;
-
+  let resultado: Awaited<ReturnType<typeof resolverEntregaPropriaProduto>>;
   try {
-    resultado = await getProductOwnDeliveryPrice(
+    resultado = await resolverEntregaPropriaProduto({
       produtoId,
-      cepLimpo,
-      bairro,
-      cidade,
-      uf,
-    );
+      endereco: { cep: cepLimpo, bairro, cidade, uf },
+    });
   } catch {
     return {
       disponivel: false,
@@ -174,7 +136,11 @@ async function consultarProdutoNoEndereco({
     };
   }
 
-  if (!resultado.found && resultado.pendingEligible && registrarPendente) {
+  if (
+    !resultado.encontrado &&
+    resultado.pendenciaElegivel &&
+    registrarPendente
+  ) {
     try {
       await registrarBairroPendenteEntregaPropria({
         cep: cepLimpo,
@@ -187,28 +153,31 @@ async function consultarProdutoNoEndereco({
     }
   }
 
-  if (!resultado.found) {
+  if (!resultado.encontrado) {
     return {
       disponivel: false,
-      mensagem: resultado.message,
+      mensagem: resultado.motivo,
       endereco: enderecoConsultado,
     };
   }
 
   return {
     disponivel: true,
-    valorEmCentavos: resultado.shippingPrice,
-    nivel: resultado.level,
-    descricao: resultado.message,
-    prazoEntrega: resultado.deliveryDeadline ?? null,
-    promessaEntrega: resultado.promessaEntrega ?? null,
-    entregaProgramada: resultado.entregaProgramada ?? null,
-    regiaoResolvida: resultado.region
+    entregaRapidaAtiva: resultado.entregaRapidaAtiva,
+    valorEmCentavos: resultado.valorRapidaEmCentavos ?? 0,
+    nivel:
+      resultado.nivelPreco === "cep" ? "cep-especifico" : resultado.nivelPreco,
+    descricao: resultado.promessaRapida?.texto ?? "Entrega própria configurada",
+    prazoEntrega:
+      resultado.promessaRapida?.texto ?? resultado.prazoOpcional ?? null,
+    promessaEntrega: resultado.promessaRapida,
+    entregaProgramada: resultado.entregaProgramada,
+    regiaoResolvida: resultado.regiao
       ? {
-          id: resultado.region.id,
-          nome: resultado.region.name,
-          cidade: resultado.region.city,
-          estado: resultado.region.state,
+          id: resultado.regiao.id,
+          nome: resultado.regiao.nome,
+          cidade: resultado.regiao.cidade,
+          estado: resultado.regiao.estado,
         }
       : null,
     bairro,
@@ -263,11 +232,13 @@ export async function consultarPrevisoesEntregaPropriaProdutosLoja({
   const endereco = await buscarEnderecoEntregaPropriaLoja(cepLimpo);
   if (!endereco?.bairro) return {};
 
-  return getProductsOwnDeliveryForecasts(
-    idsUnicos,
-    cepLimpo,
-    endereco.bairro,
-    endereco.localidade || "",
-    endereco.uf || "",
-  );
+  return resolverPrevisoesEntregaPropriaProdutos({
+    produtosIds: idsUnicos,
+    endereco: {
+      cep: cepLimpo,
+      bairro: endereco.bairro,
+      cidade: endereco.localidade || "",
+      uf: endereco.uf || "",
+    },
+  });
 }

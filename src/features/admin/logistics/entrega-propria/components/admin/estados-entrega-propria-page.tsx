@@ -62,8 +62,8 @@ export function EstadosEntregaPropriaPage({
           />
         </div>
         <Button asChild>
-          <Link href="/admin/logistics/entrega-propria/politicas">
-            Políticas por produto/categoria
+          <Link href="/admin/logistics/entrega-propria/agenda">
+            Agenda Geográfica
           </Link>
         </Button>
       </div>

@@ -77,7 +77,7 @@ descrever("portas do fluxo atual", () => {
     );
   });
 
-  verificar("permite política somente com entrega programada", async () => {
+  verificar("permite destino somente com entrega programada", async () => {
     const porta = criarPortaEntregaPropriaAtual({
       async consultarEntregaPropriaAtual() {
         return {

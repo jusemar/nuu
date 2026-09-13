@@ -395,11 +395,20 @@ export async function duplicarProdutoAdmin(produtoId: string) {
         await tx.insert(productOwnDeliveryPrices).values(
           precosEntrega.map((preco) => ({
             productId: novoProdutoId,
-            destinationType: preco.destinationType,
+            // O destino precisa ser copiado por inteiro: o CHECK de destino da
+            // tabela exige exatamente uma referência (região, bairro canônico,
+            // CEP ou cidade) coerente com o tipo informado.
+            destinationType:
+              preco.destinationType === "bairro-avulso"
+                ? "bairro"
+                : preco.destinationType,
             regionId: preco.regionId,
-            bairroAvulsoId: preco.bairroAvulsoId,
+            bairroAvulsoId: null,
+            bairroId: preco.bairroId,
             cepEspecificoId: preco.cepEspecificoId,
+            cityId: preco.cityId,
             shippingPrice: preco.shippingPrice,
+            rapidDeliveryActive: preco.rapidDeliveryActive,
             deliveryDeadline: preco.deliveryDeadline,
             scheduledDeliveryActive: preco.scheduledDeliveryActive,
             scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,

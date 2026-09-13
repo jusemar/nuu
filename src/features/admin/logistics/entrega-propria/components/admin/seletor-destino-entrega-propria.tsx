@@ -165,7 +165,7 @@ export function SeletorDestinoEntregaPropria({
                 alterarAbertura(false);
               }
             }}
-            placeholder="Digite cidade, regiao, bairro ou CEP"
+            placeholder="Digite cidade, região, bairro ou CEP"
             className="pr-16"
           />
 

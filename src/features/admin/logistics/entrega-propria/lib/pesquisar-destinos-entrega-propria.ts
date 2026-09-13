@@ -9,9 +9,9 @@ export type DestinoPesquisavelEntregaPropria = {
 };
 
 const ROTULOS_TIPO_DESTINO: Record<OwnDeliveryDestinationType, string> = {
-  region: "Regiao",
-  "bairro-avulso": "Bairro avulso",
-  "cep-especifico": "CEP especifico",
+  region: "Região",
+  bairro: "Bairro",
+  "cep-especifico": "CEP específico",
   cidade: "Cidade",
 };
 

@@ -5,50 +5,61 @@
  */
 
 export {
-  shippingRegions,
-  regioBairros,
-  shippingRegionCepRanges,
-  bairrosAvulsos,
-  cepsEspecificos,
-  shippingRegionSlots,
-  shippingBairroAvulsoSlots,
-  shippingPendingNeighborhoods,
-  // Relações
-  shippingRegionsRelations,
-  regioBairrosRelations,
-  shippingRegionCepRangesRelations,
-  bairrosAvulsosRelations,
-  shippingRegionSlotsRelations,
-  shippingBairroAvulsoSlotsRelations,
-  // Tipos
-  type ShippingRegion,
-  type NewShippingRegion,
-  type RegioBairro,
-  type NewRegioBairro,
-  type ShippingRegionCepRange,
-  type NewShippingRegionCepRange,
-  type BairroAvulso,
-  type NewBairroAvulso,
-  type CepEspecifico,
-  type NewCepEspecifico,
-  type ShippingRegionSlot,
-  type NewShippingRegionSlot,
-  type ShippingBairroAvulsoSlot,
-  type NewShippingBairroAvulsoSlot,
-  type ShippingPendingNeighborhood,
-  type NewShippingPendingNeighborhood,
-} from "./shippingRegions";
-
+  type AgendaGeograficaEntregaPropria,
+  agendasGeograficasEntregaPropria,
+  agendasGeograficasEntregaPropriaRelations,
+  datasBloqueadasAgendaEntregaPropria,
+  datasBloqueadasAgendaEntregaPropriaRelations,
+} from "./agendasGeograficasEntregaPropria";
 export {
-  shippingZipAddresses,
-  shippingZipAddressesRelations,
-  type ShippingZipAddress,
-  type NewShippingZipAddress,
-} from "./shippingZipAddresses";
-
+  type BairroEntregaPropria,
+  bairrosEntregaPropria,
+  bairrosEntregaPropriaRelations,
+  type NovoBairroEntregaPropria,
+} from "./bairrosEntregaPropria";
 export {
+  type NewProductOwnDeliveryPrice,
+  type ProductOwnDeliveryPrice,
   productOwnDeliveryPrices,
   productOwnDeliveryPricesRelations,
-  type ProductOwnDeliveryPrice,
-  type NewProductOwnDeliveryPrice,
 } from "./productOwnDeliveryPrices";
+export {
+  type BairroAvulso,
+  bairrosAvulsos,
+  bairrosAvulsosRelations,
+  type CepEspecifico,
+  cepsEspecificos,
+  type NewBairroAvulso,
+  type NewCepEspecifico,
+  type NewRegioBairro,
+  type NewShippingBairroAvulsoSlot,
+  type NewShippingPendingNeighborhood,
+  type NewShippingRegion,
+  type NewShippingRegionCepRange,
+  type NewShippingRegionSlot,
+  type RegioBairro,
+  regioBairros,
+  regioBairrosRelations,
+  type ShippingBairroAvulsoSlot,
+  shippingBairroAvulsoSlots,
+  shippingBairroAvulsoSlotsRelations,
+  type ShippingPendingNeighborhood,
+  shippingPendingNeighborhoods,
+  // Tipos
+  type ShippingRegion,
+  type ShippingRegionCepRange,
+  shippingRegionCepRanges,
+  shippingRegionCepRangesRelations,
+  shippingRegions,
+  type ShippingRegionSlot,
+  shippingRegionSlots,
+  shippingRegionSlotsRelations,
+  // Relações
+  shippingRegionsRelations,
+} from "./shippingRegions";
+export {
+  type NewShippingZipAddress,
+  type ShippingZipAddress,
+  shippingZipAddresses,
+  shippingZipAddressesRelations,
+} from "./shippingZipAddresses";

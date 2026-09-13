@@ -9,7 +9,7 @@ export interface ConsultaFreteSucesso {
   regraFreteGratisAplicadaId?: string | null;
   deliveryDeadline?: string | null;
   promessaEntrega?: PromessaEntregaPropria | null;
-  level: "cep-especifico" | "regiao" | "bairro-avulso" | "cidade";
+  level: "cep-especifico" | "regiao" | "bairro" | "cidade";
   message: string;
   bairro: string;
   cidade: string;

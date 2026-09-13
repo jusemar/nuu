@@ -1,6 +1,5 @@
 import "server-only";
 
-import { getProductOwnDeliveryPrice } from "@/features/admin/logistics/entrega-propria/services/shippingService";
 import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import {
   cotarFreteFluxoAtual,
@@ -8,6 +7,7 @@ import {
   resolverOrigemExpedicaoProduto,
 } from "@/features/logistica";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
+import { resolverEntregaPropriaProduto } from "@/features/logistica/queries/resolver-entrega-propria";
 import { adaptarCotacaoLogisticaParaConsultaFrete } from "@/features/store/products/lib/frete/adaptar-cotacao-logistica-para-consulta-frete";
 import { aplicarFreteGratisPromocionalConsultaFrete } from "@/features/store/products/lib/frete/aplicar-frete-gratis-promocional-consulta-frete";
 import { buscarDadosCotacaoFreteLoja } from "@/features/store/products/queries/frete/buscar-dados-cotacao-frete-loja";
@@ -23,24 +23,31 @@ function criarConsultaEntregaPropriaSomenteLeitura(
   endereco: EnderecoAmostraFreteMerchant,
 ) {
   return async () => {
-    const resultado = await getProductOwnDeliveryPrice(
+    const resultado = await resolverEntregaPropriaProduto({
       produtoId,
-      endereco.cep,
-      endereco.bairro,
-      endereco.cidade,
-      endereco.uf,
-    );
-    if (!resultado.found) {
-      return { disponivel: false as const, motivo: resultado.message };
+      endereco: {
+        cep: endereco.cep,
+        bairro: endereco.bairro,
+        cidade: endereco.cidade,
+        uf: endereco.uf,
+      },
+    });
+    if (!resultado.encontrado) {
+      return { disponivel: false as const, motivo: resultado.motivo };
     }
     return {
       disponivel: true as const,
-      valorEmCentavos: resultado.shippingPrice,
-      descricao: resultado.deliveryDeadline ?? resultado.message,
+      entregaRapidaAtiva: resultado.entregaRapidaAtiva,
+      valorEmCentavos: resultado.valorRapidaEmCentavos ?? 0,
+      descricao:
+        resultado.promessaRapida?.texto ??
+        resultado.prazoOpcional ??
+        "Entrega própria configurada",
       metadados: {
-        nivelEntregaPropriaAtual: resultado.level,
-        prazoEntregaPropriaAtual: resultado.deliveryDeadline ?? null,
-        promessaEntregaPropria: resultado.promessaEntrega ?? null,
+        nivelEntregaPropriaAtual: resultado.nivelPreco,
+        prazoEntregaPropriaAtual:
+          resultado.promessaRapida?.texto ?? resultado.prazoOpcional ?? null,
+        promessaEntregaPropria: resultado.promessaRapida,
         bairro: endereco.bairro,
         cidade: endereco.cidade,
         uf: endereco.uf,

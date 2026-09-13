@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 43,
-  ultimoIndice: 42,
-  ultimaTag: "0042_politicas_entrega_propria",
-  ultimoArquivo: "drizzle/0042_politicas_entrega_propria.sql",
+  total: 47,
+  ultimoIndice: 46,
+  ultimaTag: "0046_valida_integridade_entrega_propria",
+  ultimoArquivo: "drizzle/0046_valida_integridade_entrega_propria.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -67,6 +67,23 @@ export type SnapshotDrizzle = {
 
 function falhar(mensagem: string): never {
   throw new Error(mensagem);
+}
+
+function serializarCanonico(valor: unknown): string {
+  if (Array.isArray(valor)) {
+    return `[${valor.map(serializarCanonico).join(",")}]`;
+  }
+  if (valor && typeof valor === "object") {
+    const registro = valor as Record<string, unknown>;
+    return `{${Object.keys(registro)
+      .sort()
+      .map(
+        (chave) =>
+          `${JSON.stringify(chave)}:${serializarCanonico(registro[chave])}`,
+      )
+      .join(",")}}`;
+  }
+  return JSON.stringify(valor) ?? "undefined";
 }
 
 /**
@@ -152,7 +169,8 @@ export function validarDeltaSnapshots(
     const alteradas = Object.keys(anterior).filter(
       (chave) =>
         chave in atual &&
-        JSON.stringify(anterior[chave]) !== JSON.stringify(atual[chave]),
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
     );
     const esperadas =
       grupo === "tables" || grupo === "enums"
@@ -201,15 +219,147 @@ export function validarDeltaSnapshotPoliticasEntregaPropria(
     const alteradas = Object.keys(anterior).filter(
       (chave) =>
         chave in atual &&
-        JSON.stringify(anterior[chave]) !== JSON.stringify(atual[chave]),
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
     );
     const esperadas = grupo === "tables" ? tabelasEsperadas : [];
     if (
-      JSON.stringify(adicionadas.sort()) !== JSON.stringify([...esperadas].sort()) ||
+      JSON.stringify(adicionadas.sort()) !==
+        JSON.stringify([...esperadas].sort()) ||
       removidas.length > 0 ||
       alteradas.length > 0
     ) {
       falhar(`Delta inesperado da política de Entrega Própria para ${grupo}.`);
+    }
+  }
+}
+
+/** Restringe 0044 à expansão compatível do modelo unificado. */
+export function validarDeltaSnapshotConsolidacaoEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0043 e 0044 não estão encadeados.");
+  }
+  const tabelasNovas = new Set([
+    "public.agendas_geograficas_entrega_propria",
+    "public.bairros_entrega_propria",
+    "public.datas_bloqueadas_agenda_entrega_propria",
+  ]);
+  const tabelasAlteradas = new Set([
+    "public.product_own_delivery_prices",
+    "public.shipping_regions",
+  ]);
+
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    const anterior = snapshotAnterior[grupo] ?? {};
+    const atual = snapshotAtual[grupo] ?? {};
+    const adicionadas = Object.keys(atual).filter(
+      (chave) => !(chave in anterior),
+    );
+    const removidas = Object.keys(anterior).filter(
+      (chave) => !(chave in atual),
+    );
+    const alteradas = Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
+    );
+    const adicoesEsperadas = grupo === "tables" ? tabelasNovas : new Set();
+    const alteracoesEsperadas =
+      grupo === "tables" ? tabelasAlteradas : new Set();
+    if (
+      adicionadas.some((item) => !adicoesEsperadas.has(item)) ||
+      adicionadas.length !== adicoesEsperadas.size ||
+      removidas.length > 0 ||
+      alteradas.some((item) => !alteracoesEsperadas.has(item)) ||
+      alteradas.length !== alteracoesEsperadas.size
+    ) {
+      falhar(
+        `Delta inesperado da consolidação da Entrega Própria em ${grupo}.`,
+      );
+    }
+  }
+}
+
+/** 0045 é somente dados: seu snapshot não pode alterar o schema. */
+export function validarSnapshotMigracaoDadosEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0044 e 0045 não estão encadeados.");
+  }
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    if (
+      serializarCanonico(snapshotAnterior[grupo] ?? {}) !==
+      serializarCanonico(snapshotAtual[grupo] ?? {})
+    ) {
+      falhar(`0045 alterou schema no grupo ${grupo}.`);
+    }
+  }
+}
+
+/** 0046 apenas torna obrigatórios os vínculos e constraints já preparados. */
+export function validarDeltaSnapshotIntegridadeEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0045 e 0046 não estão encadeados.");
+  }
+  const permitidas = new Set([
+    "public.product_own_delivery_prices",
+    "public.shipping_regions",
+  ]);
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    const anterior = snapshotAnterior[grupo] ?? {};
+    const atual = snapshotAtual[grupo] ?? {};
+    const adicionadas = Object.keys(atual).filter(
+      (chave) => !(chave in anterior),
+    );
+    const removidas = Object.keys(anterior).filter(
+      (chave) => !(chave in atual),
+    );
+    const alteradas = Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
+    );
+    if (
+      adicionadas.length > 0 ||
+      removidas.length > 0 ||
+      alteradas.some((item) => !permitidas.has(item)) ||
+      (grupo !== "tables" && alteradas.length > 0)
+    ) {
+      falhar(`Delta inesperado da integridade da Entrega Própria em ${grupo}.`);
     }
   }
 }

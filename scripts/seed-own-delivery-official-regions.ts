@@ -4,15 +4,18 @@
 // `dotenv/config` aqui reintroduziria o caminho implícito para `.env`, que guarda a URL
 // de produção — foi por ali que um seed local acabou consultando o banco principal.
 
+import { and, eq, inArray } from "drizzle-orm";
+
 import { db } from "@/db/connection";
+import { cities } from "@/db/table/logistics/cities/cities";
 import {
-  regioBairros,
+  bairrosEntregaPropria,
   shippingRegionCepRanges,
   shippingRegions,
   shippingZipAddresses,
 } from "@/db/table/logistics/entrega-propria";
 import { gerarFaixasContiguasDeCeps } from "@/features/admin/logistics/entrega-propria/lib/cep-ranges";
-import { and, eq, inArray } from "drizzle-orm";
+import { normalizarLocalidadeEntregaPropria } from "@/features/logistica/lib/entrega-propria/normalizar-localidade-entrega-propria";
 
 type RegionSeed = {
   city: "Belo Horizonte" | "Contagem";
@@ -624,6 +627,26 @@ async function createCepRanges(
 async function main() {
   const seeds = [...BH_REGIONS, ...CONTAGEM_REGIONS];
   const lookup = buildRegionLookup(seeds);
+  const cidadesAlvo = await db.query.cities.findMany({
+    where: and(
+      eq(cities.stateUf, TARGET_STATE),
+      inArray(cities.name, TARGET_CITIES),
+    ),
+  });
+  const cidadeIdPorNome = new Map(
+    cidadesAlvo.map((cidade) => [cidade.name, cidade.id]),
+  );
+
+  if (cidadeIdPorNome.size !== TARGET_CITIES.length) {
+    throw new Error("As cidades-alvo precisam existir antes de gerar regiões.");
+  }
+
+  await db.delete(bairrosEntregaPropria).where(
+    inArray(
+      bairrosEntregaPropria.cidadeId,
+      cidadesAlvo.map((cidade) => cidade.id),
+    ),
+  );
 
   await db
     .delete(shippingRegions)
@@ -683,6 +706,9 @@ async function main() {
   }[] = [];
 
   for (const seed of seeds) {
+    const cityId = cidadeIdPorNome.get(seed.city);
+    if (!cityId)
+      throw new Error(`Cidade canônica não encontrada: ${seed.city}`);
     const [region] = await db
       .insert(shippingRegions)
       .values({
@@ -690,6 +716,7 @@ async function main() {
         description:
           "Cobertura inicial criada a partir das regionais oficiais e da base local de CEPs.",
         city: seed.city,
+        cityId,
         state: TARGET_STATE,
         baseShippingPrice: 0,
         isActive: true,
@@ -702,10 +729,12 @@ async function main() {
     ).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
     if (bairros.length > 0) {
-      await db.insert(regioBairros).values(
+      await db.insert(bairrosEntregaPropria).values(
         bairros.map((bairro) => ({
+          nome: bairro,
+          nomeNormalizado: normalizarLocalidadeEntregaPropria(bairro),
+          cidadeId: cityId,
           regiaoId: region.id,
-          neighborhood: bairro,
         })),
       );
     }

@@ -4,23 +4,21 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/db/connection";
+import { cities } from "@/db/table/logistics/cities/cities";
 import {
-  bairrosAvulsos,
+  bairrosEntregaPropria,
   productOwnDeliveryPrices,
-  regioBairros,
   shippingPendingNeighborhoods,
   shippingRegionCepRanges,
   shippingRegions,
-  shippingRegionSlots,
   shippingZipAddresses,
 } from "@/db/table/logistics/entrega-propria";
-import { dbTransacional } from "@/db/transaction";
 import { fetchAddressByCep } from "@/features/admin/logistics/entrega-propria/services/viaCepService";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { normalizarLocalidadeEntregaPropria } from "@/features/logistica/lib/entrega-propria/normalizar-localidade-entrega-propria";
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
-import { agendaEntregaPropriaSchema } from "../schemas/agenda-entrega-propria.schema";
 import type { ProductOwnDeliveryPriceFormItem } from "../types/shipping";
 
 function revalidarEntregaPropria() {
@@ -51,24 +49,21 @@ async function buscarRegiaoObrigatoria(regiaoId: number) {
 }
 
 async function bairroJaVinculadoNaCidade(
-  state: string,
-  city: string,
+  cidadeId: number,
   neighborhood: string,
 ) {
-  const existente = await db
-    .select({ id: regioBairros.id })
-    .from(regioBairros)
-    .innerJoin(shippingRegions, eq(regioBairros.regiaoId, shippingRegions.id))
-    .where(
-      and(
-        eq(shippingRegions.state, state),
-        eq(shippingRegions.city, city),
-        eq(regioBairros.neighborhood, neighborhood),
+  const existente = await db.query.bairrosEntregaPropria.findFirst({
+    where: and(
+      eq(bairrosEntregaPropria.cidadeId, cidadeId),
+      eq(
+        bairrosEntregaPropria.nomeNormalizado,
+        normalizarLocalidadeEntregaPropria(neighborhood),
       ),
-    )
-    .limit(1);
+    ),
+    columns: { id: true, regiaoId: true },
+  });
 
-  return existente.length > 0;
+  return existente;
 }
 
 export async function criarRegiaoEntregaPropria(data: {
@@ -86,12 +81,21 @@ export async function criarRegiaoEntregaPropria(data: {
     throw new Error("Informe nome, cidade e UF para criar a região.");
   }
 
+  const cidadeCanonica = await db.query.cities.findFirst({
+    where: and(eq(cities.stateUf, uf), eq(cities.name, cidade)),
+    columns: { id: true },
+  });
+  if (!cidadeCanonica) {
+    throw new Error("Cidade não encontrada na cobertura da Entrega Própria.");
+  }
+
   const [regiao] = await db
     .insert(shippingRegions)
     .values({
       name: nome,
       description: data.description?.trim() || null,
       city: cidade,
+      cityId: cidadeCanonica.id,
       state: uf,
       baseShippingPrice: 0,
       isActive: true,
@@ -147,73 +151,6 @@ export async function alternarStatusRegiaoEntregaPropria(id: number) {
   revalidatePath(`/admin/logistics/entrega-propria/regioes/${id}`);
 }
 
-export async function salvarAgendaEntregaPropria(
-  regiaoId: number,
-  entrada: unknown,
-) {
-  await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
-  const validacao = agendaEntregaPropriaSchema.safeParse(entrada);
-
-  if (!validacao.success) {
-    return {
-      sucesso: false as const,
-      erro:
-        validacao.error.issues[0]?.message ??
-        "Revise os dados informados para a agenda.",
-    };
-  }
-
-  const regiao = await buscarRegiaoObrigatoria(regiaoId);
-  const agenda = validacao.data;
-  const slotsExistentes = await db.query.shippingRegionSlots.findMany({
-    where: eq(shippingRegionSlots.regionId, regiao.id),
-  });
-
-  await dbTransacional.transaction(async (tx) => {
-    await tx
-      .update(shippingRegions)
-      .set({
-        agendaAtiva: agenda.ativa,
-        horarioCorte: agenda.horarioCorte,
-        updatedAt: new Date(),
-      })
-      .where(eq(shippingRegions.id, regiao.id));
-
-    await tx
-      .delete(shippingRegionSlots)
-      .where(eq(shippingRegionSlots.regionId, regiao.id));
-
-    if (agenda.diasDaSemana.length > 0) {
-      await tx.insert(shippingRegionSlots).values(
-        agenda.diasDaSemana.map((diaDaSemana) => {
-          const slotExistente = slotsExistentes.find(
-            (slot) => slot.dayOfWeek === diaDaSemana,
-          );
-
-          return {
-            regionId: regiao.id,
-            dayOfWeek: diaDaSemana,
-            // Os campos são obrigatórios na estrutura legada, mas não
-            // participam mais da previsão. Mantemos os dados anteriores.
-            startTime:
-              slotExistente?.startTime ??
-              regiao.periodoEntregaInicio ??
-              "00:00",
-            endTime:
-              slotExistente?.endTime ?? regiao.periodoEntregaFim ?? "23:59",
-            isActive: true,
-          };
-        }),
-      );
-    }
-  });
-
-  revalidarEntregaPropria();
-  revalidatePath(`/admin/logistics/entrega-propria/regioes/${regiao.id}`);
-
-  return { sucesso: true as const };
-}
-
 export async function adicionarBairroNaRegiaoEntregaPropria(
   regiaoId: number,
   neighborhood: string,
@@ -226,31 +163,28 @@ export async function adicionarBairroNaRegiaoEntregaPropria(
   }
 
   const regiao = await buscarRegiaoObrigatoria(regiaoId);
-  const vinculadoNaCidade = await bairroJaVinculadoNaCidade(
-    regiao.state,
-    regiao.city,
-    bairro,
-  );
+  const existente = await bairroJaVinculadoNaCidade(regiao.cityId, bairro);
 
-  if (vinculadoNaCidade) {
+  if (existente?.regiaoId) {
     throw new Error("Este bairro ja esta vinculado a uma regiao da cidade.");
   }
 
-  const existente = await db.query.regioBairros.findFirst({
-    where: and(
-      eq(regioBairros.regiaoId, regiaoId),
-      eq(regioBairros.neighborhood, bairro),
-    ),
-  });
-
   if (existente) {
-    throw new Error("Este bairro ja esta vinculado a regiao.");
+    await db
+      .update(bairrosEntregaPropria)
+      .set({ regiaoId, ativo: true, updatedAt: new Date() })
+      .where(eq(bairrosEntregaPropria.id, existente.id));
+  } else {
+    await db.insert(bairrosEntregaPropria).values({
+      nome: bairro,
+      nomeNormalizado: normalizarLocalidadeEntregaPropria(bairro),
+      cidadeId: regiao.cityId,
+      regiaoId,
+      ativo: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   }
-
-  await db.insert(regioBairros).values({
-    regiaoId,
-    neighborhood: bairro,
-  });
 
   revalidarEntregaPropria();
   revalidatePath(`/admin/logistics/entrega-propria/regioes/${regiaoId}`);
@@ -350,14 +284,17 @@ export async function adicionarBairroPorCepNaRegiaoEntregaPropria(
 export async function gerarFaixasCepRegiaoEntregaPropria(regiaoId: number) {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const regiao = await buscarRegiaoObrigatoria(regiaoId);
-  const bairros = await db.query.regioBairros.findMany({
-    where: eq(regioBairros.regiaoId, regiaoId),
+  const bairros = await db.query.bairrosEntregaPropria.findMany({
+    where: and(
+      eq(bairrosEntregaPropria.regiaoId, regiaoId),
+      eq(bairrosEntregaPropria.ativo, true),
+    ),
     columns: {
-      neighborhood: true,
+      nome: true,
     },
   });
 
-  const nomesBairros = bairros.map((bairro) => bairro.neighborhood);
+  const nomesBairros = bairros.map((bairro) => bairro.nome);
 
   await db
     .delete(shippingRegionCepRanges)
@@ -537,7 +474,7 @@ export async function vincularBairroPendenteNaRegiaoEntregaPropria(
   revalidatePath(`/admin/logistics/entrega-propria/regioes/${regiaoId}`);
 }
 
-export async function cadastrarBairroPendenteComoAvulsoEntregaPropria(
+export async function cadastrarBairroPendenteSemRegiaoEntregaPropria(
   bairroPendenteId: number,
 ) {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
@@ -552,24 +489,40 @@ export async function cadastrarBairroPendenteComoAvulsoEntregaPropria(
     throw new Error("Bairro pendente nao encontrado.");
   }
 
-  const existente = await db.query.bairrosAvulsos.findFirst({
+  const cidade = await db.query.cities.findFirst({
     where: and(
-      eq(bairrosAvulsos.neighborhood, bairroPendente.neighborhood),
-      eq(bairrosAvulsos.city, bairroPendente.city),
-      eq(bairrosAvulsos.state, bairroPendente.state),
+      eq(cities.name, bairroPendente.city),
+      eq(cities.stateUf, bairroPendente.state),
+    ),
+    columns: { id: true },
+  });
+  if (!cidade) throw new Error("Cidade do bairro pendente não encontrada.");
+
+  const nomeNormalizado = normalizarLocalidadeEntregaPropria(
+    bairroPendente.neighborhood,
+  );
+  const existente = await db.query.bairrosEntregaPropria.findFirst({
+    where: and(
+      eq(bairrosEntregaPropria.cidadeId, cidade.id),
+      eq(bairrosEntregaPropria.nomeNormalizado, nomeNormalizado),
     ),
   });
 
   if (!existente) {
-    await db.insert(bairrosAvulsos).values({
-      neighborhood: bairroPendente.neighborhood,
-      city: bairroPendente.city,
-      state: bairroPendente.state,
-      baseShippingPrice: 0,
-      isActive: true,
+    await db.insert(bairrosEntregaPropria).values({
+      nome: bairroPendente.neighborhood,
+      nomeNormalizado,
+      cidadeId: cidade.id,
+      regiaoId: null,
+      ativo: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+  } else if (!existente.ativo) {
+    await db
+      .update(bairrosEntregaPropria)
+      .set({ ativo: true, updatedAt: new Date() })
+      .where(eq(bairrosEntregaPropria.id, existente.id));
   }
 
   await db
@@ -606,14 +559,15 @@ function montarDestinoPrecoProduto(
     productId,
     destinationType: item.destinationType,
     regionId: item.destinationType === "region" ? item.destinationId : null,
-    bairroAvulsoId:
-      item.destinationType === "bairro-avulso" ? item.destinationId : null,
+    bairroAvulsoId: null,
+    bairroId: item.destinationType === "bairro" ? item.destinationId : null,
     cepEspecificoId:
       item.destinationType === "cep-especifico" ? item.destinationId : null,
     ...(item.destinationType === "cidade"
       ? { cityId: item.destinationId }
       : {}),
     shippingPrice: item.shippingPrice,
+    rapidDeliveryActive: item.rapidDeliveryActive ?? true,
     deliveryDeadline: item.deliveryDeadline?.trim() || null,
     scheduledDeliveryActive: item.scheduledDeliveryActive ?? false,
     scheduledDeliveryMinDays: item.scheduledDeliveryActive
@@ -664,9 +618,13 @@ export async function removerBairroDaRegiaoEntregaPropria(
 ) {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   await db
-    .delete(regioBairros)
+    .update(bairrosEntregaPropria)
+    .set({ regiaoId: null, updatedAt: new Date() })
     .where(
-      and(eq(regioBairros.regiaoId, regiaoId), eq(regioBairros.id, bairroId)),
+      and(
+        eq(bairrosEntregaPropria.regiaoId, regiaoId),
+        eq(bairrosEntregaPropria.id, bairroId),
+      ),
     );
 
   revalidarEntregaPropria();

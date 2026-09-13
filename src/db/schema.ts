@@ -22,9 +22,15 @@ import { cities } from "./table/logistics/cities/cities";
 import { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
 // Entrega Própria - Sistema de 3 níveis
 import {
+  agendasGeograficasEntregaPropria,
+  agendasGeograficasEntregaPropriaRelations,
   bairrosAvulsos,
   bairrosAvulsosRelations,
+  bairrosEntregaPropria,
+  bairrosEntregaPropriaRelations,
   cepsEspecificos,
+  datasBloqueadasAgendaEntregaPropria,
+  datasBloqueadasAgendaEntregaPropriaRelations,
   productOwnDeliveryPrices,
   productOwnDeliveryPricesRelations,
   regioBairros,
@@ -638,10 +644,15 @@ export { suppliers } from "./table/logistics/suppliers/suppliers";
 
 // Shipping - Novo sistema 3 níveis (NOVO)
 export {
+  type AgendaGeograficaEntregaPropria,
+  agendasGeograficasEntregaPropria,
   type BairroAvulso,
+  type BairroEntregaPropria,
   bairrosAvulsos,
+  bairrosEntregaPropria,
   type CepEspecifico,
   cepsEspecificos,
+  datasBloqueadasAgendaEntregaPropria,
   type NewBairroAvulso,
   type NewCepEspecifico,
   type NewProductOwnDeliveryPrice,
@@ -652,6 +663,7 @@ export {
   type NewShippingRegionCepRange,
   type NewShippingRegionSlot,
   type NewShippingZipAddress,
+  type NovoBairroEntregaPropria,
   type ProductOwnDeliveryPrice,
   productOwnDeliveryPrices,
   type RegioBairro,
@@ -872,7 +884,10 @@ export * from "./tables/paginas-dinamicas";
 
 // Relations de Shipping
 export {
+  agendasGeograficasEntregaPropriaRelations,
   bairrosAvulsosRelations,
+  bairrosEntregaPropriaRelations,
+  datasBloqueadasAgendaEntregaPropriaRelations,
   productOwnDeliveryPricesRelations,
   regioBairrosRelations,
   shippingBairroAvulsoSlotsRelations,

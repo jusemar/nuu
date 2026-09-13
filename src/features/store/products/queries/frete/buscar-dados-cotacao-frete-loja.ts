@@ -9,7 +9,6 @@ import type {
   RetiradaAtualDisponivel,
   VarianteAtualComDimensoes,
 } from "@/features/logistica";
-import { buscarRetiradaPoliticaEntregaPropria } from "@/features/logistica/queries/buscar-politica-entrega-propria";
 
 import { selecionarVarianteCotacaoLoja } from "../../lib/frete/selecionar-variante-cotacao-loja";
 
@@ -102,19 +101,6 @@ export async function buscarDadosCotacaoFreteLoja(
     return null;
   }
 
-  const retiradaPolitica = await buscarRetiradaPoliticaEntregaPropria({
-    produtoId: produto.id,
-    categoriaId: produto.categoryId,
-  });
-  const produtoRetirada = retiradaPolitica
-    ? {
-        ...produto,
-        allowsPickup: retiradaPolitica.permiteRetirada,
-        modeloRetirada:
-          retiradaPolitica.modeloRetirada ?? produto.modeloRetirada,
-      }
-    : produto;
-
   return {
     categoriaId: produto.categoryId,
     produtoAtual: {
@@ -129,7 +115,7 @@ export async function buscarDadosCotacaoFreteLoja(
       comprimentoProdutoEmCm: produto.length,
     },
     varianteAtual: selecionarVarianteCotacaoLoja(produto.variants, varianteId),
-    retiradasAtuais: montarRetiradasAtuais(produtoRetirada),
+    retiradasAtuais: montarRetiradasAtuais(produto),
     valorDeclaradoEmCentavos: obterValorDeclaradoProdutoLoja(
       produto,
       varianteId,

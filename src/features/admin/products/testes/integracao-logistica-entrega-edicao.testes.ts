@@ -177,13 +177,22 @@ describe("integração logística na edição de produto", () => {
   it("exibe a agenda herdada como leitura e mantém os preços editáveis", () => {
     const conteudo = readFileSync(caminhoPrecosEntregaPropria, "utf-8");
 
-    assert.equal(conteudo.includes("Dias de entrega:"), true);
+    // Agenda resolvida exibida somente leitura, com origem e link oficial.
+    assert.equal(conteudo.includes("Agenda de entrega"), true);
+    assert.equal(conteudo.includes("Dias:"), true);
     assert.equal(conteudo.includes("Horário de corte:"), true);
+    assert.equal(conteudo.includes("Origem:"), true);
     assert.equal(
-      conteudo.includes("Agenda de entrega não configurada para este destino."),
+      conteudo.includes("Sem agenda de entrega para este destino"),
       true,
     );
-    assert.equal(conteudo.includes("Ver configuração da logística"), true);
+    assert.equal(conteudo.includes("Ver Agenda Geográfica"), true);
+    // O Produto nunca grava dias/corte: não usa as actions da Agenda Geográfica.
+    assert.equal(
+      conteudo.includes("salvarAgendaGeograficaEntregaPropria"),
+      false,
+    );
+    // Preços e programada continuam editáveis no Produto.
     assert.equal(conteudo.includes("handlePriceChange"), true);
     assert.equal(conteudo.includes("handleProgramadaChange"), true);
   });

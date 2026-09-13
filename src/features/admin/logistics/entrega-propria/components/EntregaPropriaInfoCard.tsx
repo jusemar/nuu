@@ -1,11 +1,12 @@
-import { Lightbulb, Shield, Layers, MapPin, XCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Layers, Lightbulb, MapPin, Shield, XCircle } from "lucide-react";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const levels = [
@@ -23,6 +24,18 @@ const levels = [
   },
   {
     number: 2,
+    title: "Bairros",
+    description: "Configuração específica de um bairro canônico",
+    icon: MapPin,
+    iconBg: "bg-slate-100",
+    iconColor: "text-slate-600",
+    border: "border-slate-200",
+    bg: "bg-slate-50/50",
+    badge: "2ª prioridade",
+    badgeVariant: "bg-slate-100 text-slate-700 hover:bg-slate-100" as const,
+  },
+  {
+    number: 3,
     title: "Regiões",
     description: "Grupos operacionais de bairros atendidos",
     icon: Layers,
@@ -30,23 +43,24 @@ const levels = [
     iconColor: "text-blue-600",
     border: "border-blue-200",
     bg: "bg-blue-50/50",
-    badge: "2ª prioridade",
+    badge: "3ª prioridade",
     badgeVariant: "bg-blue-100 text-blue-700 hover:bg-blue-100" as const,
   },
   {
-    number: 3,
-    title: "Bairros Avulsos",
-    description: "Bairros independentes, fora de qualquer região",
+    number: 4,
+    title: "Cidades",
+    description: "Fallback para destinos sem configuração mais específica",
     icon: MapPin,
-    iconBg: "bg-slate-100",
-    iconColor: "text-slate-600",
-    border: "border-slate-200",
-    bg: "bg-slate-50/50",
-    badge: "3ª prioridade",
-    badgeVariant: "bg-slate-100 text-slate-700 hover:bg-slate-100" as const,
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-700",
+    border: "border-emerald-200",
+    bg: "bg-emerald-50/50",
+    badge: "4ª prioridade",
+    badgeVariant:
+      "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" as const,
   },
   {
-    number: 4,
+    number: 5,
     title: "Consulte o vendedor",
     description: "Bairro sem regra automatica cadastrada",
     icon: XCircle,

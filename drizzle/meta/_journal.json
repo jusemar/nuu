@@ -309,6 +309,27 @@
       "when": 1789169525258,
       "tag": "0043_confused_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1789301838398,
+      "tag": "0044_consolida_entrega_propria",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1789301850345,
+      "tag": "0045_migra_dados_entrega_propria",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1789305084016,
+      "tag": "0046_valida_integridade_entrega_propria",
+      "breakpoints": true
     }
   ]
 }

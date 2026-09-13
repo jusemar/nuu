@@ -4,7 +4,7 @@
  * ⚠️ FUNCIONALIDADE VÁLIDA APENAS PARA ENTREGA PRÓPRIA
  *
  * Busca endereço por CEP. Usado no admin para sugerir bairro/cidade/UF
- * ao cadastrar regiões e bairros avulsos.
+ * ao cadastrar regiões e bairros canônicos.
  */
 
 import type { ViaCepResponse } from "../types/shipping";

@@ -21,7 +21,7 @@ export type PrecoModalidadeProduto = {
 
 export type PrecoEntregaPropriaProduto = {
   id: number;
-  tipoDestino: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
+  tipoDestino: "region" | "bairro" | "cep-especifico" | "cidade";
   destino: string;
   precoEmCentavos: number;
   prazoEntregaRapida: string | null;

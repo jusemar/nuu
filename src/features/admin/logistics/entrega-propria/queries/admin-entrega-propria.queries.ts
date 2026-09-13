@@ -5,9 +5,10 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/connection";
 import { cities } from "@/db/table/logistics/cities/cities";
 import {
-  bairrosAvulsos,
+  agendasGeograficasEntregaPropria,
+  bairrosEntregaPropria,
+  cepsEspecificos,
   productOwnDeliveryPrices,
-  regioBairros,
   shippingPendingNeighborhoods,
   shippingRegionCepRanges,
   shippingRegions,
@@ -16,8 +17,15 @@ import {
 import { states } from "@/db/table/logistics/states/states";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { normalizarLocalidadeEntregaPropria } from "@/features/logistica/lib/entrega-propria/normalizar-localidade-entrega-propria";
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
+import {
+  type EntregaPropriaDestinoProduto,
+  montarDestinosEntregaPropria,
+} from "../lib/montar-destinos-entrega-propria";
+
+export type { EntregaPropriaDestinoProduto };
 
 export type EntregaPropriaEstadoResumo = {
   uf: string;
@@ -87,13 +95,6 @@ export type EntregaPropriaBairroPendente = {
 };
 
 export type EntregaPropriaRegiaoDetalhe = EntregaPropriaRegiaoResumo & {
-  agenda: {
-    ativa: boolean;
-    diasDaSemana: number[];
-    horarioCorte: string;
-    periodoInicio: string;
-    periodoFim: string;
-  };
   bairros: EntregaPropriaBairroRegiao[];
   bairrosBaseLocal: EntregaPropriaBairroBaseLocal[];
   cepRanges: EntregaPropriaFaixaCepRegiao[];
@@ -101,29 +102,15 @@ export type EntregaPropriaRegiaoDetalhe = EntregaPropriaRegiaoResumo & {
   bairrosPendentesIndisponiveis: boolean;
 };
 
-export type EntregaPropriaDestinoProduto = {
-  type: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
-  id: number;
-  label: string;
-  city: string;
-  state: string;
-  configuracaoLogisticaHref: string | null;
-  agendaEntrega: {
-    diasDaSemana: number[];
-    horarioCorte: string;
-    origem: string;
-    configuracaoHref: string;
-  } | null;
-};
-
 export type EntregaPropriaPrecoProduto = {
   id: number;
-  destinationType: "region" | "bairro-avulso" | "cep-especifico" | "cidade";
+  destinationType: "region" | "bairro" | "cep-especifico" | "cidade";
   destinationId: number;
   destinationLabel: string;
   city: string;
   state: string;
   shippingPrice: number;
+  rapidDeliveryActive: boolean;
   deliveryDeadline: string | null;
   scheduledDeliveryActive: boolean;
   scheduledDeliveryMinDays: number | null;
@@ -208,20 +195,17 @@ async function buscarBairrosPendentesDaRegiao(state: string, city: string) {
 }
 
 async function listarNomesBairrosVinculadosNaCidade(
-  stateUf: string,
-  city: string,
+  cidadeId: number,
 ): Promise<Set<string>> {
-  const bairrosVinculados = await db
-    .select({ neighborhood: regioBairros.neighborhood })
-    .from(regioBairros)
-    .innerJoin(shippingRegions, eq(regioBairros.regiaoId, shippingRegions.id))
-    .where(
-      and(eq(shippingRegions.state, stateUf), eq(shippingRegions.city, city)),
-    );
+  const bairrosVinculados = await db.query.bairrosEntregaPropria.findMany({
+    where: and(
+      eq(bairrosEntregaPropria.cidadeId, cidadeId),
+      eq(bairrosEntregaPropria.ativo, true),
+    ),
+    columns: { nomeNormalizado: true },
+  });
 
-  return new Set(
-    bairrosVinculados.map((bairro) => bairro.neighborhood.toLowerCase()),
-  );
+  return new Set(bairrosVinculados.map((bairro) => bairro.nomeNormalizado));
 }
 
 export async function listarEstadosEntregaPropria(): Promise<
@@ -292,15 +276,12 @@ export async function listarCidadesEntregaPropria(
 
       const [bairrosRegiaoResult] = await db
         .select({ count: sql<number>`count(*)` })
-        .from(regioBairros)
-        .innerJoin(
-          shippingRegions,
-          eq(regioBairros.regiaoId, shippingRegions.id),
-        )
+        .from(bairrosEntregaPropria)
         .where(
           and(
-            eq(shippingRegions.state, cidade.stateUf),
-            eq(shippingRegions.city, cidade.name),
+            eq(bairrosEntregaPropria.cidadeId, cidade.id),
+            sql`${bairrosEntregaPropria.regiaoId} IS NOT NULL`,
+            eq(bairrosEntregaPropria.ativo, true),
           ),
         );
 
@@ -315,23 +296,6 @@ export async function listarCidadesEntregaPropria(
             id: true,
           },
         });
-      const bairrosAvulsosCidade = await db.query.bairrosAvulsos.findMany({
-        where: and(
-          eq(bairrosAvulsos.state, cidade.stateUf),
-          eq(bairrosAvulsos.city, cidade.name),
-        ),
-        columns: {
-          neighborhood: true,
-        },
-      });
-      const bairrosVinculados = await listarNomesBairrosVinculadosNaCidade(
-        cidade.stateUf,
-        cidade.name,
-      );
-      const bairrosAvulsosPendentesCount = bairrosAvulsosCidade.filter(
-        (bairro) => !bairrosVinculados.has(bairro.neighborhood.toLowerCase()),
-      ).length;
-
       return {
         id: cidade.id,
         name: cidade.name,
@@ -339,8 +303,7 @@ export async function listarCidadesEntregaPropria(
         isActive: cidade.isActive,
         regioesCount: toNumber(regioesResult?.count),
         bairrosEmRegioesCount: toNumber(bairrosRegiaoResult?.count),
-        bairrosPendentesCount:
-          bairrosPendentesCidade.length + bairrosAvulsosPendentesCount,
+        bairrosPendentesCount: bairrosPendentesCidade.length,
       };
     }),
   );
@@ -357,21 +320,31 @@ export async function listarRegioesEntregaPropriaPorCidade(
       eq(shippingRegions.city, city),
     ),
     orderBy: (shippingRegions, { asc }) => [asc(shippingRegions.name)],
-    with: {
-      bairros: true,
-    },
   });
 
-  return regioes.map((regiao) => ({
-    id: regiao.id,
-    name: regiao.name,
-    description: regiao.description,
-    city: regiao.city,
-    state: regiao.state,
-    isActive: regiao.isActive,
-    bairrosCount: regiao.bairros.length,
-    createdAt: regiao.createdAt,
-  }));
+  return Promise.all(
+    regioes.map(async (regiao) => {
+      const [bairros] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(bairrosEntregaPropria)
+        .where(
+          and(
+            eq(bairrosEntregaPropria.regiaoId, regiao.id),
+            eq(bairrosEntregaPropria.ativo, true),
+          ),
+        );
+      return {
+        id: regiao.id,
+        name: regiao.name,
+        description: regiao.description,
+        city: regiao.city,
+        state: regiao.state,
+        isActive: regiao.isActive,
+        bairrosCount: toNumber(bairros?.count),
+        createdAt: regiao.createdAt,
+      };
+    }),
+  );
 }
 
 export async function buscarRegiaoEntregaPropriaDetalhe(
@@ -380,10 +353,6 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
   const regiao = await db.query.shippingRegions.findFirst({
     where: eq(shippingRegions.id, id),
-    with: {
-      bairros: true,
-      slots: true,
-    },
   });
 
   if (!regiao) return null;
@@ -393,13 +362,22 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
     regiao.city,
   );
   const bairrosPendentes = bairrosPendentesResultado.dados;
+  const bairros = await db.query.bairrosEntregaPropria.findMany({
+    where: and(
+      eq(bairrosEntregaPropria.regiaoId, regiao.id),
+      eq(bairrosEntregaPropria.ativo, true),
+    ),
+    orderBy: (bairrosEntregaPropria, { asc }) => [
+      asc(bairrosEntregaPropria.nome),
+    ],
+  });
   const cepRanges = await db.query.shippingRegionCepRanges.findMany({
     where: eq(shippingRegionCepRanges.regionId, regiao.id),
     orderBy: (shippingRegionCepRanges, { asc }) => [
       asc(shippingRegionCepRanges.cepStart),
     ],
   });
-  const bairrosVinculados = regiao.bairros.map((bairro) => bairro.neighborhood);
+  const bairrosVinculados = bairros.map((bairro) => bairro.nome);
   const cepsPorBairro =
     bairrosVinculados.length > 0
       ? await db.query.shippingZipAddresses.findMany({
@@ -433,8 +411,7 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
     cepsAgrupadosPorBairro.set(address.neighborhood, bairroCeps);
   });
   const bairrosVinculadosNaCidade = await listarNomesBairrosVinculadosNaCidade(
-    regiao.state,
-    regiao.city,
+    regiao.cityId,
   );
   const bairrosBaseLocal = await db
     .select({
@@ -458,24 +435,14 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
     city: regiao.city,
     state: regiao.state,
     isActive: regiao.isActive,
-    bairrosCount: regiao.bairros.length,
+    bairrosCount: bairros.length,
     createdAt: regiao.createdAt,
-    agenda: {
-      ativa: regiao.agendaAtiva,
-      diasDaSemana: regiao.slots
-        .filter((slot) => slot.isActive)
-        .map((slot) => slot.dayOfWeek)
-        .sort((a, b) => a - b),
-      horarioCorte: regiao.horarioCorte ?? "13:00",
-      periodoInicio: regiao.periodoEntregaInicio ?? "14:00",
-      periodoFim: regiao.periodoEntregaFim ?? "18:00",
-    },
-    bairros: regiao.bairros.map((bairro) => {
-      const ceps = cepsAgrupadosPorBairro.get(bairro.neighborhood) ?? [];
+    bairros: bairros.map((bairro) => {
+      const ceps = cepsAgrupadosPorBairro.get(bairro.nome) ?? [];
 
       return {
         id: bairro.id,
-        neighborhood: bairro.neighborhood,
+        neighborhood: bairro.nome,
         cepsCount: ceps.length,
         ceps,
         cepRanges: gerarFaixasContiguasDeCeps(
@@ -487,7 +454,7 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
       neighborhood: bairro.neighborhood,
       cepsCount: toNumber(bairro.cepsCount),
       vinculado: bairrosVinculadosNaCidade.has(
-        bairro.neighborhood.toLowerCase(),
+        normalizarLocalidadeEntregaPropria(bairro.neighborhood),
       ),
     })),
     cepRanges: cepRanges.map((range) => ({
@@ -500,7 +467,9 @@ export async function buscarRegiaoEntregaPropriaDetalhe(
     bairrosPendentes: bairrosPendentes
       .filter(
         (bairro) =>
-          !bairrosVinculadosNaCidade.has(bairro.neighborhood.toLowerCase()),
+          !bairrosVinculadosNaCidade.has(
+            normalizarLocalidadeEntregaPropria(bairro.neighborhood),
+          ),
       )
       .map((bairro) => ({
         id: bairro.id,
@@ -519,7 +488,7 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
   EntregaPropriaDestinoProduto[]
 > {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
-  const [cidades, regioes, bairros, ceps] = await Promise.all([
+  const [cidades, regioes, bairros, ceps, agendas] = await Promise.all([
     db.query.cities.findMany({
       where: eq(cities.isActive, true),
       orderBy: (cities, { asc }) => [asc(cities.stateUf), asc(cities.name)],
@@ -530,197 +499,75 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
         asc(shippingRegions.city),
         asc(shippingRegions.name),
       ],
-      with: { slots: true, cepRanges: true },
+      where: eq(shippingRegions.isActive, true),
+      with: { cepRanges: true },
     }),
-    db.query.bairrosAvulsos.findMany({
-      orderBy: (bairrosAvulsos, { asc }) => [
-        asc(bairrosAvulsos.state),
-        asc(bairrosAvulsos.city),
-        asc(bairrosAvulsos.neighborhood),
+    db.query.bairrosEntregaPropria.findMany({
+      where: eq(bairrosEntregaPropria.ativo, true),
+      orderBy: (bairrosEntregaPropria, { asc }) => [
+        asc(bairrosEntregaPropria.cidadeId),
+        asc(bairrosEntregaPropria.nome),
       ],
+      with: { cidade: true, regiao: true },
     }),
     db.query.cepsEspecificos.findMany({
+      where: eq(cepsEspecificos.isActive, true),
       orderBy: (cepsEspecificos, { asc }) => [
         asc(cepsEspecificos.state),
         asc(cepsEspecificos.city),
         asc(cepsEspecificos.cep),
       ],
     }),
+    db.query.agendasGeograficasEntregaPropria.findMany({
+      where: eq(agendasGeograficasEntregaPropria.ativa, true),
+    }),
   ]);
 
-  const obterAgendaRegiao = (regiao: (typeof regioes)[number]) => {
-    const diasDaSemana = [
-      ...new Set(
-        regiao.slots
-          .filter((slot) => slot.isActive)
-          .map((slot) => slot.dayOfWeek),
-      ),
-    ].sort((a, b) => a - b);
+  // Bairro do endereço cadastrado de cada CEP específico: é o mesmo dado que
+  // a cotação pública usa para identificar o bairro do cliente.
+  const enderecosCeps =
+    ceps.length > 0
+      ? await db.query.shippingZipAddresses.findMany({
+          where: inArray(
+            shippingZipAddresses.cep,
+            ceps.map((cep) => cep.cep),
+          ),
+          columns: { cep: true, neighborhood: true },
+        })
+      : [];
+  const bairroPorCep = new Map(
+    enderecosCeps.map((endereco) => [endereco.cep, endereco.neighborhood]),
+  );
 
-    if (
-      !regiao.isActive ||
-      !regiao.agendaAtiva ||
-      !regiao.horarioCorte ||
-      diasDaSemana.length === 0
-    ) {
-      return null;
-    }
-
-    return {
-      diasDaSemana,
-      horarioCorte: regiao.horarioCorte,
-      origem: regiao.name,
-      configuracaoHref: `/admin/logistics/entrega-propria/regioes/${regiao.id}`,
-    };
-  };
-
-  const normalizarLocalidade = (valor: string) =>
-    valor.trim().toLocaleLowerCase("pt-BR");
-
-  const obterAgendaCidade = (cidade: (typeof cidades)[number]) => {
-    const regioesDaCidade = regioes.filter(
-      (regiao) =>
-        regiao.isActive &&
-        normalizarLocalidade(regiao.city) ===
-          normalizarLocalidade(cidade.name) &&
-        regiao.state === cidade.stateUf,
-    );
-    const agendas = regioesDaCidade
-      .map(obterAgendaRegiao)
-      .filter((agenda): agenda is NonNullable<typeof agenda> =>
-        Boolean(agenda),
-      );
-    const porCalendario = new Map(
-      agendas.map((agenda) => [
-        `${agenda.diasDaSemana.join(",")}:${agenda.horarioCorte}`,
-        agenda,
-      ]),
-    );
-
-    if (agendas.length !== regioesDaCidade.length || porCalendario.size !== 1) {
-      return null;
-    }
-    const agenda = [...porCalendario.values()][0]!;
-    return agendas.length === 1
-      ? agenda
-      : {
-          ...agenda,
-          origem: `Regiões de ${cidade.name}`,
-          configuracaoHref: "/admin/logistics/entrega-propria/regioes",
-        };
-  };
-
-  const obterAgendaCep = (cep: (typeof ceps)[number]) => {
-    const regiao = regioes.find(
-      (item) =>
-        item.isActive &&
-        normalizarLocalidade(item.city) === normalizarLocalidade(cep.city) &&
-        item.state === cep.state &&
-        item.cepRanges.some(
-          (faixa) =>
-            faixa.isActive &&
-            faixa.cepStart <= cep.cep &&
-            faixa.cepEnd >= cep.cep,
-        ),
-    );
-    return regiao ? obterAgendaRegiao(regiao) : null;
-  };
-
-  return [
-    ...cidades.map((cidade) => ({
-      type: "cidade" as const,
-      id: cidade.id,
-      label: cidade.name,
-      city: cidade.name,
-      state: cidade.stateUf,
-      configuracaoLogisticaHref: "/admin/logistics/entrega-propria/cidades",
-      agendaEntrega: obterAgendaCidade(cidade),
+  return montarDestinosEntregaPropria({
+    cidades,
+    regioes,
+    bairros,
+    ceps: ceps.map((cep) => ({
+      ...cep,
+      bairroEnderecoCadastrado: bairroPorCep.get(cep.cep) ?? null,
     })),
-    ...regioes.map((regiao) => ({
-      type: "region" as const,
-      id: regiao.id,
-      label: regiao.name,
-      city: regiao.city,
-      state: regiao.state,
-      configuracaoLogisticaHref: `/admin/logistics/entrega-propria/regioes/${regiao.id}`,
-      agendaEntrega: obterAgendaRegiao(regiao),
-    })),
-    ...bairros.map((bairro) => ({
-      type: "bairro-avulso" as const,
-      id: bairro.id,
-      label: bairro.neighborhood,
-      city: bairro.city,
-      state: bairro.state,
-      configuracaoLogisticaHref: "/admin/logistics/entrega-propria/regioes",
-      agendaEntrega: null,
-    })),
-    ...ceps.map((cep) => {
-      const agendaEntrega = obterAgendaCep(cep);
-      return {
-        type: "cep-especifico" as const,
-        id: cep.id,
-        label: `${cep.cep.slice(0, 5)}-${cep.cep.slice(5)} - ${cep.neighborhood}`,
-        city: cep.city,
-        state: cep.state,
-        configuracaoLogisticaHref:
-          agendaEntrega?.configuracaoHref ??
-          "/admin/logistics/entrega-propria/regioes",
-        agendaEntrega,
-      };
-    }),
-  ];
+    agendas,
+  });
 }
 
 export async function listarPrecosEntregaPropriaProduto(
   productId: string,
 ): Promise<EntregaPropriaPrecoProduto[]> {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.VISUALIZAR);
-  const resultadoColunaCidade = await db.execute<{ existe: boolean }>(sql`
-    SELECT EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'product_own_delivery_prices'
-        AND column_name = 'city_id'
-    ) AS existe
-  `);
-  const possuiColunaCidade = Boolean(resultadoColunaCidade.rows[0]?.existe);
-
-  // Durante uma implantação gradual, o admin continua lendo região, bairro e
-  // CEP mesmo antes da migration aditiva de cidade chegar ao banco.
-  const precos = possuiColunaCidade
-    ? await db.query.productOwnDeliveryPrices.findMany({
-        where: eq(productOwnDeliveryPrices.productId, productId),
-        orderBy: (productOwnDeliveryPrices, { asc }) => [
-          asc(productOwnDeliveryPrices.destinationType),
-          asc(productOwnDeliveryPrices.id),
-        ],
-        with: {
-          region: true,
-          bairroAvulso: true,
-          cepEspecifico: true,
-          cidade: true,
-        },
-      })
-    : (
-        await db.query.productOwnDeliveryPrices.findMany({
-          columns: { cityId: false },
-          where: eq(productOwnDeliveryPrices.productId, productId),
-          orderBy: (productOwnDeliveryPrices, { asc }) => [
-            asc(productOwnDeliveryPrices.destinationType),
-            asc(productOwnDeliveryPrices.id),
-          ],
-          with: {
-            region: true,
-            bairroAvulso: true,
-            cepEspecifico: true,
-          },
-        })
-      ).map((preco) => ({
-        ...preco,
-        cityId: null,
-        cidade: null,
-      }));
+  const precos = await db.query.productOwnDeliveryPrices.findMany({
+    where: eq(productOwnDeliveryPrices.productId, productId),
+    orderBy: (productOwnDeliveryPrices, { asc }) => [
+      asc(productOwnDeliveryPrices.destinationType),
+      asc(productOwnDeliveryPrices.id),
+    ],
+    with: {
+      region: true,
+      bairro: { with: { cidade: true } },
+      cepEspecifico: true,
+      cidade: true,
+    },
+  });
 
   return precos.map((preco) => {
     const cidadeRelacionada = preco.cidade;
@@ -728,8 +575,9 @@ export async function listarPrecosEntregaPropriaProduto(
     const destino =
       preco.destinationType === "region"
         ? preco.region
-        : preco.destinationType === "bairro-avulso"
-          ? preco.bairroAvulso
+        : preco.destinationType === "bairro" ||
+            preco.destinationType === "bairro-avulso"
+          ? preco.bairro
           : preco.destinationType === "cidade"
             ? cidadeRelacionada
             : preco.cepEspecifico;
@@ -737,39 +585,50 @@ export async function listarPrecosEntregaPropriaProduto(
     const destinationId =
       preco.destinationType === "region"
         ? preco.regionId
-        : preco.destinationType === "bairro-avulso"
-          ? preco.bairroAvulsoId
+        : preco.destinationType === "bairro" ||
+            preco.destinationType === "bairro-avulso"
+          ? preco.bairroId
           : preco.destinationType === "cidade"
             ? cidadeId
             : preco.cepEspecificoId;
 
     return {
       id: preco.id,
-      destinationType: preco.destinationType as
-        | "region"
-        | "bairro-avulso"
-        | "cep-especifico"
-        | "cidade",
+      destinationType:
+        preco.destinationType === "bairro-avulso"
+          ? "bairro"
+          : (preco.destinationType as
+              | "region"
+              | "bairro"
+              | "cep-especifico"
+              | "cidade"),
       destinationId: destinationId ?? 0,
       destinationLabel:
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.name
           : preco.destinationType === "cep-especifico" && preco.cepEspecifico
             ? `${preco.cepEspecifico.cep.slice(0, 5)}-${preco.cepEspecifico.cep.slice(5)} - ${preco.cepEspecifico.neighborhood}`
-            : (destino as { name?: string; neighborhood?: string } | null)
-                ?.name ||
-              (destino as { name?: string; neighborhood?: string } | null)
-                ?.neighborhood ||
+            : (destino as { name?: string; nome?: string } | null)?.name ||
+              (destino as { name?: string; nome?: string } | null)?.nome ||
               "Destino removido",
       city:
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.name
-          : (destino as { city?: string } | null)?.city || "",
+          : (preco.destinationType === "bairro" ||
+                preco.destinationType === "bairro-avulso") &&
+              preco.bairro
+            ? preco.bairro.cidade.name
+            : (destino as { city?: string } | null)?.city || "",
       state:
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.stateUf
-          : (destino as { state?: string } | null)?.state || "",
+          : (preco.destinationType === "bairro" ||
+                preco.destinationType === "bairro-avulso") &&
+              preco.bairro
+            ? preco.bairro.cidade.stateUf
+            : (destino as { state?: string } | null)?.state || "",
       shippingPrice: preco.shippingPrice,
+      rapidDeliveryActive: preco.rapidDeliveryActive,
       deliveryDeadline: preco.deliveryDeadline,
       scheduledDeliveryActive: preco.scheduledDeliveryActive,
       scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,

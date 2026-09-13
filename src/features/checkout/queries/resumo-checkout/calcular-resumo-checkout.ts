@@ -14,7 +14,6 @@ import { resolverOrigemExpedicaoProduto } from "@/features/logistica/lib/grupos-
 import { obterCepOrigemLaquila } from "@/features/logistica/lib/origens/obter-cep-origem-laquila";
 import { obterConfiguracaoFrenet } from "@/features/logistica/lib/provedores/frenet/obter-configuracao-frenet";
 import { resolverItemLogistico } from "@/features/logistica/lib/resolver-item-logistico";
-import { buscarRetiradaPoliticaEntregaPropria } from "@/features/logistica/queries/buscar-politica-entrega-propria";
 import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/disponibilidade/buscar-disponibilidade-frete-produto";
 import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import type { ItemLogistico } from "@/features/logistica/types/contratos-frete";
@@ -148,20 +147,6 @@ export async function calcularResumoCheckout({
   const diagnosticosLogisticosPorProdutoId = new Map(
     diagnosticosLogisticos.map((produto) => [produto.id, produto.diagnostico]),
   );
-  const retiradasPolitica = await Promise.all(
-    produtos.map(
-      async (produto) =>
-        [
-          produto.id,
-          await buscarRetiradaPoliticaEntregaPropria({
-            produtoId: produto.id,
-            categoriaId: produto.categoryId,
-          }),
-        ] as const,
-    ),
-  );
-  const retiradasPoliticaPorProdutoId = new Map(retiradasPolitica);
-
   const itensCalculados = itens.map((item) => {
     const produto = produtos.find(
       (produtoAtual) => produtoAtual.id === item.produtoId,
@@ -429,15 +414,9 @@ export async function calcularResumoCheckout({
                       (atual) => atual.id === item.produtoId,
                     );
                     if (!produto) return null;
-                    const politica = retiradasPoliticaPorProdutoId.get(
-                      produto.id,
-                    );
-                    const permiteRetirada = politica
-                      ? politica.permiteRetirada
-                      : produto.allowsPickup;
-                    const modelo =
-                      politica?.modeloRetirada ?? produto.modeloRetirada;
-                    return permiteRetirada && modelo?.ativo ? modelo : null;
+                    return produto.allowsPickup && produto.modeloRetirada?.ativo
+                      ? produto.modeloRetirada
+                      : null;
                   });
                   if (modelos.some((modelo) => !modelo)) return [];
                   const primeiro = modelos[0];

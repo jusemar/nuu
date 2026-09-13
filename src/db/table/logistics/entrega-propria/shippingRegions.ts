@@ -12,17 +12,19 @@
  * [1] CEP específico → [2] Bairro em Região → [3] Bairro Avulso → [4] Não atendemos
  */
 
-import {
-  pgTable,
-  varchar,
-  boolean,
-  timestamp,
-  serial,
-  integer,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import {
+  boolean,
+  integer,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
+
+import { cities } from "../cities/cities";
 
 /**
  * TABELA 1: REGIÕES DE ENTREGA
@@ -45,6 +47,13 @@ export const shippingRegions = pgTable("shipping_regions", {
 
   /** Cidade atendida por esta região */
   city: varchar("city", { length: 100 }).notNull(),
+
+  /** Vínculo canônico da cidade; `city` permanece durante o rollout legado. */
+  cityId: integer("city_id")
+    .references(() => cities.id, {
+      onDelete: "restrict",
+    })
+    .notNull(),
 
   /** Estado (UF) da região */
   state: varchar("state", { length: 2 }).notNull(),

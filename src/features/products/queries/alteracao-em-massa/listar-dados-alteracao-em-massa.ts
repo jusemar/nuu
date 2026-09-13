@@ -344,15 +344,19 @@ export async function listarDadosAlteracaoEmMassa(
               entregasPorProduto.get(produto.id) ?? []
             ).map((preco) => ({
               id: preco.id,
-              tipoDestino: preco.tipoDestino as
-                | "region"
-                | "bairro-avulso"
-                | "cep-especifico"
-                | "cidade",
+              tipoDestino:
+                preco.tipoDestino === "bairro-avulso"
+                  ? "bairro"
+                  : (preco.tipoDestino as
+                      | "region"
+                      | "bairro"
+                      | "cep-especifico"
+                      | "cidade"),
               destino:
                 preco.tipoDestino === "region"
                   ? `Região · regra #${preco.id}`
-                  : preco.tipoDestino === "bairro-avulso"
+                  : preco.tipoDestino === "bairro" ||
+                      preco.tipoDestino === "bairro-avulso"
                     ? `Bairro · regra #${preco.id}`
                     : preco.tipoDestino === "cep-especifico"
                       ? `CEP · regra #${preco.id}`

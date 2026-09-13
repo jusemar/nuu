@@ -4,7 +4,7 @@ import { and, asc, desc, eq, gte, ilike, lte } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
-  bairrosAvulsos,
+  bairrosEntregaPropria,
   cepsEspecificos,
   shippingRegionCepRanges,
   shippingZipAddresses,
@@ -75,9 +75,13 @@ export async function listarAlvosMatrizFreteMerchant(maximoAlvos: number) {
       with: { region: true },
       orderBy: [asc(shippingRegionCepRanges.cepStart)],
     }),
-    db.query.bairrosAvulsos.findMany({
-      where: eq(bairrosAvulsos.isActive, true),
-      orderBy: [asc(bairrosAvulsos.state), asc(bairrosAvulsos.city)],
+    db.query.bairrosEntregaPropria.findMany({
+      where: eq(bairrosEntregaPropria.ativo, true),
+      orderBy: [
+        asc(bairrosEntregaPropria.cidadeId),
+        asc(bairrosEntregaPropria.nome),
+      ],
+      with: { cidade: true },
     }),
     db.query.cepsEspecificos.findMany({
       where: eq(cepsEspecificos.isActive, true),
@@ -113,16 +117,16 @@ export async function listarAlvosMatrizFreteMerchant(maximoAlvos: number) {
     if (alvos.length >= maximoAlvos) break;
     const endereco = await db.query.shippingZipAddresses.findFirst({
       where: and(
-        ilike(shippingZipAddresses.neighborhood, bairro.neighborhood),
-        ilike(shippingZipAddresses.city, bairro.city),
-        eq(shippingZipAddresses.state, bairro.state),
+        ilike(shippingZipAddresses.neighborhood, bairro.nome),
+        ilike(shippingZipAddresses.city, bairro.cidade.name),
+        eq(shippingZipAddresses.state, bairro.cidade.stateUf),
       ),
       orderBy: [asc(shippingZipAddresses.cep)],
     });
     alvos.push({
-      id: `bairro-avulso:${bairro.id}`,
-      tipo: "bairro-avulso",
-      nome: `${bairro.neighborhood}, ${bairro.city}/${bairro.state}`,
+      id: `bairro:${bairro.id}`,
+      tipo: "bairro",
+      nome: `${bairro.nome}, ${bairro.cidade.name}/${bairro.cidade.stateUf}`,
       amostras: endereco ? [mapearEndereco(endereco)] : [],
       ...(!endereco
         ? { motivoSemAmostra: "Bairro sem endereço no cadastro local de CEPs." }

@@ -73,7 +73,7 @@ describe("matriz de frete Merchant", () => {
       alvos: [
         {
           id: "sem-amostra",
-          tipo: "bairro-avulso",
+          tipo: "bairro",
           nome: "Sem amostra",
           amostras: [],
           motivoSemAmostra: "CEP ausente",

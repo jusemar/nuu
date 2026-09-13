@@ -5,6 +5,7 @@ import {
   criarChaveDestinoEntregaPropria,
   type DestinoPesquisavelEntregaPropria,
   filtrarDestinosEntregaPropria,
+  formatarDiasEntregaPropria,
 } from "./pesquisar-destinos-entrega-propria";
 
 const destinos: DestinoPesquisavelEntregaPropria[] = [
@@ -101,5 +102,13 @@ describe("pesquisa de destinos da Entrega Propria", () => {
       criarChaveDestinoEntregaPropria(destinos[4]!),
       "cep-especifico:20",
     );
+  });
+
+  it("formata dias configurados sem duplicar ou inventar valores", () => {
+    assert.equal(
+      formatarDiasEntregaPropria([5, 1, 3, 3]),
+      "Segunda, Quarta, Sexta",
+    );
+    assert.equal(formatarDiasEntregaPropria([-1, 7]), "");
   });
 });

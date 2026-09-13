@@ -6,7 +6,6 @@ import { db } from "@/db/connection";
 import { cities } from "@/db/table/logistics/cities/cities";
 import {
   bairrosAvulsos,
-  cepsEspecificos,
   productOwnDeliveryPrices,
   regioBairros,
   shippingPendingNeighborhoods,
@@ -108,6 +107,13 @@ export type EntregaPropriaDestinoProduto = {
   label: string;
   city: string;
   state: string;
+  configuracaoLogisticaHref: string | null;
+  agendaEntrega: {
+    diasDaSemana: number[];
+    horarioCorte: string;
+    origem: string;
+    configuracaoHref: string;
+  } | null;
 };
 
 export type EntregaPropriaPrecoProduto = {
@@ -524,6 +530,7 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
         asc(shippingRegions.city),
         asc(shippingRegions.name),
       ],
+      with: { slots: true, cepRanges: true },
     }),
     db.query.bairrosAvulsos.findMany({
       orderBy: (bairrosAvulsos, { asc }) => [
@@ -541,6 +548,84 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
     }),
   ]);
 
+  const obterAgendaRegiao = (regiao: (typeof regioes)[number]) => {
+    const diasDaSemana = [
+      ...new Set(
+        regiao.slots
+          .filter((slot) => slot.isActive)
+          .map((slot) => slot.dayOfWeek),
+      ),
+    ].sort((a, b) => a - b);
+
+    if (
+      !regiao.isActive ||
+      !regiao.agendaAtiva ||
+      !regiao.horarioCorte ||
+      diasDaSemana.length === 0
+    ) {
+      return null;
+    }
+
+    return {
+      diasDaSemana,
+      horarioCorte: regiao.horarioCorte,
+      origem: regiao.name,
+      configuracaoHref: `/admin/logistics/entrega-propria/regioes/${regiao.id}`,
+    };
+  };
+
+  const normalizarLocalidade = (valor: string) =>
+    valor.trim().toLocaleLowerCase("pt-BR");
+
+  const obterAgendaCidade = (cidade: (typeof cidades)[number]) => {
+    const regioesDaCidade = regioes.filter(
+      (regiao) =>
+        regiao.isActive &&
+        normalizarLocalidade(regiao.city) ===
+          normalizarLocalidade(cidade.name) &&
+        regiao.state === cidade.stateUf,
+    );
+    const agendas = regioesDaCidade
+      .map(obterAgendaRegiao)
+      .filter((agenda): agenda is NonNullable<typeof agenda> =>
+        Boolean(agenda),
+      );
+    const porCalendario = new Map(
+      agendas.map((agenda) => [
+        `${agenda.diasDaSemana.join(",")}:${agenda.horarioCorte}`,
+        agenda,
+      ]),
+    );
+
+    if (agendas.length !== regioesDaCidade.length || porCalendario.size !== 1) {
+      return null;
+    }
+    const agenda = [...porCalendario.values()][0]!;
+    return agendas.length === 1
+      ? agenda
+      : {
+          ...agenda,
+          origem: `Regiões de ${cidade.name}`,
+          configuracaoHref: "/admin/logistics/entrega-propria/regioes",
+        };
+  };
+
+  const obterAgendaCep = (cep: (typeof ceps)[number]) => {
+    const regiao = regioes.find(
+      (item) =>
+        item.isActive &&
+        normalizarLocalidade(item.city) === normalizarLocalidade(cep.city) &&
+        item.state === cep.state &&
+        item.cepRanges.some(
+          (faixa) =>
+            faixa.isActive &&
+            faixa.cepStart <= cep.cep &&
+            faixa.cepEnd >= cep.cep,
+        ),
+    );
+    return regiao ? obterAgendaRegiao(regiao) : null;
+  };
+
   return [
     ...cidades.map((cidade) => ({
       type: "cidade" as const,
@@ -548,6 +633,8 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
       label: cidade.name,
       city: cidade.name,
       state: cidade.stateUf,
+      configuracaoLogisticaHref: "/admin/logistics/entrega-propria/cidades",
+      agendaEntrega: obterAgendaCidade(cidade),
     })),
     ...regioes.map((regiao) => ({
       type: "region" as const,
@@ -555,6 +642,8 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
       label: regiao.name,
       city: regiao.city,
       state: regiao.state,
+      configuracaoLogisticaHref: `/admin/logistics/entrega-propria/regioes/${regiao.id}`,
+      agendaEntrega: obterAgendaRegiao(regiao),
     })),
     ...bairros.map((bairro) => ({
       type: "bairro-avulso" as const,
@@ -562,14 +651,23 @@ export async function listarDestinosEntregaPropriaProduto(): Promise<
       label: bairro.neighborhood,
       city: bairro.city,
       state: bairro.state,
+      configuracaoLogisticaHref: "/admin/logistics/entrega-propria/regioes",
+      agendaEntrega: null,
     })),
-    ...ceps.map((cep) => ({
-      type: "cep-especifico" as const,
-      id: cep.id,
-      label: `${cep.cep.slice(0, 5)}-${cep.cep.slice(5)} - ${cep.neighborhood}`,
-      city: cep.city,
-      state: cep.state,
-    })),
+    ...ceps.map((cep) => {
+      const agendaEntrega = obterAgendaCep(cep);
+      return {
+        type: "cep-especifico" as const,
+        id: cep.id,
+        label: `${cep.cep.slice(0, 5)}-${cep.cep.slice(5)} - ${cep.neighborhood}`,
+        city: cep.city,
+        state: cep.state,
+        configuracaoLogisticaHref:
+          agendaEntrega?.configuracaoHref ??
+          "/admin/logistics/entrega-propria/regioes",
+        agendaEntrega,
+      };
+    }),
   ];
 }
 

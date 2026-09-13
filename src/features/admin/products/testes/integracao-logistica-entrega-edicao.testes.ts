@@ -28,6 +28,10 @@ describe("integração logística na edição de produto", () => {
     process.cwd(),
     "src/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto.ts",
   );
+  const caminhoPrecosEntregaPropria = join(
+    process.cwd(),
+    "src/features/admin/logistics/entrega-propria/components/admin/produto-entrega-propria-precos.tsx",
+  );
 
   it("reutiliza o mesmo componente EntregaTab na edição", () => {
     const conteudo = readFileSync(caminhoEdicao, "utf-8");
@@ -117,9 +121,7 @@ describe("integração logística na edição de produto", () => {
       true,
     );
     assert.equal(
-      conteudoIdentificacao.includes(
-        "listarProvedoresExpedicaoProdutos",
-      ),
+      conteudoIdentificacao.includes("listarProvedoresExpedicaoProdutos"),
       true,
     );
     assert.equal(
@@ -170,6 +172,20 @@ describe("integração logística na edição de produto", () => {
       ),
       false,
     );
+  });
+
+  it("exibe a agenda herdada como leitura e mantém os preços editáveis", () => {
+    const conteudo = readFileSync(caminhoPrecosEntregaPropria, "utf-8");
+
+    assert.equal(conteudo.includes("Dias de entrega:"), true);
+    assert.equal(conteudo.includes("Horário de corte:"), true);
+    assert.equal(
+      conteudo.includes("Agenda de entrega não configurada para este destino."),
+      true,
+    );
+    assert.equal(conteudo.includes("Ver configuração da logística"), true);
+    assert.equal(conteudo.includes("handlePriceChange"), true);
+    assert.equal(conteudo.includes("handleProgramadaChange"), true);
   });
 
   it("consulta e exibe transportadoras somente no ramo Laquila", () => {

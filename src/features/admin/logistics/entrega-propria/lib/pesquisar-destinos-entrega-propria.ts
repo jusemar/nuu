@@ -15,6 +15,24 @@ const ROTULOS_TIPO_DESTINO: Record<OwnDeliveryDestinationType, string> = {
   cidade: "Cidade",
 };
 
+const NOMES_DIAS_ENTREGA = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
+
+export function formatarDiasEntregaPropria(dias: number[]) {
+  return [...new Set(dias)]
+    .filter((dia) => Number.isInteger(dia) && dia >= 0 && dia <= 6)
+    .sort((a, b) => a - b)
+    .map((dia) => NOMES_DIAS_ENTREGA[dia])
+    .join(", ");
+}
+
 /** Mantém a chave técnica usada pelo formulário, sem persistir o texto buscado. */
 export function criarChaveDestinoEntregaPropria(
   destino: Pick<DestinoPesquisavelEntregaPropria, "type" | "id">,

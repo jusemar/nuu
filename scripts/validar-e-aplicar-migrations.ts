@@ -12,6 +12,7 @@ import {
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
   validarDeltaSnapshotAmbientesLaquila,
+  validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
   validarDeltaSnapshotIntegridadeEntregaPropria,
@@ -583,6 +584,10 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
     validarSnapshotPreparacaoColunasLegadasEntregaPropria(
       JSON.parse(readFileSync("drizzle/meta/0049_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0050_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotColunasLegadasEntregaPropria(
+      JSON.parse(readFileSync("drizzle/meta/0050_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0051_snapshot.json", "utf8")),
     );
   } catch {
     throw new ErroFluxoMigration(

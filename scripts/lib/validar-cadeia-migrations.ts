@@ -1,9 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 51,
-  ultimoIndice: 50,
-  ultimaTag: "0050_prepara_remocao_colunas_legadas_entrega_propria",
-  ultimoArquivo:
-    "drizzle/0050_prepara_remocao_colunas_legadas_entrega_propria.sql",
+  total: 52,
+  ultimoIndice: 51,
+  ultimaTag: "0051_remove_colunas_legadas_entrega_propria",
+  ultimoArquivo: "drizzle/0051_remove_colunas_legadas_entrega_propria.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -467,6 +466,29 @@ export function validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria(
     snapshotAtual,
     new Set(["public.product_own_delivery_prices"]),
     "do vínculo de bairro avulso",
+  );
+}
+
+/**
+ * 0051 remove somente as sete colunas legadas de três tabelas da Entrega
+ * Própria, após o deploy que deixou de declará-las no Drizzle.
+ */
+export function validarDeltaSnapshotColunasLegadasEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0050 e 0051 não estão encadeados.");
+  }
+  exigirSomenteAlteracoes(
+    snapshotAnterior,
+    snapshotAtual,
+    new Set([
+      "public.ceps_especificos",
+      "public.product_own_delivery_prices",
+      "public.shipping_regions",
+    ]),
+    "das colunas legadas",
   );
 }
 

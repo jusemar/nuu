@@ -8,6 +8,7 @@ import {
   type MigrationLocalValidacao,
   type SnapshotDrizzle,
   validarDeltaSnapshotAmbientesLaquila,
+  validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
   validarDeltaSnapshotIntegridadeEntregaPropria,
@@ -80,6 +81,7 @@ test("limpeza da Entrega Própria remove somente o legado revisado", () => {
   const snapshot48 = lerSnapshot("0048");
   const snapshot49 = lerSnapshot("0049");
   const snapshot50 = lerSnapshot("0050");
+  const snapshot51 = lerSnapshot("0051");
 
   assert.doesNotThrow(() =>
     validarSnapshotVerificacaoLimpezaEntregaPropria(snapshot46, snapshot47),
@@ -108,6 +110,48 @@ test("limpeza da Entrega Própria remove somente o legado revisado", () => {
   assert.doesNotThrow(() =>
     validarDeltaSnapshotTabelasLegadasEntregaPropria(snapshot48, snapshot49),
   );
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotColunasLegadasEntregaPropria(snapshot50, snapshot51),
+  );
+
+  // As sete colunas legadas não existem mais no snapshot final.
+  const colunas = (tabela: string) =>
+    Object.keys(
+      (snapshot51.tables[tabela] as { columns: Record<string, unknown> })
+        .columns,
+    );
+  for (const coluna of [
+    "base_shipping_price",
+    "agenda_ativa",
+    "horario_corte",
+    "periodo_entrega_inicio",
+    "periodo_entrega_fim",
+  ]) {
+    assert.equal(colunas("public.shipping_regions").includes(coluna), false);
+  }
+  assert.equal(
+    colunas("public.ceps_especificos").includes("shipping_price"),
+    false,
+  );
+  assert.equal(
+    colunas("public.product_own_delivery_prices").includes("bairro_avulso_id"),
+    false,
+  );
+  // O preço ativo do Produto permanece.
+  assert.equal(
+    colunas("public.product_own_delivery_prices").includes("shipping_price"),
+    true,
+  );
+
+  // A remoção de colunas não pode tocar outras tabelas.
+  const colunasAdulteradas = structuredClone(snapshot51);
+  colunasAdulteradas.tables["public.product"] = { alteracaoIndevida: true };
+  assert.throws(() =>
+    validarDeltaSnapshotColunasLegadasEntregaPropria(
+      snapshot50,
+      colunasAdulteradas,
+    ),
+  );
 
   // As estruturas do motor único continuam no snapshot final.
   for (const tabela of [
@@ -118,7 +162,7 @@ test("limpeza da Entrega Própria remove somente o legado revisado", () => {
     "public.ceps_especificos",
     "public.shipping_pending_neighborhoods",
   ]) {
-    assert.ok(tabela in snapshot49.tables, tabela);
+    assert.ok(tabela in snapshot51.tables, tabela);
   }
 
   // Remover uma tabela ativa junto com o legado precisa ser recusado.

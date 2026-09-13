@@ -97,7 +97,6 @@ export async function criarRegiaoEntregaPropria(data: {
       city: cidade,
       cityId: cidadeCanonica.id,
       state: uf,
-      baseShippingPrice: 0,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -559,7 +558,6 @@ function montarDestinoPrecoProduto(
     productId,
     destinationType: item.destinationType,
     regionId: item.destinationType === "region" ? item.destinationId : null,
-    bairroAvulsoId: null,
     bairroId: item.destinationType === "bairro" ? item.destinationId : null,
     cepEspecificoId:
       item.destinationType === "cep-especifico" ? item.destinationId : null,

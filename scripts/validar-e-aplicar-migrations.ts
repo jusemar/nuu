@@ -18,10 +18,14 @@ import {
   validarDeltaSnapshotPoliticasEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
+  validarDeltaSnapshotTabelasLegadasEntregaPropria,
+  validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria,
   validarHistoricoAplicado,
   validarIdentidadeBanco,
   validarSequenciaLocal,
   validarSnapshotMigracaoDadosEntregaPropria,
+  validarSnapshotPreparacaoColunasLegadasEntregaPropria,
+  validarSnapshotVerificacaoLimpezaEntregaPropria,
 } from "./lib/validar-cadeia-migrations";
 import { validarEstruturaPaginasDinamicas } from "./lib/validar-estrutura-paginas-dinamicas";
 
@@ -563,6 +567,22 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
     validarDeltaSnapshotIntegridadeEntregaPropria(
       JSON.parse(readFileSync("drizzle/meta/0045_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0046_snapshot.json", "utf8")),
+    );
+    validarSnapshotVerificacaoLimpezaEntregaPropria(
+      JSON.parse(readFileSync("drizzle/meta/0046_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0047_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria(
+      JSON.parse(readFileSync("drizzle/meta/0047_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0048_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotTabelasLegadasEntregaPropria(
+      JSON.parse(readFileSync("drizzle/meta/0048_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0049_snapshot.json", "utf8")),
+    );
+    validarSnapshotPreparacaoColunasLegadasEntregaPropria(
+      JSON.parse(readFileSync("drizzle/meta/0049_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0050_snapshot.json", "utf8")),
     );
   } catch {
     throw new ErroFluxoMigration(

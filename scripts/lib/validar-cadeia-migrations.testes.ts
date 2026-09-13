@@ -13,10 +13,14 @@ import {
   validarDeltaSnapshotIntegridadeEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
+  validarDeltaSnapshotTabelasLegadasEntregaPropria,
+  validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria,
   validarHistoricoAplicado,
   validarIdentidadeBanco,
   validarSequenciaLocal,
   validarSnapshotMigracaoDadosEntregaPropria,
+  validarSnapshotPreparacaoColunasLegadasEntregaPropria,
+  validarSnapshotVerificacaoLimpezaEntregaPropria,
 } from "./validar-cadeia-migrations";
 
 function cadeiaValida() {
@@ -67,6 +71,79 @@ test("restringe a consolidação da Entrega Própria aos deltas revisados", () =
   adulterado.tables["public.product"] = { alteracaoIndevida: true };
   assert.throws(() =>
     validarDeltaSnapshotIntegridadeEntregaPropria(snapshot45, adulterado),
+  );
+});
+
+test("limpeza da Entrega Própria remove somente o legado revisado", () => {
+  const snapshot46 = lerSnapshot("0046");
+  const snapshot47 = lerSnapshot("0047");
+  const snapshot48 = lerSnapshot("0048");
+  const snapshot49 = lerSnapshot("0049");
+  const snapshot50 = lerSnapshot("0050");
+
+  assert.doesNotThrow(() =>
+    validarSnapshotVerificacaoLimpezaEntregaPropria(snapshot46, snapshot47),
+  );
+  assert.doesNotThrow(() =>
+    validarSnapshotPreparacaoColunasLegadasEntregaPropria(
+      snapshot49,
+      snapshot50,
+    ),
+  );
+  // 0050 é custom: qualquer alteração de schema no snapshot é recusada.
+  const preparacaoAdulterada = structuredClone(snapshot50);
+  delete preparacaoAdulterada.tables["public.shipping_regions"];
+  assert.throws(() =>
+    validarSnapshotPreparacaoColunasLegadasEntregaPropria(
+      snapshot49,
+      preparacaoAdulterada,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria(
+      snapshot47,
+      snapshot48,
+    ),
+  );
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotTabelasLegadasEntregaPropria(snapshot48, snapshot49),
+  );
+
+  // As estruturas do motor único continuam no snapshot final.
+  for (const tabela of [
+    "public.agendas_geograficas_entrega_propria",
+    "public.bairros_entrega_propria",
+    "public.product_own_delivery_prices",
+    "public.shipping_regions",
+    "public.ceps_especificos",
+    "public.shipping_pending_neighborhoods",
+  ]) {
+    assert.ok(tabela in snapshot49.tables, tabela);
+  }
+
+  // Remover uma tabela ativa junto com o legado precisa ser recusado.
+  const semAgenda = structuredClone(snapshot49);
+  delete semAgenda.tables["public.agendas_geograficas_entrega_propria"];
+  assert.throws(() =>
+    validarDeltaSnapshotTabelasLegadasEntregaPropria(snapshot48, semAgenda),
+  );
+
+  // 0048 só pode alterar a tabela de preços; qualquer outra tabela é recusada.
+  const adulterado = structuredClone(snapshot48);
+  adulterado.tables["public.product"] = { alteracaoIndevida: true };
+  assert.throws(() =>
+    validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria(
+      snapshot47,
+      adulterado,
+    ),
+  );
+
+  // 0048 não pode antecipar a remoção das tabelas legadas.
+  assert.throws(() =>
+    validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria(
+      snapshot47,
+      snapshot49,
+    ),
   );
 });
 

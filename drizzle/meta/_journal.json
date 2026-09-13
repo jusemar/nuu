@@ -330,6 +330,34 @@
       "when": 1789305084016,
       "tag": "0046_valida_integridade_entrega_propria",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1789314755562,
+      "tag": "0047_verifica_limpeza_entrega_propria",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1789314758397,
+      "tag": "0048_remove_vinculo_bairro_avulso_entrega_propria",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1789314792811,
+      "tag": "0049_remove_tabelas_legadas_entrega_propria",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789316481620,
+      "tag": "0050_prepara_remocao_colunas_legadas_entrega_propria",
+      "breakpoints": true
     }
   ]
 }

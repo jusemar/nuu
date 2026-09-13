@@ -718,7 +718,6 @@ async function main() {
         city: seed.city,
         cityId,
         state: TARGET_STATE,
-        baseShippingPrice: 0,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),

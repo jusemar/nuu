@@ -24,25 +24,12 @@ export {
   productOwnDeliveryPricesRelations,
 } from "./productOwnDeliveryPrices";
 export {
-  type BairroAvulso,
-  bairrosAvulsos,
-  bairrosAvulsosRelations,
   type CepEspecifico,
   cepsEspecificos,
-  type NewBairroAvulso,
   type NewCepEspecifico,
-  type NewRegioBairro,
-  type NewShippingBairroAvulsoSlot,
   type NewShippingPendingNeighborhood,
   type NewShippingRegion,
   type NewShippingRegionCepRange,
-  type NewShippingRegionSlot,
-  type RegioBairro,
-  regioBairros,
-  regioBairrosRelations,
-  type ShippingBairroAvulsoSlot,
-  shippingBairroAvulsoSlots,
-  shippingBairroAvulsoSlotsRelations,
   type ShippingPendingNeighborhood,
   shippingPendingNeighborhoods,
   // Tipos
@@ -51,9 +38,6 @@ export {
   shippingRegionCepRanges,
   shippingRegionCepRangesRelations,
   shippingRegions,
-  type ShippingRegionSlot,
-  shippingRegionSlots,
-  shippingRegionSlotsRelations,
   // Relações
   shippingRegionsRelations,
 } from "./shippingRegions";

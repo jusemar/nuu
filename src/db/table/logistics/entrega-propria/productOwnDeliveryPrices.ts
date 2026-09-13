@@ -15,11 +15,7 @@ import {
 import { productTable } from "../../products/products";
 import { cities } from "../cities/cities";
 import { bairrosEntregaPropria } from "./bairrosEntregaPropria";
-import {
-  bairrosAvulsos,
-  cepsEspecificos,
-  shippingRegions,
-} from "./shippingRegions";
+import { cepsEspecificos, shippingRegions } from "./shippingRegions";
 
 export const productOwnDeliveryPrices = pgTable(
   "product_own_delivery_prices",
@@ -28,15 +24,14 @@ export const productOwnDeliveryPrices = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => productTable.id, { onDelete: "cascade" }),
-    destinationType: varchar("destination_type", { length: 20 }).notNull(),
+    /** Nível do destino; espelha a hierarquia CEP > Bairro > Região > Cidade. */
+    destinationType: varchar("destination_type", { length: 20 })
+      .$type<"region" | "bairro" | "cep-especifico" | "cidade">()
+      .notNull(),
     regionId: integer("region_id").references(() => shippingRegions.id, {
       onDelete: "cascade",
     }),
-    bairroAvulsoId: integer("bairro_avulso_id").references(
-      () => bairrosAvulsos.id,
-      { onDelete: "cascade" },
-    ),
-    /** Bairro canônico. Substitui a distinção ambígua entre regional e avulso. */
+    /** Bairro canônico (`bairros_entrega_propria`). */
     bairroId: integer("bairro_id").references(() => bairrosEntregaPropria.id, {
       onDelete: "restrict",
     }),
@@ -44,7 +39,7 @@ export const productOwnDeliveryPrices = pgTable(
       () => cepsEspecificos.id,
       { onDelete: "cascade" },
     ),
-    /** Regra de preço para uma cidade já coberta pela logística. */
+    /** Preço para a cidade inteira (nível menos específico). */
     cityId: integer("city_id").references(() => cities.id, {
       onDelete: "cascade",
     }),
@@ -70,7 +65,7 @@ export const productOwnDeliveryPrices = pgTable(
       .where(sql`${table.destinationType} = 'region'`),
     uniqueIndex("product_own_delivery_prices_product_bairro_uidx")
       .on(table.productId, table.bairroId)
-      .where(sql`${table.destinationType} IN ('bairro', 'bairro-avulso')`),
+      .where(sql`${table.destinationType} = 'bairro'`),
     uniqueIndex("product_own_delivery_prices_product_cep_uidx")
       .on(table.productId, table.cepEspecificoId)
       .where(sql`${table.destinationType} = 'cep-especifico'`),
@@ -79,7 +74,7 @@ export const productOwnDeliveryPrices = pgTable(
       .where(sql`${table.destinationType} = 'cidade'`),
     check(
       "product_own_delivery_prices_destino_check",
-      sql`(${table.destinationType} = 'region' AND ${table.regionId} IS NOT NULL AND ${table.bairroId} IS NULL AND ${table.cepEspecificoId} IS NULL AND ${table.cityId} IS NULL) OR (${table.destinationType} IN ('bairro', 'bairro-avulso') AND ${table.regionId} IS NULL AND ${table.bairroId} IS NOT NULL AND ${table.cepEspecificoId} IS NULL AND ${table.cityId} IS NULL) OR (${table.destinationType} = 'cep-especifico' AND ${table.regionId} IS NULL AND ${table.bairroId} IS NULL AND ${table.cepEspecificoId} IS NOT NULL AND ${table.cityId} IS NULL) OR (${table.destinationType} = 'cidade' AND ${table.regionId} IS NULL AND ${table.bairroId} IS NULL AND ${table.cepEspecificoId} IS NULL AND ${table.cityId} IS NOT NULL)`,
+      sql`(${table.destinationType} = 'region' AND ${table.regionId} IS NOT NULL AND ${table.bairroId} IS NULL AND ${table.cepEspecificoId} IS NULL AND ${table.cityId} IS NULL) OR (${table.destinationType} = 'bairro' AND ${table.regionId} IS NULL AND ${table.bairroId} IS NOT NULL AND ${table.cepEspecificoId} IS NULL AND ${table.cityId} IS NULL) OR (${table.destinationType} = 'cep-especifico' AND ${table.regionId} IS NULL AND ${table.bairroId} IS NULL AND ${table.cepEspecificoId} IS NOT NULL AND ${table.cityId} IS NULL) OR (${table.destinationType} = 'cidade' AND ${table.regionId} IS NULL AND ${table.bairroId} IS NULL AND ${table.cepEspecificoId} IS NULL AND ${table.cityId} IS NOT NULL)`,
     ),
     check(
       "product_own_delivery_prices_valores_check",
@@ -98,10 +93,6 @@ export const productOwnDeliveryPricesRelations = relations(
     region: one(shippingRegions, {
       fields: [productOwnDeliveryPrices.regionId],
       references: [shippingRegions.id],
-    }),
-    bairroAvulso: one(bairrosAvulsos, {
-      fields: [productOwnDeliveryPrices.bairroAvulsoId],
-      references: [bairrosAvulsos.id],
     }),
     bairro: one(bairrosEntregaPropria, {
       fields: [productOwnDeliveryPrices.bairroId],

@@ -398,12 +398,8 @@ export async function duplicarProdutoAdmin(produtoId: string) {
             // O destino precisa ser copiado por inteiro: o CHECK de destino da
             // tabela exige exatamente uma referência (região, bairro canônico,
             // CEP ou cidade) coerente com o tipo informado.
-            destinationType:
-              preco.destinationType === "bairro-avulso"
-                ? "bairro"
-                : preco.destinationType,
+            destinationType: preco.destinationType,
             regionId: preco.regionId,
-            bairroAvulsoId: null,
             bairroId: preco.bairroId,
             cepEspecificoId: preco.cepEspecificoId,
             cityId: preco.cityId,

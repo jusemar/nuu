@@ -575,8 +575,7 @@ export async function listarPrecosEntregaPropriaProduto(
     const destino =
       preco.destinationType === "region"
         ? preco.region
-        : preco.destinationType === "bairro" ||
-            preco.destinationType === "bairro-avulso"
+        : preco.destinationType === "bairro"
           ? preco.bairro
           : preco.destinationType === "cidade"
             ? cidadeRelacionada
@@ -585,8 +584,7 @@ export async function listarPrecosEntregaPropriaProduto(
     const destinationId =
       preco.destinationType === "region"
         ? preco.regionId
-        : preco.destinationType === "bairro" ||
-            preco.destinationType === "bairro-avulso"
+        : preco.destinationType === "bairro"
           ? preco.bairroId
           : preco.destinationType === "cidade"
             ? cidadeId
@@ -594,14 +592,7 @@ export async function listarPrecosEntregaPropriaProduto(
 
     return {
       id: preco.id,
-      destinationType:
-        preco.destinationType === "bairro-avulso"
-          ? "bairro"
-          : (preco.destinationType as
-              | "region"
-              | "bairro"
-              | "cep-especifico"
-              | "cidade"),
+      destinationType: preco.destinationType,
       destinationId: destinationId ?? 0,
       destinationLabel:
         preco.destinationType === "cidade" && cidadeRelacionada
@@ -614,17 +605,13 @@ export async function listarPrecosEntregaPropriaProduto(
       city:
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.name
-          : (preco.destinationType === "bairro" ||
-                preco.destinationType === "bairro-avulso") &&
-              preco.bairro
+          : preco.destinationType === "bairro" && preco.bairro
             ? preco.bairro.cidade.name
             : (destino as { city?: string } | null)?.city || "",
       state:
         preco.destinationType === "cidade" && cidadeRelacionada
           ? cidadeRelacionada.stateUf
-          : (preco.destinationType === "bairro" ||
-                preco.destinationType === "bairro-avulso") &&
-              preco.bairro
+          : preco.destinationType === "bairro" && preco.bairro
             ? preco.bairro.cidade.stateUf
             : (destino as { state?: string } | null)?.state || "",
       shippingPrice: preco.shippingPrice,

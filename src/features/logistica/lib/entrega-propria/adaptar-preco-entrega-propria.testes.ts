@@ -38,14 +38,15 @@ test("traduz os quatro níveis físicos para a hierarquia canônica", () => {
   }
 });
 
-test("converte o marcador físico legado de bairro para o nível canônico", () => {
-  const resultado = adaptarPrecoEntregaPropriaParaHierarquia({
-    destinationType: "bairro-avulso",
-    bairroId: 9,
-  });
-
-  assert.equal(resultado.tipoDestino, "bairro");
-  assert.equal(resultado.bairroId, 9);
+test("rejeita o antigo marcador bairro-avulso, removido do modelo", () => {
+  assert.throws(
+    () =>
+      adaptarPrecoEntregaPropriaParaHierarquia({
+        destinationType: "bairro-avulso",
+        bairroId: 9,
+      }),
+    /Tipo de destino de Entrega Própria inválido/,
+  );
 });
 
 test("não interpreta tipo desconhecido como cidade", () => {

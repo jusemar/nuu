@@ -145,11 +145,7 @@ function filtroDosDestinos(ids: IdentificadoresGeograficosEntregaPropria) {
       : undefined,
     ids.bairroId
       ? and(
-          inArray(productOwnDeliveryPrices.destinationType, [
-            "bairro",
-            // Marcador físico antigo aceito pelo CHECK até a limpeza pós-deploy.
-            "bairro-avulso",
-          ]),
+          eq(productOwnDeliveryPrices.destinationType, "bairro"),
           eq(productOwnDeliveryPrices.bairroId, ids.bairroId),
         )
       : undefined,

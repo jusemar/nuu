@@ -11,10 +11,6 @@ export {
   variantesTiposLogisticosRelations,
 } from "./relacoes";
 export { configuracoesPagamentoNaEntregaServicoTable } from "./tabelas/configuracoes-pagamento-na-entrega-servico";
-export {
-  politicasEntregaPropriaTable,
-  precosPoliticasEntregaPropriaTable,
-} from "./tabelas/politicas-entrega-propria";
 export { produtosTiposLogisticosTable } from "./tabelas/produtos-tipos-logisticos";
 export { provedoresFreteTable } from "./tabelas/provedores-frete";
 export { regrasCategoriasFreteTable } from "./tabelas/regras-categorias-frete";

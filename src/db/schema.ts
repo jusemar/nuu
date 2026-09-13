@@ -20,12 +20,10 @@ import { categoryFaqTable } from "./table/categories/category-faq";
 import { cities } from "./table/logistics/cities/cities";
 // Modalidades e Fornecedores
 import { deliveryMethods } from "./table/logistics/deliveryMethods/deliveryMethods";
-// Entrega Própria - Sistema de 3 níveis
+// Entrega Própria - geografia, Agenda Geográfica e preços por destino
 import {
   agendasGeograficasEntregaPropria,
   agendasGeograficasEntregaPropriaRelations,
-  bairrosAvulsos,
-  bairrosAvulsosRelations,
   bairrosEntregaPropria,
   bairrosEntregaPropriaRelations,
   cepsEspecificos,
@@ -33,16 +31,10 @@ import {
   datasBloqueadasAgendaEntregaPropriaRelations,
   productOwnDeliveryPrices,
   productOwnDeliveryPricesRelations,
-  regioBairros,
-  regioBairrosRelations,
-  shippingBairroAvulsoSlots,
-  shippingBairroAvulsoSlotsRelations,
   shippingPendingNeighborhoods,
   shippingRegionCepRanges,
   shippingRegionCepRangesRelations,
   shippingRegions,
-  shippingRegionSlots,
-  shippingRegionSlotsRelations,
   shippingRegionsRelations,
   shippingZipAddresses,
   shippingZipAddressesRelations,
@@ -642,42 +634,30 @@ export { productSuppliersTable } from "./table/logistics/productSuppliers/produc
 export { states } from "./table/logistics/states/states";
 export { suppliers } from "./table/logistics/suppliers/suppliers";
 
-// Shipping - Novo sistema 3 níveis (NOVO)
+// Entrega Própria - motor único (Cidade > Região > Bairro > CEP)
 export {
   type AgendaGeograficaEntregaPropria,
   agendasGeograficasEntregaPropria,
-  type BairroAvulso,
   type BairroEntregaPropria,
-  bairrosAvulsos,
   bairrosEntregaPropria,
   type CepEspecifico,
   cepsEspecificos,
   datasBloqueadasAgendaEntregaPropria,
-  type NewBairroAvulso,
   type NewCepEspecifico,
   type NewProductOwnDeliveryPrice,
-  type NewRegioBairro,
-  type NewShippingBairroAvulsoSlot,
   type NewShippingPendingNeighborhood,
   type NewShippingRegion,
   type NewShippingRegionCepRange,
-  type NewShippingRegionSlot,
   type NewShippingZipAddress,
   type NovoBairroEntregaPropria,
   type ProductOwnDeliveryPrice,
   productOwnDeliveryPrices,
-  type RegioBairro,
-  regioBairros,
-  type ShippingBairroAvulsoSlot,
-  shippingBairroAvulsoSlots,
   type ShippingPendingNeighborhood,
   shippingPendingNeighborhoods,
   type ShippingRegion,
   type ShippingRegionCepRange,
   shippingRegionCepRanges,
   shippingRegions,
-  type ShippingRegionSlot,
-  shippingRegionSlots,
   type ShippingZipAddress,
   shippingZipAddresses,
 } from "./table/logistics/entrega-propria";
@@ -847,8 +827,6 @@ export {
 export {
   configuracoesPagamentoNaEntregaServicoRelations,
   configuracoesPagamentoNaEntregaServicoTable,
-  politicasEntregaPropriaTable,
-  precosPoliticasEntregaPropriaTable,
   produtosTiposLogisticosRelations,
   produtosTiposLogisticosTable,
   provedoresFreteRelations,
@@ -885,14 +863,10 @@ export * from "./tables/paginas-dinamicas";
 // Relations de Shipping
 export {
   agendasGeograficasEntregaPropriaRelations,
-  bairrosAvulsosRelations,
   bairrosEntregaPropriaRelations,
   datasBloqueadasAgendaEntregaPropriaRelations,
   productOwnDeliveryPricesRelations,
-  regioBairrosRelations,
-  shippingBairroAvulsoSlotsRelations,
   shippingRegionCepRangesRelations,
-  shippingRegionSlotsRelations,
   shippingRegionsRelations,
   shippingZipAddressesRelations,
 } from "./table/logistics/entrega-propria";

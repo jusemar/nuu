@@ -1,15 +1,18 @@
 /**
- * SCHEMA SHIPPING REGIONS - Regiões de Entrega Própria (3 Níveis)
+ * SCHEMA SHIPPING REGIONS - Geografia da Entrega Própria
  *
  * ⚠️ FUNCIONALIDADE VÁLIDA APENAS PARA ENTREGA PRÓPRIA
  *
- * Sistema de 3 níveis para precificação de frete:
- * Nível 1: Regiões     (ex: "Zona Sul") - vários bairros com mesmo preço
- * Nível 2: Bairros Avulsos (ex: "Pampulha") - bairro isolado com preço próprio
- * Nível 3: CEPs Específicos (ex: CEP 30140-999) - exceção dentro de região
+ * A Entrega Própria usa um único modelo geográfico:
+ *   Cidade (`cities`) → Região (`shipping_regions`) → Bairro
+ *   (`bairros_entrega_propria`) → CEP específico (`ceps_especificos`).
  *
- * Prioridade de Consulta:
- * [1] CEP específico → [2] Bairro em Região → [3] Bairro Avulso → [4] Não atendemos
+ * - Dias de entrega e horário de corte: Agenda Geográfica
+ *   (`agendas_geograficas_entrega_propria`).
+ * - Preços e modalidades: configuração comercial do Produto
+ *   (`product_own_delivery_prices`).
+ *
+ * Precedência para agenda e preço: CEP > Bairro > Região > Cidade.
  */
 
 import { relations } from "drizzle-orm";
@@ -27,28 +30,24 @@ import {
 import { cities } from "../cities/cities";
 
 /**
- * TABELA 1: REGIÕES DE ENTREGA
+ * REGIÕES DE ENTREGA
  *
- * Representa uma região que agrupa vários bairros.
- * Exemplo: "Zona Sul" agrupa {Savassi, Funcionários, Santo Agostinho}
- *
- * Uma região tem:
- * - Múltiplos bairros associados (relação N:M via regiao_bairros)
- * - Múltiplos slots de entrega (dias/horários/preço)
+ * Agrupam bairros canônicos e faixas de CEP de uma cidade. Não guardam preço
+ * nem agenda: esses dados vivem no Produto e na Agenda Geográfica.
  */
 export const shippingRegions = pgTable("shipping_regions", {
   id: serial("id").primaryKey(),
 
-  /** Nome da região (ex: "Zona Sul", "Zona Norte") */
+  /** Nome da região (ex: "Regional Barreiro") */
   name: varchar("name", { length: 100 }).notNull(),
 
   /** Descrição opcional da região */
   description: text("description"),
 
-  /** Cidade atendida por esta região */
+  /** Nome da cidade, usado em buscas por nome e nos bairros pendentes. */
   city: varchar("city", { length: 100 }).notNull(),
 
-  /** Vínculo canônico da cidade; `city` permanece durante o rollout legado. */
+  /** Vínculo canônico da cidade (fonte de verdade da hierarquia). */
   cityId: integer("city_id")
     .references(() => cities.id, {
       onDelete: "restrict",
@@ -58,20 +57,8 @@ export const shippingRegions = pgTable("shipping_regions", {
   /** Estado (UF) da região */
   state: varchar("state", { length: 2 }).notNull(),
 
-  /** Valor do frete desta região (em centavos)
-   * Ex: 1500 = R$ 15,00
-   * Se um CEP não tem preço específico e não está em bairro avulso,
-   * usa este preço base da região */
-  baseShippingPrice: integer("base_shipping_price").notNull(),
-
   /** Se a região está ativa para entrega */
   isActive: boolean("is_active").default(true).notNull(),
-
-  /** Agenda regional usada para calcular a promessa exibida na loja. */
-  agendaAtiva: boolean("agenda_ativa").default(false).notNull(),
-  horarioCorte: varchar("horario_corte", { length: 5 }),
-  periodoEntregaInicio: varchar("periodo_entrega_inicio", { length: 5 }),
-  periodoEntregaFim: varchar("periodo_entrega_fim", { length: 5 }),
 
   /** Data de criação */
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -81,36 +68,7 @@ export const shippingRegions = pgTable("shipping_regions", {
 });
 
 /**
- * TABELA 2: RELAÇÃO REGIÃO ↔ BAIRROS (N:M)
- *
- * Une regiões com bairros. Uma região pode ter muitos bairros,
- * um bairro pode estar em várias regiões (ex: bairro fronteira).
- *
- * Exemplo:
- * - Zona Sul (região) → Savassi, Funcionários, Santo Agostinho (bairros)
- * - Zona Centro (região) → Funcionários, Centro (bairros)
- */
-export const regioBairros = pgTable("regiao_bairros", {
-  id: serial("id").primaryKey(),
-
-  /** ID da região */
-  regiaoId: integer("regiao_id")
-    .notNull()
-    .references(() => shippingRegions.id, {
-      onDelete: "cascade",
-    }),
-
-  /** Nome do bairro (padronizado)
-   * Usamos string pois não temos tabela separada de bairros.
-   * Exemplo: "Savassi", "Funcionários", "Santo Agostinho"
-   *
-   * IMPORTANTE: Deve vir padronizado da API ViaCEP (response.bairro)
-   * Para evitar erros de digitação, armazenamos como recebemos do ViaCEP */
-  neighborhood: varchar("neighborhood", { length: 100 }).notNull(),
-});
-
-/**
- * TABELA 2.1: FAIXAS DE CEP DA REGIÃO
+ * FAIXAS DE CEP DA REGIÃO
  *
  * A região pode ser coberta por bairros vinculados e também por faixas de CEP.
  * As faixas são geradas a partir da base local de CEPs e podem ser ajustadas
@@ -142,53 +100,16 @@ export const shippingRegionCepRanges = pgTable(
 );
 
 /**
- * TABELA 3: BAIRROS AVULSOS
+ * CEPs ESPECÍFICOS
  *
- * Bairros cadastrados isoladamente (não fazem parte de região).
- * Cada bairro avulso tem seus próprios slots e preço.
- *
- * Exemplo: "Pampulha" atende apenas certos dias/horários com preço diferente
- * de qualquer região
- */
-export const bairrosAvulsos = pgTable("bairros_avulsos", {
-  id: serial("id").primaryKey(),
-
-  /** Nome do bairro (padronizado do ViaCEP) */
-  neighborhood: varchar("neighborhood", { length: 100 }).notNull(),
-
-  /** Cidade */
-  city: varchar("city", { length: 100 }).notNull(),
-
-  /** Estado */
-  state: varchar("state", { length: 2 }).notNull(),
-
-  /** Preço base do frete para este bairro (em centavos) */
-  baseShippingPrice: integer("base_shipping_price").notNull(),
-
-  /** Se está ativo */
-  isActive: boolean("is_active").default(true).notNull(),
-
-  /** Data de criação */
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-
-  /** Data de atualização */
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-/**
- * TABELA 4: CEPs ESPECÍFICOS (EXCEÇÕES)
- *
- * Para casos onde um CEP dentro de uma região/bairro tem preço diferente.
- * Exemplo: Condomínio isolado que precisa de entrega mais cara
- *
- * CEP específico SOBRESCREVE região/bairro quando encontrado.
- * Prioridade: CEP Específico > Região/Bairro
+ * Nível mais específico da hierarquia geográfica (ex.: um condomínio). Pode
+ * receber agenda própria e preço próprio do Produto, sobrescrevendo bairro,
+ * região e cidade.
  */
 export const cepsEspecificos = pgTable("ceps_especificos", {
   id: serial("id").primaryKey(),
 
-  /** CEP sem hífen (8 dígitos)
-   * Exemplo: "30140999" representa "30140-999" */
+  /** CEP sem hífen (8 dígitos). Exemplo: "30140999" = "30140-999" */
   cep: varchar("cep", { length: 8 }).notNull().unique(),
 
   /** Bairro onde o CEP está localizado (referência) */
@@ -199,10 +120,6 @@ export const cepsEspecificos = pgTable("ceps_especificos", {
 
   /** Estado */
   state: varchar("state", { length: 2 }).notNull(),
-
-  /** Preço específico deste CEP (em centavos)
-   * Sobrescreve preço de região/bairro */
-  shippingPrice: integer("shipping_price").notNull(),
 
   /** Se está ativo */
   isActive: boolean("is_active").default(true).notNull(),
@@ -221,18 +138,9 @@ export const cepsEspecificos = pgTable("ceps_especificos", {
 export const shippingRegionsRelations = relations(
   shippingRegions,
   ({ many }) => ({
-    bairros: many(regioBairros),
     cepRanges: many(shippingRegionCepRanges),
-    slots: many(shippingRegionSlots),
   }),
 );
-
-export const regioBairrosRelations = relations(regioBairros, ({ one }) => ({
-  regiao: one(shippingRegions, {
-    fields: [regioBairros.regiaoId],
-    references: [shippingRegions.id],
-  }),
-}));
 
 export const shippingRegionCepRangesRelations = relations(
   shippingRegionCepRanges,
@@ -244,106 +152,19 @@ export const shippingRegionCepRangesRelations = relations(
   }),
 );
 
-export const bairrosAvulsosRelations = relations(
-  bairrosAvulsos,
-  ({ many }) => ({
-    slots: many(shippingBairroAvulsoSlots),
-  }),
-);
-
 /**
- * TABELA 5: SLOTS DE ENTREGA - REGIÕES
- *
- * Cada região pode ter múltiplos slots (dias/horários disponíveis).
- * Exemplo: Zona Sul funciona seg-ter-qua 09h-17h, quinta 10h-16h, etc
- */
-export const shippingRegionSlots = pgTable("shipping_region_slots", {
-  id: serial("id").primaryKey(),
-
-  /** ID da região */
-  regionId: integer("region_id")
-    .notNull()
-    .references(() => shippingRegions.id, {
-      onDelete: "cascade",
-    }),
-
-  /** Dia da semana (0=domingo, 6=sábado) */
-  dayOfWeek: integer("day_of_week").notNull(),
-
-  /** Horário de início (ex: "09:00") */
-  startTime: varchar("start_time", { length: 5 }).notNull(),
-
-  /** Horário de fim (ex: "17:00") */
-  endTime: varchar("end_time", { length: 5 }).notNull(),
-
-  /** Se está ativo */
-  isActive: boolean("is_active").default(true).notNull(),
-});
-
-export const shippingRegionSlotsRelations = relations(
-  shippingRegionSlots,
-  ({ one }) => ({
-    region: one(shippingRegions, {
-      fields: [shippingRegionSlots.regionId],
-      references: [shippingRegions.id],
-    }),
-  }),
-);
-
-/**
- * TABELA 6: SLOTS DE ENTREGA - BAIRROS AVULSOS
- *
- * Cada bairro avulso pode ter múltiplos slots próprios.
- */
-export const shippingBairroAvulsoSlots = pgTable(
-  "shipping_bairro_avulso_slots",
-  {
-    id: serial("id").primaryKey(),
-
-    /** ID do bairro avulso */
-    bairroAvulsoId: integer("bairro_avulso_id")
-      .notNull()
-      .references(() => bairrosAvulsos.id, {
-        onDelete: "cascade",
-      }),
-
-    /** Dia da semana */
-    dayOfWeek: integer("day_of_week").notNull(),
-
-    /** Horário de início */
-    startTime: varchar("start_time", { length: 5 }).notNull(),
-
-    /** Horário de fim */
-    endTime: varchar("end_time", { length: 5 }).notNull(),
-
-    /** Se está ativo */
-    isActive: boolean("is_active").default(true).notNull(),
-  },
-);
-
-export const shippingBairroAvulsoSlotsRelations = relations(
-  shippingBairroAvulsoSlots,
-  ({ one }) => ({
-    bairroAvulso: one(bairrosAvulsos, {
-      fields: [shippingBairroAvulsoSlots.bairroAvulsoId],
-      references: [bairrosAvulsos.id],
-    }),
-  }),
-);
-
-/**
- * TABELA 7: BAIRROS PENDENTES
+ * BAIRROS PENDENTES
  *
  * Bairros capturados automaticamente quando um cliente consulta um CEP
- * que possui endereço valido no ViaCEP, mas ainda nao possui regra de
- * Entrega Propria cadastrada.
+ * que possui endereço válido no ViaCEP, mas ainda não possui regra de
+ * Entrega Própria cadastrada.
  */
 export const shippingPendingNeighborhoods = pgTable(
   "shipping_pending_neighborhoods",
   {
     id: serial("id").primaryKey(),
 
-    /** Ultimo CEP consultado para este bairro */
+    /** Último CEP consultado para este bairro */
     lastCep: varchar("last_cep", { length: 8 }).notNull(),
 
     /** Nome oficial retornado pelo ViaCEP */
@@ -379,27 +200,13 @@ export const shippingPendingNeighborhoods = pgTable(
 export type ShippingRegion = typeof shippingRegions.$inferSelect;
 export type NewShippingRegion = typeof shippingRegions.$inferInsert;
 
-export type RegioBairro = typeof regioBairros.$inferSelect;
-export type NewRegioBairro = typeof regioBairros.$inferInsert;
-
 export type ShippingRegionCepRange =
   typeof shippingRegionCepRanges.$inferSelect;
 export type NewShippingRegionCepRange =
   typeof shippingRegionCepRanges.$inferInsert;
 
-export type BairroAvulso = typeof bairrosAvulsos.$inferSelect;
-export type NewBairroAvulso = typeof bairrosAvulsos.$inferInsert;
-
 export type CepEspecifico = typeof cepsEspecificos.$inferSelect;
 export type NewCepEspecifico = typeof cepsEspecificos.$inferInsert;
-
-export type ShippingRegionSlot = typeof shippingRegionSlots.$inferSelect;
-export type NewShippingRegionSlot = typeof shippingRegionSlots.$inferInsert;
-
-export type ShippingBairroAvulsoSlot =
-  typeof shippingBairroAvulsoSlots.$inferSelect;
-export type NewShippingBairroAvulsoSlot =
-  typeof shippingBairroAvulsoSlots.$inferInsert;
 
 export type ShippingPendingNeighborhood =
   typeof shippingPendingNeighborhoods.$inferSelect;

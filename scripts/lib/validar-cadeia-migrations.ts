@@ -1,8 +1,9 @@
 export const ANCORA_MIGRATIONS = {
-  total: 47,
-  ultimoIndice: 46,
-  ultimaTag: "0046_valida_integridade_entrega_propria",
-  ultimoArquivo: "drizzle/0046_valida_integridade_entrega_propria.sql",
+  total: 51,
+  ultimoIndice: 50,
+  ultimaTag: "0050_prepara_remocao_colunas_legadas_entrega_propria",
+  ultimoArquivo:
+    "drizzle/0050_prepara_remocao_colunas_legadas_entrega_propria.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -365,6 +366,140 @@ export function validarDeltaSnapshotIntegridadeEntregaPropria(
 }
 
 /** Garante que 0034 acrescenta somente a fundação independente do RBAC global. */
+const GRUPOS_SNAPSHOT = [
+  "tables",
+  "enums",
+  "schemas",
+  "sequences",
+  "roles",
+  "policies",
+  "views",
+] as const;
+
+/** Compara dois snapshots e devolve chaves adicionadas, removidas e alteradas. */
+function calcularDeltaGrupo(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+  grupo: (typeof GRUPOS_SNAPSHOT)[number],
+) {
+  const anterior = snapshotAnterior[grupo] ?? {};
+  const atual = snapshotAtual[grupo] ?? {};
+  return {
+    adicionadas: Object.keys(atual).filter((chave) => !(chave in anterior)),
+    removidas: Object.keys(anterior).filter((chave) => !(chave in atual)),
+    alteradas: Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
+    ),
+  };
+}
+
+/** Migration custom: encadeada e sem nenhuma alteração de snapshot. */
+function exigirSnapshotInalterado(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+  migration: string,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar(`Snapshot da ${migration} não está encadeado ao anterior.`);
+  }
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    if (
+      serializarCanonico(snapshotAnterior[grupo] ?? {}) !==
+      serializarCanonico(snapshotAtual[grupo] ?? {})
+    ) {
+      falhar(`${migration} alterou schema no grupo ${grupo}.`);
+    }
+  }
+}
+
+/** 0047 só verifica e normaliza dados: não pode alterar o snapshot. */
+export function validarSnapshotVerificacaoLimpezaEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  exigirSnapshotInalterado(snapshotAnterior, snapshotAtual, "0047");
+}
+
+/**
+ * 0050 só define DEFAULT transitório em colunas legadas que a fase 2 remove;
+ * o snapshot permanece idêntico ao da 0049.
+ */
+export function validarSnapshotPreparacaoColunasLegadasEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  exigirSnapshotInalterado(snapshotAnterior, snapshotAtual, "0050");
+}
+
+/** Aceita somente alterações nas tabelas informadas, sem criar ou remover nada. */
+function exigirSomenteAlteracoes(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+  alteracoesPermitidas: Set<string>,
+  contexto: string,
+) {
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const delta = calcularDeltaGrupo(snapshotAnterior, snapshotAtual, grupo);
+    if (
+      delta.adicionadas.length > 0 ||
+      delta.removidas.length > 0 ||
+      delta.alteradas.some((item) => !alteracoesPermitidas.has(item)) ||
+      (grupo !== "tables" && delta.alteradas.length > 0)
+    ) {
+      falhar(`Delta inesperado ${contexto} em ${grupo}.`);
+    }
+  }
+}
+
+/** 0048 remove a FK de bairro avulso e restringe o destino de bairro ao canônico. */
+export function validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0047 e 0048 não estão encadeados.");
+  }
+  exigirSomenteAlteracoes(
+    snapshotAnterior,
+    snapshotAtual,
+    new Set(["public.product_own_delivery_prices"]),
+    "do vínculo de bairro avulso",
+  );
+}
+
+/** 0049 remove exatamente as seis tabelas legadas e nada mais. */
+export function validarDeltaSnapshotTabelasLegadasEntregaPropria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0048 e 0049 não estão encadeados.");
+  }
+  const remocoesEsperadas = new Set([
+    "public.bairros_avulsos",
+    "public.politicas_entrega_propria",
+    "public.precos_politicas_entrega_propria",
+    "public.regiao_bairros",
+    "public.shipping_bairro_avulso_slots",
+    "public.shipping_region_slots",
+  ]);
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const delta = calcularDeltaGrupo(snapshotAnterior, snapshotAtual, grupo);
+    const esperadas = grupo === "tables" ? remocoesEsperadas : new Set();
+    if (
+      delta.adicionadas.length > 0 ||
+      delta.alteradas.length > 0 ||
+      delta.removidas.length !== esperadas.size ||
+      delta.removidas.some((item) => !esperadas.has(item))
+    ) {
+      falhar(`Delta inesperado das tabelas legadas em ${grupo}.`);
+    }
+  }
+}
+
 export function validarDeltaSnapshotRbacGlobal(
   snapshotAnterior: SnapshotDrizzle,
   snapshotAtual: SnapshotDrizzle,

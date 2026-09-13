@@ -10,7 +10,7 @@ type PrecoEntregaPropriaPersistido = {
 
 function traduzirTipoDestino(tipo: string): NivelGeograficoEntregaPropria {
   if (tipo === "cep-especifico") return "cep";
-  if (tipo === "bairro" || tipo === "bairro-avulso") return "bairro";
+  if (tipo === "bairro") return "bairro";
   if (tipo === "region") return "regiao";
   if (tipo === "cidade") return "cidade";
 
@@ -18,8 +18,9 @@ function traduzirTipoDestino(tipo: string): NivelGeograficoEntregaPropria {
 }
 
 /**
- * Traduz os nomes físicos históricos da tabela de preços para o contrato
- * canônico usado pelo único motor de hierarquia geográfica.
+ * Traduz os nomes físicos da tabela de preços do Produto
+ * (`destination_type`, `city_id`, `region_id`...) para o contrato canônico
+ * usado pelo único motor de hierarquia geográfica.
  */
 export function adaptarPrecoEntregaPropriaParaHierarquia<
   T extends PrecoEntregaPropriaPersistido,

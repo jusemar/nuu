@@ -29,6 +29,7 @@ const ROTULOS_CAMPOS = {
   altura: "Altura",
   largura: "Largura",
   comprimento: "Comprimento",
+  disponibilidade_entrega_propria: "Disponibilidade da Entrega Própria",
   entrega_rapida: "Entrega rápida",
   entrega_programada: "Entrega programada",
 };

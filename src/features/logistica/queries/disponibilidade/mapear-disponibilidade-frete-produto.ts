@@ -3,6 +3,7 @@ import type {
   EfeitoRegraDisponibilidadeFrete,
   RegraDisponibilidadeFrete,
 } from "../../types/disponibilidade-frete";
+import type { DisponibilidadeFreteExterno } from "../../types/disponibilidade-frete-externo";
 
 type RegistroProvedorFrete = {
   identificador: string;
@@ -75,6 +76,8 @@ type RegistroRegraTipoLogisticoFrete = RelacoesRegraFrete & {
 };
 
 export type RegistrosDisponibilidadeFreteProduto = {
+  /** Gate do Frete Externo já resolvido (Produto > Categoria > padrão). */
+  freteExterno?: DisponibilidadeFreteExterno;
   produtoId: string;
   varianteId?: string | null;
   categoriaId?: string | null;
@@ -113,6 +116,7 @@ export function mapearDisponibilidadeFreteProduto({
   tiposLogisticosIdentificadores,
   origemExpedicao = "loja",
   fornecedorProvedor = null,
+  freteExterno,
   provedores,
   transportadoras,
   servicos,
@@ -128,6 +132,7 @@ export function mapearDisponibilidadeFreteProduto({
       tiposLogisticosIdentificadores,
       origemExpedicao,
       fornecedorProvedor,
+      ...(freteExterno ? { freteExterno } : {}),
     },
     configuracao: {
       provedores: provedores.map((provedor) => ({

@@ -11,6 +11,8 @@ import {
 import { categoryTable } from "../categories/categories";
 import { marcaTable } from "../marcas/marcas";
 import { sql } from "drizzle-orm";
+import { modoDisponibilidadeEntregaPropriaEnum } from "../logistics/entrega-propria/modo-disponibilidade-entrega-propria";
+import { modoDisponibilidadeFreteExternoEnum } from "../logistics/frete-externo/modo-disponibilidade-frete-externo";
 import { modelosRetiradaTable } from "../retirada/modelos-retirada";
 
 /**
@@ -102,6 +104,15 @@ export const productTable = pgTable("product", {
   allowsOwnDelivery: boolean("allows_own_delivery").default(true),
 
   /**
+   * Disponibilidade da Entrega Própria: herdar/ativado/desativado.
+   * `null` = produto anterior à herança; o valor vem de `allowsOwnDelivery`.
+   * O código novo sempre grava um valor explícito.
+   */
+  disponibilidadeEntregaPropria: modoDisponibilidadeEntregaPropriaEnum(
+    "disponibilidade_entrega_propria",
+  ),
+
+  /**
    * Se produto permite drop-shipping (fornecedor entrega)
    * Quando true, fornecedores podem entregar direto
    */
@@ -112,6 +123,17 @@ export const productTable = pgTable("product", {
    * Quando true, cliente pode retirar na loja
    */
   allowsPickup: boolean("allows_pickup").default(false),
+
+  /**
+   * Disponibilidade do Frete Externo neste produto.
+   * `herdar` (padrão) usa a categoria e, sem configuração, o padrão da loja
+   * (ativado) — preservando o comportamento dos produtos existentes.
+   */
+  disponibilidadeFreteExterno: modoDisponibilidadeFreteExternoEnum(
+    "disponibilidade_frete_externo",
+  )
+    .notNull()
+    .default("herdar"),
 
   /**
    * Se este produto pode ser pago no momento da entrega.

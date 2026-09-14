@@ -1,3 +1,5 @@
+import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
+
 export type DensidadeTabelaProdutos = "confortavel" | "compacta";
 
 export type StatusFiltroProduto = "ativo" | "inativo";
@@ -59,7 +61,12 @@ export type ProdutoAlteracaoEmMassa = {
   precosEntregaPropria: PrecoEntregaPropriaProduto[];
   classificacoesLogisticasIds: string[];
   permiteRetirada: boolean;
+  /** Coerente com o modo: só "desativado" desliga (compatibilidade). */
   permiteEntregaPropria: boolean;
+  /** Fonte funcional: Herdar da categoria / Ativado / Desativado. */
+  disponibilidadeEntregaPropria: ModoDisponibilidadeEntregaPropria;
+  /** Expedido por fornecedor (ex.: Laquila): Entrega Própria sempre bloqueada. */
+  expedidoPorFornecedor: boolean;
   modeloRetiradaId: string | null;
   atualizadoEm: Date;
   versaoConcorrencia: string;

@@ -365,6 +365,20 @@
       "when": 1789318670368,
       "tag": "0051_remove_colunas_legadas_entrega_propria",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789319769223,
+      "tag": "0052_disponibilidade_frete_externo",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789322230962,
+      "tag": "0053_entrega_propria_categoria",
+      "breakpoints": true
     }
   ]
 }

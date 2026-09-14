@@ -18,6 +18,16 @@ export {
   type NovoBairroEntregaPropria,
 } from "./bairrosEntregaPropria";
 export {
+  type CategoryOwnDeliveryPrice,
+  categoryOwnDeliveryPrices,
+  categoryOwnDeliveryPricesRelations,
+  type NewCategoryOwnDeliveryPrice,
+} from "./categoryOwnDeliveryPrices";
+export {
+  type ModoDisponibilidadeEntregaPropria,
+  modoDisponibilidadeEntregaPropriaEnum,
+} from "./modo-disponibilidade-entrega-propria";
+export {
   type NewProductOwnDeliveryPrice,
   type ProductOwnDeliveryPrice,
   productOwnDeliveryPrices,

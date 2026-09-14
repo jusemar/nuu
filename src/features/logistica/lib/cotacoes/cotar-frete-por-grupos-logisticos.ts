@@ -88,11 +88,30 @@ function criarFalhaInesperada(
   };
 }
 
+/**
+ * Um grupo da loja não consulta o Frete Externo quando algum item dele está
+ * com o Frete Externo desativado: o pacote viaja junto, então nenhuma opção
+ * externa poderia ser oferecida. Grupos de fornecedor (ex.: Laquila) seguem o
+ * contrato próprio e nunca são afetados.
+ */
+function grupoSemFreteExterno(
+  grupo: GrupoLogistico<ItemLogistico>,
+  itensSemFreteExterno: ReadonlySet<string> | undefined,
+) {
+  return (
+    grupo.origemExpedicao === "loja" &&
+    Boolean(itensSemFreteExterno?.size) &&
+    grupo.itens.some((item) => itensSemFreteExterno!.has(item.identificador))
+  );
+}
+
 export async function cotarFretePorGruposLogisticos(
   solicitacao: SolicitacaoCotacaoFrete,
   dependencias: DependenciasCotacaoFreteInterna,
   configuracao: ConfiguracaoCotacaoFreteInterna & {
     cepOrigemFornecedorPorProvedor?: Readonly<Record<string, string | null>>;
+    /** Identificadores de itens cujo gate do Frete Externo resolveu desativado. */
+    itensSemFreteExterno?: ReadonlySet<string>;
   } = {},
 ): Promise<ResultadoCotacoesGruposLogisticos> {
   const preservarSolicitacaoOriginal =
@@ -140,8 +159,12 @@ export async function cotarFretePorGruposLogisticos(
         };
       } else {
         try {
-          const configuracaoGrupo =
-            grupo.origemExpedicao === "fornecedor" && configuracao.frenet
+          const configuracaoGrupo = grupoSemFreteExterno(
+            grupo,
+            configuracao.itensSemFreteExterno,
+          )
+            ? { ...configuracao, frenet: null }
+            : grupo.origemExpedicao === "fornecedor" && configuracao.frenet
               ? {
                   ...configuracao,
                   frenet: { ...configuracao.frenet, cepOrigem },

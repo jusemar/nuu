@@ -61,9 +61,13 @@ export default function NewProductPage() {
       permiteRetirada: false,
       modeloRetiradaId: null,
       prazoCustom: "",
-      permiteEntregaPropria: false,
+      // Produto novo herda a Entrega Própria da categoria.
+      permiteEntregaPropria: true,
+      disponibilidadeEntregaPropria: "herdar",
+      tiposEntregaPermitidos: ["own"],
       precosEntregaPropria: [],
       classificacoesLogisticasIds: [],
+      disponibilidadeFreteExterno: "herdar",
     },
   });
 
@@ -114,6 +118,7 @@ export default function NewProductPage() {
       component: (
         <EntregaTab
           data={productData.entrega ?? {}}
+          categoriaId={productData.categoryId || null}
           dimensoesFrete={productData.dimensoesFreteExterno}
           aoAlterarDimensoes={(dimensoes) =>
             setProductData((prev) => ({
@@ -245,10 +250,13 @@ export default function NewProductPage() {
       const publicacao = await publicarProdutoAdmin(produtoId);
 
       if (!publicacao.sucesso) {
-        toast.warning("Produto salvo como rascunho — ainda não aparece na loja.", {
-          description: `${publicacao.erro} Abrimos a edição para você concluir.`,
-          duration: 10000,
-        });
+        toast.warning(
+          "Produto salvo como rascunho — ainda não aparece na loja.",
+          {
+            description: `${publicacao.erro} Abrimos a edição para você concluir.`,
+            duration: 10000,
+          },
+        );
         router.push(`/admin/products/${produtoId}/edit`);
         return;
       }

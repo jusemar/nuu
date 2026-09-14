@@ -116,20 +116,24 @@ async function consultarFreteOficial(
       };
     }
 
-    const resultado = await cotarFreteFluxoAtual({
-      ...entrada,
-      consultarEntregaPropriaAtual: criarConsultaEntregaPropriaLojaParaCotacao(
-        produtoId,
-        cep,
-      ),
-    });
-
+    // A disponibilidade é resolvida antes da cotação para que o gate do Frete
+    // Externo evite consultar a Frenet quando o produto não usa frete externo.
     const disponibilidade = await buscarDisponibilidadeFreteProduto({
       produtoId,
       varianteId: entrada.varianteAtual?.identificadorVariante ?? null,
       categoriaId: entrada.categoriaId,
       origemExpedicao: entrada.contextoOrigemExpedicao.origemExpedicao,
       fornecedorProvedor: entrada.contextoOrigemExpedicao.fornecedorProvedor,
+    });
+
+    const resultado = await cotarFreteFluxoAtual({
+      ...entrada,
+      consultarEntregaPropriaAtual: criarConsultaEntregaPropriaLojaParaCotacao(
+        produtoId,
+        cep,
+      ),
+      freteExternoDesativado:
+        disponibilidade.contextoProduto.freteExterno?.ativo === false,
     });
 
     const resultadoConsultaFrete = adaptarCotacaoDisponivelParaConsultaFrete(

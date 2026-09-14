@@ -355,6 +355,17 @@ export async function calcularResumoCheckout({
         )
       : [],
   );
+  // Itens da loja com o gate do Frete Externo desativado: o grupo deles não
+  // consulta a Frenet (o filtro por item continua sendo a garantia final).
+  const itensSemFreteExterno = new Set(
+    itensLogisticos
+      .filter(
+        (item) =>
+          disponibilidadesPorProdutoId.get(item.produtoId)?.contextoProduto
+            .freteExterno?.ativo === false,
+      )
+      .map((item) => item.identificador),
+  );
   const cotacoesEntrega =
     cepLimpo.length !== 8 || gruposCotacao.length === 0
       ? gruposLogisticos.map((grupo) => ({
@@ -441,6 +452,7 @@ export async function calcularResumoCheckout({
               cepOrigemFornecedorPorProvedor: {
                 laquila: obterCepOrigemLaquila(),
               },
+              itensSemFreteExterno,
             },
           )
         ).cotacoes.map((cotacao) => {

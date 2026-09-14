@@ -36,6 +36,12 @@ export type EntradaCotacaoFreteFluxoAtual = {
   contextoOrigemExpedicao?: ContextoOrigemExpedicao;
   retiradasAtuais?: RetiradaAtualDisponivel[];
   consultarEntregaPropriaAtual?: DependenciasPortaEntregaPropriaAtual["consultarEntregaPropriaAtual"];
+  /**
+   * Gate do Frete Externo já resolvido como desativado: evita consultar a
+   * Frenet para este item da loja. O filtro de disponibilidade continua sendo
+   * a garantia final.
+   */
+  freteExternoDesativado?: boolean;
 };
 
 export type ConfiguracaoEntradaCotacaoFreteFluxoAtual =
@@ -199,6 +205,9 @@ export async function cotarFreteFluxoAtual(
       cepOrigemFornecedorPorProvedor: {
         laquila: obterCepOrigemLaquila(),
       },
+      itensSemFreteExterno: entrada.freteExternoDesativado
+        ? new Set([resolucaoItem.item.identificador])
+        : undefined,
     },
   );
 

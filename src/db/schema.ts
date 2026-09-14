@@ -580,7 +580,12 @@ export const productSuppliersRelations = relations(
 
 // Tabelas existentes
 export { categoryTable } from "./table/categories/categories";
+// Disponibilidade do Frete Externo (Produto > Categoria > padrão da loja).
 export { categoryFaqTable } from "./table/categories/category-faq";
+export {
+  type ModoDisponibilidadeFreteExterno,
+  modoDisponibilidadeFreteExternoEnum,
+} from "./table/logistics/frete-externo/modo-disponibilidade-frete-externo";
 export { marcaTable } from "./table/marcas/marcas";
 export { productAttributeTable } from "./table/products/product-attributes";
 export { productGalleryImagesTable } from "./table/products/product-gallery-images";
@@ -640,9 +645,14 @@ export {
   agendasGeograficasEntregaPropria,
   type BairroEntregaPropria,
   bairrosEntregaPropria,
+  type CategoryOwnDeliveryPrice,
+  categoryOwnDeliveryPrices,
   type CepEspecifico,
   cepsEspecificos,
   datasBloqueadasAgendaEntregaPropria,
+  type ModoDisponibilidadeEntregaPropria,
+  modoDisponibilidadeEntregaPropriaEnum,
+  type NewCategoryOwnDeliveryPrice,
   type NewCepEspecifico,
   type NewProductOwnDeliveryPrice,
   type NewShippingPendingNeighborhood,
@@ -864,6 +874,7 @@ export * from "./tables/paginas-dinamicas";
 export {
   agendasGeograficasEntregaPropriaRelations,
   bairrosEntregaPropriaRelations,
+  categoryOwnDeliveryPricesRelations,
   datasBloqueadasAgendaEntregaPropriaRelations,
   productOwnDeliveryPricesRelations,
   shippingRegionCepRangesRelations,

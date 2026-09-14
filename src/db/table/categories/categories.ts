@@ -25,6 +25,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { modoDisponibilidadeEntregaPropriaEnum } from "../logistics/entrega-propria/modo-disponibilidade-entrega-propria";
+import { modoDisponibilidadeFreteExternoEnum } from "../logistics/frete-externo/modo-disponibilidade-frete-externo";
+
 export const categoryTable = pgTable(
   "category",
   {
@@ -44,6 +47,24 @@ export const categoryTable = pgTable(
     metaTitle: text("meta_title"),
     metaDescription: text("meta_description"),
     isActive: boolean("is_active").default(true).notNull(),
+    /**
+     * Disponibilidade do Frete Externo para os produtos da categoria (e das
+     * subcategorias que herdam). `herdar` sobe para a categoria pai.
+     */
+    disponibilidadeFreteExterno: modoDisponibilidadeFreteExternoEnum(
+      "disponibilidade_frete_externo",
+    )
+      .notNull()
+      .default("herdar"),
+    /**
+     * Disponibilidade da Entrega Própria para os produtos que herdam.
+     * Os preços por destino ficam em `category_own_delivery_prices`.
+     */
+    disponibilidadeEntregaPropria: modoDisponibilidadeEntregaPropriaEnum(
+      "disponibilidade_entrega_propria",
+    )
+      .notNull()
+      .default("herdar"),
     createdAt: timestamp("created_at", {
       mode: "date",
       withTimezone: true,

@@ -197,6 +197,8 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
       const conflitoEstoque = linhaConflito?.campo === "Estoque";
       const conflitoEntregaPropria =
         linhaConflito?.campo.startsWith("Entrega ") ?? false;
+      const conflitoDisponibilidadeEntrega =
+        linhaConflito?.campo === "Entrega Própria · Disponibilidade";
 
       return {
         produtoId: plano.produto.id,
@@ -218,9 +220,11 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
             : "validacao_da_modalidade",
         orientacao: conflitoEstoque
           ? "Corrija o registro técnico do produto simples antes de alterar seu estoque em massa."
-          : conflitoEntregaPropria
-            ? "Configure os destinos no produto individualmente antes de alterar a Entrega Própria em massa."
-            : "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
+          : conflitoDisponibilidadeEntrega
+            ? "Produtos expedidos pelo fornecedor mantêm a Entrega Própria desativada; remova-os da seleção."
+            : conflitoEntregaPropria
+              ? "Configure os destinos no produto individualmente antes de alterar a Entrega Própria em massa."
+              : "Cadastre a modalidade no produto individualmente antes de alterar seu prazo em massa.",
       };
     }),
   ];
@@ -411,6 +415,13 @@ export async function aplicarAlteracaoEmMassa(input: unknown) {
                 }),
                 ...(mudancas.comprimentoEmCm !== undefined && {
                   length: mudancas.comprimentoEmCm,
+                }),
+                // Modo é a fonte funcional; o boolean legado fica coerente.
+                ...(mudancas.disponibilidadeEntregaPropria !== undefined && {
+                  disponibilidadeEntregaPropria:
+                    mudancas.disponibilidadeEntregaPropria,
+                  allowsOwnDelivery:
+                    mudancas.disponibilidadeEntregaPropria !== "desativado",
                 }),
                 updatedAt: agora,
               })

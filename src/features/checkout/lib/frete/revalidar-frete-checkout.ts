@@ -378,11 +378,13 @@ async function cotarItemComNovaLogistica({
   produto,
   cep,
   dependencias,
+  freteExternoDesativado = false,
 }: {
   item: ItemCarrinho;
   produto: ProdutoRevalidacaoFreteCheckout;
   cep: string;
   dependencias: DependenciasRevalidacaoFreteCheckout;
+  freteExternoDesativado?: boolean;
 }) {
   const entrada: EntradaCotacaoFreteFluxoAtual = {
     produtoAtual: montarProdutoAtual(produto),
@@ -391,16 +393,17 @@ async function cotarItemComNovaLogistica({
     cep,
     valorDeclaradoEmCentavos: item.precoEmCentavos,
     retiradasAtuais: obterRetiradasAtuais(produto),
+    freteExternoDesativado,
     contextoOrigemExpedicao: resolverOrigemExpedicaoProduto({
       fornecedorProvedorAtivo:
         dependencias.provedoresExpedicaoPorProdutoId?.get(produto.id) ?? null,
     }),
   };
 
-  if (produto.allowsOwnDelivery) {
-    entrada.consultarEntregaPropriaAtual = () =>
-      dependencias.consultarEntregaPropriaAtual({ produto, cep });
-  }
+  // A disponibilidade da Entrega Própria (Produto > Categoria > padrão, e o
+  // bloqueio de fornecedor) é decidida pelo motor único consultado aqui.
+  entrada.consultarEntregaPropriaAtual = () =>
+    dependencias.consultarEntregaPropriaAtual({ produto, cep });
 
   return (dependencias.cotarFreteLogistica ?? cotarFreteFluxoAtual)(entrada);
 }
@@ -418,18 +421,22 @@ async function revalidarModalidadePelaLogistica({
   cep: string;
   dependencias: DependenciasRevalidacaoFreteCheckout;
 }) {
-  const cotacao = await cotarItemComNovaLogistica({
-    item,
-    produto,
-    cep,
-    dependencias,
-  });
+  // Disponibilidade primeiro: o gate do Frete Externo evita cotar a Frenet
+  // quando o item não pode usar frete externo.
   const disponibilidade = dependencias.buscarDisponibilidadeFreteProduto
     ? await dependencias.buscarDisponibilidadeFreteProduto({
         produtoId: produto.id,
         categoriaId: produto.categoryId,
       })
     : null;
+  const cotacao = await cotarItemComNovaLogistica({
+    item,
+    produto,
+    cep,
+    dependencias,
+    freteExternoDesativado:
+      disponibilidade?.contextoProduto.freteExterno?.ativo === false,
+  });
   const cotacaoDisponivel = disponibilidade
     ? filtrarResultadoCotacaoFreteDisponivel(cotacao, disponibilidade)
     : cotacao;

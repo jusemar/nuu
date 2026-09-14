@@ -158,7 +158,12 @@ describe("integração logística na edição de produto", () => {
   it("reutiliza controles normais de Entrega própria e Frete externo para Laquila", () => {
     const conteudoEntrega = readFileSync(caminhoEntregaTab, "utf-8");
 
-    assert.equal(conteudoEntrega.includes("Permitir Entrega Própria"), true);
+    // O controle "Permitir Entrega Própria" (Herdar/Ativado/Desativado)
+    // vive em componente próprio, ligado pelo mesmo handler da aba.
+    assert.equal(
+      conteudoEntrega.includes("<DisponibilidadeEntregaPropriaProduto"),
+      true,
+    );
     assert.equal(conteudoEntrega.includes("handleOwnDeliveryChange"), true);
     assert.equal(
       conteudoEntrega.includes("<ProdutoEntregaPropriaPrecos"),

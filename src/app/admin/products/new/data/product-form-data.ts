@@ -1,6 +1,8 @@
 import type { UploadedImage } from "@/app/admin/products/new/components/image-upload/ProductImageGallery";
+import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
+import type { ModoDisponibilidadeFreteExterno } from "@/features/logistica/types/disponibilidade-frete-externo";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -81,12 +83,16 @@ export interface ProductFormData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
+    /** Entrega Própria: Herdar da categoria / Ativado / Desativado. */
+    disponibilidadeEntregaPropria?: ModoDisponibilidadeEntregaPropria;
     /** Modos de expedição persistidos no produto (own, supplier ou carrier). */
     tiposEntregaPermitidos?: string[];
     /** Opt-in do produto para pagar no recebimento. Nasce desligado. */
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
+    /** Gate do Frete Externo: Herdar da categoria / Ativado / Desativado. */
+    disponibilidadeFreteExterno?: ModoDisponibilidadeFreteExterno;
   };
   modelosRetirada?: Array<{
     id: string;
@@ -179,11 +185,14 @@ export const initialProductData: ProductFormData = {
     permiteRetirada: false,
     modeloRetiradaId: null,
     prazoCustom: "",
-    permiteEntregaPropria: false,
+    // Produto novo herda a Entrega Própria da categoria.
+    permiteEntregaPropria: true,
+    disponibilidadeEntregaPropria: "herdar",
     tiposEntregaPermitidos: ["own"],
     aceitaPagamentoNaEntrega: false,
     precosEntregaPropria: [],
     classificacoesLogisticasIds: [],
+    disponibilidadeFreteExterno: "herdar",
   },
   dimensoesFreteExterno: {},
 };

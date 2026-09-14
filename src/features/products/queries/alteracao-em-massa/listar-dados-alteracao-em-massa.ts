@@ -14,6 +14,8 @@ import {
   produtosTiposLogisticosTable,
   tiposLogisticosTable,
 } from "@/db/schema";
+import { listarProvedoresExpedicaoProdutos } from "@/features/fornecedores/queries/listar-provedores-expedicao-produtos";
+import { modoEntregaPropriaDoProduto } from "@/features/logistica/lib/entrega-propria/resolver-disponibilidade-entrega-propria";
 
 import { normalizarModalidadePreco } from "../../constants/modalidades-preco";
 import {
@@ -75,6 +77,8 @@ export async function listarDadosAlteracaoEmMassa(
         comprimentoEmCm: productTable.length,
         permiteRetirada: productTable.allowsPickup,
         permiteEntregaPropria: productTable.allowsOwnDelivery,
+        disponibilidadeEntregaPropria:
+          productTable.disponibilidadeEntregaPropria,
         modeloRetiradaId: productTable.modeloRetiradaId,
         atualizadoEm: productTable.updatedAt,
         versaoConcorrencia: sql<string>`${productTable.updatedAt}::text`.as(
@@ -254,6 +258,11 @@ export async function listarDadosAlteracaoEmMassa(
         ])
       : [[], [], []];
 
+    // Origem de expedição: produto de fornecedor nunca recebe Entrega Própria.
+    const provedoresExpedicao = idsProdutos.length
+      ? await listarProvedoresExpedicaoProdutos(idsProdutos)
+      : new Map<string, string>();
+
     let vinculosLogisticos: Array<{
       produtoId: string;
       tipoLogisticoId: string;
@@ -313,6 +322,11 @@ export async function listarDadosAlteracaoEmMassa(
                     variante.id === identificacaoVarianteTecnica.variante.id,
                 ) ?? null)
               : null;
+          // Modo nulo = produto anterior à herança (vale o antigo boolean).
+          const modoEntregaPropria = modoEntregaPropriaDoProduto({
+            modo: produto.disponibilidadeEntregaPropria,
+            permiteEntregaPropriaLegado: produto.permiteEntregaPropria,
+          });
           const resumoEstoqueVariantes =
             produto.tipoProduto === "variable"
               ? resumirEstoqueVariantesProduto(variantesProduto)
@@ -322,7 +336,9 @@ export async function listarDadosAlteracaoEmMassa(
             ...produto,
             ativo: produto.ativo ?? false,
             permiteRetirada: produto.permiteRetirada ?? false,
-            permiteEntregaPropria: produto.permiteEntregaPropria ?? false,
+            disponibilidadeEntregaPropria: modoEntregaPropria,
+            permiteEntregaPropria: modoEntregaPropria !== "desativado",
+            expedidoPorFornecedor: provedoresExpedicao.has(produto.id),
             varianteTecnicaId: varianteTecnica?.id ?? null,
             estoqueVarianteTecnica: varianteTecnica?.estoque ?? null,
             varianteTecnicaAtualizadaEm: varianteTecnica?.atualizadoEm ?? null,

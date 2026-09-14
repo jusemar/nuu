@@ -19,6 +19,7 @@ import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-ad
 import { normalizarLocalidadeEntregaPropria } from "@/features/logistica/lib/entrega-propria/normalizar-localidade-entrega-propria";
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
+import { montarCondicoesDestinoEntregaPropria } from "../lib/montar-condicoes-destino-entrega-propria";
 import type { ProductOwnDeliveryPriceFormItem } from "../types/shipping";
 
 function revalidarEntregaPropria() {
@@ -556,25 +557,7 @@ function montarDestinoPrecoProduto(
 ) {
   return {
     productId,
-    destinationType: item.destinationType,
-    regionId: item.destinationType === "region" ? item.destinationId : null,
-    bairroId: item.destinationType === "bairro" ? item.destinationId : null,
-    cepEspecificoId:
-      item.destinationType === "cep-especifico" ? item.destinationId : null,
-    ...(item.destinationType === "cidade"
-      ? { cityId: item.destinationId }
-      : {}),
-    shippingPrice: item.shippingPrice,
-    rapidDeliveryActive: item.rapidDeliveryActive ?? true,
-    deliveryDeadline: item.deliveryDeadline?.trim() || null,
-    scheduledDeliveryActive: item.scheduledDeliveryActive ?? false,
-    scheduledDeliveryMinDays: item.scheduledDeliveryActive
-      ? Math.max(0, Math.trunc(item.scheduledDeliveryMinDays ?? 0))
-      : null,
-    scheduledDeliveryPrice: item.scheduledDeliveryActive
-      ? Math.max(0, item.scheduledDeliveryPrice ?? 0)
-      : null,
-    isActive: item.isActive ?? true,
+    ...montarCondicoesDestinoEntregaPropria(item),
     createdAt: new Date(),
     updatedAt: new Date(),
   };

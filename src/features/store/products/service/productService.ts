@@ -13,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import { productTable } from "@/db/schema";
+import { buscarDisponibilidadeEntregaPropriaProduto } from "@/features/logistica/queries/buscar-disponibilidade-entrega-propria";
 import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
 
@@ -79,9 +80,12 @@ export async function getProductBySlug(slug: string) {
     // Apenas a ausência real do registro segue para o notFound() da página.
     if (!product) return null;
 
-    const [diagnosticoLogistico] = await listarDiagnosticosLogisticosProdutos([
-      product.id,
-    ]);
+    const [[diagnosticoLogistico], disponibilidadeEntregaPropria] =
+      await Promise.all([
+        listarDiagnosticosLogisticosProdutos([product.id]),
+        // Entrega Própria efetiva: Produto > Categoria > ancestrais > padrão.
+        buscarDisponibilidadeEntregaPropriaProduto(product.id),
+      ]);
 
     if (product.productKind === "simple") {
       const identificacao = identificarVarianteTecnicaProdutoSimples({
@@ -106,6 +110,9 @@ export async function getProductBySlug(slug: string) {
 
     return {
       ...product,
+      // A PDP (buy-box e selo de pagamento na entrega) usa o valor efetivo,
+      // inclusive quando o produto herda a Entrega Própria da categoria.
+      allowsOwnDelivery: disponibilidadeEntregaPropria?.ativo === true,
       brand: product.marca?.nome ?? null,
       logisticaElegivel: diagnosticoLogistico?.diagnostico.valido === true,
     };
@@ -139,12 +146,17 @@ export async function getProductBySku(sku: string) {
       },
     });
 
-    return product
-      ? {
-          data: { ...product, brand: product.marca?.nome ?? null },
-          error: null,
-        }
-      : { data: null, error: "Produto não encontrado" };
+    if (!product) return { data: null, error: "Produto não encontrado" };
+    const disponibilidadeEntregaPropria =
+      await buscarDisponibilidadeEntregaPropriaProduto(product.id);
+    return {
+      data: {
+        ...product,
+        allowsOwnDelivery: disponibilidadeEntregaPropria?.ativo === true,
+        brand: product.marca?.nome ?? null,
+      },
+      error: null,
+    };
   } catch {
     return { data: null, error: "Não foi possível carregar o produto" };
   }

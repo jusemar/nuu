@@ -12,11 +12,15 @@ import {
   productVariantTable,
   produtosTiposLogisticosTable,
 } from "@/db/schema";
+import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { modoDisponibilidadeEntregaPropriaSchema } from "@/features/logistica/schemas/disponibilidade-entrega-propria.schema";
+import { modoDisponibilidadeFreteExternoSchema } from "@/features/logistica/schemas/disponibilidade-frete-externo.schema";
+import type { ModoDisponibilidadeFreteExterno } from "@/features/logistica/types/disponibilidade-frete-externo";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -105,9 +109,11 @@ interface CreateProductData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
+    disponibilidadeEntregaPropria?: ModoDisponibilidadeEntregaPropria;
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
+    disponibilidadeFreteExterno?: ModoDisponibilidadeFreteExterno;
   };
   allowedDeliveryTypes?: string[];
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
@@ -156,6 +162,32 @@ export async function createProduct(data: CreateProductData) {
   let produtoCriadoId: string | null = null;
 
   try {
+    // Gate do Frete Externo validado no servidor (nunca confiar no cliente).
+    const modoFreteExterno = modoDisponibilidadeFreteExternoSchema.safeParse(
+      data.entrega?.disponibilidadeFreteExterno ?? "herdar",
+    );
+    if (!modoFreteExterno.success) {
+      return {
+        success: false,
+        error: "Disponibilidade do Frete Externo inválida.",
+      };
+    }
+    // Entrega Própria: Herdar/Ativado/Desativado. Chamadas antigas que só
+    // enviam o boolean continuam com o mesmo comportamento.
+    const modoEntregaPropria =
+      modoDisponibilidadeEntregaPropriaSchema.safeParse(
+        data.entrega?.disponibilidadeEntregaPropria ??
+          (data.entrega?.permiteEntregaPropria ? "ativado" : "desativado"),
+      );
+    if (!modoEntregaPropria.success) {
+      return {
+        success: false,
+        error: "Disponibilidade da Entrega Própria inválida.",
+      };
+    }
+    const entregaPropriaNaoDesativada =
+      modoEntregaPropria.data !== "desativado";
+
     if (
       (data.productKind ?? "simple") === "simple" &&
       data.gtinProdutoSimples?.trim() &&
@@ -216,7 +248,8 @@ export async function createProduct(data: CreateProductData) {
 
         // Configuração de retirada local
         allowsPickup: data.entrega?.permiteRetirada ?? false,
-        allowsOwnDelivery: data.entrega?.permiteEntregaPropria ?? false,
+        allowsOwnDelivery: entregaPropriaNaoDesativada,
+        disponibilidadeEntregaPropria: modoEntregaPropria.data,
         allowsSupplierDelivery:
           data.allowedDeliveryTypes?.includes("supplier") ?? false,
         allowedDeliveryTypes: data.allowedDeliveryTypes ?? ["own"],
@@ -225,6 +258,7 @@ export async function createProduct(data: CreateProductData) {
           data.entrega?.aceitaPagamentoNaEntrega ?? false,
         modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
         prazoRetiradaCustom: data.entrega?.prazoCustom || null,
+        disponibilidadeFreteExterno: modoFreteExterno.data,
 
         weight: converterPesoEmGramas(data.dimensoesFreteExterno?.pesoEmKg),
         height: converterValorEmInteiro(data.dimensoesFreteExterno?.alturaEmCm),
@@ -276,10 +310,10 @@ export async function createProduct(data: CreateProductData) {
       }
     }
 
-    if (data.entrega?.permiteEntregaPropria) {
+    if (entregaPropriaNaoDesativada) {
       await salvarPrecosEntregaPropriaProduto(
         product.id,
-        data.entrega.precosEntregaPropria ?? [],
+        data.entrega?.precosEntregaPropria ?? [],
       );
     }
 

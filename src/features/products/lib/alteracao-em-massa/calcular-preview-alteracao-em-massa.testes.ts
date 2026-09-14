@@ -79,6 +79,8 @@ const produto: ProdutoAlteracaoEmMassa = {
   classificacoesLogisticasIds: [],
   permiteRetirada: false,
   permiteEntregaPropria: false,
+  disponibilidadeEntregaPropria: "desativado",
+  expedidoPorFornecedor: false,
   modeloRetiradaId: null,
   atualizadoEm: agora,
   versaoConcorrencia: "2026-01-01 00:00:00.000000",
@@ -188,8 +190,7 @@ describe("motor de alteração em massa", () => {
     });
     assert.equal(
       plano.linhas.some(
-        (linha) =>
-          linha.campo.includes("Valor") && linha.novo === "R$ 0,00",
+        (linha) => linha.campo.includes("Valor") && linha.novo === "R$ 0,00",
       ),
       true,
     );
@@ -215,9 +216,7 @@ describe("motor de alteração em massa", () => {
   });
 
   it("desativa a programada sem alterar a entrega rápida", () => {
-    const plano = calcular([
-      { campo: "entrega_programada", ativa: false },
-    ]);
+    const plano = calcular([{ campo: "entrega_programada", ativa: false }]);
 
     assert.equal(plano.alteracoes.entregaPropria.length, 1);
     assert.equal(
@@ -225,10 +224,7 @@ describe("motor de alteração em massa", () => {
       false,
     );
     assert.equal(plano.alteracoes.entregaPropria[0].ativo, undefined);
-    assert.equal(
-      plano.alteracoes.entregaPropria[0].precoEmCentavos,
-      undefined,
-    );
+    assert.equal(plano.alteracoes.entregaPropria[0].precoEmCentavos, undefined);
   });
 
   it("altera status e preço rápido sem tocar agenda, prazo ou programada", () => {
@@ -615,6 +611,75 @@ describe("motor de alteração em massa", () => {
     assert.match(fonte, /dbTransacional\.transaction/);
     assert.match(fonte, /for \(const preco of plano\.alteracoes\.precos\)/);
     assert.doesNotMatch(fonte, /promoPrice|promo_price_in_cents|hasPromo/);
+  });
+
+  it("altera a disponibilidade da Entrega Própria para os três estados", () => {
+    for (const modo of ["herdar", "ativado"] as const) {
+      const plano = calcular([
+        { campo: "disponibilidade_entrega_propria", modo },
+      ]);
+      assert.equal(plano.linhas[0].resultado, "alterado");
+      assert.equal(plano.linhas[0].atual, "Desativado");
+      assert.deepEqual(plano.alteracoes.produto, {
+        disponibilidadeEntregaPropria: modo,
+      });
+    }
+    // Mesmo estado: sem alteração e sem escrita planejada.
+    const semMudanca = calcular([
+      { campo: "disponibilidade_entrega_propria", modo: "desativado" },
+    ]);
+    assert.equal(semMudanca.linhas[0].resultado, "sem_alteracao");
+    assert.deepEqual(semMudanca.alteracoes.produto, {});
+
+    const herdando = {
+      ...produto,
+      disponibilidadeEntregaPropria: "herdar" as const,
+    };
+    const desativar = calcularPlanoAlteracaoEmMassa(
+      [herdando],
+      [{ campo: "disponibilidade_entrega_propria", modo: "desativado" }],
+      { ...dados, produtos: [herdando] },
+    )[0];
+    assert.equal(desativar.linhas[0].atual, "Herdar da categoria");
+    assert.equal(desativar.linhas[0].novo, "Desativado");
+    assert.deepEqual(desativar.alteracoes.produto, {
+      disponibilidadeEntregaPropria: "desativado",
+    });
+  });
+
+  it("produto de fornecedor não recebe Entrega Própria por alteração em massa", () => {
+    const fornecedor = { ...produto, expedidoPorFornecedor: true };
+    for (const modo of ["herdar", "ativado"] as const) {
+      const plano = calcularPlanoAlteracaoEmMassa(
+        [fornecedor],
+        [{ campo: "disponibilidade_entrega_propria", modo }],
+        { ...dados, produtos: [fornecedor] },
+      )[0];
+      assert.equal(plano.linhas[0].resultado, "conflito");
+      assert.deepEqual(plano.alteracoes.produto, {});
+    }
+  });
+
+  it("valida o modo da Entrega Própria no servidor", () => {
+    const valido = solicitarPreviewAlteracaoEmMassaSchema.safeParse({
+      produtosIds: [produto.id],
+      operacoes: [{ campo: "disponibilidade_entrega_propria", modo: "herdar" }],
+    });
+    const invalido = solicitarPreviewAlteracaoEmMassaSchema.safeParse({
+      produtosIds: [produto.id],
+      operacoes: [{ campo: "disponibilidade_entrega_propria", modo: true }],
+    });
+    assert.equal(valido.success, true);
+    assert.equal(invalido.success, false);
+    const fonte = readFileSync(
+      new URL("../../actions/aplicar-alteracao-em-massa.ts", import.meta.url),
+      "utf8",
+    );
+    // O boolean legado acompanha o modo (somente "desativado" desliga).
+    assert.match(
+      fonte,
+      /allowsOwnDelivery:\s*mudancas\.disponibilidadeEntregaPropria !== "desativado"/,
+    );
   });
 
   it("atualiza regras de entrega existentes na transação sem inserir ou excluir cobertura", () => {

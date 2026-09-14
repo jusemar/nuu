@@ -13,6 +13,9 @@ import { useCreateCategory } from "../../hooks/useCreateCategory";
 import { useUpdateCategory } from "../../hooks/useUpdateCategory"; // ← Importar hook de edição
 import { obterIdsDescendentes } from "../../lib/calcular-niveis-categorias";
 import { CategoryFaqSection } from "../../components/CategoryFaqSection";
+import { SecaoEntregaPropriaCategoria } from "@/features/admin/logistics/entrega-propria/components/admin/heranca/secao-entrega-propria-categoria";
+
+import { SecaoFreteExternoCategoria } from "../../components/secao-frete-externo-categoria";
 import { BasicInfoCard } from "./BasicInfoCard";
 import { useSlugGenerator } from "./hooks/useSlugGenerator";
 import { SidebarCards } from "./SidebarCards";
@@ -501,6 +504,8 @@ export function CategoryForm({
           />
         </div>
       </div>
+      <SecaoEntregaPropriaCategoria categoriaId={initialData?.id} />
+      <SecaoFreteExternoCategoria categoriaId={initialData?.id} />
       <CategoryFaqSection categoriaId={initialData?.id} />
     </div>
   );

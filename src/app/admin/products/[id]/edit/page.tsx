@@ -253,11 +253,17 @@ export default function EditProductPage() {
           modeloRetiradaId: product.modeloRetiradaId || null,
           prazoCustom: product.prazoRetiradaCustom || "",
           permiteEntregaPropria: product.allowsOwnDelivery ?? false,
+          // Produto anterior à herança: o modo vem do antigo boolean.
+          disponibilidadeEntregaPropria:
+            product.disponibilidadeEntregaPropria ??
+            (product.allowsOwnDelivery ? "ativado" : "desativado"),
           tiposEntregaPermitidos: product.allowedDeliveryTypes ?? [],
           aceitaPagamentoNaEntrega: product.aceitaPagamentoNaEntrega ?? false,
           precosEntregaPropria: product.precosEntregaPropria || [],
           classificacoesLogisticasIds:
             product.classificacoesLogisticasIds || [],
+          disponibilidadeFreteExterno:
+            product.disponibilidadeFreteExterno ?? "herdar",
         },
 
         // Campos de vendedor (valores padrão)
@@ -319,6 +325,7 @@ export default function EditProductPage() {
         <EntregaTab
           data={productData.entrega ?? {}}
           productId={productId}
+          categoriaId={productData.categoryId || null}
           dimensoesFrete={productData.dimensoesFreteExterno}
           usaLogisticaLaquila={Boolean(
             productResponse?.data?.usaLogisticaLaquila,

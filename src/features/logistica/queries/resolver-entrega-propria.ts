@@ -6,6 +6,8 @@ import { db } from "@/db/connection";
 import {
   agendasGeograficasEntregaPropria,
   bairrosEntregaPropria,
+  categoryOwnDeliveryPrices,
+  categoryTable,
   cepsEspecificos,
   cities,
   productOwnDeliveryPrices,
@@ -15,11 +17,23 @@ import {
 } from "@/db/schema";
 import { listarProvedoresExpedicaoProdutos } from "@/features/fornecedores/queries/listar-provedores-expedicao-produtos";
 
-import { calcularOfertaEntregaPropria } from "../lib/entrega-propria/calcular-oferta-entrega-propria";
+import { montarCadeiaCategorias } from "../lib/disponibilidade/resolver-modo-herdado";
+import {
+  calcularOfertaEntregaPropria,
+  type PrecoProdutoParaCalculo,
+} from "../lib/entrega-propria/calcular-oferta-entrega-propria";
 import type { PromessaEntregaProgramada } from "../lib/entrega-propria/calcular-promessa-entrega-programada";
 import type { PromessaEntregaPropria } from "../lib/entrega-propria/calcular-promessa-entrega-propria";
+import {
+  escolherFonteComercialEntregaPropria,
+  type FonteComercialEntregaPropria,
+} from "../lib/entrega-propria/escolher-fonte-comercial-entrega-propria";
 import { identificarGeografiaEntregaPropria } from "../lib/entrega-propria/identificar-geografia-entrega-propria";
 import { normalizarLocalidadeEntregaPropria } from "../lib/entrega-propria/normalizar-localidade-entrega-propria";
+import {
+  modoEntregaPropriaDoProduto,
+  resolverDisponibilidadeEntregaPropria,
+} from "../lib/entrega-propria/resolver-disponibilidade-entrega-propria";
 import type {
   IdentificadoresGeograficosEntregaPropria,
   NivelGeograficoEntregaPropria,
@@ -35,6 +49,8 @@ export type EnderecoResolucaoEntregaPropria = {
 export type ResultadoResolucaoEntregaPropria =
   | {
       encontrado: true;
+      /** Produto, Categoria direta ou Categoria ancestral. */
+      fonteComercial: FonteComercialEntregaPropria;
       nivelPreco: NivelGeograficoEntregaPropria;
       nivelAgenda: NivelGeograficoEntregaPropria;
       origemAgenda: string;
@@ -135,31 +151,47 @@ async function resolverContextoGeografico(
   });
 }
 
-function filtroDosDestinos(ids: IdentificadoresGeograficosEntregaPropria) {
+/**
+ * Filtra os destinos aplicáveis à geografia. Produto e Categoria usam tabelas
+ * com o MESMO formato, então a mesma condição serve às duas fontes.
+ */
+function filtroDosDestinos(
+  tabela: typeof productOwnDeliveryPrices | typeof categoryOwnDeliveryPrices,
+  ids: IdentificadoresGeograficosEntregaPropria,
+) {
   return or(
     ids.cepId
       ? and(
-          eq(productOwnDeliveryPrices.destinationType, "cep-especifico"),
-          eq(productOwnDeliveryPrices.cepEspecificoId, ids.cepId),
+          eq(tabela.destinationType, "cep-especifico"),
+          eq(tabela.cepEspecificoId, ids.cepId),
         )
       : undefined,
     ids.bairroId
       ? and(
-          eq(productOwnDeliveryPrices.destinationType, "bairro"),
-          eq(productOwnDeliveryPrices.bairroId, ids.bairroId),
+          eq(tabela.destinationType, "bairro"),
+          eq(tabela.bairroId, ids.bairroId),
         )
       : undefined,
     ids.regiaoId
       ? and(
-          eq(productOwnDeliveryPrices.destinationType, "region"),
-          eq(productOwnDeliveryPrices.regionId, ids.regiaoId),
+          eq(tabela.destinationType, "region"),
+          eq(tabela.regionId, ids.regiaoId),
         )
       : undefined,
-    and(
-      eq(productOwnDeliveryPrices.destinationType, "cidade"),
-      eq(productOwnDeliveryPrices.cityId, ids.cidadeId),
-    ),
+    and(eq(tabela.destinationType, "cidade"), eq(tabela.cityId, ids.cidadeId)),
   );
+}
+
+/** Árvore de categorias com o modo de Entrega Própria (tabela pequena). */
+function listarCategoriasEntregaPropria() {
+  return db
+    .select({
+      id: categoryTable.id,
+      nome: categoryTable.name,
+      parentId: categoryTable.parentId,
+      modo: categoryTable.disponibilidadeEntregaPropria,
+    })
+    .from(categoryTable);
 }
 
 /** Etapa "resolve Agenda Geográfica": carrega as agendas ativas e bloqueios. */
@@ -195,46 +227,102 @@ async function resolverProdutosNoContexto({
   endereco: EnderecoResolucaoEntregaPropria;
   contexto: ContextoGeografico;
 }): Promise<Map<string, ResultadoResolucaoEntregaPropria>> {
-  const [produtos, provedores, precos, agendas] = await Promise.all([
-    db
-      .select({
-        id: productTable.id,
-        permiteEntregaPropria: productTable.allowsOwnDelivery,
-      })
-      .from(productTable)
-      .where(inArray(productTable.id, produtosIds)),
-    // Produtos com expedição por fornecedor (ex.: Laquila) nunca entram na
-    // Entrega Própria: seguem exclusivamente a logística do provedor.
-    listarProvedoresExpedicaoProdutos(produtosIds),
-    db.query.productOwnDeliveryPrices.findMany({
-      where: and(
-        inArray(productOwnDeliveryPrices.productId, produtosIds),
-        eq(productOwnDeliveryPrices.isActive, true),
-        filtroDosDestinos(contexto.ids),
-      ),
-    }),
-    listarAgendasAtivas(),
-  ]);
+  const [produtos, provedores, precos, agendas, categorias] = await Promise.all(
+    [
+      db
+        .select({
+          id: productTable.id,
+          categoriaId: productTable.categoryId,
+          modo: productTable.disponibilidadeEntregaPropria,
+          permiteEntregaPropriaLegado: productTable.allowsOwnDelivery,
+        })
+        .from(productTable)
+        .where(inArray(productTable.id, produtosIds)),
+      // Produtos com expedição por fornecedor (ex.: Laquila) nunca entram na
+      // Entrega Própria: seguem exclusivamente a logística do provedor.
+      listarProvedoresExpedicaoProdutos(produtosIds),
+      db.query.productOwnDeliveryPrices.findMany({
+        where: and(
+          inArray(productOwnDeliveryPrices.productId, produtosIds),
+          eq(productOwnDeliveryPrices.isActive, true),
+          filtroDosDestinos(productOwnDeliveryPrices, contexto.ids),
+        ),
+      }),
+      listarAgendasAtivas(),
+      listarCategoriasEntregaPropria(),
+    ],
+  );
   const produtosPorId = new Map(
     produtos.map((produto) => [produto.id, produto]),
   );
+  const cadeiaPorProdutoId = new Map(
+    produtos.map((produto) => [
+      produto.id,
+      montarCadeiaCategorias(categorias, produto.categoriaId),
+    ]),
+  );
+  // Condições comerciais das categorias (diretas e ancestrais) envolvidas.
+  const categoriasEnvolvidas = [
+    ...new Set(
+      [...cadeiaPorProdutoId.values()].flatMap((cadeia) =>
+        cadeia.map((categoria) => categoria.id),
+      ),
+    ),
+  ];
+  const precosCategorias =
+    categoriasEnvolvidas.length > 0
+      ? await db.query.categoryOwnDeliveryPrices.findMany({
+          where: and(
+            inArray(categoryOwnDeliveryPrices.categoryId, categoriasEnvolvidas),
+            eq(categoryOwnDeliveryPrices.isActive, true),
+            filtroDosDestinos(categoryOwnDeliveryPrices, contexto.ids),
+          ),
+        })
+      : [];
+  const precosPorCategoriaId = new Map<string, typeof precosCategorias>();
+  for (const preco of precosCategorias) {
+    precosPorCategoriaId.set(preco.categoryId, [
+      ...(precosPorCategoriaId.get(preco.categoryId) ?? []),
+      preco,
+    ]);
+  }
   const dataReferencia = new Date();
 
   return new Map<string, ResultadoResolucaoEntregaPropria>(
     produtosIds.map((produtoId) => {
       const produto = produtosPorId.get(produtoId);
-      if (!produto?.permiteEntregaPropria || provedores.has(produtoId)) {
+      const cadeia = cadeiaPorProdutoId.get(produtoId) ?? [];
+      // Etapa "disponibilidade": Produto > Categoria > ancestrais > padrão.
+      // Fornecedor (ex.: Laquila) nunca recebe Entrega Própria por herança.
+      const disponibilidade = produto
+        ? resolverDisponibilidadeEntregaPropria({
+            modoProduto: modoEntregaPropriaDoProduto(produto),
+            cadeiaCategorias: cadeia,
+            expedidoPorFornecedor: provedores.has(produtoId),
+          })
+        : null;
+      if (!disponibilidade?.ativo) {
         return [
           produtoId,
           { encontrado: false, motivo: "Consulte o vendedor" },
         ];
       }
 
-      // Etapas "configuração comercial do Produto" + "cálculo" (regra pura).
+      // Etapa "configuração comercial": Produto > Categoria direta > ancestral.
+      const fonte = escolherFonteComercialEntregaPropria<
+        PrecoProdutoParaCalculo & { isActive: boolean }
+      >({
+        ids: contexto.ids,
+        precosProduto: precos.filter((preco) => preco.productId === produtoId),
+        cadeiaCategorias: cadeia,
+        precosPorCategoriaId,
+      });
+
+      // Etapa "cálculo" (regra pura, agenda + CEP > Bairro > Região > Cidade).
       const oferta = calcularOfertaEntregaPropria({
         ids: contexto.ids,
         agendas,
-        precos: precos.filter((preco) => preco.productId === produtoId),
+        precos: fonte?.precos ?? [],
         dataReferencia,
       });
 
@@ -260,6 +348,7 @@ async function resolverProdutosNoContexto({
         produtoId,
         {
           encontrado: true,
+          fonteComercial: fonte!.fonte,
           nivelPreco: oferta.nivelPreco,
           nivelAgenda: oferta.nivelAgenda,
           origemAgenda: nomeOrigemAgenda(

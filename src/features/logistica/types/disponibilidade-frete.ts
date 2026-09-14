@@ -4,6 +4,7 @@ import type {
   OpcaoFrete,
   PacoteEnvio,
 } from "./contratos-frete";
+import type { DisponibilidadeFreteExterno } from "./disponibilidade-frete-externo";
 
 export type EfeitoRegraDisponibilidadeFrete = "permitir" | "bloquear";
 
@@ -62,6 +63,11 @@ export type ContextoProdutoDisponibilidadeFrete = {
   /** Origem necessária para isolar contratos logísticos de fornecedores. */
   origemExpedicao?: "loja" | "fornecedor";
   fornecedorProvedor?: string | null;
+  /**
+   * Gate de disponibilidade do Frete Externo (Produto > Categoria > padrão).
+   * Ausente = comportamento histórico (ativado).
+   */
+  freteExterno?: DisponibilidadeFreteExterno;
 };
 
 export type VolumesDisponibilidadeFrete = {
@@ -89,6 +95,7 @@ export type VolumeDisponibilidadeFrete = {
 };
 
 export type MotivoIndisponibilidadeFrete =
+  | "frete-externo-desativado"
   | "provedor-inativo"
   | "transportadora-inativa"
   | "servico-inativo"

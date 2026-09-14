@@ -1,3 +1,5 @@
+import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
+
 import { obterRotuloModalidadePreco } from "../../constants/modalidades-preco";
 import type { OperacaoAlteracaoEmMassa } from "../../schemas/alteracao-em-massa/operacoes-alteracao-em-massa.schema";
 import type {
@@ -36,6 +38,7 @@ export type AlteracoesCalculadasProduto = {
     alturaEmCm?: number | null;
     larguraEmCm?: number | null;
     comprimentoEmCm?: number | null;
+    disponibilidadeEntregaPropria?: ModoDisponibilidadeEntregaPropria;
   };
   precos: Array<{
     precoId: string;
@@ -59,6 +62,16 @@ export type PlanoProdutoAlteracaoEmMassa = {
   versao: string;
   linhas: LinhaPreviewAlteracaoEmMassa[];
   alteracoes: AlteracoesCalculadasProduto;
+};
+
+/** Rótulos exibidos no preview (mesmos termos da tela do produto). */
+export const ROTULOS_MODO_ENTREGA_PROPRIA: Record<
+  ModoDisponibilidadeEntregaPropria,
+  string
+> = {
+  herdar: "Herdar da categoria",
+  ativado: "Ativado",
+  desativado: "Desativado",
 };
 
 function dinheiro(valor: number) {
@@ -354,6 +367,26 @@ export function calcularPlanoAlteracaoEmMassa(
             } else {
               alteracoes.produto.comprimentoEmCm = novo;
             }
+          }
+          return [resultado];
+        }
+        case "disponibilidade_entrega_propria": {
+          // Produto de fornecedor (ex.: Laquila) só aceita "Desativado":
+          // a Entrega Própria nunca vale para expedição do fornecedor.
+          const bloqueadoFornecedor =
+            produto.expedidoPorFornecedor && operacao.modo !== "desativado";
+          resultado = linha(
+            produto,
+            indice,
+            "Entrega Própria · Disponibilidade",
+            ROTULOS_MODO_ENTREGA_PROPRIA[produto.disponibilidadeEntregaPropria],
+            ROTULOS_MODO_ENTREGA_PROPRIA[operacao.modo],
+            bloqueadoFornecedor
+              ? "Produto expedido pelo fornecedor: a Entrega Própria permanece desativada."
+              : undefined,
+          );
+          if (resultado.resultado === "alterado") {
+            alteracoes.produto.disponibilidadeEntregaPropria = operacao.modo;
           }
           return [resultado];
         }

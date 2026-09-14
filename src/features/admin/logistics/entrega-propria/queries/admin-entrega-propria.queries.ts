@@ -20,6 +20,7 @@ import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-ad
 import { normalizarLocalidadeEntregaPropria } from "@/features/logistica/lib/entrega-propria/normalizar-localidade-entrega-propria";
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
+import { mapearPrecoEntregaPropriaAdmin } from "../lib/mapear-preco-entrega-propria-admin";
 import {
   type EntregaPropriaDestinoProduto,
   montarDestinosEntregaPropria,
@@ -569,58 +570,5 @@ export async function listarPrecosEntregaPropriaProduto(
     },
   });
 
-  return precos.map((preco) => {
-    const cidadeRelacionada = preco.cidade;
-    const cidadeId = preco.cityId;
-    const destino =
-      preco.destinationType === "region"
-        ? preco.region
-        : preco.destinationType === "bairro"
-          ? preco.bairro
-          : preco.destinationType === "cidade"
-            ? cidadeRelacionada
-            : preco.cepEspecifico;
-
-    const destinationId =
-      preco.destinationType === "region"
-        ? preco.regionId
-        : preco.destinationType === "bairro"
-          ? preco.bairroId
-          : preco.destinationType === "cidade"
-            ? cidadeId
-            : preco.cepEspecificoId;
-
-    return {
-      id: preco.id,
-      destinationType: preco.destinationType,
-      destinationId: destinationId ?? 0,
-      destinationLabel:
-        preco.destinationType === "cidade" && cidadeRelacionada
-          ? cidadeRelacionada.name
-          : preco.destinationType === "cep-especifico" && preco.cepEspecifico
-            ? `${preco.cepEspecifico.cep.slice(0, 5)}-${preco.cepEspecifico.cep.slice(5)} - ${preco.cepEspecifico.neighborhood}`
-            : (destino as { name?: string; nome?: string } | null)?.name ||
-              (destino as { name?: string; nome?: string } | null)?.nome ||
-              "Destino removido",
-      city:
-        preco.destinationType === "cidade" && cidadeRelacionada
-          ? cidadeRelacionada.name
-          : preco.destinationType === "bairro" && preco.bairro
-            ? preco.bairro.cidade.name
-            : (destino as { city?: string } | null)?.city || "",
-      state:
-        preco.destinationType === "cidade" && cidadeRelacionada
-          ? cidadeRelacionada.stateUf
-          : preco.destinationType === "bairro" && preco.bairro
-            ? preco.bairro.cidade.stateUf
-            : (destino as { state?: string } | null)?.state || "",
-      shippingPrice: preco.shippingPrice,
-      rapidDeliveryActive: preco.rapidDeliveryActive,
-      deliveryDeadline: preco.deliveryDeadline,
-      scheduledDeliveryActive: preco.scheduledDeliveryActive,
-      scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,
-      scheduledDeliveryPrice: preco.scheduledDeliveryPrice,
-      isActive: preco.isActive,
-    };
-  });
+  return precos.map(mapearPrecoEntregaPropriaAdmin);
 }

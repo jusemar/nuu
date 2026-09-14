@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { modoDisponibilidadeEntregaPropriaSchema } from "@/features/logistica/schemas/disponibilidade-entrega-propria.schema";
+
 export const modalidadesPrecoSchema = z.enum([
   "stock",
   "preSale",
@@ -66,6 +68,11 @@ export const operacaoAlteracaoEmMassaSchema = z.discriminatedUnion("campo", [
     campo: z.literal("comprimento"),
     operacao: z.enum(["definir", "limpar"]),
     valor: z.number().int().nonnegative(),
+  }),
+  // Disponibilidade da Entrega Própria: Herdar da categoria / Ativado / Desativado.
+  z.object({
+    campo: z.literal("disponibilidade_entrega_propria"),
+    modo: modoDisponibilidadeEntregaPropriaSchema,
   }),
   z
     .object({

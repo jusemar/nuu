@@ -13,6 +13,7 @@ import {
   productTable,
   productVariantTable,
 } from "@/db/schema";
+import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
 import { dbTransacional } from "@/db/transaction";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
@@ -20,6 +21,9 @@ import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
+import { modoDisponibilidadeEntregaPropriaSchema } from "@/features/logistica/schemas/disponibilidade-entrega-propria.schema";
+import { modoDisponibilidadeFreteExternoSchema } from "@/features/logistica/schemas/disponibilidade-frete-externo.schema";
+import type { ModoDisponibilidadeFreteExterno } from "@/features/logistica/types/disponibilidade-frete-externo";
 import type {
   ProductAttributeInput,
   ProductKind,
@@ -195,9 +199,11 @@ interface UpdateProductData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
+    disponibilidadeEntregaPropria?: ModoDisponibilidadeEntregaPropria;
     tiposEntregaPermitidos?: string[];
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
+    disponibilidadeFreteExterno?: ModoDisponibilidadeFreteExterno;
   };
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   attributes?: ProductAttributeInput[];
@@ -376,9 +382,25 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updateFields.allowsPickup = usaLogisticaLaquila
         ? false
         : (data.entrega.permiteRetirada ?? false);
-      updateFields.allowsOwnDelivery = usaLogisticaLaquila
-        ? false
-        : (data.entrega.permiteEntregaPropria ?? false);
+      // Entrega Própria: Herdar/Ativado/Desativado (Laquila sempre desativada).
+      const modoEntregaPropria =
+        modoDisponibilidadeEntregaPropriaSchema.safeParse(
+          usaLogisticaLaquila
+            ? "desativado"
+            : (data.entrega.disponibilidadeEntregaPropria ??
+                (data.entrega.permiteEntregaPropria
+                  ? "ativado"
+                  : "desativado")),
+        );
+      if (!modoEntregaPropria.success) {
+        return falha(
+          "DADOS_INVALIDOS",
+          "Disponibilidade da Entrega Própria inválida.",
+        );
+      }
+      updateFields.disponibilidadeEntregaPropria = modoEntregaPropria.data;
+      // Boolean legado mantido coerente: só "Desativado" o desliga.
+      updateFields.allowsOwnDelivery = modoEntregaPropria.data !== "desativado";
       if (tiposEntregaPermitidos !== undefined) {
         updateFields.allowedDeliveryTypes = tiposEntregaPermitidos;
         updateFields.allowsSupplierDelivery =
@@ -389,6 +411,22 @@ export async function updateProduct(id: string, data: UpdateProductData) {
         : (data.entrega.aceitaPagamentoNaEntrega ?? false);
       updateFields.modeloRetiradaId = data.entrega.modeloRetiradaId || null;
       updateFields.prazoRetiradaCustom = data.entrega.prazoCustom || null;
+
+      // Gate do Frete Externo. Não altera a logística Laquila: o motor ignora
+      // o gate para produtos expedidos por fornecedor.
+      if (data.entrega.disponibilidadeFreteExterno !== undefined) {
+        const modoFreteExterno =
+          modoDisponibilidadeFreteExternoSchema.safeParse(
+            data.entrega.disponibilidadeFreteExterno,
+          );
+        if (!modoFreteExterno.success) {
+          return falha(
+            "DADOS_INVALIDOS",
+            "Disponibilidade do Frete Externo inválida.",
+          );
+        }
+        updateFields.disponibilidadeFreteExterno = modoFreteExterno.data;
+      }
     }
 
     etapaAtual = "transacao_atualizacao";
@@ -596,7 +634,8 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       if (data.entrega !== undefined) {
         await salvarPrecosEntregaPropriaProduto(
           id,
-          !usaLogisticaLaquila && data.entrega.permiteEntregaPropria
+          !usaLogisticaLaquila &&
+            updateFields.disponibilidadeEntregaPropria !== "desativado"
             ? (data.entrega.precosEntregaPropria ?? [])
             : [],
           { executor: tx, revalidar: false },

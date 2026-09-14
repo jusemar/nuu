@@ -52,6 +52,11 @@ import { SeletorDestinoEntregaPropria } from "./seletor-destino-entrega-propria"
 
 type ProdutoEntregaPropriaPrecosProps = {
   productId?: string;
+  /**
+   * Onde a tabela é usada. A Categoria reutiliza o mesmo componente para
+   * configurar as condições comerciais padrão dos seus produtos.
+   */
+  contexto?: "produto" | "categoria";
   value?: ProductOwnDeliveryPriceFormItem[];
   onChange: (items: ProductOwnDeliveryPriceFormItem[]) => void;
 };
@@ -77,7 +82,7 @@ function parseDestinoKey(value: string) {
  * Agenda de entrega do destino, SOMENTE LEITURA. Dias e corte vêm da Agenda
  * Geográfica (mesma resolução do motor público); o Produto define só preços.
  */
-function ResumoAgendaDestino({
+export function ResumoAgendaDestino({
   destino,
 }: {
   destino: EntregaPropriaDestinoProduto | undefined;
@@ -143,9 +148,20 @@ function ResumoAgendaDestino({
 
 export function ProdutoEntregaPropriaPrecos({
   productId,
+  contexto = "produto",
   value = [],
   onChange,
 }: ProdutoEntregaPropriaPrecosProps) {
+  const alvo = contexto === "categoria" ? "desta categoria" : "deste produto";
+  // Estado vazio: na Categoria, sem condições os produtos seguem a categoria
+  // superior (ou os próprios preços); no Produto, vale a herança/consulta.
+  const textoVazio = {
+    titulo: "Nenhum preço de Entrega Própria configurado",
+    detalhe:
+      contexto === "categoria"
+        ? "Sem condições aqui, os produtos usam a categoria superior ou os próprios preços."
+        : "Sem preço para um destino, a loja exibirá Consulte o vendedor.",
+  };
   const [destinos, setDestinos] = useState<EntregaPropriaDestinoProduto[]>([]);
   const [selectedDestination, setSelectedDestination] = useState("");
   const [shippingPrice, setShippingPrice] = useState("");
@@ -263,6 +279,25 @@ export function ProdutoEntregaPropriaPrecos({
     );
   }
 
+  /**
+   * Ao ligar a programada, grava no estado os mesmos valores exibidos nos
+   * campos (0 janelas e R$ 0 = grátis). Sem isso, manter o 0 mostrado não
+   * dispara alteração e a configuração seria recusada por "valor ausente".
+   */
+  function handleAtivarProgramada(
+    index: number,
+    item: ProductOwnDeliveryPriceFormItem,
+    ativa: boolean,
+  ) {
+    handleProgramadaChange(index, {
+      scheduledDeliveryActive: ativa,
+      ...(ativa && {
+        scheduledDeliveryMinDays: item.scheduledDeliveryMinDays ?? 0,
+        scheduledDeliveryPrice: item.scheduledDeliveryPrice ?? 0,
+      }),
+    });
+  }
+
   function handleProgramadaChange(
     index: number,
     updates: Partial<ProductOwnDeliveryPriceFormItem>,
@@ -309,8 +344,8 @@ export function ProdutoEntregaPropriaPrecos({
                     <p>
                       Os dias de entrega e o horário de corte são definidos na
                       Agenda Geográfica, com herança entre cidade, região,
-                      bairro e CEP. Nesta tela do produto você define os valores
-                      e as opções de entrega para cada destino.
+                      bairro e CEP. Aqui você define os valores e as opções de
+                      entrega {alvo} para cada destino.
                     </p>
                     <div className="rounded-md bg-gray-50 p-3">
                       <p className="font-medium text-gray-900">Exemplo</p>
@@ -322,9 +357,11 @@ export function ProdutoEntregaPropriaPrecos({
                       </p>
                     </div>
                     <p>
-                      Os preços de cada modalidade continuam sendo definidos no
-                      produto. O calendário é apenas consultado aqui e não pode
-                      ser editado nesta tela.
+                      {contexto === "categoria"
+                        ? "Estes valores são o padrão dos produtos da categoria que herdam a Entrega Própria. Um preço próprio do produto, quando aplicável ao endereço, tem prioridade."
+                        : "Os preços de cada modalidade continuam sendo definidos no produto. Se a categoria tiver condições padrão, um preço próprio do produto aplicável ao endereço tem prioridade."}{" "}
+                      O calendário é apenas consultado aqui e não pode ser
+                      editado nesta tela.
                     </p>
                     <p className="font-medium text-gray-900">
                       Caminho da agenda: Logística → Entrega Própria → Agenda
@@ -335,8 +372,8 @@ export function ProdutoEntregaPropriaPrecos({
               </Dialog>
             </div>
             <p className="text-sm text-gray-500">
-              A logística define a cobertura. Aqui você define quanto este
-              produto custa para cada destino atendido.
+              A logística define a cobertura. Aqui você define as condições
+              comerciais {alvo} para cada destino atendido.
             </p>
           </div>
         </div>
@@ -392,12 +429,8 @@ export function ProdutoEntregaPropriaPrecos({
       <div className="space-y-3 lg:hidden">
         {value.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white px-4 py-7 text-center">
-            <p className="font-medium text-gray-700">
-              Nenhum preco de entrega propria configurado
-            </p>
-            <p className="mt-1 text-sm text-gray-500">
-              Sem preco para um destino, a loja exibira Consulte o vendedor.
-            </p>
+            <p className="font-medium text-gray-700">{textoVazio.titulo}</p>
+            <p className="mt-1 text-sm text-gray-500">{textoVazio.detalhe}</p>
           </div>
         ) : (
           value.map((item, index) => {
@@ -476,9 +509,7 @@ export function ProdutoEntregaPropriaPrecos({
                         aria-label={`Ativar entrega programada para ${destino?.label ?? "destino"}`}
                         checked={item.scheduledDeliveryActive ?? false}
                         onCheckedChange={(checked) =>
-                          handleProgramadaChange(index, {
-                            scheduledDeliveryActive: checked,
-                          })
+                          handleAtivarProgramada(index, item, checked)
                         }
                       />
                       <span className="min-w-12 text-sm font-medium text-gray-700">
@@ -583,12 +614,9 @@ export function ProdutoEntregaPropriaPrecos({
               <TableRow>
                 <TableCell colSpan={6} className="h-28 text-center">
                   <p className="font-medium text-gray-700">
-                    Nenhum preco de entrega propria configurado
+                    {textoVazio.titulo}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    Sem preco para um destino, a loja exibira Consulte o
-                    vendedor.
-                  </p>
+                  <p className="text-sm text-gray-500">{textoVazio.detalhe}</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -649,9 +677,7 @@ export function ProdutoEntregaPropriaPrecos({
                             aria-label={`Ativar entrega programada para ${destino?.label ?? "destino"}`}
                             checked={item.scheduledDeliveryActive ?? false}
                             onCheckedChange={(checked) =>
-                              handleProgramadaChange(index, {
-                                scheduledDeliveryActive: checked,
-                              })
+                              handleAtivarProgramada(index, item, checked)
                             }
                           />
                           <span className="text-xs font-medium">
@@ -660,8 +686,10 @@ export function ProdutoEntregaPropriaPrecos({
                         </div>
                         {item.scheduledDeliveryActive ? (
                           <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs">
+                            {/* Rótulos com altura mínima e quebra de linha: evita
+                                que "Janelas após a rápida" invada a coluna ao lado. */}
+                            <div className="min-w-0">
+                              <Label className="flex min-h-8 items-end text-xs leading-tight whitespace-normal">
                                 Janelas após a rápida
                               </Label>
                               <Input
@@ -679,8 +707,10 @@ export function ProdutoEntregaPropriaPrecos({
                                 }
                               />
                             </div>
-                            <div>
-                              <Label className="text-xs">Valor (R$)</Label>
+                            <div className="min-w-0">
+                              <Label className="flex min-h-8 items-end text-xs leading-tight whitespace-normal">
+                                Valor (R$)
+                              </Label>
                               <Input
                                 aria-label="Valor da entrega programada"
                                 type="number"

@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 
 import { selecionarClassificacoesLogisticasAplicaveis } from "../../lib/disponibilidade/selecionar-classificacoes-logisticas";
+import { buscarDisponibilidadeFreteExternoProduto } from "./buscar-disponibilidade-frete-externo";
 import { mapearDisponibilidadeFreteProduto } from "./mapear-disponibilidade-frete-produto";
 
 async function buscarCategoriaProduto(produtoId: string) {
@@ -76,6 +77,7 @@ export async function buscarDisponibilidadeFreteProduto({
     regrasProdutos,
     regrasCategorias,
     regrasTiposLogisticos,
+    freteExterno,
   ] = await Promise.all([
     db.query.provedoresFreteTable.findMany(),
     db.query.transportadorasFreteTable.findMany({
@@ -148,6 +150,11 @@ export async function buscarDisponibilidadeFreteProduto({
           },
         })
       : [],
+    // Gate do Frete Externo: mesma categoria usada pelas regras específicas.
+    buscarDisponibilidadeFreteExternoProduto({
+      produtoId,
+      categoriaId: categoriaProduto,
+    }),
   ]);
 
   return mapearDisponibilidadeFreteProduto({
@@ -157,6 +164,7 @@ export async function buscarDisponibilidadeFreteProduto({
     tiposLogisticosIdentificadores,
     origemExpedicao,
     fornecedorProvedor,
+    freteExterno,
     provedores,
     transportadoras,
     servicos,

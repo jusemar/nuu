@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { MODALIDADES_PRECO_PRODUTO } from "../../../constants/modalidades-preco";
+import { ROTULOS_MODO_ENTREGA_PROPRIA } from "../../../lib/alteracao-em-massa/calcular-preview-alteracao-em-massa";
 import {
   type OperacaoAlteracaoEmMassa,
   operacaoAlteracaoEmMassaSchema,
@@ -61,6 +62,7 @@ type CampoEditor =
   | "altura"
   | "largura"
   | "comprimento"
+  | "disponibilidade_entrega_propria"
   | "entrega_rapida"
   | "entrega_programada";
 
@@ -151,8 +153,12 @@ const GRUPOS: Array<{
   {
     id: "frete",
     rotulo: "Frete",
-    descricao: "Entrega rápida e programada",
-    campos: ["entrega_rapida", "entrega_programada"],
+    descricao: "Disponibilidade, entrega rápida e programada",
+    campos: [
+      "disponibilidade_entrega_propria",
+      "entrega_rapida",
+      "entrega_programada",
+    ],
     icone: Truck,
   },
 ];
@@ -199,6 +205,7 @@ export function ConfiguradorOperacoesProdutos({
     altura_operacao: "definir",
     largura_operacao: "definir",
     comprimento_operacao: "definir",
+    entrega_propria_modo: "herdar",
     entrega_rapida_status: "true",
     entrega_programada_status: "true",
   });
@@ -245,6 +252,12 @@ export function ConfiguradorOperacoesProdutos({
               : numeroDigitado(valores[`${campo}_valor`]),
         });
     });
+    if (campos.has("disponibilidade_entrega_propria")) {
+      candidatas.push({
+        campo: "disponibilidade_entrega_propria",
+        modo: valores.entrega_propria_modo,
+      });
+    }
     if (campos.has("entrega_rapida")) {
       candidatas.push({
         campo: "entrega_rapida",
@@ -697,6 +710,41 @@ export function ConfiguradorOperacoesProdutos({
 
         {grupoAtivo === "frete" && (
           <div className="space-y-3">
+            <CampoConfiguravel
+              campo="disponibilidade_entrega_propria"
+              rotulo="Alterar disponibilidade da Entrega Própria"
+              dica="Herdar da categoria usa a Entrega Própria configurada na categoria (ou na superior). Produtos expedidos pelo fornecedor continuam sem Entrega Própria. Frete Externo e Retirada não mudam."
+              ativo={campos.has("disponibilidade_entrega_propria")}
+              onAlternar={alternarCampo}
+              valido={operacoes.some(
+                (item) => item.campo === "disponibilidade_entrega_propria",
+              )}
+              valorAtual={valorAtual(
+                (produto) =>
+                  ROTULOS_MODO_ENTREGA_PROPRIA[
+                    produto.disponibilidadeEntregaPropria
+                  ],
+              )}
+            >
+              <div className="mt-4 max-w-sm">
+                <Select
+                  value={valores.entrega_propria_modo}
+                  onValueChange={(valor) =>
+                    definir("entrega_propria_modo", valor)
+                  }
+                >
+                  <SelectTrigger aria-label="Nova disponibilidade da Entrega Própria">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="herdar">Herdar da categoria</SelectItem>
+                    <SelectItem value="ativado">Ativado</SelectItem>
+                    <SelectItem value="desativado">Desativado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CampoConfiguravel>
+
             <CampoConfiguravel
               campo="entrega_rapida"
               rotulo="Alterar Entrega Rápida"

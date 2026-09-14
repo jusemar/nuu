@@ -171,6 +171,9 @@ export async function getProductById(id: string) {
         allowsPickup: productTable.allowsPickup,
         allowsOwnDelivery: productTable.allowsOwnDelivery,
         aceitaPagamentoNaEntrega: productTable.aceitaPagamentoNaEntrega,
+        disponibilidadeFreteExterno: productTable.disponibilidadeFreteExterno,
+        disponibilidadeEntregaPropria:
+          productTable.disponibilidadeEntregaPropria,
         modeloRetiradaId: productTable.modeloRetiradaId,
         prazoRetiradaCustom: productTable.prazoRetiradaCustom,
 
@@ -499,6 +502,8 @@ export async function getProductById(id: string) {
         allowsPickup: product.allowsPickup,
         allowsOwnDelivery: product.allowsOwnDelivery,
         aceitaPagamentoNaEntrega: product.aceitaPagamentoNaEntrega,
+        disponibilidadeFreteExterno: product.disponibilidadeFreteExterno,
+        disponibilidadeEntregaPropria: product.disponibilidadeEntregaPropria,
         modeloRetiradaId: product.modeloRetiradaId,
         prazoRetiradaCustom: product.prazoRetiradaCustom,
         precosEntregaPropria: precosEntregaPropria.map((preco) => ({

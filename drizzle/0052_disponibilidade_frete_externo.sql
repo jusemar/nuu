@@ -1,0 +1,3 @@
+CREATE TYPE "public"."modo_disponibilidade_frete_externo" AS ENUM('herdar', 'ativado', 'desativado');--> statement-breakpoint
+ALTER TABLE "category" ADD COLUMN "disponibilidade_frete_externo" "modo_disponibilidade_frete_externo" DEFAULT 'herdar' NOT NULL;--> statement-breakpoint
+ALTER TABLE "product" ADD COLUMN "disponibilidade_frete_externo" "modo_disponibilidade_frete_externo" DEFAULT 'herdar' NOT NULL;

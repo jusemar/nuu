@@ -94,6 +94,11 @@ export async function cotarProdutoMatrizFreteMerchant({
       };
     }
 
+    const disponibilidade = await buscarDisponibilidadeFreteProduto({
+      produtoId: produto.produtoId,
+      varianteId: dados.varianteAtual?.identificadorVariante ?? null,
+      categoriaId: dados.categoriaId,
+    });
     const resultado = await cotarFreteFluxoAtual({
       ...dados,
       retiradasAtuais: [],
@@ -106,11 +111,9 @@ export async function cotarProdutoMatrizFreteMerchant({
         produto.produtoId,
         endereco,
       ),
-    });
-    const disponibilidade = await buscarDisponibilidadeFreteProduto({
-      produtoId: produto.produtoId,
-      varianteId: dados.varianteAtual?.identificadorVariante ?? null,
-      categoriaId: dados.categoriaId,
+      // Gate do Frete Externo: não consulta a Frenet quando desativado.
+      freteExternoDesativado:
+        disponibilidade.contextoProduto.freteExterno?.ativo === false,
     });
     const resultadoFiltrado = filtrarResultadoCotacaoFreteDisponivel(
       resultado,

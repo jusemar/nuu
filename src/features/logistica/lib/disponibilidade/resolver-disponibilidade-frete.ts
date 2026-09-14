@@ -10,6 +10,7 @@ import type {
   VolumeDisponibilidadeFrete,
   VolumesDisponibilidadeFrete,
 } from "../../types/disponibilidade-frete";
+import { opcaoEhFreteExterno } from "./resolver-disponibilidade-frete-externo";
 
 type DecisaoRegras = "sem-regra" | "permitido" | "bloqueado";
 
@@ -222,6 +223,21 @@ function decidirRegras(
     : "bloqueado";
 }
 
+/**
+ * A logística de fornecedor (ex.: Laquila) segue contrato próprio: o gate do
+ * Frete Externo da loja nunca a desliga. A origem vem do contexto do produto
+ * e, quando ele não a informa, dos itens efetivamente cotados.
+ */
+function cotacaoDeFornecedor(
+  contextoProduto: ContextoProdutoDisponibilidadeFrete,
+  volumes: VolumesDisponibilidadeFrete,
+) {
+  return (
+    contextoProduto.origemExpedicao === "fornecedor" ||
+    volumes.itens.some((item) => item.origemExpedicao === "fornecedor")
+  );
+}
+
 function criarResultadoIndisponivel(
   opcao: OpcaoFrete,
   base: Pick<
@@ -279,6 +295,16 @@ export function resolverDisponibilidadeOpcaoFrete({
     servicoConhecido: Boolean(servico),
     transportadoraConhecida: Boolean(transportadora),
   };
+
+  // Gate anterior às regras: Frete Externo desativado não participa.
+  // Entrega Própria e Retirada não são Frete Externo e seguem normalmente.
+  if (
+    contextoProduto.freteExterno?.ativo === false &&
+    opcaoEhFreteExterno(opcao) &&
+    !cotacaoDeFornecedor(contextoProduto, volumes)
+  ) {
+    return criarResultadoIndisponivel(opcao, base, "frete-externo-desativado");
+  }
 
   if (provedor && !provedor.ativo) {
     return criarResultadoIndisponivel(opcao, base, "provedor-inativo");

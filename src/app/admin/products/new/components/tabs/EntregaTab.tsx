@@ -18,19 +18,23 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
 import { buscarResumoLogisticaProduto } from "@/features/admin/logistica/actions/produto-logistica/buscar-resumo-logistica-produto";
 import { desvincularTipoLogisticoProduto } from "@/features/admin/logistica/actions/produto-logistica/desvincular-tipo-logistico-produto";
 import { vincularTipoLogisticoProduto } from "@/features/admin/logistica/actions/produto-logistica/vincular-tipo-logistico-produto";
 import { buscarModelosRetiradaAction } from "@/features/admin/logistica/actions/retirada/buscarModelos";
 import { DimensoesFreteExterno } from "@/features/admin/logistica/components/produto/DimensoesFreteExterno";
+import { DisponibilidadeFreteExternoProduto } from "@/features/admin/logistica/components/produto/DisponibilidadeFreteExternoProduto";
 import { ResumoLogisticaProduto } from "@/features/admin/logistica/components/produto/ResumoLogisticaProduto";
 import { SecaoRetiradaProduto } from "@/features/admin/logistica/components/retirada-local/SecaoRetiradaProduto";
 import type { ModeloRetirada } from "@/features/admin/logistica/types/logistica.types";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+import { DisponibilidadeEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/components/admin/heranca/disponibilidade-entrega-propria-produto";
 import { ProdutoEntregaPropriaPrecos } from "@/features/admin/logistics/entrega-propria/components/admin/produto-entrega-propria-precos";
 import { EntregaPropriaInfoCard } from "@/features/admin/logistics/entrega-propria/components/EntregaPropriaInfoCard";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import type { ResultadoListaTransportadorasLaquila } from "@/features/fornecedores/integracoes/laquila/queries/listar-transportadoras-laquila";
+import type { ModoDisponibilidadeFreteExterno } from "@/features/logistica/types/disponibilidade-frete-externo";
 
 type Props = {
   data: {
@@ -38,12 +42,17 @@ type Props = {
     modeloRetiradaId?: string | null;
     prazoCustom?: string;
     permiteEntregaPropria?: boolean;
+    /** Herdar da categoria / Ativado / Desativado. */
+    disponibilidadeEntregaPropria?: ModoDisponibilidadeEntregaPropria;
     tiposEntregaPermitidos?: string[];
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
     classificacoesLogisticasIds?: string[];
+    disponibilidadeFreteExterno?: ModoDisponibilidadeFreteExterno;
   };
   productId?: string;
+  /** Categoria selecionada no formulário (base da herança do Frete Externo). */
+  categoriaId?: string | null;
   onChange?: (updates: Partial<Props["data"]>) => void;
   dimensoesFrete?: DimensoesFreteExternoProduto;
   aoAlterarDimensoes?: (dimensoes: DimensoesFreteExternoProduto) => void;
@@ -54,6 +63,7 @@ type Props = {
 export function EntregaTab({
   data,
   productId,
+  categoriaId = null,
   onChange,
   dimensoesFrete = {},
   aoAlterarDimensoes,
@@ -150,14 +160,24 @@ export function EntregaTab({
     });
   };
 
-  const handleOwnDeliveryChange = (checked: boolean) => {
+  // Produto salvo antes da herança: o modo vem do antigo "Permitir Entrega Própria".
+  const modoEntregaPropria: ModoDisponibilidadeEntregaPropria =
+    data.disponibilidadeEntregaPropria ??
+    (data.permiteEntregaPropria ? "ativado" : "desativado");
+  const entregaPropriaNaoDesativada = modoEntregaPropria !== "desativado";
+
+  const handleOwnDeliveryChange = (modo: ModoDisponibilidadeEntregaPropria) => {
+    const permite = modo !== "desativado";
     const tiposAtuais = data.tiposEntregaPermitidos ?? [];
     onChange?.({
       ...data,
-      permiteEntregaPropria: checked,
-      tiposEntregaPermitidos: checked
+      disponibilidadeEntregaPropria: modo,
+      permiteEntregaPropria: permite,
+      // "own" é a origem de estoque próprio (também usada pelo Frete Externo):
+      // desativar a Entrega Própria não pode apagar a origem de envio do produto.
+      tiposEntregaPermitidos: permite
         ? Array.from(new Set([...tiposAtuais, "own"]))
-        : tiposAtuais.filter((tipo) => tipo !== "own"),
+        : tiposAtuais,
     });
   };
 
@@ -169,6 +189,7 @@ export function EntregaTab({
   const aplicarConfiguracaoLaquila = () => {
     onChange?.({
       permiteEntregaPropria: false,
+      disponibilidadeEntregaPropria: "desativado",
       aceitaPagamentoNaEntrega: false,
       precosEntregaPropria: [],
       tiposEntregaPermitidos: ["supplier"],
@@ -334,32 +355,26 @@ export function EntregaTab({
                     Preços por destino
                   </CardTitle>
                   <CardDescription>
-                    Configure o preço da Entrega Própria deste produto para os
-                    destinos já cadastrados em Logística.
+                    Defina se este produto oferece Entrega Própria e, se
+                    necessário, preços próprios que têm prioridade sobre a
+                    categoria.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
-                    <div>
-                      <Label className="font-medium">
-                        Permitir Entrega Própria
-                      </Label>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        Quando desativado, este produto não oferece Entrega
-                        Própria na loja.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={data.permiteEntregaPropria ?? false}
-                      onCheckedChange={handleOwnDeliveryChange}
-                    />
-                  </div>
+                  <DisponibilidadeEntregaPropriaProduto
+                    valor={modoEntregaPropria}
+                    categoriaId={categoriaId}
+                    produtoTemPrecosProprios={
+                      (data.precosEntregaPropria?.length ?? 0) > 0
+                    }
+                    aoAlterar={handleOwnDeliveryChange}
+                  />
 
                   {/* Pagamento na entrega só existe dentro da entrega própria: é o entregador
                   da loja que recebe. Por isso o controle vive aqui e só aparece quando a
                   entrega própria está ligada — mostrá-lo antes sugeriria uma combinação
                   que o motor de elegibilidade nunca aprovaria. */}
-                  {data.permiteEntregaPropria ? (
+                  {entregaPropriaNaoDesativada ? (
                     <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
                       <div>
                         <Label className="font-medium">
@@ -381,7 +396,7 @@ export function EntregaTab({
                     </div>
                   ) : null}
 
-                  {data.permiteEntregaPropria ? (
+                  {entregaPropriaNaoDesativada ? (
                     <ProdutoEntregaPropriaPrecos
                       productId={productId}
                       value={data.precosEntregaPropria ?? []}
@@ -396,6 +411,14 @@ export function EntregaTab({
 
         <TabsContent value="regras-logisticas">
           <div className="space-y-6">
+            <DisponibilidadeFreteExternoProduto
+              valor={data.disponibilidadeFreteExterno ?? "herdar"}
+              categoriaId={categoriaId}
+              usaLogisticaLaquila={usaLogisticaLaquila}
+              aoAlterar={(modo) =>
+                onChange?.({ disponibilidadeFreteExterno: modo })
+              }
+            />
             <DimensoesFreteExterno
               dimensoes={dimensoesFrete}
               aoAlterar={aoAlterarDimensoes}

@@ -3,6 +3,10 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import {
+  validarDestinoBancoDesenvolvimento,
+  VARIAVEL_NEON_EXPLICITO,
+} from "./destino-banco-desenvolvimento";
 import * as schema from "./schema";
 
 /** Endpoint da branch `production`. Ver `docs/ambientes-banco-e-scripts.md`. */
@@ -64,6 +68,13 @@ function criarBancoTransacional(): BancoTransacional {
       throw new Error("BANCO_INTEGRACAO_ATENDIMENTO_IA_NAO_DESCARTAVEL");
     }
   }
+
+  // Mesma trava de `connection.ts`: `next dev` só usa Neon via `npm run dev:neon`.
+  validarDestinoBancoDesenvolvimento({
+    url: urlBanco,
+    ambienteNode: process.env.NODE_ENV,
+    neonExplicito: process.env[VARIAVEL_NEON_EXPLICITO],
+  });
 
   // O driver HTTP da Neon não suporta transações. Operações atômicas usam pg.
   poolTransacional = new Pool({ connectionString: urlBanco });

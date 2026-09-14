@@ -135,6 +135,18 @@ src/
 
 ---
 
+## 🐘 Ambiente de banco (LEIA ANTES DE TOCAR NO BANCO)
+
+- **Padrão = PostgreSQL LOCAL persistente, que JÁ EXISTE:** container `nooo-postgres-local`,
+  volume `nooo-postgres-local-dados`, `127.0.0.1:55432/nooo_desenvolvimento` (PostgreSQL 17 + pgvector).
+  **Não crie outro PostgreSQL/container.** Use `npm run db:local:subir` / `db:local:status`.
+- `npm run dev` = local. `npm run dev:neon` = Neon **explícito** (só quando o usuário pedir).
+- `npm run migrations:local` = local. Testes/ensaios de migration = descartável em Docker
+  (`migrations:validar-apenas`, `migrations:validar`, `testes:integracao:logistica`).
+- `npm run migrations:producao` = Neon produção, uma vez, no fim, com autorização.
+- **Nunca usar Neon para testes/ensaios e nunca criar branch Neon** (só existem `production` e `desenvolvimento-local`).
+- Detalhes: `docs/ambientes-banco-e-scripts.md`.
+
 ## 🗄️ Banco de Dados (Drizzle ORM)
 
 ```bash

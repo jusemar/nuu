@@ -21,7 +21,8 @@ import {
  * finalmente avaliar seus imports, a variável já aponta para o banco certo.
  *
  * Uso (sempre via package.json):
- *   AMBIENTE_BANCO=desenvolvimento tsx scripts/lib/executar-script-local.ts <caminho-do-script>
+ *   AMBIENTE_BANCO=local tsx scripts/lib/executar-script-local.ts <caminho-do-script>
+ *   (Neon homologação só com AMBIENTE_BANCO=desenvolvimento AMBIENTES_ACEITOS=desenvolvimento)
  */
 async function executar() {
   const caminhoAlvo = process.argv[2];
@@ -32,12 +33,13 @@ async function executar() {
     );
   }
 
-  // Por padrão só desenvolvimento. Um comando pode ampliar via AMBIENTES_ACEITOS, mas
-  // "producao" nunca entra aqui — operação em produção tem caminho próprio.
+  // Por padrão só o PostgreSQL local. Um comando pode ampliar via AMBIENTES_ACEITOS
+  // (ex.: "desenvolvimento" = Neon homologação), mas "producao" nunca entra aqui —
+  // operação em produção tem caminho próprio.
   const ambientesAceitos = (
     process.env.AMBIENTES_ACEITOS?.trim()
       ? process.env.AMBIENTES_ACEITOS.split(",").map((item) => item.trim())
-      : ["desenvolvimento"]
+      : ["local"]
   ) as AmbienteBanco[];
 
   if (ambientesAceitos.includes("producao")) {

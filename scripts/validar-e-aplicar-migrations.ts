@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { closeSync, openSync, readFileSync, unlinkSync } from "node:fs";
 
 import { parse } from "dotenv";
@@ -8,6 +8,17 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client, Pool } from "pg";
 
 import {
+  criarRecorteMigrations,
+  lerEstruturaBanco,
+  type PostgresDescartavel,
+  subirPostgresDescartavel,
+} from "./lib/postgres-docker-descartavel";
+import {
+  consultarMigrationsLocais,
+  descreverUrlSemSegredo,
+  garantirPostgresLocal,
+} from "./lib/postgres-local";
+import {
   ANCORA_MIGRATIONS,
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
@@ -15,6 +26,8 @@ import {
   validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
+  validarDeltaSnapshotDisponibilidadeFreteExterno,
+  validarDeltaSnapshotEntregaPropriaCategoria,
   validarDeltaSnapshotIntegridadeEntregaPropria,
   validarDeltaSnapshotPoliticasEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
@@ -36,12 +49,17 @@ const SCHEMA_MIGRACOES = "drizzle_v2";
 const TABELA_MIGRACOES = "__drizzle_migrations";
 const BANCO_PRINCIPAL = "neondb";
 const BANCO_VAZIO = "validacao_cadeia_vazia";
+const BANCO_ATUALIZACAO = "validacao_atualizacao";
 const PAPEL_BANCO = "neondb_owner";
 const BRANCH_DESENVOLVIMENTO = "br-frosty-sea-acjpjuxk";
 const ENDPOINT_DESENVOLVIMENTO = "ep-quiet-bar-acb7yly2";
 const BRANCH_PRODUCAO = "br-lucky-smoke-acg7fz8x";
 const ENDPOINT_PRODUCAO = "ep-proud-bonus-acy2bafx";
-const PREFIXO_BRANCH_TEMPORARIA = "validacao-migrations-nuu-";
+/**
+ * A validação descartável roda em PostgreSQL local (Docker). Nenhuma branch
+ * Neon é criada: o cliente Neon abaixo só faz leituras (GET) da topologia.
+ */
+const PREFIXO_POSTGRES_DESCARTAVEL = "nuu-validacao-migrations";
 const ARQUIVO_LOCK = "/tmp/nuu-validacao-migrations.lock";
 
 type IdentidadeBanco = {
@@ -137,19 +155,14 @@ class ClienteNeon {
     readonly projetoId: string,
   ) {}
 
-  private async requisitar<T>(
-    metodo: "DELETE" | "GET" | "POST",
-    caminho: string,
-    corpo?: unknown,
-  ): Promise<T> {
+  // Somente leitura: o fluxo nunca cria, altera ou remove recursos na Neon.
+  private async requisitar<T>(caminho: string): Promise<T> {
     const resposta = await fetch(`${API_NEON}${caminho}`, {
-      method: metodo,
+      method: "GET",
       headers: {
         Authorization: `Bearer ${this.token}`,
         Accept: "application/json",
-        ...(corpo ? { "Content-Type": "application/json" } : {}),
       },
-      body: corpo ? JSON.stringify(corpo) : undefined,
     });
     const texto = await resposta.text();
     let json: unknown = {};
@@ -167,114 +180,20 @@ class ClienteNeon {
   buscarProjeto() {
     return this.requisitar<{
       project: { id: string; default_branch_id?: string };
-    }>("GET", `/projects/${this.projetoId}`);
+    }>(`/projects/${this.projetoId}`);
   }
 
   listarBranches() {
     return this.requisitar<{ branches: BranchNeon[] }>(
-      "GET",
       `/projects/${this.projetoId}/branches`,
     );
   }
 
   listarEndpoints() {
     return this.requisitar<{ endpoints: EndpointNeon[] }>(
-      "GET",
       `/projects/${this.projetoId}/endpoints`,
     );
   }
-
-  buscarBranch(branchId: string) {
-    return this.requisitar<{ branch: BranchNeon }>(
-      "GET",
-      `/projects/${this.projetoId}/branches/${branchId}`,
-    );
-  }
-
-  criarBranch(nome: string, expiraEm: string) {
-    return this.requisitar<{
-      branch: BranchNeon;
-      endpoints?: EndpointNeon[];
-    }>("POST", `/projects/${this.projetoId}/branches`, {
-      branch: {
-        name: nome,
-        parent_id: BRANCH_DESENVOLVIMENTO,
-        expires_at: expiraEm,
-      },
-      endpoints: [{ type: "read_write" }],
-    });
-  }
-
-  criarBanco(branchId: string) {
-    return this.requisitar<{ database: { name: string; owner_name: string } }>(
-      "POST",
-      `/projects/${this.projetoId}/branches/${branchId}/databases`,
-      { database: { name: BANCO_VAZIO, owner_name: PAPEL_BANCO } },
-    );
-  }
-
-  listarBancos(branchId: string) {
-    return this.requisitar<{
-      databases: Array<{ name: string; owner_name: string }>;
-    }>("GET", `/projects/${this.projetoId}/branches/${branchId}/databases`);
-  }
-
-  async aguardarBanco(branchId: string) {
-    const limite = Date.now() + 60_000;
-    while (Date.now() < limite) {
-      const resposta = await this.listarBancos(branchId);
-      const banco = resposta.databases.find(
-        (item) => item.name === BANCO_VAZIO,
-      );
-      if (banco?.owner_name === PAPEL_BANCO) return;
-      await pausar(1_000);
-    }
-    throw new Error(
-      "O banco vazio não ficou disponível no prazo de 60 segundos.",
-    );
-  }
-
-  async obterConexao(branchId: string, endpointId: string, banco: string) {
-    const parametros = new URLSearchParams({
-      branch_id: branchId,
-      endpoint_id: endpointId,
-      database_name: banco,
-      role_name: PAPEL_BANCO,
-      pooled: "false",
-    });
-    const resposta = await this.requisitar<{ uri: string }>(
-      "GET",
-      `/projects/${this.projetoId}/connection_uri?${parametros}`,
-    );
-    return exigirTexto(resposta.uri, "URI temporária retornada pela Neon");
-  }
-
-  excluirBranch(branchId: string) {
-    return this.requisitar<unknown>(
-      "DELETE",
-      `/projects/${this.projetoId}/branches/${branchId}`,
-    );
-  }
-}
-
-function pausar(milissegundos: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, milissegundos));
-}
-
-async function aguardarIdentidade(url: string) {
-  const limite = Date.now() + 60_000;
-  let ultimaFalha = "conexão indisponível";
-  while (Date.now() < limite) {
-    try {
-      return await consultarIdentidade(url);
-    } catch (erro) {
-      ultimaFalha = erro instanceof Error ? erro.message : ultimaFalha;
-      await pausar(1_000);
-    }
-  }
-  throw new Error(
-    `A conexão não ficou disponível no prazo esperado: ${ultimaFalha}`,
-  );
 }
 
 function adquirirLock() {
@@ -388,11 +307,11 @@ async function listarMigrationsAplicadas(url: string) {
   }
 }
 
-async function aplicarMigrations(url: string) {
+async function aplicarMigrations(url: string, pasta = PASTA_MIGRACOES) {
   const pool = new Pool({ connectionString: url, max: 1 });
   try {
     await migrate(drizzle(pool), {
-      migrationsFolder: PASTA_MIGRACOES,
+      migrationsFolder: pasta,
       migrationsSchema: SCHEMA_MIGRACOES,
       migrationsTable: TABELA_MIGRACOES,
     });
@@ -589,6 +508,14 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
       JSON.parse(readFileSync("drizzle/meta/0050_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0051_snapshot.json", "utf8")),
     );
+    validarDeltaSnapshotDisponibilidadeFreteExterno(
+      JSON.parse(readFileSync("drizzle/meta/0051_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0052_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotEntregaPropriaCategoria(
+      JSON.parse(readFileSync("drizzle/meta/0052_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0053_snapshot.json", "utf8")),
+    );
   } catch {
     throw new ErroFluxoMigration(
       "arquivos-locais",
@@ -677,15 +604,214 @@ async function preValidar(
   };
 }
 
+function lerArgumentoNumerico(nome: string) {
+  const argumento = process.argv.find((item) => item.startsWith(`--${nome}=`));
+  if (!argumento) return undefined;
+  const valor = Number(argumento.split("=")[1]);
+  if (!Number.isInteger(valor) || valor < 0) {
+    throw new ErroFluxoMigration(
+      "configuracao",
+      `--${nome} precisa ser um inteiro não negativo.`,
+    );
+  }
+  return valor;
+}
+
+async function exigirTotal(
+  url: string,
+  esperado: number,
+  etapa: string,
+  mensagem: string,
+) {
+  if ((await contarMigrations(url)) !== esperado) {
+    throw new ErroFluxoMigration(etapa, mensagem);
+  }
+}
+
+/**
+ * Validação descartável em PostgreSQL local (Docker):
+ * 1. "schema anterior → última": aplica as `base` primeiras migrations e
+ *    depois a cadeia inteira (reproduz um banco já existente sendo atualizado);
+ * 2. "0 → última": aplica a cadeia completa num banco vazio;
+ * 3. confere estruturas conhecidas e exige que os dois bancos fiquem idênticos.
+ */
+async function validarEmPostgresLocal(
+  postgres: PostgresDescartavel,
+  migrations: MigrationLocal[],
+  base: number,
+  registrarEtapa: (etapa: string) => void,
+) {
+  if (base > migrations.length) {
+    throw new ErroFluxoMigration(
+      "configuracao",
+      "A base da atualização é maior que a cadeia local.",
+    );
+  }
+
+  registrarEtapa("atualizacao-schema-anterior");
+  const urlAtualizacao = await postgres.criarBanco(BANCO_ATUALIZACAO);
+  await exigirTotal(
+    urlAtualizacao,
+    0,
+    "atualizacao-schema-anterior",
+    "O banco reservado à atualização não está vazio.",
+  );
+  if (base > 0) {
+    const recorte = criarRecorteMigrations(PASTA_MIGRACOES, base);
+    try {
+      await postgres.confirmarIdentidade(urlAtualizacao, BANCO_ATUALIZACAO);
+      await aplicarMigrations(urlAtualizacao, recorte.pasta);
+    } finally {
+      recorte.remover();
+    }
+    await exigirTotal(
+      urlAtualizacao,
+      base,
+      "atualizacao-schema-anterior",
+      "O schema anterior não registrou a base esperada.",
+    );
+  }
+  await postgres.confirmarIdentidade(urlAtualizacao, BANCO_ATUALIZACAO);
+  await aplicarMigrations(urlAtualizacao);
+  await exigirTotal(
+    urlAtualizacao,
+    migrations.length,
+    "atualizacao-schema-anterior",
+    "A atualização não registrou toda a sequência esperada.",
+  );
+  const estruturaAtualizacao =
+    await validarEstruturaVendaCruzada(urlAtualizacao);
+  const paginasAtualizacao =
+    await consultarEstruturaPaginasDinamicas(urlAtualizacao);
+  console.log(
+    `[migrations] Atualização local aprovada: ${base} -> ${migrations.length}.`,
+  );
+
+  registrarEtapa("cadeia-completa-banco-vazio");
+  const urlVazio = await postgres.criarBanco(BANCO_VAZIO);
+  await exigirTotal(
+    urlVazio,
+    0,
+    "cadeia-completa-banco-vazio",
+    "O banco reservado à cadeia completa não está vazio.",
+  );
+  await postgres.confirmarIdentidade(urlVazio, BANCO_VAZIO);
+  await aplicarMigrations(urlVazio);
+  await exigirTotal(
+    urlVazio,
+    migrations.length,
+    "cadeia-completa-banco-vazio",
+    "A cadeia completa não registrou todas as migrations.",
+  );
+  const estruturaVazio = await validarEstruturaVendaCruzada(urlVazio);
+  const paginasVazio = await consultarEstruturaPaginasDinamicas(urlVazio);
+  console.log(
+    `[migrations] Cadeia completa local aprovada: 0 -> ${migrations.length}.`,
+  );
+
+  registrarEtapa("comparacao-estruturas");
+  const [retratoAtualizacao, retratoVazio] = await Promise.all([
+    lerEstruturaBanco(urlAtualizacao),
+    lerEstruturaBanco(urlVazio),
+  ]);
+  if (retratoAtualizacao !== retratoVazio) {
+    throw new ErroFluxoMigration(
+      "comparacao-estruturas",
+      "A atualização e a cadeia completa produziram estruturas diferentes.",
+    );
+  }
+  console.log(
+    "[migrations] Estruturas idênticas entre atualização e cadeia completa.",
+  );
+
+  return {
+    atualizacao: estruturaAtualizacao,
+    bancoVazio: estruturaVazio,
+    paginasDinamicas: {
+      atualizacao: paginasAtualizacao,
+      bancoVazio: paginasVazio,
+    },
+  };
+}
+
+/**
+ * Modos (todos sem criar branch Neon):
+ * - `--somente-validar` (migrations:validar-apenas): só o PostgreSQL descartável.
+ * - padrão (migrations:validar): descartável reproduzindo o banco local
+ *   persistente e, se aprovado, aplica no PostgreSQL local persistente.
+ * - `--homologacao` (migrations:homologacao): descartável + aplica na Neon
+ *   `desenvolvimento-local`, somente quando pedido explicitamente.
+ * - `--pre-validar` (migrations:homologacao:pre-validar): leitura da Neon homologação.
+ */
 async function executar() {
   const somentePreValidar = process.argv.includes("--pre-validar");
   const somenteValidar = process.argv.includes("--somente-validar");
+  const homologacao = process.argv.includes("--homologacao");
   const liberarLock = adquirirLock();
-  let branchTemporaria: { id: string; nome: string } | null = null;
-  let limpezaConcluida = false;
+  let postgres: PostgresDescartavel | null = null;
   let etapa = "inicializacao";
+  const registrarEtapa = (novaEtapa: string) => {
+    etapa = novaEtapa;
+  };
 
   try {
+    const migrations = carregarMigrationsLocais();
+    etapa = "arquivos-locais";
+    validarArquivosLocais(migrations);
+
+    if (somenteValidar) {
+      // Totalmente local: não lê .env da Neon nem consulta banco remoto.
+      const base =
+        lerArgumentoNumerico("atualizar-a-partir-de") ??
+        Math.max(migrations.length - 1, 0);
+      etapa = "postgres-local";
+      postgres = await subirPostgresDescartavel(PREFIXO_POSTGRES_DESCARTAVEL);
+      console.log(
+        `[migrations] PostgreSQL local descartável: ${postgres.nome}.`,
+      );
+      await validarEmPostgresLocal(postgres, migrations, base, registrarEtapa);
+      console.log(
+        "[migrations] Modo somente validação: nenhum banco remoto foi consultado ou alterado.",
+      );
+      return;
+    }
+
+    if (!homologacao && !somentePreValidar) {
+      // Padrão: banco local persistente (nooo-postgres-local). Neon não é lida.
+      etapa = "postgres-local-persistente";
+      const local = await garantirPostgresLocal();
+      const estadoLocal = await consultarMigrationsLocais(local.url);
+      console.log(
+        `[migrations] Banco local persistente ${descreverUrlSemSegredo(local.url)}: ${estadoLocal.aplicadas}/${estadoLocal.noRepositorio}.`,
+      );
+      etapa = "postgres-local";
+      postgres = await subirPostgresDescartavel(PREFIXO_POSTGRES_DESCARTAVEL);
+      console.log(
+        `[migrations] PostgreSQL local descartável: ${postgres.nome}.`,
+      );
+      await validarEmPostgresLocal(
+        postgres,
+        migrations,
+        Math.min(estadoLocal.aplicadas, migrations.length),
+        registrarEtapa,
+      );
+      etapa = "aplicacao-local-persistente";
+      await aplicarMigrations(local.url);
+      const depois = await consultarMigrationsLocais(local.url);
+      if (depois.aplicadas !== migrations.length) {
+        throw new ErroFluxoMigration(
+          etapa,
+          "O banco local persistente não registrou todas as migrations.",
+        );
+      }
+      await validarEstruturaVendaCruzada(local.url);
+      await consultarEstruturaPaginasDinamicas(local.url);
+      console.log(
+        `[migrations] Banco local persistente atualizado: ${estadoLocal.aplicadas} -> ${depois.aplicadas}. Nenhum banco remoto foi consultado.`,
+      );
+      return;
+    }
+
     const ambienteNeon = carregarAmbiente(".env.neon.local");
     const ambienteDev = carregarAmbiente(".env.desenvolvimento.local");
     const token = exigirTexto(ambienteNeon.NEON_API_KEY, "NEON_API_KEY");
@@ -698,10 +824,7 @@ async function executar() {
       "DATABASE_URL_DESENVOLVIMENTO",
     );
     const neon = new ClienteNeon(token, projetoId);
-    const migrations = carregarMigrationsLocais();
 
-    etapa = "arquivos-locais";
-    validarArquivosLocais(migrations);
     etapa = "pre-validacao";
     const estado = await preValidar(neon, urlDesenvolvimento, migrations);
     console.log(
@@ -724,216 +847,78 @@ async function executar() {
       return;
     }
 
-    etapa = "criacao-branch-temporaria";
-    const sufixo = `${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}-${randomUUID().slice(0, 8)}`;
-    const nome = `${PREFIXO_BRANCH_TEMPORARIA}${sufixo}`;
-    const expiraEm = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-    const criada = await neon.criarBranch(nome, expiraEm);
-    const endpoint = criada.endpoints?.find(
-      (item) => item.type === "read_write",
+    // O journal do desenvolvimento é reproduzido localmente (mesma base) antes
+    // de qualquer escrita no desenvolvimento.
+    etapa = "postgres-local";
+    postgres = await subirPostgresDescartavel(PREFIXO_POSTGRES_DESCARTAVEL);
+    console.log(`[migrations] PostgreSQL local descartável: ${postgres.nome}.`);
+    const validacao = await validarEmPostgresLocal(
+      postgres,
+      migrations,
+      estado.totalAplicadas,
+      registrarEtapa,
     );
-    if (
-      !criada.branch?.id ||
-      criada.branch.parent_id !== BRANCH_DESENVOLVIMENTO ||
-      !endpoint?.id
-    ) {
+
+    etapa = "reconfirmacao-desenvolvimento";
+    const reconfirmacao = await preValidar(
+      neon,
+      urlDesenvolvimento,
+      migrations,
+    );
+    if (reconfirmacao.totalAplicadas !== estado.totalAplicadas) {
       throw new ErroFluxoMigration(
         etapa,
-        "A Neon não retornou a branch temporária e seu endpoint como esperado.",
+        "O journal de desenvolvimento mudou durante a validação.",
       );
     }
-    branchTemporaria = { id: criada.branch.id, nome };
+    etapa = "aplicacao-desenvolvimento";
+    await aplicarMigrations(urlDesenvolvimento);
+    const totalDevDepois = await contarMigrations(urlDesenvolvimento);
+    if (totalDevDepois !== migrations.length) {
+      throw new ErroFluxoMigration(
+        etapa,
+        "O desenvolvimento não registrou todas as migrations.",
+      );
+    }
+    const estruturaDev = await validarEstruturaVendaCruzada(urlDesenvolvimento);
+    const paginasDinamicasDev =
+      await consultarEstruturaPaginasDinamicas(urlDesenvolvimento);
     console.log(
-      `[migrations] Branch temporária criada: ${branchTemporaria.id}.`,
+      `[migrations] Desenvolvimento atualizado: ${estado.totalAplicadas} -> ${totalDevDepois}.`,
     );
-
-    etapa = "conexao-clone";
-    const urlClone = await neon.obterConexao(
-      branchTemporaria.id,
-      endpoint.id,
-      BANCO_PRINCIPAL,
-    );
-    const identidadeClone = await aguardarIdentidade(urlClone);
-    validarIdentidade(
-      identidadeClone,
-      {
-        projetoId,
-        branchId: branchTemporaria.id,
-        endpointId: endpoint.id,
-        banco: BANCO_PRINCIPAL,
-      },
-      etapa,
-    );
-    const totalCloneAntes = await contarMigrations(urlClone);
-    if (totalCloneAntes !== estado.totalAplicadas) {
-      throw new ErroFluxoMigration(
-        etapa,
-        "O clone não reproduziu o journal de desenvolvimento.",
-      );
-    }
-
-    etapa = "migration-sobre-clone";
-    await aplicarMigrations(urlClone);
-    const totalCloneDepois = await contarMigrations(urlClone);
-    if (totalCloneDepois !== migrations.length) {
-      throw new ErroFluxoMigration(
-        etapa,
-        "O clone não registrou toda a sequência esperada.",
-      );
-    }
-    const estruturaClone = await validarEstruturaVendaCruzada(urlClone);
-    const paginasDinamicasClone =
-      await consultarEstruturaPaginasDinamicas(urlClone);
     console.log(
-      `[migrations] Atualização sobre clone aprovada: ${totalCloneAntes} -> ${totalCloneDepois}.`,
-    );
-
-    etapa = "criacao-banco-vazio";
-    const bancoCriado = await neon.criarBanco(branchTemporaria.id);
-    if (
-      bancoCriado.database?.name !== BANCO_VAZIO ||
-      bancoCriado.database.owner_name !== PAPEL_BANCO
-    ) {
-      throw new ErroFluxoMigration(
-        etapa,
-        "A Neon retornou um banco vazio inesperado.",
-      );
-    }
-    await neon.aguardarBanco(branchTemporaria.id);
-    const urlVazio = await neon.obterConexao(
-      branchTemporaria.id,
-      endpoint.id,
-      BANCO_VAZIO,
-    );
-    const identidadeVazio = await aguardarIdentidade(urlVazio);
-    validarIdentidade(
-      identidadeVazio,
-      {
-        projetoId,
-        branchId: branchTemporaria.id,
-        endpointId: endpoint.id,
-        banco: BANCO_VAZIO,
-      },
-      etapa,
-    );
-    if ((await contarMigrations(urlVazio)) !== 0) {
-      throw new ErroFluxoMigration(
-        etapa,
-        "O banco reservado à cadeia completa não está vazio.",
-      );
-    }
-
-    etapa = "cadeia-completa-banco-vazio";
-    await aplicarMigrations(urlVazio);
-    const totalVazio = await contarMigrations(urlVazio);
-    if (totalVazio !== migrations.length) {
-      throw new ErroFluxoMigration(
-        etapa,
-        "A cadeia completa não registrou todas as migrations.",
-      );
-    }
-    const estruturaVazio = await validarEstruturaVendaCruzada(urlVazio);
-    const paginasDinamicasVazio =
-      await consultarEstruturaPaginasDinamicas(urlVazio);
-    console.log(
-      `[migrations] Cadeia completa no banco vazio aprovada: 0 -> ${totalVazio}.`,
-    );
-
-    if (somenteValidar) {
-      console.log(
-        "[migrations] Modo somente validação: desenvolvimento permaneceu inalterado.",
-      );
-    } else {
-      etapa = "reconfirmacao-desenvolvimento";
-      const reconfirmacao = await preValidar(
-        neon,
-        urlDesenvolvimento,
-        migrations,
-      );
-      if (reconfirmacao.totalAplicadas !== estado.totalAplicadas) {
-        throw new ErroFluxoMigration(
-          etapa,
-          "O journal de desenvolvimento mudou durante a validação.",
-        );
-      }
-      etapa = "aplicacao-desenvolvimento";
-      await aplicarMigrations(urlDesenvolvimento);
-      const totalDevDepois = await contarMigrations(urlDesenvolvimento);
-      if (totalDevDepois !== migrations.length) {
-        throw new ErroFluxoMigration(
-          etapa,
-          "O desenvolvimento não registrou todas as migrations.",
-        );
-      }
-      const estruturaDev =
-        await validarEstruturaVendaCruzada(urlDesenvolvimento);
-      const paginasDinamicasDev =
-        await consultarEstruturaPaginasDinamicas(urlDesenvolvimento);
-      console.log(
-        `[migrations] Desenvolvimento atualizado: ${estado.totalAplicadas} -> ${totalDevDepois}.`,
-      );
-      console.log(
-        JSON.stringify(
-          {
-            validacao: {
-              clone: estruturaClone,
-              bancoVazio: estruturaVazio,
-              desenvolvimento: estruturaDev,
-              paginasDinamicas: {
-                clone: paginasDinamicasClone,
-                bancoVazio: paginasDinamicasVazio,
-                desenvolvimento: paginasDinamicasDev,
-              },
-            },
+      JSON.stringify(
+        {
+          validacao: {
+            ...validacao,
+            desenvolvimento: estruturaDev,
+            paginasDinamicasDesenvolvimento: paginasDinamicasDev,
           },
-          null,
-          2,
-        ),
-      );
-    }
+        },
+        null,
+        2,
+      ),
+    );
   } catch (erro) {
     const origem = erro instanceof ErroFluxoMigration ? erro.etapa : etapa;
     const mensagem = descreverErroSeguro(erro);
     console.error(`[migrations] Falha na etapa ${origem}: ${mensagem}`);
     process.exitCode = 1;
   } finally {
-    if (branchTemporaria) {
+    if (postgres) {
       try {
-        const ambienteNeon = carregarAmbiente(".env.neon.local");
-        const neon = new ClienteNeon(
-          exigirTexto(ambienteNeon.NEON_API_KEY, "NEON_API_KEY"),
-          exigirTexto(ambienteNeon.NEON_PROJECT_ID, "NEON_PROJECT_ID"),
-        );
-        const confirmacao = await neon.buscarBranch(branchTemporaria.id);
-        if (
-          confirmacao.branch.id !== branchTemporaria.id ||
-          confirmacao.branch.name !== branchTemporaria.nome ||
-          confirmacao.branch.parent_id !== BRANCH_DESENVOLVIMENTO ||
-          !confirmacao.branch.name.startsWith(PREFIXO_BRANCH_TEMPORARIA)
-        ) {
-          throw new Error(
-            "a identidade da branch não corresponde à criada nesta execução",
-          );
-        }
-        await neon.excluirBranch(branchTemporaria.id);
-        limpezaConcluida = true;
+        await postgres.remover();
         console.log(
-          `[migrations] Branch temporária removida: ${branchTemporaria.id}.`,
+          `[migrations] PostgreSQL local removido: ${postgres.nome}.`,
         );
       } catch (erro) {
-        const mensagem = descreverErroSeguro(erro);
         console.error(
-          `[migrations] LIMPEZA PENDENTE para ${branchTemporaria.id}: ${mensagem}`,
+          `[migrations] LIMPEZA PENDENTE do container ${postgres.nome}: ${descreverErroSeguro(erro)}`,
         );
         process.exitCode = 1;
       }
     }
     liberarLock();
-    if (branchTemporaria && !limpezaConcluida) {
-      console.error(
-        `[migrations] Remova manualmente somente a branch ${branchTemporaria.id} se a API confirmar sua identidade.`,
-      );
-    }
   }
 }
 

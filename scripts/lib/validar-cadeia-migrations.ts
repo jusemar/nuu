@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 52,
-  ultimoIndice: 51,
-  ultimaTag: "0051_remove_colunas_legadas_entrega_propria",
-  ultimoArquivo: "drizzle/0051_remove_colunas_legadas_entrega_propria.sql",
+  total: 54,
+  ultimoIndice: 53,
+  ultimaTag: "0053_entrega_propria_categoria",
+  ultimoArquivo: "drizzle/0053_entrega_propria_categoria.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -490,6 +490,75 @@ export function validarDeltaSnapshotColunasLegadasEntregaPropria(
     ]),
     "das colunas legadas",
   );
+}
+
+/**
+ * 0052 cria somente o enum da disponibilidade do Frete Externo e adiciona a
+ * coluna em `product` e `category`, sem remover nada.
+ */
+export function validarDeltaSnapshotDisponibilidadeFreteExterno(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0051 e 0052 não estão encadeados.");
+  }
+  const alteracoesTabelas = new Set(["public.category", "public.product"]);
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const delta = calcularDeltaGrupo(snapshotAnterior, snapshotAtual, grupo);
+    const adicoesEsperadas =
+      grupo === "enums"
+        ? new Set(["public.modo_disponibilidade_frete_externo"])
+        : new Set<string>();
+    const alteracoesEsperadas =
+      grupo === "tables" ? alteracoesTabelas : new Set<string>();
+    if (
+      delta.removidas.length > 0 ||
+      delta.adicionadas.length !== adicoesEsperadas.size ||
+      delta.adicionadas.some((item) => !adicoesEsperadas.has(item)) ||
+      delta.alteradas.length !== alteracoesEsperadas.size ||
+      delta.alteradas.some((item) => !alteracoesEsperadas.has(item))
+    ) {
+      falhar(
+        `Delta inesperado da disponibilidade do Frete Externo em ${grupo}.`,
+      );
+    }
+  }
+}
+
+/**
+ * 0053 é aditiva (compatível com o código publicado): cria o enum da
+ * disponibilidade da Entrega Própria, a tabela de condições por categoria e
+ * acrescenta colunas em `product` e `category`, sem remover nada.
+ */
+export function validarDeltaSnapshotEntregaPropriaCategoria(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0052 e 0053 não estão encadeados.");
+  }
+  const adicoesPorGrupo: Record<string, Set<string>> = {
+    enums: new Set(["public.modo_disponibilidade_entrega_propria"]),
+    tables: new Set(["public.category_own_delivery_prices"]),
+  };
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const delta = calcularDeltaGrupo(snapshotAnterior, snapshotAtual, grupo);
+    const adicoesEsperadas = adicoesPorGrupo[grupo] ?? new Set<string>();
+    const alteracoesEsperadas =
+      grupo === "tables"
+        ? new Set(["public.category", "public.product"])
+        : new Set<string>();
+    if (
+      delta.removidas.length > 0 ||
+      delta.adicionadas.length !== adicoesEsperadas.size ||
+      delta.adicionadas.some((item) => !adicoesEsperadas.has(item)) ||
+      delta.alteradas.length !== alteracoesEsperadas.size ||
+      delta.alteradas.some((item) => !alteracoesEsperadas.has(item))
+    ) {
+      falhar(`Delta inesperado da Entrega Própria por Categoria em ${grupo}.`);
+    }
+  }
 }
 
 /** 0049 remove exatamente as seis tabelas legadas e nada mais. */

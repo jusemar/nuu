@@ -58,23 +58,33 @@ npx tsc --noEmit
 
 # 🗄️ Database
 
-* ORM: **Drizzle (PostgreSQL - Neon)**
+* ORM: **Drizzle (PostgreSQL)** — local em Docker no desenvolvimento; Neon em produção
+
+### 🐘 Ambiente de banco (LEIA ANTES DE TOCAR NO BANCO)
+
+- **Padrão = PostgreSQL LOCAL persistente, que JÁ EXISTE:** container `nooo-postgres-local`,
+  volume `nooo-postgres-local-dados`, `127.0.0.1:55432/nooo_desenvolvimento` (PostgreSQL 17 + pgvector).
+  **Não crie outro PostgreSQL/container.** Use `npm run db:local:subir` / `db:local:status`.
+- `npm run dev` = local. `npm run dev:neon` = Neon **explícito** (só quando o usuário pedir).
+- `npm run migrations:local` = local. Testes/ensaios de migration = descartável em Docker
+  (`migrations:validar-apenas`, `migrations:validar`, `testes:integracao:logistica`).
+- `npm run migrations:producao` = Neon produção, uma vez, no fim, com autorização.
+- **Nunca usar Neon para testes/ensaios e nunca criar branch Neon** (só existem `production` e `desenvolvimento-local`).
+- Detalhes: `docs/ambientes-banco-e-scripts.md`.
+
+
 
 ⚠️ Estrutura de banco deve seguir **regras.md**
 
 Comandos:
 
 ```bash
-npx drizzle-kit migrate
-npx drizzle-kit push
-npx drizzle-kit studio
+npm run migrations:local          # aplica no PostgreSQL local persistente
+npm run migrations:validar-apenas # valida em PostgreSQL descartável
+npx drizzle-kit generate          # com DATABASE_URL_MIGRACOES descartável na linha de comando
 ```
 
-Requer:
-
-```
-DATABASE_URL
-```
+Nunca `drizzle-kit push`/`migrate` contra a Neon.
 
 ---
 

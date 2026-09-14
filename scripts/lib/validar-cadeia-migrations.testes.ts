@@ -11,6 +11,8 @@ import {
   validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
+  validarDeltaSnapshotDisponibilidadeFreteExterno,
+  validarDeltaSnapshotEntregaPropriaCategoria,
   validarDeltaSnapshotIntegridadeEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
@@ -188,6 +190,59 @@ test("limpeza da Entrega Própria remove somente o legado revisado", () => {
       snapshot47,
       snapshot49,
     ),
+  );
+});
+
+test("0052 só adiciona a disponibilidade do Frete Externo", () => {
+  const snapshot51 = lerSnapshot("0051");
+  const snapshot52 = lerSnapshot("0052");
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotDisponibilidadeFreteExterno(snapshot51, snapshot52),
+  );
+
+  const colunas = (tabela: string) =>
+    (
+      snapshot52.tables[tabela] as {
+        columns: Record<string, { default?: string; notNull?: boolean }>;
+      }
+    ).columns["disponibilidade_frete_externo"];
+  for (const tabela of ["public.product", "public.category"]) {
+    assert.equal(colunas(tabela)?.notNull, true);
+    // Padrão "herdar": registros antigos continuam com Frete Externo ativado.
+    assert.equal(colunas(tabela)?.default, "'herdar'");
+  }
+
+  const adulterado = structuredClone(snapshot52);
+  adulterado.tables["public.order"] = { alteracaoIndevida: true };
+  assert.throws(() =>
+    validarDeltaSnapshotDisponibilidadeFreteExterno(snapshot51, adulterado),
+  );
+});
+
+test("0053 só adiciona a Entrega Própria por Categoria (aditiva)", () => {
+  const snapshot52 = lerSnapshot("0052");
+  const snapshot53 = lerSnapshot("0053");
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotEntregaPropriaCategoria(snapshot52, snapshot53),
+  );
+
+  const coluna = (tabela: string) =>
+    (
+      snapshot53.tables[tabela] as {
+        columns: Record<string, { default?: string; notNull?: boolean }>;
+      }
+    ).columns["disponibilidade_entrega_propria"];
+  // Categoria nasce "herdar"; no produto a coluna é opcional: nulo mantém o
+  // antigo "Permitir Entrega Própria" até o Admin salvar o novo modo.
+  assert.equal(coluna("public.category")?.notNull, true);
+  assert.equal(coluna("public.category")?.default, "'herdar'");
+  assert.equal(coluna("public.product")?.notNull, false);
+  assert.equal(coluna("public.product")?.default, undefined);
+
+  const adulterado = structuredClone(snapshot53);
+  delete adulterado.tables["public.product_own_delivery_prices"];
+  assert.throws(() =>
+    validarDeltaSnapshotEntregaPropriaCategoria(snapshot52, adulterado),
   );
 });
 

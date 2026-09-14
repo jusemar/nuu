@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { parse } from "dotenv";
 import { Client } from "pg";
 
+import { POSTGRES_LOCAL, validarUrlPostgresLocal } from "./postgres-local";
+
 /**
  * Guarda central de destino de banco para scripts executados na máquina do desenvolvedor.
  *
@@ -22,8 +24,13 @@ import { Client } from "pg";
  */
 const ENDPOINT_PRODUCAO = "ep-proud-bonus-acy2bafx";
 
-/** Endpoints que cada ambiente pode usar. Qualquer outro é recusado. */
+/**
+ * Endpoints que cada ambiente pode usar. Qualquer outro é recusado.
+ * `local` é o PostgreSQL persistente em Docker (padrão do dia a dia); o
+ * "endpoint" dele é o nome do container, conferido no próprio servidor.
+ */
 const ENDPOINTS_PERMITIDOS: Record<AmbienteBanco, readonly string[]> = {
+  local: [POSTGRES_LOCAL.container],
   desenvolvimento: ["ep-quiet-bar-acb7yly2"],
   producao: [ENDPOINT_PRODUCAO],
 };
@@ -33,6 +40,7 @@ const ORIGEM_DA_URL: Record<
   AmbienteBanco,
   { arquivo: string; variavel: string }
 > = {
+  local: { arquivo: ".env.local", variavel: "DATABASE_URL" },
   desenvolvimento: {
     arquivo: ".env.desenvolvimento.local",
     variavel: "DATABASE_URL_DESENVOLVIMENTO",
@@ -40,7 +48,12 @@ const ORIGEM_DA_URL: Record<
   producao: { arquivo: ".env", variavel: "DATABASE_URL" },
 };
 
-export type AmbienteBanco = "desenvolvimento" | "producao";
+/**
+ * local           → PostgreSQL local persistente (Docker) — padrão dos scripts.
+ * desenvolvimento → Neon `desenvolvimento-local` (homologação), só quando explícito.
+ * producao        → Neon `production`, somente por comando dedicado e autorizado.
+ */
+export type AmbienteBanco = "local" | "desenvolvimento" | "producao";
 
 export type DestinoBanco = {
   ambiente: AmbienteBanco;
@@ -106,7 +119,7 @@ export function resolverDestinoBanco(): DestinoBanco {
 
   if (!(informado in ENDPOINTS_PERMITIDOS)) {
     throw new ErroDestinoBancoRecusado(
-      `AMBIENTE_BANCO inválido: "${informado}". Valores aceitos: desenvolvimento ou producao.`,
+      `AMBIENTE_BANCO inválido: "${informado}". Valores aceitos: local, desenvolvimento ou producao.`,
     );
   }
 
@@ -121,6 +134,18 @@ export function resolverDestinoBanco(): DestinoBanco {
     throw new ErroDestinoBancoRecusado(
       `URL inválida em ${origem.arquivo} (${origem.variavel}).`,
     );
+  }
+
+  if (ambiente === "local") {
+    // Loopback, porta, banco e usuário exatos do container persistente.
+    try {
+      validarUrlPostgresLocal(url);
+    } catch (erro) {
+      throw new ErroDestinoBancoRecusado(
+        erro instanceof Error ? erro.message : "URL local inválida.",
+      );
+    }
+    return { ambiente, url, endpoint: POSTGRES_LOCAL.container, host };
   }
 
   const endpoint = extrairEndpoint(host);
@@ -172,6 +197,19 @@ async function confirmarIdentidadeNoServidor(
 
   try {
     await cliente.query("BEGIN READ ONLY");
+    if (destino.ambiente === "local") {
+      // O container persistente se identifica pelo cluster_name.
+      const local = await cliente.query<{ cluster: string }>(
+        "SELECT current_setting('cluster_name') AS cluster",
+      );
+      await cliente.query("COMMIT");
+      if (local.rows[0]?.cluster !== POSTGRES_LOCAL.container) {
+        throw new ErroDestinoBancoRecusado(
+          `DESTINO RECUSADO: o servidor local não é o container ${POSTGRES_LOCAL.container}.`,
+        );
+      }
+      return "postgres-local";
+    }
     const resultado = await cliente.query<{
       branch: string | null;
       endpoint: string | null;
@@ -204,7 +242,7 @@ async function confirmarIdentidadeNoServidor(
  * lançados por `executar-script-local.ts`, que garante essa ordem.
  */
 export async function exigirBancoLocal(
-  ambientesAceitos: readonly AmbienteBanco[] = ["desenvolvimento"],
+  ambientesAceitos: readonly AmbienteBanco[] = ["local"],
 ): Promise<DestinoBanco> {
   const destino = resolverDestinoBanco();
 

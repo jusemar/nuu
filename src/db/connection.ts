@@ -5,8 +5,15 @@
 
 import { neon } from "@neondatabase/serverless";
 import { config as carregarDotenv } from "dotenv";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
+import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
+import {
+  ehBancoLocal,
+  validarDestinoBancoDesenvolvimento,
+  VARIAVEL_NEON_EXPLICITO,
+} from "./destino-banco-desenvolvimento";
 import * as schema from "./schema";
 export { productVariantTable } from "./table/products/product-variants";
 export { productTable } from "./table/products/products";
@@ -67,19 +74,41 @@ function resolverUrlDoBanco(): string {
   return urlImplicita;
 }
 
-// Cria o cliente de conexão com o banco
-// O objeto de configuração com fetchOptions permite definir:
-// - timeout: tempo máximo de espera para a conexão (30 segundos)
-// - retry: tenta novamente se falhar
-const sql = neon(resolverUrlDoBanco(), {
-  fetchOptions: {
-    // Timeout de 30 segundos para evitar o erro ETIMEDOUT
-    // O banco Neon no plano free pode hibernar e demorar para responder
-    timeout: 30000,
-  },
+const urlBanco = resolverUrlDoBanco();
+
+// `next dev` só aceita Neon quando iniciado por `npm run dev:neon`.
+validarDestinoBancoDesenvolvimento({
+  url: urlBanco,
+  ambienteNode: process.env.NODE_ENV,
+  neonExplicito: process.env[VARIAVEL_NEON_EXPLICITO],
 });
 
+function criarBancoPostgresLocal() {
+  const cliente = drizzleNodePostgres(
+    new Pool({ connectionString: urlBanco, max: 5 }),
+    { schema },
+  );
+  // Mesma API de consulta do Drizzle; o tipo exportado segue o de produção.
+  return cliente as unknown as NeonHttpDatabase<typeof schema>;
+}
+
+function criarBancoNeon() {
+  // Cria o cliente de conexão com o banco
+  // O objeto de configuração com fetchOptions permite definir:
+  // - timeout: tempo máximo de espera para a conexão (30 segundos)
+  const sql = neon(urlBanco, {
+    fetchOptions: {
+      // Timeout de 30 segundos para evitar o erro ETIMEDOUT
+      // O banco Neon no plano free pode hibernar e demorar para responder
+      timeout: 30000,
+    },
+  });
+  return drizzle(sql, { schema });
+}
+
 // Exporta o drizzle com o cliente configurado e os schemas
-export const db = drizzle(sql, {
-  schema,
-});
+// PostgreSQL local (Docker) usa TCP (`pg`); o driver HTTP da Neon não fala com
+// um Postgres comum. Qualquer endereço remoto continua no driver Neon.
+export const db = ehBancoLocal(urlBanco)
+  ? criarBancoPostgresLocal()
+  : criarBancoNeon();

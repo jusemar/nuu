@@ -7,62 +7,122 @@ escrita por comando dedicado, com autorização explícita.
 
 ---
 
+## 0. Regra para qualquer sessão (humana ou IA)
+
+- **O padrão é o PostgreSQL LOCAL persistente.** Ele já existe: `nooo-postgres-local`.
+  **Nunca crie outro container/banco de desenvolvimento.** Reutilize este (`npm run db:local:subir`).
+- Testes, fixtures e ensaios de migration usam **PostgreSQL descartável** (Docker, removido ao final).
+- Neon só quando explícito: `npm run dev:neon` (validação online) e `npm run migrations:producao`
+  (aplicação final, uma vez, autorizada).
+- **Nunca criar branch Neon.** A Neon tem somente `production` e `desenvolvimento-local`.
+
+---
+
 ## 1. Os ambientes
 
-| Ambiente          | Branch Neon                                                | Endpoint                  | Para que serve                                                             |
-| ----------------- | ---------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
-| `desenvolvimento` | `desenvolvimento-local`                                    | `ep-quiet-bar-acb7yly2`   | Tudo que se roda na máquina: `npm run dev`, seeds, importações, manutenção |
-| temporário        | criado automaticamente a partir de `desenvolvimento-local` | criado automaticamente    | Validar clone e cadeia completa; expira e é removido ao final              |
-| `producao`        | `production`                                               | `ep-proud-bonus-acy2bafx` | Só a aplicação publicada. Nenhum script local escreve aqui                 |
+| Ambiente                 | Onde                                                                        | Para que serve                                                        |
+| ------------------------ | --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **local** (padrão)       | Docker `nooo-postgres-local`, `127.0.0.1:55432/nooo_desenvolvimento`        | `npm run dev`, seeds, importações, manutenção, admin local            |
+| descartável              | Docker `nuu-validacao-migrations-*` / `nuu-testes-logistica-*`, porta livre | migrations repetidas, integração, fixtures; removido ao final         |
+| `desenvolvimento` (Neon) | branch `desenvolvimento-local` (`ep-quiet-bar-acb7yly2`)                    | homologação online, somente por comando explícito                     |
+| `producao` (Neon)        | branch `production` (`ep-proud-bonus-acy2bafx`)                             | aplicação publicada; local só via `dev:neon` ou `migrations:producao` |
+
+### PostgreSQL local persistente
+
+| Item      | Valor                                                              |
+| --------- | ------------------------------------------------------------------ |
+| container | `nooo-postgres-local` (`--restart unless-stopped`)                 |
+| imagem    | `pgvector/pgvector:pg17` (PostgreSQL 17 + pgvector)                |
+| volume    | `nooo-postgres-local-dados` (dados sobrevivem a stop, rm e reboot) |
+| porta     | `127.0.0.1:55432` (nunca exposta fora da máquina)                  |
+| banco     | `nooo_desenvolvimento`, usuário `nooo`                             |
+| senha     | só na `DATABASE_URL` de `.env.local` (não versionado)              |
+
+```bash
+npm run db:local:subir    # cria na 1ª vez / inicia se parado (o npm run dev faz isso sozinho)
+npm run db:local:parar    # para; os dados ficam no volume
+npm run db:local:status   # estado, PostgreSQL, pgvector e migrations aplicadas
+```
+
+Máquina nova: crie `.env.local` com `DATABASE_URL="postgresql://nooo:<senha-local>@127.0.0.1:55432/nooo_desenvolvimento"`,
+depois `npm run db:local:subir`, `npm run migrations:local` e os seeds da seção 3.
 
 ---
 
 ## 2. Qual arquivo de ambiente cada comando usa
 
-| Comando                                      | Arquivo lido                                                                              | Destino                                               |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `npm run dev` / `build` / `start`            | `.env.local` (precedência do Next), completado por `.env`                                 | desenvolvimento                                       |
-| `npm run seed:*`, `import:*`, `manutencao:*` | `.env.desenvolvimento.local` para o banco; `.env.local` + `.env` para as demais variáveis | desenvolvimento                                       |
-| `npm run migrations:pre-validar`             | `.env.neon.local` e `.env.desenvolvimento.local`                                          | somente leitura                                       |
-| `npm run migrations:validar-apenas`          | `.env.neon.local` e `.env.desenvolvimento.local`                                          | branch temporária, sem aplicar em desenvolvimento     |
-| `npm run migrations:validar`                 | `.env.neon.local` e `.env.desenvolvimento.local`                                          | branch temporária e, após validações, desenvolvimento |
-| `npx drizzle-kit generate` / `migrate`       | `DATABASE_URL_MIGRACOES` informada na própria linha de comando                            | o que for informado                                   |
+| Comando                                                | Arquivo lido                                                                   | Destino                                       |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------- |
+| `npm run dev`                                          | `.env.local` (`DATABASE_URL` local)                                            | **PostgreSQL local persistente**              |
+| `npm run dev:neon`                                     | `.env.dev-neon.local` (`DATABASE_URL` Neon + `APP_ENVIRONMENT`) + `.env.local` | Neon, somente neste processo                  |
+| `npm run build` / `start`                              | `.env.local`                                                                   | PostgreSQL local                              |
+| `npm run seed:*`, `import:*`, `manutencao:*`, `rbac:*` | `.env.local` (`AMBIENTE_BANCO=local`)                                          | PostgreSQL local persistente                  |
+| `npm run migrations:local`                             | `.env.local`                                                                   | PostgreSQL local persistente                  |
+| `npm run migrations:validar-apenas`                    | nenhum                                                                         | PostgreSQL descartável (Docker)               |
+| `npm run migrations:validar`                           | `.env.local`                                                                   | descartável e, se aprovado, local persistente |
+| `npm run testes:integracao:logistica`                  | nenhum                                                                         | PostgreSQL descartável (Docker)               |
+| `npm run migrations:homologacao[:pre-validar]`         | `.env.neon.local`, `.env.desenvolvimento.local`                                | Neon `desenvolvimento-local` (explícito)      |
+| `npm run migrations:producao`                          | `.env` + autorização explícita                                                 | Neon `production` (explícito)                 |
+| `npx drizzle-kit generate`                             | `DATABASE_URL_MIGRACOES` informada na própria linha                            | o que for informado                           |
 
-`.env` existe **apenas** para guardar a URL de produção documentada. Nenhum comando local o
-usa como destino.
+Como a troca acontece sem editar arquivos: `scripts/iniciar-dev.ts` define `DATABASE_URL`
+no ambiente **do processo** antes de iniciar o Next. O Next não sobrescreve variáveis já
+presentes, então o valor do lançador vence `.env.local`. Ao encerrar `dev:neon`, o próximo
+`npm run dev` volta ao local.
 
+Travas contra Neon acidental:
+
+- em `next dev`, `src/db/connection.ts` e `src/db/transaction.ts` recusam banco não-local
+  sem `NOOO_BANCO_NEON_EXPLICITO=sim` (marcado só pelo `dev:neon`);
+- a guarda dos scripts (`AMBIENTE_BANCO=local`) exige exatamente o container persistente,
+  conferido pelo `cluster_name` do servidor.
+
+`APP_ENVIRONMENT`: `homologacao` no local (Laquila/Efí de homologação); `dev:neon` usa o
+valor de `.env.dev-neon.local` (hoje `producao`, porque o banco é o de produção). **No
+`dev:neon`, integrações sensíveis (Laquila, Efí, Frenet) agem como produção — use com cuidado.**
+
+`.env` guarda a URL de produção documentada (usada só por `migrations:producao`).
 Todos os `.env*` são ignorados pelo git. Nenhuma credencial é versionada.
 
 ---
 
-## 3. Comandos seguros
+## 3. Comandos do dia a dia
 
 ```bash
-npm run dev                            # aplicação local, banco de desenvolvimento
-npm run seed:logistica-dados-iniciais  # seed idempotente
-npm run seed:own-delivery-regions
-npm run seed:admin-teste
-npm run import:ceps
-npm run manutencao:medidas-produtos
-npm run migrations:pre-validar       # não cria recursos
-npm run migrations:validar-apenas    # testa sem aplicar em desenvolvimento
-npm run migrations:validar           # fluxo completo e único
+npm run dev                            # Next + PostgreSQL local (sobe o container se preciso)
+npm run migrations:local               # aplica migrations no local (repetível)
+npm run seed:desenvolvimento-local     # dados fictícios: BH, agenda, categorias, produtos, heranças
+npm run seed:logistica-dados-iniciais  # catálogo oficial de frete (idempotente)
+npm run rbac:sincronizar-catalogo      # permissões do admin
+npm run rbac:sincronizar-presets
+npm run testes:integracao:logistica    # integração em banco descartável
+npm run migrations:validar-apenas      # 0 → última e penúltima → última, descartável
+npm run migrations:validar             # valida no descartável e aplica no local persistente
 ```
 
-Todos imprimem, antes de qualquer escrita, um quadro com o destino:
+### Admin local
+
+Criado pela arquitetura oficial (Better Auth + RBAC), somente no banco local:
+
+```bash
+ADMIN_SEED_NAME="Admin Local" ADMIN_SEED_EMAIL=<email> ADMIN_SEED_PASSWORD=<senha> npm run seed:admin-teste
+ADMIN_EMAILS=<email> PROPRIETARIO_ADMIN_USER_ID=<id do usuário> npm run rbac:bootstrap-principal
+```
+
+Nesta máquina o admin já existe; e-mail e senha estão em `.env.admin-local.local` (não
+versionado). Login em `http://localhost:3000/admin/login`.
+
+Scripts com guarda imprimem o destino antes de escrever:
 
 ```
 ┌──────────────────────────────────────────────────────────
-│ DESTINO DO BANCO: DESENVOLVIMENTO
-│ endpoint : ep-quiet-bar-acb7yly2
-│ branch   : br-frosty-sea-acjpjuxk
-│ host     : ep-quiet-bar-acb7yly2.sa-east-1.aws.neon.tech
+│ DESTINO DO BANCO: LOCAL
+│ endpoint : nooo-postgres-local
+│ host     : 127.0.0.1
 └──────────────────────────────────────────────────────────
 ```
 
-**Como identificar o banco alvo visualmente:** leia a linha `endpoint`. Se aparecer
-`ep-proud-bonus-acy2bafx`, é PRODUÇÃO — interrompa. Em operação normal esse quadro nunca
-mostra produção, porque a guarda encerra antes de imprimir.
+Se aparecer `ep-proud-bonus-acy2bafx`, é PRODUÇÃO — interrompa.
 
 ---
 
@@ -76,8 +136,8 @@ npx drizzle-kit migrate                              # sem DATABASE_URL_MIGRACOE
 
 Executar um script direto é bloqueado em duas camadas independentes — ver seção 5.
 
-Nunca aponte `.env.local` ou `.env.desenvolvimento.local` para `ep-proud-bonus-acy2bafx`.
-A guarda recusa, mas a intenção já está errada.
+Nunca aponte `.env.local` para a Neon: ele é do PostgreSQL local. Neon no Next local é
+só via `npm run dev:neon` (`.env.desenvolvimento.local` é da homologação explícita).
 
 ---
 
@@ -91,7 +151,8 @@ Aplicada pelo lançador `scripts/lib/executar-script-local.ts`, por onde passam 
 comandos locais de banco. Antes de abrir qualquer conexão:
 
 1. exige `AMBIENTE_BANCO` explícito (sem ela, nada roda);
-2. lê a URL do arquivo daquele ambiente — nunca de `.env`;
+2. lê a URL do arquivo daquele ambiente — nunca de `.env` (`local` → `.env.local`, que precisa
+   ser exatamente o container persistente, conferido pelo `cluster_name`);
 3. recusa o endpoint de produção sempre que `AMBIENTE_BANCO` não for `producao`;
 4. recusa qualquer endpoint fora da lista permitida;
 5. confirma no servidor, em `BEGIN READ ONLY`, que a branch/endpoint são os esperados;
@@ -139,27 +200,32 @@ separada — ver o bloqueio registrado no início de qualquer sessão.
 
 ---
 
-## 7. Ordem obrigatória para uma migration nova
+## 7. Fluxo de migrations
 
-Use `npm run migrations:validar`. O comando executa, sem intervenção manual:
+**Local (repetível, quantas vezes precisar):**
 
-1. confirmação da API, projeto, branch, endpoint, banco e usuário de desenvolvimento;
-2. criação de uma branch temporária única, com nome exclusivo e expiração;
-3. aplicação das pendências sobre o banco `neondb` clonado;
-4. criação de outro banco vazio na mesma branch e aplicação da cadeia desde `0000`;
-5. validação do journal e da estrutura nos dois bancos;
-6. reconfirmação do desenvolvimento e aplicação somente se todos os testes passaram;
-7. exclusão apenas do ID da branch criada pela execução.
+1. alterar o schema Drizzle e gerar a migration (`npx drizzle-kit generate` com
+   `DATABASE_URL_MIGRACOES` descartável na linha de comando);
+2. `npm run migrations:validar-apenas` — PostgreSQL 17 descartável em Docker, só em
+   `127.0.0.1`, com `cluster_name` único: aplica `0000 → última` e `penúltima → última`
+   (ou `--atualizar-a-partir-de=<N>`) e exige estruturas idênticas;
+3. `npm run migrations:validar` (ou `migrations:local`) — aplica no banco local persistente;
+4. testes e validação manual no `npm run dev`.
 
-Em falha anterior ao passo 6, desenvolvimento permanece intacto. Produção não é usada como
-conexão PostgreSQL pelo fluxo. Para testar sem aplicar, use
-`npm run migrations:validar-apenas`.
+**Neon (uma vez, no fim da implementação aprovada):**
+
+5. `npm run migrations:producao -- --conferir` e depois `--somente=<tag>` com
+   `AUTORIZACAO_PRODUCAO` explícita;
+6. git, push e deploy.
+
+Nunca usar a Neon para testar ou ensaiar migration. Nunca aplicar repetidamente na Neon.
+**Nenhum comando cria branch Neon** — o cliente da API em `validar-e-aplicar-migrations.ts`
+é somente leitura. `migrations:homologacao` aplica na branch `desenvolvimento-local` só
+quando pedido explicitamente.
 
 Os antigos arquivos `.env.baseline-clone.local` e `.env.baseline-vazio.local` e seus scripts
 foram preservados somente como histórico local. Seus endpoints já não existem e eles não
 participam mais de nenhum comando do `package.json`.
-
-Produção continua sendo uma tarefa futura, com auditoria e aprovação explícitas.
 
 Nunca alterar migration antiga já aplicada. Correção de drift entra em migration nova.
 Nunca esconder erro de schema com fallback silencioso: coluna ausente precisa aparecer, é o

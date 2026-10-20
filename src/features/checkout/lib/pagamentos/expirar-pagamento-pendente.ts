@@ -8,6 +8,7 @@ import {
 import { dbTransacional } from "@/db/transaction";
 import { processarReservaPedido } from "@/features/programa-fidelidade/lib/processar-resgate-fidelidade";
 
+import { liberarAlocacoesEstoquePedido } from "../../actions/estoque/liberar-alocacoes-estoque-pedido";
 type TransacaoBanco = Parameters<
   Parameters<typeof dbTransacional.transaction>[0]
 >[0];
@@ -74,6 +75,7 @@ export async function expirarPagamentoPendente({
     .returning({ status: checkoutPedidosTable.status });
 
   if (pedidoAtualizado) {
+    await liberarAlocacoesEstoquePedido(tx, pedidoId);
     await processarReservaPedido(tx, pedidoId, "liberar", "pagamento_expirado");
     await tx.insert(checkoutPedidoHistoricosTable).values({
       pedidoId,

@@ -72,7 +72,7 @@ export const configuracoesProgramaFidelidadeTable = pgTable(
   ],
 );
 
-/** Override esparso: pontos nulos significam herança da configuração global. */
+/** Opt-in por categoria: ausência de linha desabilita; pontos nulos usam a taxa base. */
 export const regrasCategoriasProgramaFidelidadeTable = pgTable(
   "programa_fidelidade_regras_categorias",
   {

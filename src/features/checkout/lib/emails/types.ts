@@ -7,6 +7,7 @@ export type EmailPedidoItem = {
 
 export type EmailPedidoResumo = {
   numeroPedido: string;
+  statusPedido?: string;
   nomeCliente: string;
   emailCliente: string;
   subtotalEmCentavos: number;

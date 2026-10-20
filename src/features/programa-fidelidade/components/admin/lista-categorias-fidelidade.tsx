@@ -50,9 +50,9 @@ export function ListaCategoriasFidelidade({
           <TableHeader>
             <TableRow>
               <TableHead className="pl-5">Categoria</TableHead>
-              <TableHead>Regra</TableHead>
+              <TableHead>Taxa de acúmulo</TableHead>
               <TableHead className="text-right">Pontos (30d)</TableHead>
-              <TableHead className="text-center">Ativa</TableHead>
+              <TableHead className="text-center">Participação</TableHead>
               <TableHead className="w-16" />
             </TableRow>
           </TableHeader>
@@ -73,18 +73,26 @@ export function ListaCategoriasFidelidade({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Badge
-                        variant={regra.personalizada ? "secondary" : "outline"}
-                      >
-                        R$ 1 ={" "}
-                        {obterTaxa(
-                          categoria.id,
-                          regras,
-                          pontosPadrao,
-                        ).toLocaleString("pt-BR")}{" "}
-                        pt
-                      </Badge>
-                      {regra.personalizada ? (
+                      {regra.ativa ? (
+                        <Badge
+                          variant={
+                            regra.personalizada ? "secondary" : "outline"
+                          }
+                        >
+                          R$ 1 ={" "}
+                          {obterTaxa(
+                            categoria.id,
+                            regras,
+                            pontosPadrao,
+                          ).toLocaleString("pt-BR")}{" "}
+                          pt
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">
+                          Não gera pontos
+                        </span>
+                      )}
+                      {regra.ativa && regra.personalizada ? (
                         <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
                           Personalizada
                         </span>
@@ -105,7 +113,7 @@ export function ListaCategoriasFidelidade({
                       onCheckedChange={(ativa) =>
                         atualizar(categoria.id, { ativa })
                       }
-                      aria-label={`Ativar ${categoria.nome}`}
+                      aria-label={`${regra.ativa ? "Remover" : "Adicionar"} ${categoria.nome} ${regra.ativa ? "do" : "ao"} programa`}
                     />
                   </TableCell>
                   <TableCell>
@@ -130,22 +138,21 @@ export function ListaCategoriasFidelidade({
                 <div className="min-w-0">
                   <div className="truncate font-medium">{categoria.nome}</div>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <Badge
-                      variant={regra.personalizada ? "secondary" : "outline"}
-                    >
-                      R$ 1 ={" "}
-                      {obterTaxa(
-                        categoria.id,
-                        regras,
-                        pontosPadrao,
-                      ).toLocaleString("pt-BR")}{" "}
-                      pt
-                    </Badge>
-                    {!regra.ativa ? (
-                      <span className="text-muted-foreground text-xs">
-                        desativada
-                      </span>
-                    ) : null}
+                    {regra.ativa ? (
+                      <Badge
+                        variant={regra.personalizada ? "secondary" : "outline"}
+                      >
+                        R$ 1 ={" "}
+                        {obterTaxa(
+                          categoria.id,
+                          regras,
+                          pontosPadrao,
+                        ).toLocaleString("pt-BR")}{" "}
+                        pt
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Não participa</Badge>
+                    )}
                   </div>
                 </div>
                 <Pencil className="text-muted-foreground size-4 shrink-0" />

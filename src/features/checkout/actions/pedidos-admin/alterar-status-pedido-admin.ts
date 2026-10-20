@@ -14,6 +14,7 @@ import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/
 
 import { montarDescricaoAlteracaoManualStatus } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { alterarStatusPedidoAdminSchema } from "../../schemas/admin-pedidos.schema";
+import { liberarAlocacoesEstoquePedido } from "../estoque/liberar-alocacoes-estoque-pedido";
 
 export type EstadoAlterarStatusPedidoAdmin = {
   sucesso: boolean;
@@ -39,6 +40,13 @@ export async function alterarStatusPedidoAdmin(
 
   const { pedidoId, status } = validacao.data;
 
+  if (status === "shipped" || status === "delivered") {
+    return {
+      sucesso: false,
+      mensagem: "Use as ações de envio/entrega: elas validam estoque e registram o marco físico.",
+    };
+  }
+
   try {
     const resultado = await dbTransacional.transaction(async (tx) => {
       const pedidoAtual = await tx.query.checkoutPedidosTable.findFirst({
@@ -49,6 +57,16 @@ export async function alterarStatusPedidoAdmin(
         return {
           atualizado: false,
           mensagem: "Pedido não encontrado.",
+        };
+      }
+
+      // Um pagamento reconhecido sem recursos não pode ser transformado em
+      // pedido atendível por uma alteração genérica de status.
+      if (["pagamento_recebido_sem_recursos", "expired", "canceled", "refunded"].includes(pedidoAtual.status) &&
+          ["pending", "processing", "shipped", "delivered"].includes(status)) {
+        return {
+          atualizado: false,
+          mensagem: "Pedido encerrado ou pago sem recursos não pode ser reativado por status manual. Encaminhe para tratamento/reembolso.",
         };
       }
 
@@ -102,9 +120,12 @@ export async function alterarStatusPedidoAdmin(
         },
       });
 
-      if (status === "delivered") {
-        await processarEventoPedidoFidelidade(tx, pedidoId, "pedido_entregue");
-      } else if (status === "canceled") {
+      if (status === "canceled") {
+        // Uma mudança manual a partir de enviado/entregue é apenas financeira:
+        // jamais equivale ao retorno físico da mercadoria à loja.
+        if (!["shipped", "delivered"].includes(pedidoAtual.status)) {
+          await liberarAlocacoesEstoquePedido(tx, pedidoId);
+        }
         await processarEventoPedidoFidelidade(tx, pedidoId, "pedido_cancelado");
       }
 

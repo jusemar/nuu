@@ -34,6 +34,8 @@ export interface ProductFormData {
   brand: string;
   sku: string;
   isActive: boolean;
+  recompensaPontosAtiva: boolean;
+  recompensaCustoPontos: string;
   status?: "draft" | "published";
   storeProductFlags: string[];
   collection: string;
@@ -164,6 +166,8 @@ export const initialProductData: ProductFormData = {
   brand: "",
   sku: "",
   isActive: true,
+  recompensaPontosAtiva: false,
+  recompensaCustoPontos: "",
   status: "draft",
   storeProductFlags: ["general"],
   collection: "",

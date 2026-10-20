@@ -6,7 +6,8 @@ export type PedidoStatusCheckout =
   | "delivered"
   | "canceled"
   | "refunded"
-  | "expired";
+  | "expired"
+  | "pagamento_recebido_sem_recursos";
 
 export type PagamentoStatusCheckout = "pending" | "paid" | "failed" | "expired";
 
@@ -16,7 +17,7 @@ export type PagamentoStatusCheckout = "pending" | "paid" | "failed" | "expired";
  * coluna do banco é NOT NULL. É ele o discriminador entre pagamento online e
  * pagamento na entrega.
  */
-export type PagamentoGatewayCheckout = "stripe" | "efibank" | "manual";
+export type PagamentoGatewayCheckout = "stripe" | "efibank" | "manual" | "interno";
 
 /** Espelha `checkout_pagamento_metodo`. As 4 últimas só ocorrem com gateway "manual". */
 export type PagamentoMetodoCheckout =
@@ -25,7 +26,8 @@ export type PagamentoMetodoCheckout =
   | "dinheiro"
   | "pix_na_entrega"
   | "debito_entrega"
-  | "credito_entrega";
+  | "credito_entrega"
+  | "pontos";
 
 export type ClienteCheckout = {
   id: string;

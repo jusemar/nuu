@@ -11,7 +11,7 @@ import type { TotaisCheckout } from "../../types/checkout.types";
 import {
   calcularFreteGratisPromocionalPedido,
   calcularSubtotalElegibilidadeFreteGratisPromocional,
-} from "./calcular-previa-totais-pedido";
+} from "./calcular-previa-totais-pedido-interno";
 
 const totaisComFrete: TotaisCheckout = {
   subtotalEmCentavos: 35000,

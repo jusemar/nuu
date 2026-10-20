@@ -1,0 +1,1 @@
+ALTER TYPE "public"."checkout_pedido_status" ADD VALUE 'pagamento_recebido_sem_recursos';

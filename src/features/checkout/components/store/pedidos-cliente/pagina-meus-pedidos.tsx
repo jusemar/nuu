@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { PackageSearch } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Header } from "@/features/header";
@@ -79,6 +79,11 @@ export function PaginaMeusPedidos({
                       <p className="mt-1 text-xs text-slate-500">
                         {formatarDataPedidoCliente(pedido.createdAt)}
                       </p>
+                      {pedido.modalidadePedido === "recompensa" && pedido.recompensaCustoPontosSnapshot ? (
+                        <p className="mt-1 text-xs font-medium text-[#0C447C]">
+                          Resgatado por {pedido.recompensaCustoPontosSnapshot.toLocaleString("pt-BR")} pontos
+                        </p>
+                      ) : null}
                     </div>
                     <div>
                       <span className="mb-1 block text-[11px] font-medium tracking-wide text-slate-500 uppercase md:hidden">
@@ -102,7 +107,9 @@ export function PaginaMeusPedidos({
                         {formatarMoedaPedidoCliente(pedido.totalEmCentavos)}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        {pedido.metodoPagamento
+                        {pedido.modalidadePedido === "recompensa"
+                          ? pedido.totalEmCentavos > 0 ? "Frete a pagar" : "Sem cobrança monetária"
+                          : pedido.metodoPagamento
                           ? PAGAMENTO_METODO_LABEL[pedido.metodoPagamento]
                           : "Pagamento"}
                       </p>

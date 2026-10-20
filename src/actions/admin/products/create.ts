@@ -33,6 +33,7 @@ import {
 } from "@/features/products/actions/salvar-identificador-catalogo";
 import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
+import { validarConfiguracaoRecompensaProduto } from "@/features/products/schemas/recompensa-produto.schema";
 
 function revalidateAdminProductsPath() {
   try {
@@ -75,6 +76,8 @@ interface CreateProductData {
     referenciaOrigem?: string | null;
   };
   estoqueProdutoSimples?: number;
+  recompensaPontosAtiva?: boolean;
+  recompensaCustoPontos?: string | number | null;
   collection?: string;
   tags?: string[];
   storeProductFlags?: string[];
@@ -162,6 +165,11 @@ export async function createProduct(data: CreateProductData) {
   let produtoCriadoId: string | null = null;
 
   try {
+    const recompensa = validarConfiguracaoRecompensaProduto(data);
+    if (!recompensa.sucesso) {
+      return { success: false, error: recompensa.erro };
+    }
+
     // Gate do Frete Externo validado no servidor (nunca confiar no cliente).
     const modoFreteExterno = modoDisponibilidadeFreteExternoSchema.safeParse(
       data.entrega?.disponibilidadeFreteExterno ?? "herdar",
@@ -236,6 +244,8 @@ export async function createProduct(data: CreateProductData) {
         storeProductFlags: data.storeProductFlags ?? ["general"],
         cardShortText: data.cardShortText,
         productKind: data.productKind ?? "simple",
+        recompensaPontosAtiva: recompensa.recompensaPontosAtiva,
+        recompensaCustoPontos: recompensa.recompensaCustoPontos,
         costPrice: converterPrecoEmCentavos(data.pricing?.costPrice),
         salePrice: data.varianteTecnicaProdutoSimples?.precoEmCentavos ?? null,
         warrantyPeriod: data.warranty?.period

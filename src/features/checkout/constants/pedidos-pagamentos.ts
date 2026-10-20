@@ -14,6 +14,7 @@ export const PEDIDO_STATUS_CHECKOUT: PedidoStatusCheckout[] = [
   "canceled",
   "refunded",
   "expired",
+  "pagamento_recebido_sem_recursos",
 ];
 
 export const PAGAMENTO_STATUS_CHECKOUT: PagamentoStatusCheckout[] = [

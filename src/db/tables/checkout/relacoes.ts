@@ -1,16 +1,18 @@
 import { relations } from "drizzle-orm";
 
+import { productVariantTable } from "../../table/products/product-variants";
 import { userTable } from "../autenticacao";
 import { servicosFreteTable } from "../logistica/tabelas/servicos-frete";
 import { checkoutClientesTable } from "./tabelas/clientes";
 import { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 import { checkoutEnderecosTable } from "./tabelas/enderecos";
-import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
+import { checkoutEstoqueAlocacoesTable } from "./tabelas/estoque-alocacoes";
+import { checkoutPagamentosTable } from "./tabelas/pagamentos";
 import { checkoutPedidoCancelamentosTable } from "./tabelas/pedido-cancelamentos";
+import { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 import { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 import { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
 import { checkoutPedidoPagamentoEntregaTable } from "./tabelas/pedido-pagamento-entrega";
-import { checkoutPagamentosTable } from "./tabelas/pagamentos";
 import { checkoutPedidosTable } from "./tabelas/pedidos";
 import { checkoutStripeWebhookEventosTable } from "./tabelas/stripe-webhook-eventos";
 
@@ -49,6 +51,7 @@ export const checkoutPedidosRelations = relations(
       references: [checkoutEnderecosTable.id],
     }),
     itens: many(checkoutPedidoItensTable),
+    alocacoesEstoque: many(checkoutEstoqueAlocacoesTable),
     pagamentos: many(checkoutPagamentosTable),
     historicos: many(checkoutPedidoHistoricosTable),
     cancelamento: one(checkoutPedidoCancelamentosTable, {
@@ -106,6 +109,20 @@ export const checkoutPedidoItensRelations = relations(
     pedido: one(checkoutPedidosTable, {
       fields: [checkoutPedidoItensTable.pedidoId],
       references: [checkoutPedidosTable.id],
+    }),
+  }),
+);
+
+export const checkoutEstoqueAlocacoesRelations = relations(
+  checkoutEstoqueAlocacoesTable,
+  ({ one }) => ({
+    pedido: one(checkoutPedidosTable, {
+      fields: [checkoutEstoqueAlocacoesTable.pedidoId],
+      references: [checkoutPedidosTable.id],
+    }),
+    variante: one(productVariantTable, {
+      fields: [checkoutEstoqueAlocacoesTable.varianteId],
+      references: [productVariantTable.id],
     }),
   }),
 );

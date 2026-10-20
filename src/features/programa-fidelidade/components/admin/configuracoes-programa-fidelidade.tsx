@@ -74,7 +74,8 @@ export function ConfiguracoesProgramaFidelidade({ valor, alterar }: Props) {
         <header className="mb-5">
           <h2 className="font-semibold">Regras globais</h2>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            Valem para toda a loja, exceto onde houver regra por categoria.
+            Configuram o programa; categorias só acumulam após participação
+            explícita.
           </p>
         </header>
         <Campo
@@ -91,7 +92,7 @@ export function ConfiguracoesProgramaFidelidade({ valor, alterar }: Props) {
         <div className="space-y-5">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Coins className="text-primary size-4" />
-            Acúmulo padrão
+            Taxa base de acúmulo
           </div>
           <div className="bg-muted/50 flex flex-wrap items-center gap-3 rounded-xl p-4">
             <span className="text-muted-foreground text-sm">A cada R$</span>
@@ -202,7 +203,7 @@ export function ConfiguracoesProgramaFidelidade({ valor, alterar }: Props) {
             <p className="text-muted-foreground text-sm">
               Compra de{" "}
               <span className="text-foreground font-medium">R$ 250,00</span> em
-              uma categoria com regra padrão:
+              uma categoria participante com taxa base:
             </p>
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 flex-1 rounded-xl px-4 py-3">

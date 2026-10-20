@@ -119,6 +119,8 @@ export async function getProductById(id: string) {
         brandId: productTable.marcaId,
         sku: productTable.sku,
         isActive: productTable.isActive,
+        recompensaPontosAtiva: productTable.recompensaPontosAtiva,
+        recompensaCustoPontos: productTable.recompensaCustoPontos,
         collection: productTable.collection,
         tags: productTable.tags,
         productKind: productTable.productKind,

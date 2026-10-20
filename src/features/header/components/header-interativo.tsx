@@ -1,14 +1,19 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Compass, Menu, Tag, Zap } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 import { BotaoContaCliente } from "@/features/autenticacao";
+import { useAutenticacaoCliente } from "@/features/autenticacao/hooks/use-autenticacao-cliente";
 import { GavetaCarrinho } from "@/features/carrinho";
 import { LogoDinamica } from "@/features/configuracoes-loja/components/store/logo-dinamica";
+import { buscarSaldoDisponivelFidelidadeCabecalho } from "@/features/programa-fidelidade/queries/buscar-saldo-disponivel-fidelidade-cabecalho";
 import { NavigationDrawer } from "@/features/store/menu/components/NavigationDrawer";
 
+import { chavesConsultaCabecalho } from "../constants/chaves-consulta-cabecalho";
+import { montarRotuloTrocaPontos } from "../lib/rotulo-troca-pontos";
 import { CampoBuscaProdutos } from "./CampoBuscaProdutos";
 
 const cores = { destaque: "#EF9F27", sucesso: "#14B8A6" };
@@ -19,6 +24,14 @@ export function HeaderInterativo({
   logoCabecalhoUrl: string | null;
 }) {
   const [menuAberto, setMenuAberto] = useState(false);
+  const { autenticado, carregandoSessao } = useAutenticacaoCliente();
+  const saldoFidelidade = useQuery({
+    queryKey: chavesConsultaCabecalho.saldoFidelidade,
+    queryFn: buscarSaldoDisponivelFidelidadeCabecalho,
+    enabled: autenticado && !carregandoSessao,
+  });
+  const rotuloTrocaPontos = montarRotuloTrocaPontos(saldoFidelidade.data);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#E5E7EB] bg-white">
       <div className="border-b border-[#E5E7EB]">
@@ -87,10 +100,10 @@ export function HeaderInterativo({
               Lançamentos
             </Link>
             <Link
-              href="/marcas"
+              href="/troque-seus-pontos"
               className="flex min-h-9 shrink-0 items-center rounded-md px-3 py-1.5 whitespace-nowrap text-[#1F2937] transition-colors hover:text-[#0C447C] focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
             >
-              Marcas
+              {rotuloTrocaPontos}
             </Link>
             <Link
               href="/black-friday"
@@ -105,6 +118,7 @@ export function HeaderInterativo({
       <NavigationDrawer
         isOpen={menuAberto}
         onClose={() => setMenuAberto(false)}
+        rotuloTrocaPontos={rotuloTrocaPontos}
       />
     </header>
   );

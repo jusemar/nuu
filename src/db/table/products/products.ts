@@ -1,18 +1,20 @@
 // src/db/table/products/products.ts
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  check,
+  integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
   uuid,
-  integer,
-  boolean,
-  jsonb,
 } from "drizzle-orm/pg-core";
+
 import { categoryTable } from "../categories/categories";
-import { marcaTable } from "../marcas/marcas";
-import { sql } from "drizzle-orm";
 import { modoDisponibilidadeEntregaPropriaEnum } from "../logistics/entrega-propria/modo-disponibilidade-entrega-propria";
 import { modoDisponibilidadeFreteExternoEnum } from "../logistics/frete-externo/modo-disponibilidade-frete-externo";
+import { marcaTable } from "../marcas/marcas";
 import { modelosRetiradaTable } from "../retirada/modelos-retirada";
 
 /**
@@ -39,6 +41,8 @@ export const productTable = pgTable("product", {
       onDelete: "restrict",
     }),
   storeProductFlags: text("store_product_flags").array().default([]),
+  recompensaPontosAtiva: boolean("recompensa_pontos_ativa").notNull().default(false),
+  recompensaCustoPontos: integer("recompensa_custo_pontos"),
 
   // Modelo comercial do produto: simples ou com variantes.
   productKind: text("product_kind").notNull().default("simple"),
@@ -201,4 +205,6 @@ export const productTable = pgTable("product", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  check("produto_recompensa_custo_valido", sql`NOT ${table.recompensaPontosAtiva} OR (${table.recompensaCustoPontos} IS NOT NULL AND ${table.recompensaCustoPontos} > 0)`),
+]);

@@ -14,6 +14,8 @@ export type PedidoClienteListaItem = {
   status: PedidoStatusCheckout;
   pagamentoStatus: PagamentoStatusCheckout;
   totalEmCentavos: number;
+  modalidadePedido: string;
+  recompensaCustoPontosSnapshot: number | null;
   metodoPagamento: PagamentoMetodoCheckout | null;
 };
 
@@ -40,6 +42,8 @@ export type PedidoClienteDetalhe = {
   freteEmCentavos: number;
   descontoEmCentavos: number;
   totalEmCentavos: number;
+  modalidadePedido: string;
+  recompensaCustoPontosSnapshot: number | null;
   itens: {
     id: string;
     nomeProduto: string;

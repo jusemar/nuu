@@ -2,8 +2,8 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { consultarCobrancaPixEfi } from "./efi/pix-efi";
 import { chamarApiPixEfi } from "./efi/cliente-efi";
+import { consultarCobrancaPixEfi } from "./efi/pix-efi";
 import { obterStripe } from "./stripe/cliente-stripe";
 
 type EntradaReembolso = {
@@ -77,7 +77,7 @@ export async function reembolsarPagamento(entrada: EntradaReembolso) {
 
 /** Inutiliza a cobrança ainda aberta quando o PSP oferece essa operação. */
 export async function cancelarCobrancaPendente(entrada: {
-  gateway: "stripe" | "efibank" | "manual";
+  gateway: "stripe" | "efibank" | "manual" | "interno";
   transactionId: string | null;
   pixTxid: string | null;
 }) {

@@ -13,7 +13,7 @@ const regraGlobal = {
   pontosPorReal: "1.0000",
 };
 
-test("produto de R$ 100 gera 100 pontos pela regra global", () => {
+test("produto de categoria participante gera pontos pela taxa base", () => {
   assert.equal(
     calcularPontosProdutoVitrine({
       precoEmCentavos: 10_000,
@@ -94,6 +94,19 @@ test("status global suspende e reativa a vitrine sem perder regras de categoria"
       configuracao: { ativo: true, pontosPorReal: "1.0000" },
       regrasCategorias,
     }),
-    { global: "100.0000", personalizado: "200.0000" },
+    { personalizado: "200.0000" },
+  );
+});
+
+test("programa ativo não habilita categoria sem configuração", () => {
+  assert.deepEqual(
+    resolverPontosVitrineProdutos({
+      produtos: [
+        { chave: "nova", categoriaId: "sem-regra", precoEmCentavos: 10_000 },
+      ],
+      configuracao: { ativo: true, pontosPorReal: "1.0000" },
+      regrasCategorias: [],
+    }),
+    {},
   );
 });

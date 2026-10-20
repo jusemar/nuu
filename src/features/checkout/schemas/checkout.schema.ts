@@ -40,7 +40,7 @@ export const itemCheckoutSchema = z.object({
   quantidade: z.number().int().min(1).max(99),
 });
 
-const selecaoEntregaGrupoSchema = z.object({
+export const selecaoEntregaGrupoSchema = z.object({
   chaveGrupo: z.string().trim().min(1),
   identificador: z.string().trim().min(1),
   nome: z.string().trim().min(1),

@@ -379,6 +379,34 @@
       "when": 1789322230962,
       "tag": "0053_entrega_propria_categoria",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789440946803,
+      "tag": "0054_restaura_sequence_numero_pedido",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789453402771,
+      "tag": "0055_alocacoes_estoque_checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789456038877,
+      "tag": "0056_pagamento_recebido_sem_recursos",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1789487441017,
+      "tag": "0057_shocking_the_phantom",
+      "breakpoints": true
     }
   ]
 }

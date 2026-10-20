@@ -23,6 +23,7 @@
     "migrations:homologacao:pre-validar": "tsx scripts/validar-e-aplicar-migrations.ts --pre-validar",
     "migrations:producao": "AMBIENTE_BANCO=producao tsx scripts/aplicar-migration-producao.ts",
     "testes:integracao:logistica": "tsx scripts/testes-integracao-logistica-local.ts",
+    "testes:integracao:fidelidade": "AMBIENTE_BANCO=local NODE_OPTIONS=--conditions=react-server tsx scripts/lib/executar-script-local.ts src/features/programa-fidelidade/lib/ciclo-pontos-pedido.integracao.testes.ts && AMBIENTE_BANCO=local NODE_OPTIONS=--conditions=react-server tsx scripts/lib/executar-script-local.ts src/features/programa-fidelidade/lib/resgate-checkout.integracao.testes.ts && AMBIENTE_BANCO=local NODE_OPTIONS=--conditions=react-server tsx scripts/lib/executar-script-local.ts src/features/programa-fidelidade/lib/fluxo-real-checkout-fidelidade.integracao.testes.ts",
     "seed:desenvolvimento-local": "AMBIENTE_BANCO=local NODE_OPTIONS=--conditions=react-server tsx scripts/lib/executar-script-local.ts scripts/seed-desenvolvimento-local.ts",
     "schema:verificar-deploy": "node --import tsx scripts/verificar-schema-deploy.ts",
     "rbac:sincronizar-catalogo": "AMBIENTE_BANCO=local tsx scripts/lib/executar-script-local.ts src/features/autenticacao/scripts/sincronizar-catalogo-permissoes-admin.ts",

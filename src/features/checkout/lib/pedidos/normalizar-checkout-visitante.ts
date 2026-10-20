@@ -315,9 +315,9 @@ export function montarSnapshotItemPedidoCheckout({
         null,
       atributosVariante: itemVendavel.variante.attributes,
       skuProduto: itemVendavel.variante.sku,
-      modalidade:
-        itemVendavel.precoSelecionado?.pricingModalDescription ||
-        normalizarModalidadePrecoCanonica(itemVendavel.precoSelecionado?.type),
+      // Campo operacional: precisa preservar a mesma decisão de estoque usada
+      // antes da criação do pedido. A descrição humana pertence ao prazo/título.
+      modalidade: itemVendavel.precoSelecionado?.type ?? "stock",
       prazoModalidade: item.prazoModalidade || "Consulte prazo",
       imagemUrl: itemVendavel.imagemUrl,
       quantidade: item.quantidade,
@@ -352,8 +352,9 @@ export function montarSnapshotItemPedidoCheckout({
     nomeVariante: null,
     atributosVariante: {},
     skuProduto: produto.sku,
-    modalidade:
-      precoSelecionado.pricingModalDescription || precoSelecionado.type,
+    // `pricingModalDescription` pode conter "1 dia" ou outro rótulo livre.
+    // Persistir o tipo evita que a confirmação reclassifique estoque próprio.
+    modalidade: precoSelecionado.type,
     prazoModalidade: precoSelecionado.deliveryDays || "Consulte prazo",
     imagemUrl: itemVendavel.imagemUrl,
     quantidade: item.quantidade,

@@ -42,6 +42,7 @@ import { CategoryTreeSelector } from "@/features/admin/products/components/Categ
 import { MarcaPopoverSelector } from "@/features/admin/products/components/MarcaPopoverSelector";
 import type { ProductKind } from "@/features/products";
 import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
+import { custoPontosRecompensaProdutoSchema } from "@/features/products/schemas/recompensa-produto.schema";
 import { useCategories } from "@/hooks/admin/queries/use-categories";
 import { useSkuGenerator } from "@/hooks/forms/useSkuGenerator";
 import { useSlugGenerator } from "@/hooks/forms/useSlugGenerator";
@@ -61,6 +62,8 @@ interface BasicTabProps {
     brand: string;
     sku: string;
     isActive: boolean;
+    recompensaPontosAtiva: boolean;
+    recompensaCustoPontos: string;
     collection: string;
     tags: string[];
     productKind: ProductKind;
@@ -88,6 +91,10 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
     data.gtinProdutoSimples.trim() &&
       !validarGtin(data.gtinProdutoSimples).valido,
   );
+  const custoRecompensaInvalido =
+    data.recompensaPontosAtiva &&
+    !custoPontosRecompensaProdutoSchema.safeParse(data.recompensaCustoPontos)
+      .success;
 
   // Geração automática do SKU
   useEffect(() => {
@@ -468,6 +475,61 @@ export function BasicTab({ data, onChange }: BasicTabProps) {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Troque seus pontos</CardTitle>
+              <CardDescription>
+                Permite que clientes resgatem este produto usando pontos de
+                fidelidade.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="recompensa-pontos-ativa" className="text-sm">
+                  Disponível em “Troque seus pontos”
+                </Label>
+                <Switch
+                  id="recompensa-pontos-ativa"
+                  checked={data.recompensaPontosAtiva}
+                  onCheckedChange={(checked) =>
+                    onChange({ recompensaPontosAtiva: checked })
+                  }
+                />
+              </div>
+              {data.recompensaPontosAtiva ? (
+                <div className="space-y-2">
+                  <Label htmlFor="recompensa-custo-pontos">Custo em pontos</Label>
+                  <Input
+                    id="recompensa-custo-pontos"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="2500"
+                    value={data.recompensaCustoPontos}
+                    onChange={(event) =>
+                      onChange({ recompensaCustoPontos: event.target.value })
+                    }
+                    aria-invalid={custoRecompensaInvalido}
+                    aria-describedby="ajuda-recompensa-custo-pontos"
+                  />
+                  <p
+                    id="ajuda-recompensa-custo-pontos"
+                    className="text-muted-foreground text-xs"
+                  >
+                    Quantidade de pontos necessária para resgatar 1 unidade
+                    deste produto.
+                  </p>
+                  {custoRecompensaInvalido ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      Informe um número inteiro maior que zero.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 

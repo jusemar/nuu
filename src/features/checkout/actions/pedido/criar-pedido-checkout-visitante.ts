@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
+import { alocarEstoqueLocalPedido } from "@/features/checkout/actions/estoque/alocar-estoque-local-pedido";
 import {
   avaliarConsistenciaTrocoPedido,
   type FormaPagamentoNaEntrega,
@@ -63,12 +64,13 @@ import {
   normalizarTelefoneCheckout,
   normalizarTextoOpcionalCheckout,
 } from "../../lib/pedidos/normalizar-checkout-visitante";
+import { resolverEstoqueLocalItemCheckout } from "../../lib/pedidos/resolver-estoque-local-item-checkout";
 import {
   isValidCPFOrCNPJ,
   isValidNome,
   isValidTelefone,
 } from "../../lib/validators";
-import { calcularPreviaTotaisPedido } from "../../queries/previa-totais/calcular-previa-totais-pedido";
+import { calcularPreviaTotaisPedidoInterno } from "../../queries/previa-totais/calcular-previa-totais-pedido-interno";
 import { calcularResumoCheckout } from "../../queries/resumo-checkout/calcular-resumo-checkout";
 import {
   type CheckoutVisitanteSchema,
@@ -906,6 +908,10 @@ type CriarPedidoCheckoutVisitanteInternoParams = {
   telefone: string;
   produtosIds: string[];
   usuarioId: string | null;
+  /** Barreira opcional de chamadas internas; a action pública nunca a fornece. */
+  aposValidarItens?: (
+    estoquesObservados: ReadonlyArray<{ varianteId: string; quantidade: number }>,
+  ) => Promise<void>;
 };
 
 /**
@@ -923,6 +929,7 @@ export async function criarPedidoCheckoutVisitanteInterno({
   telefone,
   produtosIds,
   usuarioId,
+  aposValidarItens,
 }: CriarPedidoCheckoutVisitanteInternoParams) {
   return dbTransacional.transaction(async (tx) => {
     /**
@@ -977,6 +984,33 @@ export async function criarPedidoCheckoutVisitanteInterno({
       });
     });
 
+    // Várias linhas do carrinho podem apontar para a mesma variante. A validação
+    // individual continua, mas a operação vinculante precisa da soma por variante.
+    const quantidadePorVariante = new Map<string, number>();
+    for (const item of dados.itens) {
+      const produto = produtos.find((atual) => atual.id === item.produtoId);
+      if (!produto) throw new Error(`Produto não encontrado: ${item.nome}`);
+      const id = resolverEstoqueLocalItemCheckout({ item, produto });
+      if (!id) continue;
+      quantidadePorVariante.set(
+        id,
+        (quantidadePorVariante.get(id) ?? 0) + item.quantidade,
+      );
+    }
+
+    // O teste pode sincronizar duas transações após ambas validarem o mesmo
+    // snapshot. Sem callback, o fluxo de produção continua inalterado.
+    if (aposValidarItens) {
+      await aposValidarItens(
+        produtos.flatMap((produto) =>
+          produto.variants.map((variante) => ({
+            varianteId: variante.id,
+            quantidade: variante.stockQuantity,
+          })),
+        ),
+      );
+    }
+
     const selecoesEntregaPorGrupo = dados.selecoesEntregaPorGrupo;
     const resumoFretePorGrupo = await calcularResumoCheckout({
       itens: dados.itens,
@@ -1025,7 +1059,7 @@ export async function criarPedidoCheckoutVisitanteInterno({
       throw new Error("Este CPF/CNPJ já está vinculado a outra conta.");
     }
 
-    const previaTotaisPedido = await calcularPreviaTotaisPedido({
+    const previaTotaisPedido = await calcularPreviaTotaisPedidoInterno({
       itens: dados.itens,
       codigoCupom: dados.cupom,
       checkoutClienteId: clienteExistente?.id ?? null,
@@ -1425,6 +1459,9 @@ export async function criarPedidoCheckoutVisitanteInterno({
           rateioFidelidade.get(dados.itens[indice]!.id) ?? 0,
       })),
     );
+
+    // Pedido, itens, estoque e alocações só ficam visíveis juntos no commit.
+    await alocarEstoqueLocalPedido(tx, pedido.id, quantidadePorVariante);
 
     if (resgateCalculado && clienteExistente) {
       const reserva = await reservarPontosPedido({

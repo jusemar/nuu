@@ -16,6 +16,7 @@ export const PEDIDO_STATUS_LABEL: Record<PedidoStatusCheckout, string> = {
   canceled: "Cancelado",
   refunded: "Reembolsado",
   expired: "Expirado",
+  pagamento_recebido_sem_recursos: "Pago — atendimento bloqueado",
 };
 
 export const PEDIDO_HISTORICO_TIPO_LABEL: Record<
@@ -60,6 +61,7 @@ export const PAGAMENTO_METODO_LABEL: Record<PagamentoMetodoCheckout, string> = {
   pix_na_entrega: "PIX na entrega",
   debito_entrega: "Débito na entrega",
   credito_entrega: "Crédito na entrega",
+  pontos: "Pontos (recompensa)",
 };
 
 export const PAGAMENTO_GATEWAY_LABEL: Record<PagamentoGatewayCheckout, string> =
@@ -67,4 +69,5 @@ export const PAGAMENTO_GATEWAY_LABEL: Record<PagamentoGatewayCheckout, string> =
     stripe: "Stripe",
     efibank: "Efí",
     manual: "Recebimento manual",
+    interno: "Confirmação interna",
   };

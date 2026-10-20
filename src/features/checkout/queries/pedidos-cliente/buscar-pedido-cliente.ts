@@ -98,6 +98,8 @@ export async function buscarPedidoClientePorId({
     freteEmCentavos: pedido.freteEmCentavos,
     descontoEmCentavos: pedido.descontoEmCentavos,
     totalEmCentavos: pedido.totalEmCentavos,
+    modalidadePedido: pedido.modalidadePedido,
+    recompensaCustoPontosSnapshot: pedido.recompensaCustoPontosSnapshot,
     itens: pedido.itens.map((item) => ({
       id: item.id,
       nomeProduto: item.nomeProduto,

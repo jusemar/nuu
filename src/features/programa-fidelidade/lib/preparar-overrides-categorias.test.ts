@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { prepararOverridesCategorias } from "./preparar-overrides-categorias";
 
-test("não duplica a taxa global para categoria padrão ativa", () => {
+test("persiste opt-in que usa a taxa base global", () => {
   assert.deepEqual(
     prepararOverridesCategorias([
       {
@@ -13,7 +13,13 @@ test("não duplica a taxa global para categoria padrão ativa", () => {
         ativa: true,
       },
     ]),
-    [],
+    [
+      {
+        categoriaId: "11111111-1111-4111-8111-111111111111",
+        ativa: true,
+        pontosPorReal: null,
+      },
+    ],
   );
 });
 
@@ -37,8 +43,8 @@ test("persiste somente a taxa personalizada necessária", () => {
   );
 });
 
-test("preserva desativação mesmo quando a taxa é herdada", () => {
-  assert.equal(
+test("ausência de override representa categoria não participante", () => {
+  assert.deepEqual(
     prepararOverridesCategorias([
       {
         categoriaId: "11111111-1111-4111-8111-111111111111",
@@ -46,7 +52,7 @@ test("preserva desativação mesmo quando a taxa é herdada", () => {
         pontosPorReal: 1,
         ativa: false,
       },
-    ])[0]?.pontosPorReal,
-    null,
+    ]),
+    [],
   );
 });

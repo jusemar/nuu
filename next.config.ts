@@ -81,6 +81,11 @@ const nextConfig: NextConfig = {
         hostname: "www.laquila.com.br",
         pathname: "/imagensweb/**",
       },
+      {
+        // Avatares retornados pelo login Google são renderizados no menu da conta.
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
 };

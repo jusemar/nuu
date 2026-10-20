@@ -24,6 +24,7 @@ export async function buscarPedidoEmailPorId(
 
   return {
     numeroPedido: pedido.numeroPedido,
+    statusPedido: pedido.status,
     nomeCliente: pedido.cliente.nome,
     emailCliente: pedido.cliente.email,
     subtotalEmCentavos: pedido.subtotalEmCentavos,

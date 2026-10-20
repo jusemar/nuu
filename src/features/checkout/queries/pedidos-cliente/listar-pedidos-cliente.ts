@@ -40,6 +40,8 @@ export async function listarPedidosCliente({
       status: pedido.status,
       pagamentoStatus: pedido.pagamentoStatus,
       totalEmCentavos: pedido.totalEmCentavos,
+      modalidadePedido: pedido.modalidadePedido,
+      recompensaCustoPontosSnapshot: pedido.recompensaCustoPontosSnapshot,
       metodoPagamento: pagamento?.metodo ?? null,
     };
   });

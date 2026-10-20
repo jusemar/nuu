@@ -1,8 +1,11 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
+  pgSequence,
   pgTable,
   text,
   timestamp,
@@ -18,6 +21,16 @@ import {
 import { checkoutClientesTable } from "./clientes";
 import { checkoutEnderecosTable } from "./enderecos";
 
+/** Gera o identificador público sequencial usado pelo checkout (`#1001`, `#1002`, ...). */
+export const checkoutPedidosNumeroPedidoSeq = pgSequence(
+  "checkout_pedidos_numero_pedido_seq",
+  {
+    startWith: 1001,
+    increment: 1,
+    cycle: false,
+  },
+);
+
 export const checkoutPedidosTable = pgTable(
   "checkout_pedidos",
   {
@@ -30,6 +43,8 @@ export const checkoutPedidosTable = pgTable(
       .notNull()
       .references(() => checkoutEnderecosTable.id, { onDelete: "restrict" }),
     status: checkoutPedidoStatusEnum("status").notNull().default("pending"),
+    modalidadePedido: text("modalidade_pedido").notNull().default("compra"),
+    recompensaCustoPontosSnapshot: integer("recompensa_custo_pontos_snapshot"),
     subtotalEmCentavos: integer("subtotal_em_centavos").notNull(),
     freteEmCentavos: integer("frete_em_centavos").notNull(),
     descontoEmCentavos: integer("desconto_em_centavos").notNull().default(0),
@@ -92,6 +107,8 @@ export const checkoutPedidosTable = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
+    check("checkout_pedido_modalidade_valida", sql`${table.modalidadePedido} IN ('compra', 'recompensa')`),
+    check("checkout_pedido_recompensa_snapshot", sql`(${table.modalidadePedido} = 'compra' AND ${table.recompensaCustoPontosSnapshot} IS NULL AND ${table.totalEmCentavos} > 0) OR (${table.modalidadePedido} = 'recompensa' AND ${table.recompensaCustoPontosSnapshot} > 0 AND ${table.totalEmCentavos} >= 0)`),
     index("checkout_pedidos_cliente_id_idx").on(table.clienteId),
     index("checkout_pedidos_status_idx").on(table.status),
     // No Postgres, um índice único não considera dois NULLs iguais: todos os pedidos

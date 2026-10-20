@@ -3,7 +3,21 @@ import test from "node:test";
 
 import type { ItemCarrinho } from "@/features/carrinho";
 
-import { resolverItemVendavelCheckout } from "./normalizar-checkout-visitante";
+import {
+  montarSnapshotItemPedidoCheckout,
+  resolverItemVendavelCheckout,
+} from "./normalizar-checkout-visitante";
+
+const configuracaoPagamento = {
+  pixAtivo: true,
+  cartaoAtivo: true,
+  boletoAtivo: false,
+  percentualAcrescimoCartaoBps: 0,
+  parcelasSemJuros: 1,
+  taxaJurosMensalBps: 0,
+  maximoParcelas: 1,
+  valorMinimoParcelaEmCentavos: 100,
+};
 
 const itemBase: ItemCarrinho = {
   id: "item-1",
@@ -87,6 +101,26 @@ test("resolve produto simples de estoque próprio pela variante técnica", () =>
 
   assert.equal(resultado.tipo, "simple");
   assert.equal(resultado.varianteTecnica.id, varianteTecnica.id);
+});
+
+test("snapshot preserva modalidade operacional quando a descrição contém prazo", () => {
+  const snapshot = montarSnapshotItemPedidoCheckout({
+    item: itemBase,
+    produto: {
+      ...produtoSimples(),
+      pricing: [
+        {
+          ...precoBase,
+          pricingModalDescription: "1 dia",
+        },
+      ],
+    },
+    formaPagamento: "pix",
+    configuracaoPagamento,
+  });
+
+  assert.equal(snapshot.modalidade, "stock");
+  assert.equal(snapshot.prazoModalidade, "1 dia");
 });
 
 test("bloqueia produto simples de estoque próprio sem saldo", () => {
@@ -173,6 +207,25 @@ test("usa somente a variante realmente selecionada no produto variável", () => 
 
   assert.equal(resultado.tipo, "variant");
   assert.equal(resultado.variante.id, itemBase.produtoVarianteId);
+});
+
+test("snapshot de variante legada mantém a semântica de estoque local", () => {
+  const produto = {
+    ...produtoSimples(),
+    productKind: "variable",
+  };
+  const snapshot = montarSnapshotItemPedidoCheckout({
+    item: {
+      ...itemBase,
+      modalidadeTipo: `variant:${itemBase.produtoVarianteId}`,
+    },
+    produto,
+    formaPagamento: "pix",
+    configuracaoPagamento,
+  });
+
+  assert.equal(snapshot.modalidade, "stock");
+  assert.equal(snapshot.varianteId, itemBase.produtoVarianteId);
 });
 
 test("bloqueia variante selecionada cujo estoque mudou", () => {

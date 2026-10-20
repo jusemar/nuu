@@ -102,6 +102,18 @@ export function PaginaProgramaFidelidadeCliente({
             <aside className="space-y-4 lg:order-last">
               <section className="rounded-lg border bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2">
+                  <Gift className="size-4 text-[#0C447C]" />
+                  <h2 className="font-semibold text-slate-950">Troque seus pontos</h2>
+                </div>
+                <p className="mt-2 text-sm text-slate-600">
+                  Resgate produtos selecionados com seus pontos disponíveis.
+                </p>
+                <Button className="mt-4 w-full" asChild>
+                  <Link href="/troque-seus-pontos">Trocar meus pontos</Link>
+                </Button>
+              </section>
+              <section className="rounded-lg border bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2">
                   <Coins className="size-4 text-[#0C447C]" />
                   <h2 className="font-semibold text-slate-950">
                     Como funciona

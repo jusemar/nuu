@@ -19,6 +19,7 @@ const estilosStatus = {
   canceled: "border-slate-200 bg-slate-50 text-slate-700",
   refunded: "border-violet-200 bg-violet-50 text-violet-700",
   expired: "border-rose-200 bg-rose-50 text-rose-700",
+  pagamento_recebido_sem_recursos: "border-rose-300 bg-rose-50 text-rose-800",
   failed: "border-rose-200 bg-rose-50 text-rose-700",
 };
 

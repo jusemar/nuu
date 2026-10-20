@@ -13,6 +13,7 @@ import { dbTransacional } from "@/db/transaction";
 
 import { calcularPontosItensPedido } from "./calcular-pontos-pedido";
 import { processarReservaPedido } from "./processar-resgate-fidelidade";
+import { resolverRegraCategoriaFidelidade } from "./resolver-regra-categoria-fidelidade";
 
 type TransacaoBanco = Parameters<
   Parameters<typeof dbTransacional.transaction>[0]
@@ -96,6 +97,7 @@ async function gerarPontosPendentes(tx: TransacaoBanco, pedidoId: string) {
       clienteId: checkoutPedidosTable.clienteId,
       pagamentoStatus: checkoutPedidosTable.pagamentoStatus,
       descontoCupomEmCentavos: checkoutPedidosTable.descontoCupomEmCentavos,
+      modalidadePedido: checkoutPedidosTable.modalidadePedido,
     })
     .from(checkoutPedidosTable)
     .where(eq(checkoutPedidosTable.id, pedidoId))
@@ -108,6 +110,11 @@ async function gerarPontosPendentes(tx: TransacaoBanco, pedidoId: string) {
     .where(eq(processamentosPedidosFidelidadeTable.pedidoId, pedidoId))
     .limit(1);
   if (jaProcessado) return;
+
+  if (pedido.modalidadePedido === "recompensa") {
+    await registrarNaoElegivel(tx, pedido, "recompensa_nao_gera_pontos");
+    return;
+  }
 
   const [configuracao] = await tx
     .select()
@@ -155,13 +162,17 @@ async function gerarPontosPendentes(tx: TransacaoBanco, pedidoId: string) {
     descontoCupomEmCentavos: pedido.descontoCupomEmCentavos,
     itens: itens.map((item) => {
       const regra = regraPorCategoria.get(item.categoriaId!);
+      const regraEfetiva = resolverRegraCategoriaFidelidade(
+        regra,
+        configuracao.pontosPorReal,
+      );
       return {
         id: item.id,
         categoriaId: item.categoriaId!,
         valorBrutoEmCentavos: item.valorBrutoEmCentavos,
-        ativa: regra?.ativa ?? true,
-        origemRegra: regra?.pontosPorReal ? "personalizada" : "global",
-        taxaPontosPorReal: regra?.pontosPorReal ?? configuracao.pontosPorReal,
+        ativa: regraEfetiva.participa,
+        origemRegra: regraEfetiva.origemRegra,
+        taxaPontosPorReal: regraEfetiva.pontosPorReal,
         creditoFidelidadeRateadoEmCentavos:
           item.creditoFidelidadeRateadoEmCentavos,
       };

@@ -67,12 +67,15 @@ export function PaginaProgramaFidelidadeAdmin({
       (soma, categoria) => soma + categoria.pontosUltimos30Dias,
       0,
     );
-    const personalizadas = regras.filter((regra) => regra.personalizada).length;
+    const personalizadas = regras.filter(
+      (regra) => regra.ativa && regra.personalizada,
+    ).length;
+    const participantes = regras.filter((regra) => regra.ativa).length;
     const passivo =
       configuracao.pontosConversao > 0
         ? (emitidos * configuracao.valorCredito) / configuracao.pontosConversao
         : 0;
-    return { emitidos, personalizadas, passivo };
+    return { emitidos, personalizadas, participantes, passivo };
   }, [categorias, regras, configuracao]);
 
   function alterarConfiguracao(mudanca: Partial<ConfiguracaoFidelidade>) {
@@ -189,14 +192,14 @@ export function PaginaProgramaFidelidadeAdmin({
             detalhe="exemplo · crédito a resgatar"
           />
           <Metrica
-            rotulo="Regra padrão"
+            rotulo="Taxa base"
             valor={`R$ 1 = ${configuracao.pontosPorReal} pt`}
-            detalhe="acúmulo base"
+            detalhe="para categorias participantes"
           />
           <Metrica
-            rotulo="Categorias ajustadas"
-            valor={`${totais.personalizadas} de ${categorias.length}`}
-            detalhe="com regra personalizada"
+            rotulo="Categorias participantes"
+            valor={`${totais.participantes} de ${categorias.length}`}
+            detalhe={`${totais.personalizadas} com taxa personalizada`}
           />
         </section>
         <Tabs defaultValue="regras" className="gap-5">

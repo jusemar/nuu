@@ -21,6 +21,7 @@ import {
   reembolsarPagamento,
 } from "../../lib/gateways/reembolsos";
 import { cancelarPedidoClienteSchema } from "../../schemas/cancelamento-pedido.schema";
+import { liberarAlocacoesEstoquePedido } from "../estoque/liberar-alocacoes-estoque-pedido";
 
 export type EstadoCancelarPedido = {
   sucesso: boolean;
@@ -97,6 +98,10 @@ export async function cancelarPedidoCliente(
       pagamentoStatus: pedido.pagamentoStatus,
       gateway: pedido.gatewayPagamento,
       externalizado,
+      recompensaSemCobranca:
+        pedido.modalidadePedido === "recompensa" &&
+        pedido.totalEmCentavos === 0 &&
+        pedido.recompensaCustoPontosSnapshot !== null,
     });
 
     if (decisao === "orientar_devolucao") return { tipo: "devolucao" as const };
@@ -155,6 +160,8 @@ export async function cancelarPedidoCliente(
       statusNovo: "canceled",
       metadata: { cancelamentoId: cancelamento.id, motivo: dados.motivo },
     });
+    // O cancelamento e a devolução física pré-expedição fazem parte do mesmo commit.
+    await liberarAlocacoesEstoquePedido(tx, pedido.id);
     await processarEventoPedidoFidelidade(tx, pedido.id, "pedido_cancelado");
     return {
       tipo: exigeReembolso ? ("reembolsar" as const) : ("cancelado" as const),

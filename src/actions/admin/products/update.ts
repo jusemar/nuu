@@ -42,6 +42,7 @@ import {
 import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
+import { validarConfiguracaoRecompensaProduto } from "@/features/products/schemas/recompensa-produto.schema";
 
 function revalidatePathSeguro(path: string, recurso: string) {
   try {
@@ -164,6 +165,8 @@ interface UpdateProductData {
   gtinProdutoSimples?: string;
   mpnProduto?: string;
   estoqueProdutoSimples?: number;
+  recompensaPontosAtiva?: boolean;
+  recompensaCustoPontos?: string | number | null;
   metaTitle?: string;
   metaDescription?: string;
   canonicalUrl?: string;
@@ -259,6 +262,14 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       return falha("PRODUTO_NAO_ENCONTRADO", "Produto não encontrado.");
     }
 
+    const recompensa = validarConfiguracaoRecompensaProduto(
+      data,
+      existingProduct,
+    );
+    if (!recompensa.sucesso) {
+      return falha("DADOS_INVALIDOS", recompensa.erro);
+    }
+
     etapaAtual = "identificacao_origem_logistica";
     const usaLogisticaLaquila = await executarLeituraComRetry(
       "origem_logistica",
@@ -320,6 +331,13 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       updateFields.categoryId = data.categoryId;
     if (data.sku !== undefined) updateFields.sku = data.sku;
     if (data.isActive !== undefined) updateFields.isActive = data.isActive;
+    if (
+      data.recompensaPontosAtiva !== undefined ||
+      data.recompensaCustoPontos !== undefined
+    ) {
+      updateFields.recompensaPontosAtiva = recompensa.recompensaPontosAtiva;
+      updateFields.recompensaCustoPontos = recompensa.recompensaCustoPontos;
+    }
     if (data.collection !== undefined)
       updateFields.collection = data.collection;
     if (data.tags !== undefined) updateFields.tags = data.tags;

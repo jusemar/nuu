@@ -58,3 +58,13 @@ test("cancelamento repetido é terminal", () => {
     "ja_finalizado",
   );
 });
+test("recompensa quitada internamente cancela sem reembolso monetário", () => {
+  assert.equal(decidirCancelamentoPedido({
+    status: "processing", pagamentoStatus: "paid", gateway: "interno",
+    externalizado: false, recompensaSemCobranca: true,
+  }), "cancelar_sem_reembolso");
+  assert.equal(decidirCancelamentoPedido({
+    status: "processing", pagamentoStatus: "paid", gateway: "interno",
+    externalizado: false,
+  }), "gateway_nao_suportado");
+});

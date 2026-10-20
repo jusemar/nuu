@@ -106,3 +106,17 @@ export function calcularPontosItensPedido({
     ];
   });
 }
+
+/** Soma pontos decimais sem usar ponto flutuante. */
+export function somarPontosItensPedido(calculos: CalculoItemFidelidade[]) {
+  const totalEmUnidades = calculos.reduce((total, calculo) => {
+    const [inteira = "0", decimal = ""] = calculo.pontos.split(".");
+    return (
+      total +
+      BigInt(inteira) * BigInt(10_000) +
+      BigInt(decimal.padEnd(4, "0").slice(0, 4))
+    );
+  }, BigInt(0));
+
+  return formatarPontos(totalEmUnidades);
+}

@@ -11,10 +11,10 @@ import { processarIntegracoesFornecedoresAposPagamentoSeguro } from "@/features/
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
+import { confirmarPagamentoRecebido } from "../../../actions/pagamentos/confirmar-pagamento-recebido";
 import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoPixAprovado } from "../../emails/email-service";
-import { resolverStatusOperacionalPedidoAposPagamento } from "../../pedidos/resolver-status-operacional-pedido";
 import { valorPixCorrespondeAoPagamento } from "./validar-valor-pix";
 
 type PixRecebidoWebhookEfi = {
@@ -196,46 +196,27 @@ async function confirmarPagamentoPixEfi({
       )
       .returning({ id: checkoutPagamentosTable.id });
 
-    const pedidosAtualizados = await tx
-      .update(checkoutPedidosTable)
-      .set({
-        status: resolverStatusOperacionalPedidoAposPagamento(
-          pedidoAtual.status,
-        ),
-        pagamentoStatus: "paid",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(checkoutPedidosTable.id, pedidoAtual.id),
-          ne(checkoutPedidosTable.pagamentoStatus, "paid"),
-        ),
-      )
-      .returning({
-        id: checkoutPedidosTable.id,
-        numeroPedido: checkoutPedidosTable.numeroPedido,
-        status: checkoutPedidosTable.status,
-      });
-
-    const houveConfirmacao =
-      pagamentosAtualizados.length > 0 || pedidosAtualizados.length > 0;
-    const pedidoAtualizado = pedidosAtualizados[0] ?? pedidoAtual;
+    const houveConfirmacao = pagamentosAtualizados.length > 0 || pedidoAtual.pagamentoStatus !== "paid";
+    const confirmacao = houveConfirmacao
+      ? await confirmarPagamentoRecebido(tx, pedidoAtual.id)
+      : null;
 
     if (houveConfirmacao) {
       await tx.insert(checkoutPedidoHistoricosTable).values({
         pedidoId: pedidoAtual.id,
         tipo: "pagamento_aprovado",
-        descricao: montarDescricaoPagamentoAprovado(
-          pedidoAtualizado.numeroPedido,
-        ),
+        descricao: confirmacao?.recursos === "indisponiveis"
+          ? "Pagamento PIX recebido; atendimento bloqueado até tratamento/reembolso."
+          : montarDescricaoPagamentoAprovado(pedidoAtual.numeroPedido),
         origem: "system",
-        statusNovo: pedidoAtualizado.status,
+        statusNovo: confirmacao?.statusOperacional ?? pedidoAtual.status,
         metadata: {
           gateway: "efibank",
           txid: pix.txid,
           endToEndId: pix.endToEndId,
           valor: pix.valor,
           horario: pix.horario,
+          recursos: confirmacao?.recursos,
         },
       });
 
@@ -244,11 +225,9 @@ async function confirmarPagamentoPixEfi({
         pagamentoId: pagamentoAtual.id,
         clienteBanco: tx,
       });
-      await processarEventoPedidoFidelidade(
-        tx,
-        pedidoAtual.id,
-        "pagamento_confirmado",
-      );
+      if (confirmacao?.recursos === "prontos") {
+        await processarEventoPedidoFidelidade(tx, pedidoAtual.id, "pagamento_confirmado");
+      }
     }
 
     await tx

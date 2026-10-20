@@ -12,11 +12,11 @@ import { processarIntegracoesFornecedoresAposPagamentoSeguro } from "@/features/
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 import { registrarUsoCupomPromocao } from "@/features/promocoes/services";
 
+import { confirmarPagamentoRecebido } from "../../../actions/pagamentos/confirmar-pagamento-recebido";
 import { buscarPedidoEmailPorId } from "../../../queries/pedido/buscar-pedido-email";
 import { montarDescricaoPagamentoAprovado } from "../../admin-pedidos/montar-descricao-historico-pedido";
 import { enviarEmailPagamentoStripeAprovado } from "../../emails/email-service";
 import { expirarPagamentoPendente } from "../../pagamentos/expirar-pagamento-pendente";
-import { resolverStatusOperacionalPedidoAposPagamento } from "../../pedidos/resolver-status-operacional-pedido";
 import { obterStripe, obterWebhookSecretStripe } from "./cliente-stripe";
 
 type ConfirmarPagamentoStripeParams = {
@@ -219,46 +219,26 @@ async function confirmarPagamentoStripe({
       )
       .returning({ id: checkoutPagamentosTable.id });
 
-    const pedidosAtualizados = await tx
-      .update(checkoutPedidosTable)
-      .set({
-        status: resolverStatusOperacionalPedidoAposPagamento(
-          pedidoAtual.status,
-        ),
-        pagamentoStatus: "paid",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(checkoutPedidosTable.id, pedidoId),
-          ne(checkoutPedidosTable.pagamentoStatus, "paid"),
-        ),
-      )
-      .returning({
-        id: checkoutPedidosTable.id,
-        numeroPedido: checkoutPedidosTable.numeroPedido,
-        status: checkoutPedidosTable.status,
-      });
+    const houveConfirmacao = pagamentosAtualizados.length > 0 || pedidoAtual.pagamentoStatus !== "paid";
+    const confirmacao = houveConfirmacao
+      ? await confirmarPagamentoRecebido(tx, pedidoId)
+      : null;
 
-    const pedidoAtualizado = pedidosAtualizados[0];
-
-    const houveConfirmacao =
-      pagamentosAtualizados.length > 0 || pedidosAtualizados.length > 0;
-
-    if (houveConfirmacao && pedidoAtualizado) {
+    if (houveConfirmacao && confirmacao) {
       await tx.insert(checkoutPedidoHistoricosTable).values({
         pedidoId,
         tipo: "pagamento_aprovado",
-        descricao: montarDescricaoPagamentoAprovado(
-          pedidoAtualizado.numeroPedido,
-        ),
+        descricao: confirmacao.recursos === "indisponiveis"
+          ? "Pagamento Stripe recebido; atendimento bloqueado até tratamento/reembolso."
+          : montarDescricaoPagamentoAprovado(pedidoAtual.numeroPedido),
         origem: "system",
-        statusNovo: pedidoAtualizado.status,
+        statusNovo: confirmacao.statusOperacional,
         metadata: {
           gateway: "stripe",
           transactionId,
           stripeEventId: eventId,
           stripeEventType: eventType,
+          recursos: confirmacao.recursos,
         },
       });
 
@@ -267,11 +247,9 @@ async function confirmarPagamentoStripe({
         pagamentoId,
         clienteBanco: tx,
       });
-      await processarEventoPedidoFidelidade(
-        tx,
-        pedidoId,
-        "pagamento_confirmado",
-      );
+      if (confirmacao.recursos === "prontos") {
+        await processarEventoPedidoFidelidade(tx, pedidoId, "pagamento_confirmado");
+      }
     }
 
     await tx

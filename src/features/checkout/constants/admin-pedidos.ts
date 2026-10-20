@@ -14,8 +14,6 @@ export const PEDIDOS_ADMIN_PAGE_SIZE = 10;
 export const PEDIDO_STATUS_MANUAL_ADMIN: PedidoStatusCheckout[] = [
   "pending",
   "processing",
-  "shipped",
-  "delivered",
   "canceled",
   "expired",
 ];

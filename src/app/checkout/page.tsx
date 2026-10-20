@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { criarDestinoPosAutenticacao } from "@/features/autenticacao/lib/destino-autenticacao-cliente";
 import { buscarCadastroClientePorUsuarioId } from "@/features/autenticacao/queries/cadastro/buscar-cadastro-cliente";
 import { buscarSessaoCliente } from "@/features/autenticacao/queries/sessao/buscar-sessao-cliente";
 import { CheckoutVisitante } from "@/features/checkout";
 import type { DadosCheckoutClienteInicial } from "@/features/checkout/components/store/checkout-visitante/checkout-visitante";
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -19,7 +21,9 @@ export default async function CheckoutPage() {
     const cadastro = await buscarCadastroClientePorUsuarioId(sessao.usuario.id);
 
     if (!cadastro.completo) {
-      redirect("/completar-cadastro");
+      // O cadastro é uma etapa intermediária desta compra. O helper codifica e
+      // restringe o retorno a um destino interno seguro da aplicação.
+      redirect(criarDestinoPosAutenticacao("/checkout"));
     }
 
     if (cadastro.perfil && cadastro.enderecoPrincipal) {

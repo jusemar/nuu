@@ -18,6 +18,7 @@ export function decidirCancelamentoPedido(entrada: {
   pagamentoStatus: PagamentoStatusCheckout;
   gateway: PagamentoGatewayCheckout;
   externalizado: boolean;
+  recompensaSemCobranca?: boolean;
 }): DecisaoCancelamentoPedido {
   if (entrada.status === "canceled" || entrada.status === "refunded") {
     return "ja_finalizado";
@@ -27,6 +28,9 @@ export function decidirCancelamentoPedido(entrada: {
   }
   if (entrada.externalizado) return "bloquear_externalizado";
   if (entrada.pagamentoStatus !== "paid") return "cancelar_sem_reembolso";
+  if (entrada.recompensaSemCobranca && entrada.gateway === "interno") {
+    return "cancelar_sem_reembolso";
+  }
   if (entrada.gateway === "stripe" || entrada.gateway === "efibank") {
     return "cancelar_com_reembolso";
   }

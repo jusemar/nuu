@@ -7,6 +7,7 @@ import {
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
   type SnapshotDrizzle,
+  validarDeltaSnapshotAlocacoesEstoque,
   validarDeltaSnapshotAmbientesLaquila,
   validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
@@ -14,8 +15,10 @@ import {
   validarDeltaSnapshotDisponibilidadeFreteExterno,
   validarDeltaSnapshotEntregaPropriaCategoria,
   validarDeltaSnapshotIntegridadeEntregaPropria,
+  validarDeltaSnapshotPagamentoSemRecursos,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshots,
+  validarDeltaSnapshotSequenceNumeroPedido,
   validarDeltaSnapshotTabelasLegadasEntregaPropria,
   validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria,
   validarHistoricoAplicado,
@@ -53,6 +56,27 @@ function lerSnapshot(numero: string): SnapshotDrizzle {
     readFileSync(`drizzle/meta/${numero}_snapshot.json`, "utf8"),
   ) as SnapshotDrizzle;
 }
+
+test("0055 só adiciona alocação de estoque por pedido e variante", () => {
+  const anterior = lerSnapshot("0054");
+  const atual = lerSnapshot("0055");
+  assert.doesNotThrow(() => validarDeltaSnapshotAlocacoesEstoque(anterior, atual));
+  const adulterado = structuredClone(atual);
+  adulterado.tables["public.product_variant"] = { alteracaoIndevida: true };
+  assert.throws(() => validarDeltaSnapshotAlocacoesEstoque(anterior, adulterado));
+});
+
+test("0056 só acrescenta o bloqueio operacional para dinheiro recebido sem recursos", () => {
+  const anterior = lerSnapshot("0055");
+  const atual = lerSnapshot("0056");
+  assert.doesNotThrow(() => validarDeltaSnapshotPagamentoSemRecursos(anterior, atual));
+  const adulterado = structuredClone(atual);
+  adulterado.enums["public.checkout_pedido_status"] = {
+    ...(adulterado.enums["public.checkout_pedido_status"] as Record<string, unknown>),
+    values: ["pending", "invalido"],
+  };
+  assert.throws(() => validarDeltaSnapshotPagamentoSemRecursos(anterior, adulterado));
+});
 
 test("restringe a consolidação da Entrega Própria aos deltas revisados", () => {
   const snapshot43 = lerSnapshot("0043");
@@ -243,6 +267,41 @@ test("0053 só adiciona a Entrega Própria por Categoria (aditiva)", () => {
   delete adulterado.tables["public.product_own_delivery_prices"];
   assert.throws(() =>
     validarDeltaSnapshotEntregaPropriaCategoria(snapshot52, adulterado),
+  );
+});
+
+test("0054 só adiciona a sequence pública de pedidos", () => {
+  const snapshot53 = lerSnapshot("0053");
+  const snapshot54 = lerSnapshot("0054");
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotSequenceNumeroPedido(snapshot53, snapshot54),
+  );
+
+  const sequence = snapshot54.sequences[
+    "public.checkout_pedidos_numero_pedido_seq"
+  ] as {
+    increment?: string;
+    startWith?: string;
+    minValue?: string;
+    maxValue?: string;
+    cache?: string;
+    cycle?: boolean;
+  };
+  assert.deepEqual(sequence, {
+    name: "checkout_pedidos_numero_pedido_seq",
+    schema: "public",
+    increment: "1",
+    startWith: "1001",
+    minValue: "1",
+    maxValue: "9223372036854775807",
+    cache: "1",
+    cycle: false,
+  });
+
+  const adulterado = structuredClone(snapshot54);
+  adulterado.tables["public.checkout_pedidos"] = { alteracaoIndevida: true };
+  assert.throws(() =>
+    validarDeltaSnapshotSequenceNumeroPedido(snapshot53, adulterado),
   );
 });
 

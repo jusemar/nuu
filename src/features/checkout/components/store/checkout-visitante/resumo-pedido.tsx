@@ -95,6 +95,7 @@ export function ResumoPedido({
     (formaPagamento === "pix"
       ? (resumoCheckout?.pagamentos.pix.economiaEmCentavos ?? 0)
       : 0);
+  const pontosEstimados = Number(previaTotais?.pontosEstimados ?? 0);
 
   return (
     <aside className="lg:col-span-5">
@@ -254,6 +255,18 @@ export function ResumoPedido({
                   </span>
                 </div>
               ) : null}
+              {pontosEstimados > 0 ? (
+                <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400">
+                  <span>Pontos desta compra</span>
+                  <span className="font-medium">
+                    +
+                    {pontosEstimados.toLocaleString("pt-BR", {
+                      maximumFractionDigits: 4,
+                    })}{" "}
+                    pts
+                  </span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Pagamento</span>
                 <span className="text-right font-medium">
@@ -287,9 +300,7 @@ export function ResumoPedido({
               freteGratisPromocionalAplicado ||
               possuiCreditoFidelidade ? (
                 <div className="flex items-end justify-between border-t border-dashed pt-3">
-                  <span className="text-sm font-semibold">
-                    Total estimado
-                  </span>
+                  <span className="text-sm font-semibold">Total estimado</span>
                   <div className="text-right">
                     <p className="text-xl font-bold tracking-tight text-emerald-700 dark:text-emerald-400">
                       {formatarPrecoCarrinho(totalEstimadoComCupomEmCentavos)}

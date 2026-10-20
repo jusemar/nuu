@@ -9,6 +9,8 @@ export const checkoutPedidoStatusEnum = pgEnum("checkout_pedido_status", [
   "canceled",
   "refunded",
   "expired",
+  // Dinheiro recebido após a liberação, sem estoque/pontos recuperados.
+  "pagamento_recebido_sem_recursos",
 ]);
 
 export const checkoutPedidoHistoricoTipoEnum = pgEnum(
@@ -45,12 +47,14 @@ export const checkoutPagamentoGatewayEnum = pgEnum(
     // `gateway_pagamento` é NOT NULL — e é justamente ele o discriminador que separa
     // um pagamento na entrega de um pagamento online, sem precisar de status novo.
     "manual",
+    "interno",
   ],
 );
 
 export const checkoutPagamentoMetodoEnum = pgEnum("checkout_pagamento_metodo", [
   "cartao",
   "pix",
+  "pontos",
   // As 4 formas de pagar no recebimento. Ficam no mesmo enum dos métodos online
   // (e não em uma tabela paralela) para que toda consulta de pagamento continue
   // enxergando um único conjunto de métodos.

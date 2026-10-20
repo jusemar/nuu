@@ -51,9 +51,14 @@ export function PainelCategoriasFidelidade({
           categoria.nome.toLowerCase().includes(busca.trim().toLowerCase()) &&
           (grupo === "todos" || categoria.grupo === grupo) &&
           (filtroRegra === "todas" ||
-            (filtroRegra === "personalizadas" && regra?.personalizada) ||
-            (filtroRegra === "padrao" && !regra?.personalizada) ||
-            (filtroRegra === "desativadas" && !regra?.ativa))
+            (filtroRegra === "participantes" && regra?.ativa) ||
+            (filtroRegra === "personalizadas" &&
+              regra?.ativa &&
+              regra.personalizada) ||
+            (filtroRegra === "taxa-base" &&
+              regra?.ativa &&
+              !regra.personalizada) ||
+            (filtroRegra === "nao-participantes" && !regra?.ativa))
         );
       }),
     [categorias, regras, busca, grupo, filtroRegra],
@@ -89,9 +94,8 @@ export function PainelCategoriasFidelidade({
         <div>
           <h2 className="font-semibold">Regras por categoria</h2>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            {categorias.length} categorias ·{" "}
-            {regras.filter((r) => r.personalizada).length} com regra
-            personalizada
+            {regras.filter((regra) => regra.ativa).length} de{" "}
+            {categorias.length} categorias participantes
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -147,10 +151,13 @@ export function PainelCategoriasFidelidade({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="todas">Todas as regras</SelectItem>
+                <SelectItem value="todas">Todas as categorias</SelectItem>
+                <SelectItem value="participantes">Participantes</SelectItem>
                 <SelectItem value="personalizadas">Personalizadas</SelectItem>
-                <SelectItem value="padrao">Regra padrão</SelectItem>
-                <SelectItem value="desativadas">Desativadas</SelectItem>
+                <SelectItem value="taxa-base">Com taxa base</SelectItem>
+                <SelectItem value="nao-participantes">
+                  Não participantes
+                </SelectItem>
               </SelectContent>
             </Select>
             {temFiltros && (

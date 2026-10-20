@@ -45,7 +45,7 @@ function movimentoReserva(
     valorBaseEmCentavos: String(reserva.creditoEmCentavos),
     pontos: reserva.pontos,
     motivo: tipo,
-    metadata: { operacao: tipo },
+    metadata: { operacao: tipo, modalidade: reserva.modalidade },
   };
 }
 
@@ -150,6 +150,68 @@ export async function reservarPontosPedido({
   return reserva;
 }
 
+/** Reserva um produto por pontos, sem transformar o custo em desconto monetário. */
+export async function reservarPontosRecompensaPedido({
+  tx,
+  pedidoId,
+  checkoutClienteId,
+  custoPontos,
+}: {
+  tx: TransacaoBanco;
+  pedidoId: string;
+  checkoutClienteId: string;
+  custoPontos: number;
+}) {
+  if (!Number.isSafeInteger(custoPontos) || custoPontos <= 0) {
+    throw new Error("CUSTO_RECOMPENSA_INVALIDO");
+  }
+  const existente = await tx.query.reservasFidelidadeTable.findFirst({
+    where: eq(reservasFidelidadeTable.pedidoId, pedidoId),
+  });
+  if (existente) {
+    if (existente.modalidade !== "recompensa") throw new Error("RESERVA_MODALIDADE_INCOMPATIVEL");
+    return existente;
+  }
+  const configuracao = await tx.query.configuracoesProgramaFidelidadeTable.findFirst({
+    where: eq(configuracoesProgramaFidelidadeTable.id, "global"),
+  });
+  if (!configuracao?.ativo) throw new Error("PROGRAMA_FIDELIDADE_INATIVO");
+  const carteira = await tx.query.carteirasFidelidadeTable.findFirst({
+    where: eq(carteirasFidelidadeTable.clienteId, checkoutClienteId),
+  });
+  if (!carteira) throw new Error("SALDO_FIDELIDADE_INSUFICIENTE");
+  const pontos = String(custoPontos);
+  const [debitada] = await tx.update(carteirasFidelidadeTable).set({
+    pontosDisponiveis: sql`${carteirasFidelidadeTable.pontosDisponiveis} - ${pontos}::numeric`,
+    pontosReservados: sql`${carteirasFidelidadeTable.pontosReservados} + ${pontos}::numeric`,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(carteirasFidelidadeTable.id, carteira.id),
+    sql`${carteirasFidelidadeTable.pontosDisponiveis} >= ${pontos}::numeric`,
+  )).returning({ id: carteirasFidelidadeTable.id });
+  if (!debitada) throw new Error("SALDO_FIDELIDADE_CONCORRENTE");
+  const [reserva] = await tx.insert(reservasFidelidadeTable).values({
+    carteiraId: carteira.id,
+    clienteId: checkoutClienteId,
+    pedidoId,
+    modalidade: "recompensa",
+    status: "reservada",
+    pontos,
+    creditoEmCentavos: 0,
+    pontosConversao: configuracao.pontosConversao,
+    valorCreditoConversaoEmCentavos: configuracao.valorCreditoEmCentavos,
+    configuracaoVersao: configuracao.versao,
+    baseElegivelEmCentavos: 0,
+    limiteAplicadoEmCentavos: 0,
+    valorMinimoPagamentoEmCentavos: 0,
+    referenciaIdempotencia: `pedido:${pedidoId}:recompensa`,
+  }).returning();
+  if (!reserva) throw new Error("RESERVA_FIDELIDADE_NAO_CRIADA");
+  await tx.insert(transacoesFidelidadeTable)
+    .values(movimentoReserva(reserva, "reserva_resgate", "reservada"));
+  return reserva;
+}
+
 export async function processarReservaPedido(
   tx: TransacaoBanco,
   pedidoId: string,
@@ -231,4 +293,50 @@ export async function processarReservaPedido(
       target: transacoesFidelidadeTable.referenciaIdempotencia,
     });
   return { status: novoStatus };
+}
+
+/**
+ * Reobtém os pontos históricos de um pedido pago tardiamente. Não recalcula o
+ * desconto já cobrado: apenas volta a reservar exatamente os pontos originais.
+ * O chamador usa savepoint junto da realocação de estoque para tudo-ou-nada.
+ */
+export async function reobterReservaLiberadaPedido(
+  tx: TransacaoBanco,
+  pedidoId: string,
+): Promise<"sem_reserva" | "pronta" | "indisponivel"> {
+  const [reserva] = await tx.select().from(reservasFidelidadeTable)
+    .where(eq(reservasFidelidadeTable.pedidoId, pedidoId));
+  if (!reserva) return "sem_reserva";
+  if (reserva.status === "reservada") return "pronta";
+  if (reserva.status !== "liberada") return "indisponivel";
+
+  const [carteira] = await tx.update(carteirasFidelidadeTable)
+    .set({
+      pontosDisponiveis: sql`${carteirasFidelidadeTable.pontosDisponiveis} - ${reserva.pontos}::numeric`,
+      pontosReservados: sql`${carteirasFidelidadeTable.pontosReservados} + ${reserva.pontos}::numeric`,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(carteirasFidelidadeTable.id, reserva.carteiraId),
+      sql`${carteirasFidelidadeTable.pontosDisponiveis} >= ${reserva.pontos}::numeric`,
+    ))
+    .returning({ id: carteirasFidelidadeTable.id });
+  if (!carteira) return "indisponivel";
+
+  const [atualizada] = await tx.update(reservasFidelidadeTable)
+    .set({ status: "reservada", liberadaEm: null, motivoFinalizacao: null, updatedAt: new Date() })
+    .where(and(
+      eq(reservasFidelidadeTable.id, reserva.id),
+      eq(reservasFidelidadeTable.status, "liberada"),
+    ))
+    .returning({ id: reservasFidelidadeTable.id });
+  if (!atualizada) return "indisponivel";
+
+  await tx.insert(transacoesFidelidadeTable).values({
+    ...movimentoReserva(reserva, "reserva_resgate", "reservada"),
+    referenciaIdempotencia: `${reserva.referenciaIdempotencia}:reobtencao_tardia`,
+    motivo: "reobtencao_apos_pagamento_tardio",
+    metadata: { operacao: "reobtencao_tardia" },
+  });
+  return "pronta";
 }

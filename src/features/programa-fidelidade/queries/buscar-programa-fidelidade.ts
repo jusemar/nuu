@@ -60,7 +60,7 @@ export async function buscarProgramaFidelidade(): Promise<
     grupo: "Categoria da loja",
     // Estes dois campos alimentam somente métricas claramente marcadas como exemplo.
     produtos: 24 + ((indice * 37) % 180),
-    ativa: categoria.regraAtiva ?? true,
+    ativa: categoria.regraAtiva ?? false,
     pontosUltimos30Dias: 5320 + ((indice * 7910) % 145000),
   }));
 
@@ -75,7 +75,7 @@ export async function buscarProgramaFidelidade(): Promise<
         categoria.pontosPersonalizados === null
           ? configuracao.pontosPorReal
           : Number(categoria.pontosPersonalizados),
-      ativa: categoria.regraAtiva ?? true,
+      ativa: categoria.regraAtiva ?? false,
     })),
   };
 }

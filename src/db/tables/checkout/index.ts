@@ -14,19 +14,25 @@ export {
   checkoutClientesRelations,
   checkoutEfiWebhookEventosRelations,
   checkoutEnderecosRelations,
-  checkoutPedidoHistoricosRelations,
+  checkoutEstoqueAlocacoesRelations,
+  checkoutPagamentosRelations,
   checkoutPedidoCancelamentosRelations,
+  checkoutPedidoHistoricosRelations,
   checkoutPedidoItensRelations,
   checkoutPedidoLogisticasRelations,
   checkoutPedidoPagamentoEntregaRelations,
-  checkoutStripeWebhookEventosRelations,
-  checkoutPagamentosRelations,
   checkoutPedidosRelations,
+  checkoutStripeWebhookEventosRelations,
 } from "./relacoes";
-export { checkoutPedidoCancelamentosTable } from "./tabelas/pedido-cancelamentos";
 export { checkoutClientesTable } from "./tabelas/clientes";
 export { checkoutEfiWebhookEventosTable } from "./tabelas/efi-webhook-eventos";
 export { checkoutEnderecosTable } from "./tabelas/enderecos";
+export {
+  checkoutEstoqueAlocacaoStatusEnum,
+  checkoutEstoqueAlocacoesTable,
+} from "./tabelas/estoque-alocacoes";
+export { checkoutPagamentosTable } from "./tabelas/pagamentos";
+export { checkoutPedidoCancelamentosTable } from "./tabelas/pedido-cancelamentos";
 export { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";
 export { checkoutPedidoItensTable } from "./tabelas/pedido-itens";
 export { checkoutPedidoLogisticasTable } from "./tabelas/pedido-logisticas";
@@ -34,6 +40,8 @@ export {
   checkoutPedidoPagamentoEntregaTable,
   type SnapshotElegibilidadePagamentoNaEntrega,
 } from "./tabelas/pedido-pagamento-entrega";
-export { checkoutPagamentosTable } from "./tabelas/pagamentos";
-export { checkoutPedidosTable } from "./tabelas/pedidos";
+export {
+  checkoutPedidosNumeroPedidoSeq,
+  checkoutPedidosTable,
+} from "./tabelas/pedidos";
 export { checkoutStripeWebhookEventosTable } from "./tabelas/stripe-webhook-eventos";

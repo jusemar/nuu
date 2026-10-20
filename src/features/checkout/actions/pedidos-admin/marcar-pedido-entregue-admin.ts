@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -15,6 +15,7 @@ import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/
 
 import { montarDescricaoPedidoEntregue } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { acaoLogisticaPedidoAdminSchema } from "../../schemas/admin-pedidos.schema";
+import { comprometerAlocacoesEstoquePedido } from "../estoque/comprometer-alocacoes-estoque-pedido";
 
 export type EstadoMarcarPedidoEntregueAdmin = {
   sucesso: boolean;
@@ -41,6 +42,7 @@ export async function marcarPedidoEntregueAdmin(
 
   try {
     const resultado = await dbTransacional.transaction(async (tx) => {
+      await tx.execute(sql`select id from checkout_pedidos where id = ${pedidoId} for update`);
       const pedido = await tx.query.checkoutPedidosTable.findFirst({
         where: eq(checkoutPedidosTable.id, pedidoId),
         with: {
@@ -55,8 +57,15 @@ export async function marcarPedidoEntregueAdmin(
         };
       }
 
+      if (pedido.status === "delivered") {
+        return { sucesso: true, mensagem: "Pedido já estava marcado como entregue." };
+      }
+      const marco = await comprometerAlocacoesEstoquePedido(tx, pedidoId, "entrega_em_maos");
+      if (!marco.permitido) return { sucesso: false, mensagem: marco.mensagem };
+
       const agora = new Date();
-      const dataEnvio = pedido.logistica?.dataEnvio ?? agora;
+      // Retirada entregue no balcão não possui envio por transportadora.
+      const dataEnvio = marco.retirada ? null : (pedido.logistica?.dataEnvio ?? agora);
 
       await tx
         .insert(checkoutPedidoLogisticasTable)

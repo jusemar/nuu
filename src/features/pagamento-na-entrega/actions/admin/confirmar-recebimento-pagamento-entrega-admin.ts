@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -149,7 +149,12 @@ export async function confirmarRecebimentoPagamentoEntregaAdmin(
 
       await tx
         .update(checkoutPedidosTable)
-        .set({ status: "paid", pagamentoStatus: "paid", updatedAt: agora })
+        .set({
+          // Receber o dinheiro depois do envio não volta o pedido ao começo.
+          status: sql`case when ${checkoutPedidosTable.status} in ('shipped', 'delivered') then ${checkoutPedidosTable.status} else 'paid'::checkout_pedido_status end`,
+          pagamentoStatus: "paid",
+          updatedAt: agora,
+        })
         .where(
           and(
             eq(checkoutPedidosTable.id, dados.pedidoId),
@@ -169,7 +174,7 @@ export async function confirmarRecebimentoPagamentoEntregaAdmin(
         usuarioAdminId: adminId,
         usuarioAdminEmail: adminEmail,
         statusAnterior: pedido.status,
-        statusNovo: "paid",
+        statusNovo: ["shipped", "delivered"].includes(pedido.status) ? pedido.status : "paid",
         metadata: {
           formaEscolhidaPeloCliente: registro.formaEscolhida,
           formaRecebida: dados.formaRecebida,

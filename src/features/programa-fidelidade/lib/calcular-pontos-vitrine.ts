@@ -1,4 +1,5 @@
 import { calcularPontosPorValor } from "./calcular-pontos-pedido";
+import { resolverRegraCategoriaFidelidade } from "./resolver-regra-categoria-fidelidade";
 
 export type RegraFidelidadeVitrine = {
   programaAtivo: boolean;
@@ -71,13 +72,16 @@ export function resolverPontosVitrineProdutos({
   return Object.fromEntries(
     produtos.flatMap((produto) => {
       const regraCategoria = regrasPorCategoria.get(produto.categoriaId);
+      const regraEfetiva = resolverRegraCategoriaFidelidade(
+        regraCategoria,
+        configuracao.pontosPorReal,
+      );
       const pontos = calcularPontosProdutoVitrine({
         precoEmCentavos: produto.precoEmCentavos,
         regra: {
           programaAtivo: configuracao.ativo,
-          categoriaAtiva: regraCategoria?.ativa ?? true,
-          pontosPorReal:
-            regraCategoria?.pontosPorReal ?? configuracao.pontosPorReal,
+          categoriaAtiva: regraEfetiva.participa,
+          pontosPorReal: regraEfetiva.pontosPorReal,
         },
       });
 

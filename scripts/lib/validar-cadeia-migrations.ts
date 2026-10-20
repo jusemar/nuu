@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 54,
-  ultimoIndice: 53,
-  ultimaTag: "0053_entrega_propria_categoria",
-  ultimoArquivo: "drizzle/0053_entrega_propria_categoria.sql",
+  total: 57,
+  ultimoIndice: 56,
+  ultimaTag: "0056_pagamento_recebido_sem_recursos",
+  ultimoArquivo: "drizzle/0056_pagamento_recebido_sem_recursos.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -557,6 +557,104 @@ export function validarDeltaSnapshotEntregaPropriaCategoria(
       delta.alteradas.some((item) => !alteracoesEsperadas.has(item))
     ) {
       falhar(`Delta inesperado da Entrega Própria por Categoria em ${grupo}.`);
+    }
+  }
+}
+
+/** Garante que 0054 acrescenta somente a sequence pública de pedidos. */
+export function validarDeltaSnapshotSequenceNumeroPedido(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0053 e 0054 não estão encadeados.");
+  }
+
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const anterior = snapshotAnterior[grupo] ?? {};
+    const atual = snapshotAtual[grupo] ?? {};
+    const adicionadas = Object.keys(atual).filter(
+      (chave) => !(chave in anterior),
+    );
+    const removidas = Object.keys(anterior).filter(
+      (chave) => !(chave in atual),
+    );
+    const alteradas = Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
+    );
+    const esperadas =
+      grupo === "sequences"
+        ? ["public.checkout_pedidos_numero_pedido_seq"]
+        : [];
+
+    if (
+      JSON.stringify(adicionadas.sort()) !== JSON.stringify(esperadas) ||
+      removidas.length > 0 ||
+      alteradas.length > 0
+    ) {
+      falhar(`Delta inesperado da sequence de pedidos para ${grupo}.`);
+    }
+  }
+}
+
+/** 0055 introduz apenas a unidade auditável pedido + variante de estoque próprio. */
+export function validarDeltaSnapshotAlocacoesEstoque(
+  snapshotAnterior: SnapshotDrizzle,
+  snapshotAtual: SnapshotDrizzle,
+) {
+  if (snapshotAtual.prevId !== snapshotAnterior.id) {
+    falhar("Snapshots 0054 e 0055 não estão encadeados.");
+  }
+
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const anterior = snapshotAnterior[grupo] ?? {};
+    const atual = snapshotAtual[grupo] ?? {};
+    const adicionadas = Object.keys(atual).filter((chave) => !(chave in anterior));
+    const removidas = Object.keys(anterior).filter((chave) => !(chave in atual));
+    const alteradas = Object.keys(anterior).filter(
+      (chave) => chave in atual && serializarCanonico(anterior[chave]) !== serializarCanonico(atual[chave]),
+    );
+    const esperadas = grupo === "tables"
+      ? ["public.checkout_estoque_alocacoes"]
+      : grupo === "enums"
+        ? ["public.checkout_estoque_alocacao_status"]
+        : [];
+
+    if (JSON.stringify(adicionadas.sort()) !== JSON.stringify(esperadas) || removidas.length || alteradas.length) {
+      falhar(`Delta inesperado de alocações de estoque para ${grupo}.`);
+    }
+  }
+}
+
+/** 0056 somente acrescenta o bloqueio operacional ao enum de status. */
+export function validarDeltaSnapshotPagamentoSemRecursos(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id) falhar("Snapshots 0055 e 0056 não estão encadeados.");
+  for (const grupo of GRUPOS_SNAPSHOT) {
+    const chavesAnteriores = Object.keys(anterior[grupo] ?? {}).sort();
+    const chavesAtuais = Object.keys(atual[grupo] ?? {}).sort();
+    if (JSON.stringify(chavesAnteriores) !== JSON.stringify(chavesAtuais)) {
+      falhar(`0056 alterou chaves inesperadas de ${grupo}.`);
+    }
+    for (const chave of chavesAnteriores) {
+      if (grupo === "enums" && chave === "public.checkout_pedido_status") {
+        const enumAnterior = anterior.enums[chave] as { values: string[] };
+        const enumAtual = atual.enums[chave] as { values: string[] };
+        if (JSON.stringify(enumAtual.values) !== JSON.stringify([...enumAnterior.values, "pagamento_recebido_sem_recursos"])) {
+          falhar("0056 alterou valores inesperados do status do pedido.");
+        }
+        const esperado = { ...enumAnterior, values: enumAtual.values };
+        if (serializarCanonico(esperado) !== serializarCanonico(enumAtual)) {
+          falhar("0056 alterou metadados inesperados do enum.");
+        }
+      } else if (serializarCanonico(anterior[grupo][chave]) !== serializarCanonico(atual[grupo][chave])) {
+        falhar(`0056 alterou objeto inesperado em ${grupo}: ${chave}.`);
+      }
     }
   }
 }

@@ -123,6 +123,7 @@ export const reservasFidelidadeTable = pgTable(
       .notNull()
       .references(() => checkoutPedidosTable.id, { onDelete: "restrict" }),
     status: fidelidadeStatusReservaEnum("status").notNull(),
+    modalidade: text("modalidade").notNull().default("desconto_monetario"),
     pontos: numeric("pontos", { precision: 18, scale: 4 }).notNull(),
     creditoEmCentavos: integer("credito_em_centavos").notNull(),
     pontosConversao: numeric("pontos_conversao", {
@@ -165,7 +166,7 @@ export const reservasFidelidadeTable = pgTable(
     ),
     check(
       "programa_fidelidade_reserva_valores_validos",
-      sql`${table.creditoEmCentavos} > 0 AND ${table.baseElegivelEmCentavos} >= ${table.creditoEmCentavos} AND ${table.limiteAplicadoEmCentavos} >= ${table.creditoEmCentavos} AND ${table.valorMinimoPagamentoEmCentavos} > 0`,
+      sql`(${table.modalidade} = 'desconto_monetario' AND ${table.creditoEmCentavos} > 0 AND ${table.baseElegivelEmCentavos} >= ${table.creditoEmCentavos} AND ${table.limiteAplicadoEmCentavos} >= ${table.creditoEmCentavos} AND ${table.valorMinimoPagamentoEmCentavos} > 0) OR (${table.modalidade} = 'recompensa' AND ${table.creditoEmCentavos} = 0 AND ${table.baseElegivelEmCentavos} = 0 AND ${table.limiteAplicadoEmCentavos} = 0 AND ${table.valorMinimoPagamentoEmCentavos} = 0)`,
     ),
   ],
 );

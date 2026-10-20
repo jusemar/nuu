@@ -17,8 +17,8 @@ import {
   formatarMoedaPedidoCliente,
 } from "../../../lib/pedidos-cliente/formatar-pedidos-cliente";
 import type { PedidoClienteDetalhe } from "../../../types/pedidos-cliente.types";
-import { PainelCobrancaPix } from "./painel-cobranca-pix";
 import { FormularioCancelamentoPedido } from "./formulario-cancelamento-pedido";
+import { PainelCobrancaPix } from "./painel-cobranca-pix";
 import {
   StatusPagamentoClienteBadge,
   StatusPedidoClienteBadge,
@@ -181,10 +181,9 @@ export function PaginaDetalhePedidoCliente({
                           </p>
                         ) : null}
                         <p className="mt-1 text-xs text-slate-500">
-                          {item.quantidade} x{" "}
-                          {formatarMoedaPedidoCliente(
-                            item.precoUnitarioEmCentavos,
-                          )}
+                          {pedido.modalidadePedido === "recompensa" && pedido.recompensaCustoPontosSnapshot
+                            ? `Resgatado por ${pedido.recompensaCustoPontosSnapshot.toLocaleString("pt-BR")} pontos`
+                            : `${item.quantidade} x ${formatarMoedaPedidoCliente(item.precoUnitarioEmCentavos)}`}
                         </p>
                         {item.modalidade &&
                         Object.keys(item.atributosVariante).length === 0 ? (
@@ -193,9 +192,11 @@ export function PaginaDetalhePedidoCliente({
                           </p>
                         ) : null}
                       </div>
-                      <p className="text-sm font-semibold text-slate-950">
-                        {formatarMoedaPedidoCliente(item.totalEmCentavos)}
-                      </p>
+                      {pedido.modalidadePedido !== "recompensa" ? (
+                        <p className="text-sm font-semibold text-slate-950">
+                          {formatarMoedaPedidoCliente(item.totalEmCentavos)}
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -226,8 +227,16 @@ export function PaginaDetalhePedidoCliente({
             <div className="space-y-5">
               <SecaoCliente titulo="Resumo financeiro">
                 <dl className="space-y-3 text-sm">
+                  {pedido.modalidadePedido === "recompensa" && pedido.recompensaCustoPontosSnapshot ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-slate-600">Produto resgatado</dt>
+                      <dd className="font-medium text-slate-950">
+                        {pedido.recompensaCustoPontosSnapshot.toLocaleString("pt-BR")} pontos
+                      </dd>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between gap-4">
-                    <dt className="text-slate-600">Subtotal</dt>
+                    <dt className="text-slate-600">{pedido.modalidadePedido === "recompensa" ? "Produto em reais" : "Subtotal"}</dt>
                     <dd className="font-medium text-slate-950">
                       {formatarMoedaPedidoCliente(pedido.subtotalEmCentavos)}
                     </dd>
@@ -245,7 +254,7 @@ export function PaginaDetalhePedidoCliente({
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4 border-t pt-3 text-base">
-                    <dt className="font-semibold text-slate-950">Total</dt>
+                    <dt className="font-semibold text-slate-950">{pedido.modalidadePedido === "recompensa" ? "Total monetário" : "Total"}</dt>
                     <dd className="font-semibold text-slate-950">
                       {formatarMoedaPedidoCliente(pedido.totalEmCentavos)}
                     </dd>

@@ -6,12 +6,15 @@ export type OverrideCategoriaFidelidade = {
   pontosPorReal: string | null;
 };
 
-/** Mantém no banco apenas exceções; regra padrão ativa é herdada, não copiada. */
+/**
+ * Persiste somente opt-ins. Uma linha ativa com pontos nulos significa participação
+ * explícita usando a taxa base; ausência de linha significa que não participa.
+ */
 export function prepararOverridesCategorias(
   regras: RegraCategoriaFidelidade[],
 ): OverrideCategoriaFidelidade[] {
   return regras
-    .filter((regra) => regra.personalizada || !regra.ativa)
+    .filter((regra) => regra.ativa)
     .map((regra) => ({
       categoriaId: regra.categoriaId,
       ativa: regra.ativa,

@@ -40,7 +40,7 @@ export function EditorCategoriaFidelidade({
 }: Props) {
   const [personalizada, setPersonalizada] = useState(false);
   const [pontos, setPontos] = useState(pontosPadrao);
-  const [ativa, setAtiva] = useState(true);
+  const [ativa, setAtiva] = useState(false);
   useEffect(() => {
     if (regra) {
       setPersonalizada(regra.personalizada);
@@ -62,9 +62,9 @@ export function EditorCategoriaFidelidade({
         <div className="space-y-6 overflow-y-auto px-6 py-6">
           <div className="bg-muted/50 flex items-center justify-between gap-4 rounded-xl px-4 py-3">
             <div>
-              <Label htmlFor="categoria-ativa">Acúmulo ativo</Label>
+              <Label htmlFor="categoria-ativa">Participa do programa</Label>
               <p className="text-muted-foreground mt-1 text-xs">
-                Desative para não gerar pontos nesta categoria.
+                Somente categorias participantes geram pontos.
               </p>
             </div>
             <Switch
@@ -75,13 +75,13 @@ export function EditorCategoriaFidelidade({
           </div>
           <div className="space-y-3">
             <Label className="text-muted-foreground text-xs tracking-wide uppercase">
-              Regra de acúmulo
+              Taxa de acúmulo
             </Label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 {
                   valor: false,
-                  titulo: "Padrão",
+                  titulo: "Taxa base",
                   detalhe: `R$ 1 = ${pontosPadrao} pt`,
                 },
                 {
@@ -110,7 +110,7 @@ export function EditorCategoriaFidelidade({
               ))}
             </div>
           </div>
-          {personalizada && (
+          {ativa && personalizada && (
             <div className="space-y-3 rounded-xl border p-4">
               <Label htmlFor="pontos-categoria">Pontos por R$ 1 gasto</Label>
               <div className="flex flex-wrap items-center gap-2">

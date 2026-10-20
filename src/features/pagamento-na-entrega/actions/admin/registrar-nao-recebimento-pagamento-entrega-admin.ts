@@ -13,6 +13,7 @@ import { dbTransacional } from "@/db/transaction";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { liberarAlocacoesEstoquePedido } from "@/features/checkout/actions/estoque/liberar-alocacoes-estoque-pedido";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
 import {
@@ -25,8 +26,9 @@ import type { EstadoRecebimentoPagamentoEntrega } from "../../types/pagamento-na
  * Registra que o pagamento na entrega não se concretizou.
  *
  * Cobre os dois desfechos negativos: o cliente recusou pagar, ou a entrega não aconteceu.
- * Nos dois casos a mercadoria volta e o dinheiro não entrou, então o pagamento vai para
- * `failed` e o pedido para `canceled`.
+ * O dinheiro não entrou: pagamento `failed` e pedido `canceled`. Estoque ainda
+ * sob controle da loja pode ser liberado; após envio, exige retorno físico
+ * confirmado em fluxo operacional separado.
  *
  * Os estados usam os enums que já existiam — nenhuma migration. `failed` e `canceled`
  * descrevem exatamente o que ocorreu; o motivo específico fica no histórico, que é onde a
@@ -165,6 +167,9 @@ export async function registrarNaoRecebimentoPagamentoEntregaAdmin(
         dados.pedidoId,
         "pedido_cancelado",
       );
+      // Somente antes do marco físico: a rotina é no-op se houve envio ou
+      // comprometimento; não infere devolução física do status `failed`.
+      await liberarAlocacoesEstoquePedido(tx, dados.pedidoId);
 
       return { sucesso: true, mensagem: "Ocorrência registrada." };
     });

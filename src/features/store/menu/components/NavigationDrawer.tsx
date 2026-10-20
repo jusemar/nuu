@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronRight, Folder } from "lucide-react";
+import { ArrowLeft, ChevronRight, Folder, Gift } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -18,6 +18,7 @@ import type { MenuCategory } from "../services/menuService";
 interface NavigationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  rotuloTrocaPontos: string;
 }
 
 interface ListaCategoriasProps {
@@ -125,7 +126,11 @@ function EsqueletoMenu() {
   );
 }
 
-export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
+export function NavigationDrawer({
+  isOpen,
+  onClose,
+  rotuloTrocaPontos,
+}: NavigationDrawerProps) {
   const { data: categories, isLoading, error } = useMenuCategories();
   const [caminho, setCaminho] = useState<MenuCategory[]>([]);
   const categoriaAtual = caminho.at(-1);
@@ -175,6 +180,19 @@ export function NavigationDrawer({ isOpen, onClose }: NavigationDrawerProps) {
         </SheetHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+          {!categoriaAtual ? (
+            <div className="mb-2 border-b border-slate-200 pb-2 md:hidden">
+              <Link
+                href="/troque-seus-pontos"
+                onClick={onClose}
+                title={rotuloTrocaPontos}
+                className="flex min-h-12 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#0C447C] transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-[#0C447C] focus-visible:outline-none"
+              >
+                <Gift className="size-4 shrink-0" />
+                <span className="min-w-0 truncate">{rotuloTrocaPontos}</span>
+              </Link>
+            </div>
+          ) : null}
           {isLoading ? (
             <EsqueletoMenu />
           ) : conteudoVazioOuErro ? (

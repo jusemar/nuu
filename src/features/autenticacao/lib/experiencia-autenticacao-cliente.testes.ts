@@ -25,6 +25,7 @@ const fontePlugin = readFileSync(
   "src/features/autenticacao/lib/plugin-fluxos-telefone-nuu.ts",
   "utf8",
 );
+const fonteCheckout = readFileSync("src/app/checkout/page.tsx", "utf8");
 
 test("detecta e normaliza e-mail no identificador único", () => {
   assert.deepEqual(normalizarIdentificadorCliente(" Pessoa@Exemplo.com "), {
@@ -78,6 +79,14 @@ test("redireciona autenticação pela checagem de cadastro complementar", () => 
     criarDestinoPosAutenticacao("/checkout"),
     "/completar-cadastro?destino=%2Fcheckout",
   );
+});
+
+test("checkout incompleto preserva retorno seguro para a compra", () => {
+  assert.match(
+    fonteCheckout,
+    /redirect\(criarDestinoPosAutenticacao\("\/checkout"\)\)/,
+  );
+  assert.doesNotMatch(fonteCheckout, /redirect\("\/completar-cadastro"\)/);
 });
 
 test("e-mail técnico é determinístico, não reversível e reservado", () => {

@@ -35,7 +35,7 @@ export async function processarIntegracoesFornecedoresAposPagamento(
 
   if (!pedido) throw new Error("Pedido não encontrado no pós-pagamento.");
 
-  if (["canceled", "refunded", "expired"].includes(pedido.status)) {
+  if (["canceled", "refunded", "expired", "pagamento_recebido_sem_recursos"].includes(pedido.status)) {
     return {
       estado: "ignorado_pedido_inelegivel" as const,
       integracoes: [],

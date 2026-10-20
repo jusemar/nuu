@@ -141,6 +141,8 @@ export default function EditProductPage() {
         brand: product.brand || "",
         sku: product.sku || "",
         isActive: product.isActive ?? true,
+        recompensaPontosAtiva: product.recompensaPontosAtiva,
+        recompensaCustoPontos: product.recompensaCustoPontos?.toString() ?? "",
         status: product.status === "published" ? "published" : "draft",
         collection: product.collection || "",
         tags: product.tags || [],

@@ -6,17 +6,20 @@ As páginas administrativas e do cliente apenas leem o estado persistido.
 
 ## Execução
 
-- Agenda Vercel: uma vez por hora, minuto 17, em produção.
+- Agenda Vercel: uma vez por dia, às 06:17 UTC (03:17 em Brasília), em produção.
+  No plano Hobby, a execução pode ocorrer dentro da hora agendada; a detecção
+  pode levar aproximadamente um dia, sem garantia de execução no minuto exato.
 - Autorização obrigatória: `Authorization: Bearer <CRON_SECRET>`; sem segredo ou
   com credencial inválida, responde 401 antes de consultar banco/fornecedor.
 - `CRON_SECRET` deve existir como variável secreta em Production. Nunca deve
   aparecer em Git, logs, URLs ou respostas. O agendador Vercel envia o header.
-- A agenda horária exige plano Vercel que permita mais de uma execução diária.
-  Não há upgrade automático de plano nem scheduler externo criado por este código.
+- A agenda diária respeita o plano atual. Maior frequência exigirá avaliar o
+  plano e a capacidade; não há upgrade nem scheduler externo criado pelo código.
 - Lote máximo: cinco integrações, serialmente, timeout isolado de 15 segundos por
   chamada. A próxima execução prioriza as integrações mais antigas/vencidas.
 - Cada integração tem intervalo mínimo de uma hora. Falhas repetidas aumentam o
-  intervalo para duas, quatro e até seis horas. Não há retry HTTP imediato.
+  intervalo para duas, quatro e até seis horas. A consulta só ocorre na próxima
+  execução diária elegível, não ao vencer esse intervalo. Não há retry imediato.
 - Concessão atômica de três minutos no PostgreSQL impede consultas concorrentes.
   O dono antigo não pode persistir depois que outra execução adquiriu a concessão.
   Se um processo morrer, o registro volta a ser elegível ao vencer a concessão.

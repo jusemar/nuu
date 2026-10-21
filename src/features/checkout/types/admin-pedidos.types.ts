@@ -23,6 +23,7 @@ export type PedidoAdminListaItem = {
 };
 
 export type PedidoAdminDetalhe = {
+  integracoesLaquila?: import("@/features/fornecedores/integracoes/laquila/types/reconciliacao-pedido-laquila").IntegracaoPedidoLaquilaAdmin[];
   id: string;
   numeroPedido: string;
   status: PedidoStatusCheckout;

@@ -5,10 +5,13 @@ import { asc, eq } from "drizzle-orm";
 import {
   checkoutPedidoHistoricosTable,
   checkoutPedidosTable,
+  fornecedorPedidoIntegracoesTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import { obterAmbienteAplicacaoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/ambiente-laquila";
+import { lerSincronizacaoPedidoLaquila } from "@/features/fornecedores/integracoes/laquila/lib/reconciliacao/estado-pedido-laquila";
 
 import type { PedidoAdminDetalhe } from "../../types/admin-pedidos.types";
 
@@ -37,8 +40,32 @@ export async function buscarPedidoAdminPorId(
   }
 
   const pagamento = pedido.pagamentos[0] ?? null;
+  const integracoes = await dbTransacional
+    .select()
+    .from(fornecedorPedidoIntegracoesTable)
+    .where(eq(fornecedorPedidoIntegracoesTable.pedidoId, pedido.id));
+  const ambiente = obterAmbienteAplicacaoLaquila();
 
   return {
+    integracoesLaquila: integracoes
+      .filter((i) => i.provedor === "laquila" && i.ambiente === ambiente)
+      .map((i) => {
+        const sincronizacao = lerSincronizacaoPedidoLaquila(
+          i.payloadSanitizado.reconciliacao00008,
+        );
+        const consulta = i.payloadSanitizado.consulta00008 as
+          | { consultadoEm?: string }
+          | undefined;
+        return {
+          id: i.id,
+          ambiente: i.ambiente,
+          status: i.status,
+          idPedidoExterno: i.idPedidoExterno,
+          sincronizacao,
+          ultimaConsulta:
+            sincronizacao?.consultadoEm ?? consulta?.consultadoEm ?? null,
+        };
+      }),
     id: pedido.id,
     numeroPedido: pedido.numeroPedido,
     status: pedido.status,

@@ -112,6 +112,19 @@ export function PaginaDetalhePedidoCliente({
 
           <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
             <div className="space-y-5">
+              {pedido.status === "canceled" &&
+              pedido.pagamentoStatus === "paid" &&
+              !pedido.cancelamento ? (
+                <SecaoCliente titulo="Situação do pedido">
+                  <p className="text-sm font-medium text-slate-950">
+                    Pedido cancelado
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    O pagamento permanece registrado. A situação financeira será
+                    tratada separadamente pelo atendimento.
+                  </p>
+                </SecaoCliente>
+              ) : null}
               {pedido.cancelamento ? (
                 <SecaoCliente titulo="Cancelamento">
                   <p className="text-sm font-medium text-slate-950">

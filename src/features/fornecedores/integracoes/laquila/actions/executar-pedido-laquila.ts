@@ -153,10 +153,9 @@ const repositorio: RepositorioPedidoLaquila = {
     const [registro] = await db
       .update(fornecedorPedidoIntegracoesTable)
       .set({
-        payloadSanitizado: {
-          ...atual.payloadSanitizado,
-          consulta00008: resumo,
-        },
+        // Merge atômico preserva uma reconciliação concorrente sem modificar
+        // o comportamento da consulta inicial pós-criação.
+        payloadSanitizado: sql`jsonb_set(${fornecedorPedidoIntegracoesTable.payloadSanitizado}, '{consulta00008}', ${JSON.stringify(resumo)}::jsonb)`,
         erroSanitizado: resumo.sucesso
           ? null
           : (resumo.erro ?? "A consulta 00008 não confirmou o pedido Laquila."),

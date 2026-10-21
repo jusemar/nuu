@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ResumoSincronizacaoPedidoLaquila } from "@/features/fornecedores/integracoes/laquila/components/admin/resumo-sincronizacao-pedido-laquila";
 import { PainelRecebimentoPagamentoEntrega } from "@/features/pagamento-na-entrega/components/admin/painel-recebimento-pagamento-entrega";
 
 import {
@@ -390,6 +391,9 @@ export async function PedidoDetalheAdminPage({ id }: { id: string }) {
         </div>
       </div>
 
+      <ResumoSincronizacaoPedidoLaquila
+        integracoes={pedido.integracoesLaquila ?? []}
+      />
       <Secao titulo="Historico do pedido">
         <TimelineHistoricoPedido historicos={pedido.historicos} />
       </Secao>

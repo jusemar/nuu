@@ -11,6 +11,7 @@ import type {
   EstrategiaPrazoEntregaFornecedor,
   ModalidadeComercialFornecedor,
 } from "@/features/fornecedores/types/mapeamento-fornecedor.types";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 
 import { BotaoSubmitComEstado } from "./botao-submit-com-estado";
 
@@ -376,7 +377,7 @@ const OPCOES_MODALIDADE_COMERCIAL: Array<{
 }> = [
   { valor: "stock", label: "Estoque próprio" },
   { valor: "pre_sale", label: "Pré-venda" },
-  { valor: "dropshipping", label: "Dropshipping" },
+  { valor: "dropshipping", label: ROTULO_MODALIDADE_FORNECEDOR },
   { valor: "order_basis", label: "Sob encomenda" },
 ];
 

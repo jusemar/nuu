@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- mapeamento legado fora do escopo desta etapa */
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/connection";
 import {
@@ -11,8 +11,10 @@ import {
   productPricingTable,
   productTable,
 } from "@/db/schema";
-import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
-import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+import {
+  condicaoProdutoAdministrativo,
+  exigirLeituraProdutoAdmin,
+} from "@/features/products/queries/autorizacao/escopo-produtos-admin";
 
 function col(table: any, ...names: string[]) {
   for (const n of names) {
@@ -29,7 +31,7 @@ function val(obj: any, ...names: string[]) {
 }
 
 export async function getProduct(id: string) {
-  await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.VISUALIZAR);
+  const { contexto } = await exigirLeituraProdutoAdmin(id);
   try {
     // Buscar produto com TODOS os campos necessários
     const [product] = await db
@@ -95,7 +97,9 @@ export async function getProduct(id: string) {
       })
       .from(productTable)
       .leftJoin(categoryTable, eq(categoryTable.id, productTable.categoryId))
-      .where(eq(productTable.id, id))
+      .where(
+        and(eq(productTable.id, id), condicaoProdutoAdministrativo(contexto)),
+      )
       .limit(1);
 
     if (!product) {

@@ -4,6 +4,7 @@ import {
   OPCOES_LIMITE_FORNECEDORES,
   type PaginacaoFornecedores,
 } from "@/features/fornecedores/lib/paginacao-fornecedores";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 
 import { alterarDecisaoRascunhosImportacaoFornecedor } from "../../actions/alterar-decisao-rascunhos-importacao-fornecedor";
 import {
@@ -60,7 +61,7 @@ const ROTULOS_PENDENCIAS: Record<string, string> = {
 };
 
 const ROTULOS_MODALIDADE = {
-  dropshipping: "Dropshipping",
+  dropshipping: ROTULO_MODALIDADE_FORNECEDOR,
   stock: "Estoque próprio",
   pre_sale: "Pré-venda",
   order_basis: "Sob encomenda",

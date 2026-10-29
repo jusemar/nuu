@@ -50,6 +50,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 
 import {
   alternarStatusPromocaoAdmin,
@@ -2157,7 +2158,7 @@ export function PaginaPromocoesAdmin({
                             Reserva/pré-venda
                           </SelectItem>
                           <SelectItem value="dropshipping">
-                            Dropshipping
+                            {ROTULO_MODALIDADE_FORNECEDOR}
                           </SelectItem>
                           <SelectItem value="order_basis">
                             Sob encomenda

@@ -13,6 +13,8 @@ export type OverridePermissaoAdministrativa = {
 };
 
 export type DadosAutorizacaoAdministrador = {
+  /** Vínculo persistido, inclusive revogado: não permite cair no acesso global. */
+  representanteFornecedor?: boolean;
   administrador: {
     administradorPrincipal: boolean;
     id: string;
@@ -45,6 +47,7 @@ export type ContextoAdministrativo =
       administradorId: string;
       administradorPrincipal: boolean;
       origem: "rbac_persistido";
+      representanteFornecedor?: boolean;
       permissoesAtivasCatalogo: ReadonlySet<PermissaoAdministrativaChave>;
       permissoesFuncoes: ReadonlySet<PermissaoAdministrativaChave>;
       overrides: ReadonlyMap<

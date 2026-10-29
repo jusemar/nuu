@@ -2,6 +2,9 @@ import "server-only";
 
 import { and, eq, ilike, or } from "drizzle-orm";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { db } from "../../../db/connection";
 import { categoryTable } from "../../../db/schema";
 import { buscarCategoriasPromocaoAdminSchema } from "../schemas";
@@ -10,6 +13,7 @@ import type { CategoriaPromocaoAdmin } from "../types";
 export async function buscarCategoriasPromocaoAdmin(
   entrada: unknown,
 ): Promise<CategoriaPromocaoAdmin[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const filtros = buscarCategoriasPromocaoAdminSchema.parse(entrada);
 
   const linhas = await db

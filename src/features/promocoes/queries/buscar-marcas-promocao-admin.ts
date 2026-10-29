@@ -2,6 +2,9 @@ import "server-only";
 
 import { and, eq, ilike, or } from "drizzle-orm";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { db } from "../../../db/connection";
 import { marcaTable } from "../../../db/schema";
 import { buscarMarcasPromocaoAdminSchema } from "../schemas";
@@ -10,6 +13,7 @@ import type { MarcaPromocaoAdmin } from "../types";
 export async function buscarMarcasPromocaoAdmin(
   entrada: unknown,
 ): Promise<MarcaPromocaoAdmin[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const filtros = buscarMarcasPromocaoAdminSchema.parse(entrada);
 
   const linhas = await db

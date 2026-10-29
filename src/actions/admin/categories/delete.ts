@@ -1,44 +1,48 @@
-"use server"
+"use server";
 
-import { revalidatePath } from "next/cache"
-import { db } from "@/db/connection"
-import { categoryTable } from "@/db/table/categories/categories"
-import { eq } from "drizzle-orm"
+import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
+import { db } from "@/db/connection";
+import { categoryTable } from "@/db/table/categories/categories";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 export async function deleteCategory(id: string) {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.CATEGORIAS.EXCLUIR);
   try {
     // 1. Verifica se existe
     const [category] = await db
       .select()
       .from(categoryTable)
       .where(eq(categoryTable.id, id))
-      .limit(1)
+      .limit(1);
 
     if (!category) {
-      return { success: false, message: "Categoria não encontrada" }
+      return { success: false, message: "Categoria não encontrada" };
     }
 
     // 2. Verifica se tem subcategorias
     const childCategories = await db
       .select()
       .from(categoryTable)
-      .where(eq(categoryTable.parentId, id))
+      .where(eq(categoryTable.parentId, id));
 
     if (childCategories.length > 0) {
-      return { 
-        success: false, 
-        message: "Não pode excluir: categoria possui subcategorias. Exclua ou mova as subcategorias primeiro." 
-      }
+      return {
+        success: false,
+        message:
+          "Não pode excluir: categoria possui subcategorias. Exclua ou mova as subcategorias primeiro.",
+      };
     }
 
     // 3. Se não tem filhos, exclui
-    await db.delete(categoryTable).where(eq(categoryTable.id, id))
+    await db.delete(categoryTable).where(eq(categoryTable.id, id));
 
-    revalidatePath("/admin/categories")
-    return { success: true, message: "Categoria excluída!" }
-
+    revalidatePath("/admin/categories");
+    return { success: true, message: "Categoria excluída!" };
   } catch (error) {
-    console.error("Erro:", error)
-    return { success: false, message: "Erro interno" }
+    console.error("Erro:", error);
+    return { success: false, message: "Erro interno" };
   }
 }

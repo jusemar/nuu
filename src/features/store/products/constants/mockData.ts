@@ -4,11 +4,14 @@
 // Estes dados simulam o que viria do banco de dados
 // Quando conectar ao Drizzle, substitua por chamadas reais
 
-import type { 
-  ModalidadeInfo, 
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
+
+import type {
+  ModalidadeInfo,
   Parcelamento,
   Produto,
-  Transportadora} from '../types/product.types';
+  Transportadora,
+} from "../types/product.types";
 
 // ==========================================
 // PRODUTO PRINCIPAL
@@ -22,18 +25,47 @@ export const produto: Produto = {
   sku: "ATH-RUN-PRX-42",
   vendedor: "Sport Elite Store",
   vendedorRating: 98,
-  descricao: "Performance máxima para quem não aceita menos que o melhor. O Aether Run Pro X combina tecnologia de amortecimento dinâmico AetherFoam v3 com cabedal em malha Flyknit respirável. Placa de carbono integrada para máximo retorno de energia.",
-  
+  descricao:
+    "Performance máxima para quem não aceita menos que o melhor. O Aether Run Pro X combina tecnologia de amortecimento dinâmico AetherFoam v3 com cabedal em malha Flyknit respirável. Placa de carbono integrada para máximo retorno de energia.",
+
   // Galeria de imagens (URLs do Unsplash)
   imagens: [
-    { id: "mock-1", imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&q=90", altText: "Tênis vermelho", isPrimary: true, sortOrder: 0 },
-    { id: "mock-2", imageUrl: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=900&q=90", altText: "Tênis esportivo", isPrimary: false, sortOrder: 1 },
-    { id: "mock-3", imageUrl: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=900&q=90", altText: "Tênis azul", isPrimary: false, sortOrder: 2 },
-    { id: "mock-4", imageUrl: "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=900&q=90", altText: "Tênis de corrida", isPrimary: false, sortOrder: 3 },
+    {
+      id: "mock-1",
+      imageUrl:
+        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900&q=90",
+      altText: "Tênis vermelho",
+      isPrimary: true,
+      sortOrder: 0,
+    },
+    {
+      id: "mock-2",
+      imageUrl:
+        "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=900&q=90",
+      altText: "Tênis esportivo",
+      isPrimary: false,
+      sortOrder: 1,
+    },
+    {
+      id: "mock-3",
+      imageUrl:
+        "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=900&q=90",
+      altText: "Tênis azul",
+      isPrimary: false,
+      sortOrder: 2,
+    },
+    {
+      id: "mock-4",
+      imageUrl:
+        "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=900&q=90",
+      altText: "Tênis de corrida",
+      isPrimary: false,
+      sortOrder: 3,
+    },
   ],
   precos: [],
   retiradaLocal: null,
-  
+
   // Cores disponíveis com seus códigos hex
   cores: {
     preto: "#1a1a1a",
@@ -41,15 +73,15 @@ export const produto: Produto = {
     azul: "#1d4ed8",
     vermelho: "#dc2626",
   },
-  
+
   // Tamanhos disponíveis
   tamanhos: ["38", "39", "40", "41", "42", "43", "44"],
-  
+
   // Avaliações
   rating: 4.8,
   totalAvaliacoes: 2341,
   estoque: 47,
-  
+
   // Especificações técnicas (tabela)
   especificacoes: [
     { label: "Material do Cabedal", valor: "Malha Flyknit Pro" },
@@ -61,14 +93,15 @@ export const produto: Produto = {
     { label: "Garantia", valor: "12 meses" },
     { label: "Origem", valor: "Brasil" },
   ],
-  
+
   // Avaliações de clientes
   avaliacoes: [
     {
       nome: "Rodrigo M.",
       data: "12 Mar 2025",
       estrelas: 5,
-      comentario: "Melhor tênis que já usei para corrida. O amortecimento é incrível e meu joelho não dói mais após treinos longos.",
+      comentario:
+        "Melhor tênis que já usei para corrida. O amortecimento é incrível e meu joelho não dói mais após treinos longos.",
       iniciais: "RM",
       cor: "#EFF6FF", // primary-light
     },
@@ -76,7 +109,8 @@ export const produto: Produto = {
       nome: "Camila S.",
       data: "8 Mar 2025",
       estrelas: 5,
-      comentario: "Leve, confortável e com um design impecável. Recebi em 2 dias pelo estoque próprio. Super recomendo!",
+      comentario:
+        "Leve, confortável e com um design impecável. Recebi em 2 dias pelo estoque próprio. Super recomendo!",
       iniciais: "CS",
       cor: "#F0FDFA", // success-light
     },
@@ -84,12 +118,13 @@ export const produto: Produto = {
       nome: "Felipe A.",
       data: "1 Mar 2025",
       estrelas: 4,
-      comentario: "Produto excelente, só fiquei sem 1 estrela porque o tamanho fechou um pouco. Peça meio número acima.",
+      comentario:
+        "Produto excelente, só fiquei sem 1 estrela porque o tamanho fechou um pouco. Peça meio número acima.",
       iniciais: "FA",
       cor: "#FFFBEB", // accent-light
     },
   ],
-  
+
   // Produtos "Compre Junto" (upsell)
   upsell: [
     {
@@ -128,8 +163,8 @@ export const modalidades: Record<string, ModalidadeInfo> = {
   estoque: {
     label: "Estoque Próprio",
     badge: "Entrega rápida",
-    badgeBg: "#F0FDFA",      // success-light
-    badgeColor: "#14B8A6",   // success
+    badgeBg: "#F0FDFA", // success-light
+    badgeColor: "#14B8A6", // success
     precoNormal: "R$ 799,90",
     precoParc: "3x de R$ 253,97 sem juros",
     precoPix: "R$ 679,91",
@@ -138,12 +173,12 @@ export const modalidades: Record<string, ModalidadeInfo> = {
     garantia: "12 meses",
     icon: "🏪",
   },
-  
+
   prevenda: {
     label: "Pré-Venda",
     badge: "Reserve já",
-    badgeBg: "#EFF6FF",      // primary-light
-    badgeColor: "#0C447C",   // primary
+    badgeBg: "#EFF6FF", // primary-light
+    badgeColor: "#0C447C", // primary
     precoNormal: "R$ 749,90",
     precoParc: "3x de R$ 237,97 sem juros",
     precoPix: "R$ 637,41",
@@ -152,9 +187,9 @@ export const modalidades: Record<string, ModalidadeInfo> = {
     garantia: "12 meses",
     icon: "📅",
   },
-  
+
   drop: {
-    label: "Dropshipping",
+    label: ROTULO_MODALIDADE_FORNECEDOR,
     badge: "Direto do fornecedor",
     badgeBg: "#EDE7F6",
     badgeColor: "#6D28D9",
@@ -166,12 +201,12 @@ export const modalidades: Record<string, ModalidadeInfo> = {
     garantia: "6 meses",
     icon: "🚚",
   },
-  
+
   fabrica: {
     label: "Fábrica / Lote",
     badge: "Menor preço",
-    badgeBg: "#FFFBEB",      // accent-light
-    badgeColor: "#B45309",   // accent-dark
+    badgeBg: "#FFFBEB", // accent-light
+    badgeColor: "#B45309", // accent-dark
     precoNormal: "R$ 599,90",
     precoParc: "3x de R$ 189,97 sem juros",
     precoPix: "R$ 509,91",
@@ -232,7 +267,10 @@ export const parcelamentos: Parcelamento[] = [
 // CUPONS VÁLIDOS
 // ==========================================
 
-export const cuponsValidos: Record<string, { desconto: number; label: string }> = {
+export const cuponsValidos: Record<
+  string,
+  { desconto: number; label: string }
+> = {
   PRIMEIRA10: { desconto: 10, label: "10% de desconto para novos clientes" },
   FRETE15: { desconto: 15, label: "15% OFF especial" },
   RUN20: { desconto: 20, label: "20% para corredores" },

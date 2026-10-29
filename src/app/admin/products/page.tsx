@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import type { DiagnosticoLogisticoProduto } from "@/features/logistica/lib/diagnosticar-logistica-produto";
 import { SeloSituacaoPublicacao } from "@/features/products";
+import { ConfigurarComissaoRepresentante } from "@/features/products/components/admin/representantes/configurar-comissao-representante";
 import { useProductBulkActions } from "@/hooks/admin/mutations/products/useProductBulkActions";
 import { useProducts } from "@/hooks/admin/queries/products/use-products";
 
@@ -180,6 +181,13 @@ function ProductsPageContent() {
   };
 
   const columns: ColumnDef<Product>[] = [
+    {
+      id: "comissaoRepresentante",
+      header: "Representantes",
+      cell: ({ row }) => (
+        <ConfigurarComissaoRepresentante produtoId={row.original.id} />
+      ),
+    },
     {
       accessorKey: "sku",
       header: "SKU",

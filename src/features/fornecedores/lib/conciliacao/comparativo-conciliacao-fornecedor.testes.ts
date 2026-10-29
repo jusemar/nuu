@@ -70,7 +70,7 @@ test("modalidade e prazo mostram a troca para Estoque próprio e 1 dia útil", (
   const modalidade = linhaDe(linhas, "Modalidade");
   const prazo = linhaDe(linhas, "Prazo");
 
-  assert.equal(modalidade.lojaAtual, "Dropshipping");
+  assert.equal(modalidade.lojaAtual, "Fornecedor");
   assert.equal(modalidade.aPublicar, "Estoque próprio");
   assert.equal(modalidade.muda, true);
   assert.equal(prazo.aPublicar, "1 dia útil");

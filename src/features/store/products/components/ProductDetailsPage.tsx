@@ -25,6 +25,7 @@ import type { NovoItemCarrinho } from "@/features/carrinho";
 import { useCarrinho } from "@/features/carrinho";
 import { Header } from "@/features/header";
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/domain";
 import { montarUrlProdutoComVariante } from "@/features/products/lib/url-variante-produto";
 import { BannerPromocaoProdutoPdp } from "@/features/promocoes/components/store/banner-promocao-produto-pdp";
@@ -994,7 +995,7 @@ const tituloModalidadePorTipo: Record<string, string> = {
   stock: "Estoque Próprio",
   pre_sale: "Pré-venda",
   preSale: "Pré-venda",
-  dropshipping: "Dropshipping",
+  dropshipping: ROTULO_MODALIDADE_FORNECEDOR,
   order_basis: "Sob Encomenda",
   orderBasis: "Sob Encomenda",
 };

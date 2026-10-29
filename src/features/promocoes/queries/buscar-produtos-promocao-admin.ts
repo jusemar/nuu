@@ -2,6 +2,9 @@ import "server-only";
 
 import { and, eq, ilike, or } from "drizzle-orm";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { db } from "../../../db/connection";
 import {
   productGalleryImagesTable,
@@ -14,6 +17,7 @@ import type { ProdutoPromocaoAdmin } from "../types";
 export async function buscarProdutosPromocaoAdmin(
   entrada: unknown,
 ): Promise<ProdutoPromocaoAdmin[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const filtros = buscarProdutosPromocaoAdminSchema.parse(entrada);
 
   const linhas = await db

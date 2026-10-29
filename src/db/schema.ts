@@ -903,3 +903,6 @@ export const feriadosRelationsRetirada = relations(
     // Relações de feriados
   }),
 );
+
+export * from "./tables/representantes-fornecedores/relacoes";
+export * from "./tables/representantes-fornecedores/tabelas";

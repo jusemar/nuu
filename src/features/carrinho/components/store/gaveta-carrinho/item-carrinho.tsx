@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 import { cn } from "@/lib/utils";
 
 import { formatarPrecoCarrinho } from "../../../lib/formatar-preco-carrinho";
@@ -22,7 +23,7 @@ const tituloModalidadePorTipo: Record<string, string> = {
   stock: "Estoque Próprio",
   pre_sale: "Pré-venda",
   preSale: "Pré-venda",
-  dropshipping: "Dropshipping",
+  dropshipping: ROTULO_MODALIDADE_FORNECEDOR,
   order_basis: "Sob Encomenda",
   orderBasis: "Sob Encomenda",
 };

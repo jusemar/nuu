@@ -2,18 +2,23 @@
 // SERVICE: productImageGalleryService
 // =====================================================================
 // Local: src/features/admin/products/service/productImageGalleryService.ts
-// 
+//
 // FUNÇÃO: Buscar imagens da galeria de um produto específico
-// 
+//
 // Uso: Usado na página de edição de produto para carregar as imagens
 // salvas na tabela product_gallery_images
 // =====================================================================
 
-'use server'
+"use server";
 
-import { db } from '@/db/connection'
-import { productGalleryImagesTable } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq } from "drizzle-orm";
+
+import { db } from "@/db/connection";
+import { productGalleryImagesTable } from "@/db/schema";
+import {
+  condicaoProdutoAdministrativo,
+  exigirLeituraProdutoAdmin,
+} from "@/features/products/queries/autorizacao/escopo-produtos-admin";
 
 // =====================================================================
 // TIPO: GalleryImage
@@ -24,13 +29,13 @@ import { eq } from 'drizzle-orm'
 // - sortOrder: ordem de exibição
 // =====================================================================
 export interface GalleryImage {
-  id: string
-  imageUrl: string
-  altText: string | null
-  isPrimary: boolean
-  sortOrder: number
-  productId: string
-  createdAt: Date
+  id: string;
+  imageUrl: string;
+  altText: string | null;
+  isPrimary: boolean;
+  sortOrder: number;
+  productId: string;
+  createdAt: Date;
 }
 
 // =====================================================================
@@ -38,27 +43,37 @@ export interface GalleryImage {
 // =====================================================================
 // Busca todas as imagens da galeria de um produto
 // Ordenadas por sortOrder (menor primeiro)
-// 
+//
 // @param productId - ID do produto
 // @returns Array de imagens ou array vazio em caso de erro
 // =====================================================================
-export async function getProductGalleryImages(productId: string): Promise<GalleryImage[]> {
+export async function getProductGalleryImages(
+  productId: string,
+): Promise<GalleryImage[]> {
+  const { contexto } = await exigirLeituraProdutoAdmin(productId);
   try {
     // Busca imagens na tabela product_gallery_images
     const images = await db
       .select()
       .from(productGalleryImagesTable)
-      .where(eq(productGalleryImagesTable.productId, productId))
-      .orderBy(productGalleryImagesTable.sortOrder)
-    
-   return images.map(img => ({
-  ...img,
-  isPrimary: img.isPrimary ?? false, // null vira false
-  sortOrder: img.sortOrder ?? 0       // null vira 0
-}))
+      .where(
+        and(
+          eq(productGalleryImagesTable.productId, productId),
+          condicaoProdutoAdministrativo(
+            contexto,
+            productGalleryImagesTable.productId,
+          ),
+        ),
+      )
+      .orderBy(productGalleryImagesTable.sortOrder);
 
+    return images.map((img) => ({
+      ...img,
+      isPrimary: img.isPrimary ?? false, // null vira false
+      sortOrder: img.sortOrder ?? 0, // null vira 0
+    }));
   } catch (error) {
-    console.error('Erro ao buscar imagens da galeria:', error)
-    return []
+    console.error("Erro ao buscar imagens da galeria:", error);
+    return [];
   }
 }

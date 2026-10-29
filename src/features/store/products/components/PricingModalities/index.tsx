@@ -9,6 +9,7 @@ import {
 import type { ElementType } from "react";
 
 import type { PrecosProdutoPorModalidade } from "@/features/precificacao/client";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 
 import { formatarPromocaoPrecoPdp } from "../../lib/promocoes/formatar-promocao-preco-pdp";
 import type { Modalidade, PrecoModalidade } from "../../types/product.types";
@@ -53,7 +54,7 @@ const configPorTipo: Record<
   },
   dropshipping: {
     Icone: Truck,
-    titulo: "Dropshipping",
+    titulo: ROTULO_MODALIDADE_FORNECEDOR,
     subtitulo: "Enviado diretamente pelo fornecedor",
     badgeBg: "#E3F2FD",
     badgeColor: "#0288D1",

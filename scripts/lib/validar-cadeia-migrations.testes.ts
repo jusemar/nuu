@@ -15,8 +15,10 @@ import {
   validarDeltaSnapshotDisponibilidadeFreteExterno,
   validarDeltaSnapshotEntregaPropriaCategoria,
   validarDeltaSnapshotIntegridadeEntregaPropria,
+  validarDeltaSnapshotOperacaoRepresentantes,
   validarDeltaSnapshotPagamentoSemRecursos,
   validarDeltaSnapshotRbacGlobal,
+  validarDeltaSnapshotRepresentantes,
   validarDeltaSnapshots,
   validarDeltaSnapshotSequenceNumeroPedido,
   validarDeltaSnapshotTabelasLegadasEntregaPropria,
@@ -60,22 +62,33 @@ function lerSnapshot(numero: string): SnapshotDrizzle {
 test("0055 só adiciona alocação de estoque por pedido e variante", () => {
   const anterior = lerSnapshot("0054");
   const atual = lerSnapshot("0055");
-  assert.doesNotThrow(() => validarDeltaSnapshotAlocacoesEstoque(anterior, atual));
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotAlocacoesEstoque(anterior, atual),
+  );
   const adulterado = structuredClone(atual);
   adulterado.tables["public.product_variant"] = { alteracaoIndevida: true };
-  assert.throws(() => validarDeltaSnapshotAlocacoesEstoque(anterior, adulterado));
+  assert.throws(() =>
+    validarDeltaSnapshotAlocacoesEstoque(anterior, adulterado),
+  );
 });
 
 test("0056 só acrescenta o bloqueio operacional para dinheiro recebido sem recursos", () => {
   const anterior = lerSnapshot("0055");
   const atual = lerSnapshot("0056");
-  assert.doesNotThrow(() => validarDeltaSnapshotPagamentoSemRecursos(anterior, atual));
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotPagamentoSemRecursos(anterior, atual),
+  );
   const adulterado = structuredClone(atual);
   adulterado.enums["public.checkout_pedido_status"] = {
-    ...(adulterado.enums["public.checkout_pedido_status"] as Record<string, unknown>),
+    ...(adulterado.enums["public.checkout_pedido_status"] as Record<
+      string,
+      unknown
+    >),
     values: ["pending", "invalido"],
   };
-  assert.throws(() => validarDeltaSnapshotPagamentoSemRecursos(anterior, adulterado));
+  assert.throws(() =>
+    validarDeltaSnapshotPagamentoSemRecursos(anterior, adulterado),
+  );
 });
 
 test("restringe a consolidação da Entrega Própria aos deltas revisados", () => {
@@ -524,5 +537,32 @@ test("recusa endpoint de produção e qualquer identidade divergente", () => {
       esperado,
       producao,
     ),
+  );
+});
+
+test("0058 só cria tabelas de representantes e rejeita mudança de catálogo", () => {
+  const anterior = lerSnapshot("0057");
+  const atual = lerSnapshot("0058");
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotRepresentantes(anterior, atual),
+  );
+  const adulterado = structuredClone(atual);
+  delete adulterado.tables["public.product"];
+  assert.throws(
+    () => validarDeltaSnapshotRepresentantes(anterior, adulterado),
+    /tabelas existentes/,
+  );
+});
+
+test("0059 altera somente configuração de representantes e estoque informado", () => {
+  const anterior = lerSnapshot("0058"),
+    atual = lerSnapshot("0059");
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotOperacaoRepresentantes(anterior, atual),
+  );
+  const adulterado = structuredClone(atual);
+  adulterado.tables["public.product"] = { alteracao: true };
+  assert.throws(() =>
+    validarDeltaSnapshotOperacaoRepresentantes(anterior, adulterado),
   );
 });

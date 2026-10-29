@@ -18,6 +18,7 @@ import { buscarDisponibilidadeFreteProduto } from "@/features/logistica/queries/
 import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import type { ItemLogistico } from "@/features/logistica/types/contratos-frete";
 import { avaliarPagamentoNaEntregaComBanco } from "@/features/pagamento-na-entrega/queries/avaliar-pagamento-na-entrega-checkout";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 import {
   buscarConfiguracaoPagamentoAtiva,
   calcularParcelamentosCartao,
@@ -82,7 +83,7 @@ const configuracaoVisualModalidade: Record<
   },
   dropshipping: {
     icone: "📦",
-    badge: "Dropshipping",
+    badge: ROTULO_MODALIDADE_FORNECEDOR,
     badgeBg: "#E3F2FD",
     badgeColor: "#0288D1",
   },

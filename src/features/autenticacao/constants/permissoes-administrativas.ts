@@ -6,6 +6,20 @@
  */
 export const CATALOGO_PERMISSOES_ADMIN = [
   {
+    chave: "representantes_produtos.visualizar",
+    nome: "Consultar produtos liberados ao representante",
+    descricao:
+      "Exige vínculo ativo e liberação individual; não abre o catálogo global.",
+    modulo: "representantes_produtos",
+  },
+  {
+    chave: "representantes_produtos.administrar",
+    nome: "Manter produtos liberados ao representante",
+    descricao:
+      "Capacidade reservada ao fluxo protegido de representantes; sem acesso às actions globais.",
+    modulo: "representantes_produtos",
+  },
+  {
     chave: "painel.visualizar",
     nome: "Visualizar painel",
     descricao: "Acessar o painel e seus indicadores gerais.",
@@ -189,6 +203,10 @@ export type PermissaoAdministrativaChave =
   (typeof CATALOGO_PERMISSOES_ADMIN)[number]["chave"];
 
 export const PERMISSOES_ADMIN = Object.freeze({
+  REPRESENTANTES_PRODUTOS: {
+    VISUALIZAR: "representantes_produtos.visualizar",
+    ADMINISTRAR: "representantes_produtos.administrar",
+  },
   PAINEL: { VISUALIZAR: "painel.visualizar" },
   PRODUTOS: {
     VISUALIZAR: "produtos.visualizar",

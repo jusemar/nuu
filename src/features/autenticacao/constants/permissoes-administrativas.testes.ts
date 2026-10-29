@@ -7,9 +7,9 @@ import {
   PERMISSOES_ADMIN,
 } from "./permissoes-administrativas";
 
-test("catálogo possui 29 chaves únicas e válidas", () => {
+test("catálogo possui 31 chaves únicas e válidas", () => {
   const chaves = CATALOGO_PERMISSOES_ADMIN.map(({ chave }) => chave);
-  assert.equal(chaves.length, 29);
+  assert.equal(chaves.length, 31);
   assert.equal(new Set(chaves).size, chaves.length);
   for (const chave of chaves) {
     assert.match(chave, /^[a-z0-9_]+[.][a-z0-9_]+$/);

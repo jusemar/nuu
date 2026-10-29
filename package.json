@@ -30,7 +30,10 @@
     "rbac:bootstrap-principal": "NODE_OPTIONS=--conditions=react-server AMBIENTE_BANCO=local tsx scripts/lib/executar-script-local.ts src/features/autenticacao/scripts/bootstrap-administrador-principal.ts",
     "rbac:sincronizar-presets": "AMBIENTE_BANCO=local tsx scripts/lib/executar-script-local.ts src/features/administradores/scripts/sincronizar-presets-administrativos.ts",
     "merchant:analisar-frete": "NODE_OPTIONS=--conditions=react-server AMBIENTE_BANCO=local tsx scripts/lib/executar-script-local.ts scripts/analisar-matriz-frete-merchant.ts",
-    "corrigir:criterio-localizacao": "AMBIENTE_BANCO=desenvolvimento AMBIENTES_ACEITOS=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/corrigir-criterio-localizacao-fornecedores.ts"
+    "corrigir:criterio-localizacao": "AMBIENTE_BANCO=desenvolvimento AMBIENTES_ACEITOS=desenvolvimento tsx scripts/lib/executar-script-local.ts scripts/corrigir-criterio-localizacao-fornecedores.ts",
+    "representantes:registrar-funcao": "NODE_OPTIONS=--conditions=react-server AMBIENTE_BANCO=local tsx scripts/lib/executar-script-local.ts src/features/fornecedores/scripts/registrar-funcao-representante.ts",
+    "testes:integracao:representantes:escrita": "NODE_OPTIONS=--conditions=react-server tsx --test src/features/products/testes/representantes/escrita-produtos.integracao.testes.ts",
+    "testes:integracao:representantes": "NODE_OPTIONS=--conditions=react-server tsx --test src/features/fornecedores/testes/representantes/autorizacao-representante.integracao.testes.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

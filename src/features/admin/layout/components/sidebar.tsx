@@ -525,8 +525,23 @@ export function filtrarMenuAdmin(
   }, []);
 }
 
-export function AdminSidebar({ permissoes }: { permissoes: string[] }) {
-  const menuPermitido = filtrarMenuAdmin(menuAdmin, new Set(permissoes));
+export function AdminSidebar({
+  permissoes,
+  representante = false,
+}: {
+  permissoes: string[];
+  representante?: boolean;
+}) {
+  const menuPermitido: EntradaMenuAdmin[] = representante
+    ? [
+        {
+          id: "products",
+          label: "Produtos",
+          href: "/admin/products",
+          icon: "Package",
+        },
+      ]
+    : filtrarMenuAdmin(menuAdmin, new Set(permissoes));
   // Hook que controla estado (aberto/fechado, expandido/recolhido)
   const {
     isCollapsed,

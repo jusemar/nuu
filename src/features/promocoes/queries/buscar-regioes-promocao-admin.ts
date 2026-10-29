@@ -1,6 +1,9 @@
 import "server-only";
 
-import { and, asc, eq, gte, ilike, lte, or } from "drizzle-orm";
+import { and, asc, eq, ilike, or } from "drizzle-orm";
+
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 
 import { db } from "../../../db/connection";
 import { cities, shippingRegions, states } from "../../../db/schema";
@@ -23,6 +26,7 @@ function correspondeBusca(regiao: RegiaoPromocaoAdmin, busca: string) {
 export async function buscarRegioesPromocaoAdmin(
   entrada: unknown,
 ): Promise<RegiaoPromocaoAdmin[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const filtros = buscarRegioesPromocaoAdminSchema.parse(entrada);
   const busca = filtros.busca.trim();
   const buscaLike = `%${busca}%`;

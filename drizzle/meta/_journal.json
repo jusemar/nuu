@@ -407,6 +407,20 @@
       "when": 1789487441017,
       "tag": "0057_shocking_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793132034343,
+      "tag": "0058_representantes_fornecedores",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793230862606,
+      "tag": "0059_operacao_produtos_representantes",
+      "breakpoints": true
     }
   ]
 }

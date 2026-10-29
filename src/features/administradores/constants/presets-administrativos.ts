@@ -11,6 +11,16 @@ export type PresetAdministrativoInicial = {
 export const PRESETS_ADMINISTRATIVOS_INICIAIS: readonly PresetAdministrativoInicial[] =
   [
     {
+      chave: "representante_fornecedor",
+      nome: "Representante de fornecedor",
+      descricao:
+        "Consulta e manutenção apenas de produtos explicitamente liberados; integração de edição reservada à Etapa 3.",
+      permissoes: [
+        "representantes_produtos.visualizar",
+        "representantes_produtos.administrar",
+      ],
+    },
+    {
       chave: "cadastro_produtos",
       nome: "Cadastro de produtos",
       descricao: "Consulta e manutenção do catálogo, sem publicar produtos.",

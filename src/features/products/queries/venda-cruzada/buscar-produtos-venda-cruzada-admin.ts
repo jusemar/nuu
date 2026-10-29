@@ -1,23 +1,32 @@
 import "server-only";
 
-import { ilike, or } from "drizzle-orm";
+import { and, ilike, or } from "drizzle-orm";
 
 import { db } from "@/db/connection";
-import { productTable } from "@/db/schema";
 
 import { buscarProdutosVendaCruzadaSchema } from "../../schemas/venda-cruzada.schema";
+import {
+  condicaoProdutoAdministrativo,
+  exigirLeituraProdutoAdmin,
+} from "../autorizacao/escopo-produtos-admin";
 import { mapearProdutosVendaCruzadaAdmin } from "./mapear-produtos-venda-cruzada-admin";
 
 export async function buscarProdutosVendaCruzadaAdmin(entrada: unknown) {
   const dados = buscarProdutosVendaCruzadaSchema.parse(entrada);
-  const filtro = dados.busca
-    ? or(
-        ilike(productTable.name, `%${dados.busca}%`),
-        ilike(productTable.sku, `%${dados.busca}%`),
-      )
-    : undefined;
+  const { contexto } = await exigirLeituraProdutoAdmin(
+    dados.produtoPrincipalId,
+  );
   const produtos = await db.query.productTable.findMany({
-    where: filtro,
+    where: (produto) =>
+      and(
+        condicaoProdutoAdministrativo(contexto, produto.id),
+        dados.busca
+          ? or(
+              ilike(produto.name, `%${dados.busca}%`),
+              ilike(produto.sku, `%${dados.busca}%`),
+            )
+          : undefined,
+      ),
     orderBy: (produto, { asc }) => [asc(produto.name)],
     limit: dados.limite,
     with: { galleryImages: true, pricing: true, variants: true },

@@ -29,8 +29,10 @@ import {
   validarDeltaSnapshotDisponibilidadeFreteExterno,
   validarDeltaSnapshotEntregaPropriaCategoria,
   validarDeltaSnapshotIntegridadeEntregaPropria,
+  validarDeltaSnapshotOperacaoRepresentantes,
   validarDeltaSnapshotPoliticasEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
+  validarDeltaSnapshotRepresentantes,
   validarDeltaSnapshots,
   validarDeltaSnapshotTabelasLegadasEntregaPropria,
   validarDeltaSnapshotVinculoBairroAvulsoEntregaPropria,
@@ -456,6 +458,14 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   const entradas = journal.entries ?? [];
   try {
     validarSequenciaLocal(migrations, entradas);
+    validarDeltaSnapshotOperacaoRepresentantes(
+      JSON.parse(readFileSync("drizzle/meta/0058_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0059_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotRepresentantes(
+      JSON.parse(readFileSync("drizzle/meta/0057_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0058_snapshot.json", "utf8")),
+    );
     validarDeltaSnapshots(
       JSON.parse(readFileSync("drizzle/meta/0028_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0029_snapshot.json", "utf8")),

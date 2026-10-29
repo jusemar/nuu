@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 57,
-  ultimoIndice: 56,
-  ultimaTag: "0056_pagamento_recebido_sem_recursos",
-  ultimoArquivo: "drizzle/0056_pagamento_recebido_sem_recursos.sql",
+  total: 60,
+  ultimoIndice: 59,
+  ultimaTag: "0059_operacao_produtos_representantes",
+  ultimoArquivo: "drizzle/0059_operacao_produtos_representantes.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -612,18 +612,30 @@ export function validarDeltaSnapshotAlocacoesEstoque(
   for (const grupo of GRUPOS_SNAPSHOT) {
     const anterior = snapshotAnterior[grupo] ?? {};
     const atual = snapshotAtual[grupo] ?? {};
-    const adicionadas = Object.keys(atual).filter((chave) => !(chave in anterior));
-    const removidas = Object.keys(anterior).filter((chave) => !(chave in atual));
-    const alteradas = Object.keys(anterior).filter(
-      (chave) => chave in atual && serializarCanonico(anterior[chave]) !== serializarCanonico(atual[chave]),
+    const adicionadas = Object.keys(atual).filter(
+      (chave) => !(chave in anterior),
     );
-    const esperadas = grupo === "tables"
-      ? ["public.checkout_estoque_alocacoes"]
-      : grupo === "enums"
-        ? ["public.checkout_estoque_alocacao_status"]
-        : [];
+    const removidas = Object.keys(anterior).filter(
+      (chave) => !(chave in atual),
+    );
+    const alteradas = Object.keys(anterior).filter(
+      (chave) =>
+        chave in atual &&
+        serializarCanonico(anterior[chave]) !==
+          serializarCanonico(atual[chave]),
+    );
+    const esperadas =
+      grupo === "tables"
+        ? ["public.checkout_estoque_alocacoes"]
+        : grupo === "enums"
+          ? ["public.checkout_estoque_alocacao_status"]
+          : [];
 
-    if (JSON.stringify(adicionadas.sort()) !== JSON.stringify(esperadas) || removidas.length || alteradas.length) {
+    if (
+      JSON.stringify(adicionadas.sort()) !== JSON.stringify(esperadas) ||
+      removidas.length ||
+      alteradas.length
+    ) {
       falhar(`Delta inesperado de alocações de estoque para ${grupo}.`);
     }
   }
@@ -634,7 +646,8 @@ export function validarDeltaSnapshotPagamentoSemRecursos(
   anterior: SnapshotDrizzle,
   atual: SnapshotDrizzle,
 ) {
-  if (atual.prevId !== anterior.id) falhar("Snapshots 0055 e 0056 não estão encadeados.");
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0055 e 0056 não estão encadeados.");
   for (const grupo of GRUPOS_SNAPSHOT) {
     const chavesAnteriores = Object.keys(anterior[grupo] ?? {}).sort();
     const chavesAtuais = Object.keys(atual[grupo] ?? {}).sort();
@@ -645,14 +658,23 @@ export function validarDeltaSnapshotPagamentoSemRecursos(
       if (grupo === "enums" && chave === "public.checkout_pedido_status") {
         const enumAnterior = anterior.enums[chave] as { values: string[] };
         const enumAtual = atual.enums[chave] as { values: string[] };
-        if (JSON.stringify(enumAtual.values) !== JSON.stringify([...enumAnterior.values, "pagamento_recebido_sem_recursos"])) {
+        if (
+          JSON.stringify(enumAtual.values) !==
+          JSON.stringify([
+            ...enumAnterior.values,
+            "pagamento_recebido_sem_recursos",
+          ])
+        ) {
           falhar("0056 alterou valores inesperados do status do pedido.");
         }
         const esperado = { ...enumAnterior, values: enumAtual.values };
         if (serializarCanonico(esperado) !== serializarCanonico(enumAtual)) {
           falhar("0056 alterou metadados inesperados do enum.");
         }
-      } else if (serializarCanonico(anterior[grupo][chave]) !== serializarCanonico(atual[grupo][chave])) {
+      } else if (
+        serializarCanonico(anterior[grupo][chave]) !==
+        serializarCanonico(atual[grupo][chave])
+      ) {
         falhar(`0056 alterou objeto inesperado em ${grupo}: ${chave}.`);
       }
     }
@@ -904,5 +926,90 @@ export function validarHistoricoAplicado(
     ) {
       falhar("Hash ou posição do histórico aplicado diverge da cadeia local.");
     }
+  }
+}
+
+/** 0058 acrescenta somente vínculos e liberações; nenhum objeto anterior muda. */
+export function validarDeltaSnapshotRepresentantes(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0057 e 0058 não estão encadeados.");
+  const novas = [
+    "public.representantes_fornecedores",
+    "public.autorizacoes_produtos_representantes",
+  ];
+  const tabelasAnteriores = Object.fromEntries(
+    Object.entries(atual.tables).filter(([nome]) => !novas.includes(nome)),
+  );
+  if (novas.some((nome) => nome in anterior.tables || !(nome in atual.tables)))
+    falhar("0058 deve criar exatamente as duas tabelas de representantes.");
+  if (
+    serializarCanonico(tabelasAnteriores) !==
+    serializarCanonico(anterior.tables)
+  )
+    falhar("0058 alterou tabelas existentes.");
+  for (const grupo of [
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    if (
+      serializarCanonico(anterior[grupo]) !== serializarCanonico(atual[grupo])
+    )
+      falhar(`0058 alterou ${grupo}.`);
+  }
+}
+
+/** 0059 acrescenta somente estoque informado e configuração de comissão; nenhuma tabela nova. */
+export function validarDeltaSnapshotOperacaoRepresentantes(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0058 e 0059 não estão encadeados.");
+  const copia = structuredClone(atual);
+  const configuracao: { tabela: string; colunas: string[]; check: string }[] = [
+    {
+      tabela: "public.fornecedor_produto_vinculos",
+      colunas: ["estoque_informado_fornecedor"],
+      check: "fornecedor_produto_estoque_informado_valido",
+    },
+    {
+      tabela: "public.autorizacoes_produtos_representantes",
+      colunas: ["comissao_tipo", "comissao_valor", "comissao_visivel"],
+      check: "autorizacoes_comissao_valida",
+    },
+  ];
+  for (const esperado of configuracao) {
+    const tabela = copia.tables[esperado.tabela] as {
+      columns: Record<string, unknown>;
+      checkConstraints: Record<string, unknown>;
+    };
+    for (const coluna of esperado.colunas) {
+      if (!tabela.columns[coluna]) falhar(`Coluna esperada ausente: ${coluna}`);
+      delete tabela.columns[coluna];
+    }
+    if (!tabela.checkConstraints[esperado.check])
+      falhar("Constraint da operação de representantes ausente.");
+    delete tabela.checkConstraints[esperado.check];
+  }
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const) {
+    if (
+      serializarCanonico(copia[grupo]) !== serializarCanonico(anterior[grupo])
+    )
+      falhar(`0059 alterou indevidamente ${grupo}.`);
   }
 }

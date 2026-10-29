@@ -1,3 +1,4 @@
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 /**
  * Comparativo Fornecedor × Loja atual × A publicar, campo a campo.
  *
@@ -63,7 +64,7 @@ const NOMES_SECOES_LOJA: Record<string, string> = {
 const ROTULOS_MODALIDADE_LOJA: Record<string, string> = {
   stock: "Estoque próprio",
   pre_sale: "Pré-venda",
-  dropshipping: "Dropshipping",
+  dropshipping: ROTULO_MODALIDADE_FORNECEDOR,
   order_basis: "Sob encomenda",
 };
 

@@ -76,6 +76,14 @@ export function resolverContextoAdministrativo({
     administradorId: administrador.id,
     administradorPrincipal: administrador.administradorPrincipal,
     origem: "rbac_persistido",
+    representanteFornecedor:
+      Boolean(dados.representanteFornecedor) ||
+      dados.concessoesFuncoes.some(({ permissao }) =>
+        permissao.startsWith("representantes_produtos."),
+      ) ||
+      dados.overrides.some(({ permissao }) =>
+        permissao.startsWith("representantes_produtos."),
+      ),
     permissoesAtivasCatalogo,
     permissoesFuncoes,
     overrides,
@@ -101,6 +109,13 @@ export function podeAdmin(
     return false;
   }
   if (contexto.administradorPrincipal) return true;
+  // Uma função global adicional nunca amplia o escopo de um representante.
+  // Nem a revogação de seu vínculo pode fazê-lo cair no catálogo global.
+  if (
+    contexto.representanteFornecedor &&
+    !permissao.startsWith("representantes_produtos.")
+  )
+    return false;
   const override = contexto.overrides.get(permissao);
   if (override) return override === "permitir";
   return contexto.permissoesFuncoes.has(permissao);

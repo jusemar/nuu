@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Ensaios locais usam um diretório isolado, sem disputar o servidor do desenvolvedor.
+  distDir: process.env.NOOO_NEXT_DIST_DIR || ".next",
   experimental: {
     serverActions: {
       // O upload da planilha de fornecedor usa Server Action

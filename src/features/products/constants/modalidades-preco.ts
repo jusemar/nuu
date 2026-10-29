@@ -1,5 +1,7 @@
-import type { ModalidadePrecoProduto } from "../types/alteracao-em-massa.types";
 import { normalizarModalidadePrecoCanonica } from "@/features/precificacao/client";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
+
+import type { ModalidadePrecoProduto } from "../types/alteracao-em-massa.types";
 
 export const MODALIDADES_PRECO_PRODUTO: ReadonlyArray<{
   id: ModalidadePrecoProduto;
@@ -7,7 +9,7 @@ export const MODALIDADES_PRECO_PRODUTO: ReadonlyArray<{
 }> = [
   { id: "stock", rotulo: "Estoque Próprio" },
   { id: "preSale", rotulo: "Pré-venda" },
-  { id: "dropshipping", rotulo: "Dropshipping" },
+  { id: "dropshipping", rotulo: ROTULO_MODALIDADE_FORNECEDOR },
   { id: "orderBasis", rotulo: "Sob encomenda" },
 ];
 

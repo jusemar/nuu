@@ -2,6 +2,9 @@ import "server-only";
 
 import { and, asc, eq, ilike, or } from "drizzle-orm";
 
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
+
 import { db } from "../../../db/connection";
 import {
   provedoresFreteTable,
@@ -18,6 +21,7 @@ import type { FreteServicoPromocaoAdmin } from "../types";
 export async function buscarFretesServicosPromocaoAdmin(
   entrada: unknown,
 ): Promise<FreteServicoPromocaoAdmin[]> {
+  await exigirPermissaoAdmin(PERMISSOES_ADMIN.MARKETING.ADMINISTRAR);
   const filtros = buscarFretesServicosPromocaoAdminSchema.parse(entrada);
   const buscaLike = `%${filtros.busca}%`;
 

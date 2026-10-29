@@ -20,9 +20,10 @@ import { authClient } from "@/lib/auth-client";
 
 type AdminHeaderProps = {
   usuario: { name: string; email: string; image?: string | null };
+  empresa?: string;
 };
 
-export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
+export const AdminHeader = ({ usuario, empresa }: AdminHeaderProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,7 +64,9 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
         </div>
 
         {/* A busca ocupa uma linha própria no mobile para não comprimir ações. */}
-        <div className="order-3 w-full lg:order-none lg:max-w-[40rem] lg:flex-1">
+        <div
+          className={`order-3 w-full lg:order-none lg:max-w-[40rem] lg:flex-1 ${empresa !== undefined ? "hidden" : ""}`}
+        >
           <div className="relative">
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
@@ -89,7 +92,7 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
 
         {/* User Menu */}
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <div className="relative">
+          <div className={empresa !== undefined ? "hidden" : "relative"}>
             <Button
               variant="ghost"
               size="icon"
@@ -112,12 +115,18 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
                 <span className="bg-primary-light ring-primary/10 flex size-7 items-center justify-center rounded-lg ring-1">
                   <User className="text-primary size-3.5" />
                 </span>
-                <span className="hidden min-w-0 text-left lg:block">
+                <span
+                  className={
+                    empresa !== undefined
+                      ? "block min-w-0 text-left"
+                      : "hidden min-w-0 text-left lg:block"
+                  }
+                >
                   <span className="text-foreground block max-w-40 truncate text-sm font-semibold">
                     {usuario.name}
                   </span>
                   <span className="text-muted-foreground block max-w-40 truncate text-xs">
-                    {usuario.email}
+                    {empresa ?? usuario.email}
                   </span>
                 </span>
               </Button>
@@ -126,7 +135,7 @@ export const AdminHeader = ({ usuario }: AdminHeaderProps) => {
               <DropdownMenuLabel className="space-y-0.5">
                 <p className="truncate text-sm font-medium">{usuario.name}</p>
                 <p className="text-muted-foreground truncate text-xs font-normal">
-                  {usuario.email}
+                  {empresa ?? usuario.email}
                 </p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

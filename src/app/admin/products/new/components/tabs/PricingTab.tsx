@@ -1,7 +1,16 @@
 // src/app/admin/products/new/components/tabs/PricingTab.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Info,
+  Package,
+} from "lucide-react";
+import { useEffect,useState } from "react";
+
 import {
   Card,
   CardContent,
@@ -11,18 +20,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  Package,
-  Calendar,
-  Clock,
-} from "lucide-react";
-import { ModalityCard } from "./pricing/ModalityCard";
-import { useSingleSelection } from "@/hooks/admin/forms/useSingleSelection";
-import { summarizeVariantEditor } from "@/features/products";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 import type { ProductVariantFormInput } from "@/features/products";
+import { summarizeVariantEditor } from "@/features/products";
+import { useSingleSelection } from "@/hooks/admin/forms/useSingleSelection";
+
+import { ModalityCard } from "./pricing/ModalityCard";
 
 interface PricingTabProps {
   data: {
@@ -323,7 +326,7 @@ export function PricingTab({ data, onChange }: PricingTabProps) {
 
             <ModalityCard
               type="dropshipping"
-              label="Dropshipping"
+              label={ROTULO_MODALIDADE_FORNECEDOR}
               icon={<Package className="h-5 w-5 text-green-600" />}
               description="Enviado diretamente pelo fornecedor"
               modalities={modalities}

@@ -15,6 +15,7 @@ import {
 import { montarUrlLoginAdmin } from "@/features/autenticacao/lib/normalizar-redirecionamento-admin";
 import { rotaAdminEhPublica } from "@/features/autenticacao/lib/rotas-publicas-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { buscarPerfilProdutosAdmin } from "@/features/products/queries/representantes/buscar-perfil-produtos-admin";
 
 export default async function AdminLayout({
   children,
@@ -43,20 +44,38 @@ export default async function AdminLayout({
     redirect(montarUrlLoginAdmin(caminho, "sem_permissao"));
   }
 
+  const contexto = await obterContextoAdministrativo();
+  const representante =
+    contexto.situacao === "ativo" &&
+    contexto.representanteFornecedor &&
+    !contexto.administradorPrincipal;
+  const perfil = representante ? await buscarPerfilProdutosAdmin() : null;
+  if (representante && caminho === "/admin") redirect("/admin/products");
   if (caminho === "/admin") {
     await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAINEL.VISUALIZAR);
   }
-  const contexto = await obterContextoAdministrativo();
   const permissoesMenu = CATALOGO_PERMISSOES_ADMIN.filter(({ chave }) =>
     podeAdmin(contexto, chave),
   ).map(({ chave }) => chave);
 
   return (
     <div className="painel-admin bg-background flex min-h-dvh">
-      <AdminSidebar permissoes={permissoesMenu} />
+      <AdminSidebar
+        permissoes={permissoesMenu}
+        representante={Boolean(representante)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <AdminHeader usuario={acesso.sessao.user} />
+        <AdminHeader
+          usuario={acesso.sessao.user}
+          empresa={
+            perfil
+              ? perfil.fornecedores.length === 1
+                ? perfil.fornecedores[0].nome
+                : `${perfil.fornecedores.length} fornecedores vinculados`
+              : undefined
+          }
+        />
         <main className="mx-auto w-full max-w-[120rem] flex-1 overflow-x-clip p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:p-6 md:pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-6">
           {children}
         </main>

@@ -11,6 +11,7 @@ import {
   funcoesPermissoesTable,
   permissoesAdministrativasTable,
 } from "@/db/tables/autorizacao-admin";
+import { representantesFornecedoresTable } from "@/db/tables/representantes-fornecedores/tabelas";
 
 import type { DadosAutorizacaoAdministrador } from "../../types/autorizacao-admin.types";
 
@@ -33,62 +34,68 @@ export async function buscarDadosAutorizacaoAdminPorUsuarioId(
   if (!administrador) return null;
 
   // Consultas independentes são paralelas e evitam uma consulta por função.
-  const [catalogo, concessoesFuncoes, overrides] = await Promise.all([
-    db
-      .select({ chave: permissoesAdministrativasTable.chave })
-      .from(permissoesAdministrativasTable)
-      .where(eq(permissoesAdministrativasTable.status, "ativa")),
-    db
-      .select({
-        funcaoStatus: funcoesAdministrativasTable.status,
-        permissao: permissoesAdministrativasTable.chave,
-        permissaoStatus: permissoesAdministrativasTable.status,
-      })
-      .from(administradoresFuncoesTable)
-      .innerJoin(
-        funcoesAdministrativasTable,
-        eq(
-          administradoresFuncoesTable.funcaoId,
-          funcoesAdministrativasTable.id,
+  const [catalogo, concessoesFuncoes, overrides, vinculosRepresentante] =
+    await Promise.all([
+      db
+        .select({ chave: permissoesAdministrativasTable.chave })
+        .from(permissoesAdministrativasTable)
+        .where(eq(permissoesAdministrativasTable.status, "ativa")),
+      db
+        .select({
+          funcaoStatus: funcoesAdministrativasTable.status,
+          permissao: permissoesAdministrativasTable.chave,
+          permissaoStatus: permissoesAdministrativasTable.status,
+        })
+        .from(administradoresFuncoesTable)
+        .innerJoin(
+          funcoesAdministrativasTable,
+          eq(
+            administradoresFuncoesTable.funcaoId,
+            funcoesAdministrativasTable.id,
+          ),
+        )
+        .innerJoin(
+          funcoesPermissoesTable,
+          eq(funcoesPermissoesTable.funcaoId, funcoesAdministrativasTable.id),
+        )
+        .innerJoin(
+          permissoesAdministrativasTable,
+          eq(
+            funcoesPermissoesTable.permissaoId,
+            permissoesAdministrativasTable.id,
+          ),
+        )
+        .where(
+          and(
+            eq(administradoresFuncoesTable.administradorId, administrador.id),
+          ),
         ),
-      )
-      .innerJoin(
-        funcoesPermissoesTable,
-        eq(funcoesPermissoesTable.funcaoId, funcoesAdministrativasTable.id),
-      )
-      .innerJoin(
-        permissoesAdministrativasTable,
-        eq(
-          funcoesPermissoesTable.permissaoId,
-          permissoesAdministrativasTable.id,
+      db
+        .select({
+          efeito: administradoresPermissoesTable.efeito,
+          permissao: permissoesAdministrativasTable.chave,
+          permissaoStatus: permissoesAdministrativasTable.status,
+        })
+        .from(administradoresPermissoesTable)
+        .innerJoin(
+          permissoesAdministrativasTable,
+          eq(
+            administradoresPermissoesTable.permissaoId,
+            permissoesAdministrativasTable.id,
+          ),
+        )
+        .where(
+          eq(administradoresPermissoesTable.administradorId, administrador.id),
         ),
-      )
-      .where(
-        and(
-          eq(administradoresFuncoesTable.administradorId, administrador.id),
-          eq(funcoesAdministrativasTable.status, "ativa"),
-        ),
-      ),
-    db
-      .select({
-        efeito: administradoresPermissoesTable.efeito,
-        permissao: permissoesAdministrativasTable.chave,
-        permissaoStatus: permissoesAdministrativasTable.status,
-      })
-      .from(administradoresPermissoesTable)
-      .innerJoin(
-        permissoesAdministrativasTable,
-        eq(
-          administradoresPermissoesTable.permissaoId,
-          permissoesAdministrativasTable.id,
-        ),
-      )
-      .where(
-        eq(administradoresPermissoesTable.administradorId, administrador.id),
-      ),
-  ]);
+      db
+        .select({ id: representantesFornecedoresTable.id })
+        .from(representantesFornecedoresTable)
+        .where(eq(representantesFornecedoresTable.usuarioId, usuarioId))
+        .limit(1),
+    ]);
 
   return {
+    representanteFornecedor: vinculosRepresentante.length > 0,
     administrador,
     chavesAtivasCatalogo: catalogo.map(({ chave }) => chave),
     concessoesFuncoes: concessoesFuncoes.map((item) => ({

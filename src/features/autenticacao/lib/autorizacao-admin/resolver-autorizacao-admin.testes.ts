@@ -259,3 +259,61 @@ test("Atendente IA participa somente pela chave global de entrada", () => {
     assert.equal(JSON.stringify(acesso).includes(papelLocal), false);
   }
 });
+
+test("representante com override global continua restrito; principal preserva acesso", () => {
+  const dados = dadosAtivos({
+    representanteFornecedor: true,
+    overrides: [
+      {
+        permissao: PRODUTOS_PUBLICAR,
+        permissaoAtiva: true,
+        efeito: "permitir",
+      },
+    ],
+  });
+  assert.equal(podeAdmin(contexto(dados), PRODUTOS_PUBLICAR), false);
+  assert.equal(
+    podeAdmin(
+      contexto({
+        ...dados,
+        administrador: { ...dados.administrador, administradorPrincipal: true },
+      }),
+      PRODUTOS_PUBLICAR,
+    ),
+    true,
+  );
+});
+
+test("capacidade de representante revogada não abre fallback para permissões globais", () => {
+  const dados = dadosAtivos({
+    concessoesFuncoes: [
+      {
+        permissao: PERMISSOES_ADMIN.REPRESENTANTES_PRODUTOS.VISUALIZAR,
+        funcaoAtiva: false,
+        permissaoAtiva: false,
+      },
+    ],
+    overrides: [
+      {
+        permissao: PRODUTOS_VISUALIZAR,
+        permissaoAtiva: true,
+        efeito: "permitir",
+      },
+    ],
+  });
+  assert.equal(podeAdmin(contexto(dados), PRODUTOS_VISUALIZAR), false);
+  assert.equal(
+    podeAdmin(
+      contexto(dados),
+      PERMISSOES_ADMIN.REPRESENTANTES_PRODUTOS.VISUALIZAR,
+    ),
+    false,
+  );
+  assert.equal(
+    podeAdmin(
+      contexto({ ...dados, concessoesFuncoes: [] }),
+      PRODUTOS_VISUALIZAR,
+    ),
+    true,
+  );
+});

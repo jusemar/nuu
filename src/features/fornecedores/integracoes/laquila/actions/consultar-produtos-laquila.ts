@@ -2,11 +2,11 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 
 import { db } from "@/db/connection";
 import { fornecedorIntegracoesApiTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
+import { possuiSessaoFornecedoresAdmin } from "@/features/fornecedores/lib/sessao-fornecedores-admin";
 
 import { METODOS_LAQUILA } from "../constants";
 import {
@@ -48,11 +48,7 @@ type ResultadoConsultarProdutosLaquila = {
 };
 
 async function validarSessaoAdmin() {
-  const sessao = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  return Boolean(sessao?.user);
+  return possuiSessaoFornecedoresAdmin(PERMISSOES_ADMIN.FORNECEDORES.IMPORTAR);
 }
 
 async function buscarConfiguracaoConsulta(integracaoId: string) {

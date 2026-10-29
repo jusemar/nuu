@@ -71,6 +71,7 @@ import type {
   FiltroConciliacaoFornecedor,
   ResumoConciliacaoFornecedor,
 } from "@/features/fornecedores/queries/listar-rascunhos-importacao-fornecedor";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 
 import { CheckboxFornecedor } from "./compartilhados/checkbox-fornecedor";
 import { PainelFiltrosResponsivo } from "./compartilhados/painel-filtros-responsivo";
@@ -112,7 +113,7 @@ export type RegraCampoConciliacaoFornecedor = {
 
 export type ConfiguracaoPrecoConciliacaoFornecedor = {
   modalidade:
-    | "Dropshipping"
+    | "Fornecedor"
     | "Estoque próprio"
     | "Pré-venda"
     | "Sob encomenda"
@@ -292,7 +293,7 @@ function formatarSecoesLoja(secoes?: string[]) {
 const ROTULOS_MODALIDADE_LOJA: Record<string, string> = {
   stock: "Estoque próprio",
   pre_sale: "Pré-venda",
-  dropshipping: "Dropshipping",
+  dropshipping: ROTULO_MODALIDADE_FORNECEDOR,
   order_basis: "Sob encomenda",
 };
 
@@ -1516,7 +1517,9 @@ function ModalEdicaoRascunhos({
                 >
                   <option value="stock">Estoque próprio</option>
                   <option value="pre_sale">Pré-venda</option>
-                  <option value="dropshipping">Dropshipping</option>
+                  <option value="dropshipping">
+                    {ROTULO_MODALIDADE_FORNECEDOR}
+                  </option>
                   <option value="order_basis">Sob encomenda</option>
                 </select>
               </label>

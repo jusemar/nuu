@@ -30,6 +30,10 @@ import { listarTransportadorasLaquila } from "@/features/fornecedores/integracoe
 import { verificarLogisticaLaquilaProduto } from "@/features/fornecedores/integracoes/laquila/queries/verificar-logistica-laquila-produto";
 import { listarDiagnosticosLogisticosProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 import { identificarVarianteTecnicaProdutoSimples } from "@/features/products/lib/variante-tecnica-produto-simples";
+import {
+  condicaoProdutoAdministrativo,
+  exigirLeituraProdutoAdmin,
+} from "@/features/products/queries/autorizacao/escopo-produtos-admin";
 
 function obterDetalhesErro(error: unknown) {
   if (error instanceof Error) {
@@ -100,6 +104,10 @@ async function carregarClassificacoesLogisticasVariantes(
  * @returns Objeto com { success, message, data } onde data contém o produto completo
  */
 export async function getProductById(id: string) {
+  const { contexto } = await exigirLeituraProdutoAdmin(id);
+  const representante = Boolean(
+    contexto.representanteFornecedor && !contexto.administradorPrincipal,
+  );
   const ambienteLaquila = obterAmbienteAplicacaoLaquila();
   try {
     // ---------------------------------------------------------------
@@ -193,7 +201,9 @@ export async function getProductById(id: string) {
         eq(modelosRetiradaTable.id, productTable.modeloRetiradaId),
       )
       // Filtra pelo ID do produto
-      .where(eq(productTable.id, id))
+      .where(
+        and(eq(productTable.id, id), condicaoProdutoAdministrativo(contexto)),
+      )
       // Limita a 1 resultado (pois o ID é único)
       .limit(1);
 
@@ -355,19 +365,22 @@ export async function getProductById(id: string) {
           })
         : null;
 
-    const usaLogisticaLaquila = await verificarLogisticaLaquilaProduto(id);
+    const usaLogisticaLaquila =
+      !representante && (await verificarLogisticaLaquilaProduto(id));
     const [
       precosEntregaPropria,
       resultadoTransportadorasLaquila,
       diagnosticoLogisticoProduto,
     ] = await Promise.all([
-      listarPrecosEntregaPropriaProduto(id),
+      representante ? [] : listarPrecosEntregaPropriaProduto(id),
       usaLogisticaLaquila
         ? listarTransportadorasLaquila(ambienteLaquila)
         : null,
-      listarDiagnosticosLogisticosProdutos([id]).then(
-        ([resultado]) => resultado?.diagnostico ?? null,
-      ),
+      representante
+        ? null
+        : listarDiagnosticosLogisticosProdutos([id]).then(
+            ([resultado]) => resultado?.diagnostico ?? null,
+          ),
     ]);
 
     // Montar o objeto de modalidades no formato que o frontend espera

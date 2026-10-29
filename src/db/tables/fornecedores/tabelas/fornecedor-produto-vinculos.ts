@@ -1,4 +1,13 @@
-import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 import { productTable } from "../../../table/products/products";
 import {
@@ -15,6 +24,10 @@ export const fornecedorProdutoVinculosTable = pgTable(
       .notNull()
       .references(() => fornecedoresTable.id, { onDelete: "restrict" }),
     codigoFornecedor: text("codigo_fornecedor"),
+    // Saldo informado pelo fornecedor; nunca é alocação de estoque físico da Nooo.
+    estoqueInformadoFornecedor: integer("estoque_informado_fornecedor")
+      .notNull()
+      .default(0),
     produtoId: uuid("produto_id")
       .notNull()
       .references(() => productTable.id, { onDelete: "restrict" }),
@@ -28,6 +41,10 @@ export const fornecedorProdutoVinculosTable = pgTable(
     atualizadoEm: timestamp("atualizado_em").notNull().defaultNow(),
   },
   (table) => [
+    check(
+      "fornecedor_produto_estoque_informado_valido",
+      sql`${table.estoqueInformadoFornecedor} >= 0`,
+    ),
     index("fornecedor_produto_vinculos_fornecedor_id_idx").on(
       table.fornecedorId,
     ),

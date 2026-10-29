@@ -9,6 +9,7 @@ import {
   type SnapshotDrizzle,
   validarDeltaSnapshotAlocacoesEstoque,
   validarDeltaSnapshotAmbientesLaquila,
+  validarDeltaSnapshotAtivacaoComissao,
   validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
@@ -564,5 +565,18 @@ test("0059 altera somente configuração de representantes e estoque informado",
   adulterado.tables["public.product"] = { alteracao: true };
   assert.throws(() =>
     validarDeltaSnapshotOperacaoRepresentantes(anterior, adulterado),
+  );
+});
+
+test("0060 acrescenta somente ativação independente da comissão", () => {
+  const anterior = lerSnapshot("0059"),
+    atual = lerSnapshot("0060");
+  assert.doesNotThrow(() =>
+    validarDeltaSnapshotAtivacaoComissao(anterior, atual),
+  );
+  const adulterado = structuredClone(atual);
+  delete adulterado.tables["public.product"];
+  assert.throws(() =>
+    validarDeltaSnapshotAtivacaoComissao(anterior, adulterado),
   );
 });

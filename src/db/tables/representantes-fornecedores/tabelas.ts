@@ -70,6 +70,8 @@ export const autorizacoesProdutosRepresentantesTable = pgTable(
     // Configuração comercial, exclusivamente do gestor. Não registra vendas/ganhos.
     comissaoTipo: text("comissao_tipo").$type<"percentual" | "fixa">(),
     comissaoValor: integer("comissao_valor"), // pontos-base ou centavos
+    // Independente de autorização de edição e visibilidade. Sem direito implícito.
+    comissaoAtiva: boolean("comissao_ativa").notNull().default(false),
     comissaoVisivel: boolean("comissao_visivel").notNull().default(false),
     criadoPorUsuarioId: text("criado_por_usuario_id")
       .notNull()
@@ -90,6 +92,10 @@ export const autorizacoesProdutosRepresentantesTable = pgTable(
       tabela.produtoId,
     ),
     index("autorizacoes_representantes_produto_idx").on(tabela.produtoId),
+    check(
+      "autorizacoes_comissao_ativa_configurada",
+      sql`NOT ${tabela.comissaoAtiva} OR (${tabela.comissaoTipo} IS NOT NULL AND ${tabela.comissaoValor} IS NOT NULL)`,
+    ),
     check(
       "autorizacoes_comissao_valida",
       sql`(

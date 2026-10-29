@@ -1,0 +1,2 @@
+ALTER TABLE "autorizacoes_produtos_representantes" ADD COLUMN "comissao_ativa" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "autorizacoes_produtos_representantes" ADD CONSTRAINT "autorizacoes_comissao_ativa_configurada" CHECK (NOT "autorizacoes_produtos_representantes"."comissao_ativa" OR ("autorizacoes_produtos_representantes"."comissao_tipo" IS NOT NULL AND "autorizacoes_produtos_representantes"."comissao_valor" IS NOT NULL));

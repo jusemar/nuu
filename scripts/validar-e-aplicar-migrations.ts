@@ -23,6 +23,7 @@ import {
   type EntradaJournalValidacao,
   type MigrationLocalValidacao,
   validarDeltaSnapshotAmbientesLaquila,
+  validarDeltaSnapshotAtivacaoComissao,
   validarDeltaSnapshotColunasLegadasEntregaPropria,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
@@ -458,6 +459,10 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   const entradas = journal.entries ?? [];
   try {
     validarSequenciaLocal(migrations, entradas);
+    validarDeltaSnapshotAtivacaoComissao(
+      JSON.parse(readFileSync("drizzle/meta/0059_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0060_snapshot.json", "utf8")),
+    );
     validarDeltaSnapshotOperacaoRepresentantes(
       JSON.parse(readFileSync("drizzle/meta/0058_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0059_snapshot.json", "utf8")),

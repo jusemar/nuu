@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 60,
-  ultimoIndice: 59,
-  ultimaTag: "0059_operacao_produtos_representantes",
-  ultimoArquivo: "drizzle/0059_operacao_produtos_representantes.sql",
+  total: 61,
+  ultimoIndice: 60,
+  ultimaTag: "0060_ativacao_comissao_representante",
+  ultimoArquivo: "drizzle/0060_ativacao_comissao_representante.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -1012,4 +1012,40 @@ export function validarDeltaSnapshotOperacaoRepresentantes(
     )
       falhar(`0059 alterou indevidamente ${grupo}.`);
   }
+}
+
+/** 0060 separa ativação da comissão de autorização e visibilidade. */
+export function validarDeltaSnapshotAtivacaoComissao(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0059 e 0060 não estão encadeados.");
+  const copia = structuredClone(atual);
+  const tabela = copia.tables[
+    "public.autorizacoes_produtos_representantes"
+  ] as {
+    columns: Record<string, unknown>;
+    checkConstraints: Record<string, unknown>;
+  };
+  if (
+    !tabela.columns.comissao_ativa ||
+    !tabela.checkConstraints.autorizacoes_comissao_ativa_configurada
+  )
+    falhar("0060 não contém a ativação e sua constraint.");
+  delete tabela.columns.comissao_ativa;
+  delete tabela.checkConstraints.autorizacoes_comissao_ativa_configurada;
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const)
+    if (
+      serializarCanonico(copia[grupo]) !== serializarCanonico(anterior[grupo])
+    )
+      falhar(`0060 alterou indevidamente ${grupo}.`);
 }

@@ -21,6 +21,7 @@ export async function buscarComissoesProdutoGestor(produtoId: unknown) {
       nome: userTable.name,
       fornecedor: fornecedoresTable.nome,
       ativa: autorizacoesProdutosRepresentantesTable.ativa,
+      comissaoAtiva: autorizacoesProdutosRepresentantesTable.comissaoAtiva,
       tipo: autorizacoesProdutosRepresentantesTable.comissaoTipo,
       valor: autorizacoesProdutosRepresentantesTable.comissaoValor,
       visivel: autorizacoesProdutosRepresentantesTable.comissaoVisivel,

@@ -64,7 +64,7 @@ export function LinhaProdutoRepresentante({
   return (
     <div
       role="row"
-      className={`bg-card grid min-w-0 gap-3 rounded-xl border p-4 lg:items-center lg:rounded-none lg:border-0 lg:border-b ${comissaoVisivel ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,.8fr)_minmax(0,.8fr)_auto]" : "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,.8fr)_auto]"}`}
+      className={`bg-card grid min-w-0 gap-3 rounded-xl border p-4 lg:items-center lg:rounded-none lg:border-0 lg:border-b ${comissaoVisivel ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,.8fr)_minmax(0,1.3fr)_minmax(0,.8fr)_auto]" : "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,.8fr)_auto]"}`}
     >
       <div role="cell" className="min-w-0">
         <div className="flex min-w-0 gap-3">
@@ -126,14 +126,6 @@ export function LinhaProdutoRepresentante({
             : editar("precoCentavos", produto.precoCentavos)}
         </div>
       </div>
-      <div role="cell" className="min-w-0">
-        <span className="text-muted-foreground text-xs lg:hidden">Estoque</span>
-        <div>
-          {contexto
-            ? editar("estoque", contexto.estoque)
-            : "Escolha o contexto"}
-        </div>
-      </div>
       {comissaoVisivel && (
         <div role="cell" className="min-w-0">
           <span className="text-muted-foreground text-xs lg:hidden">
@@ -144,6 +136,14 @@ export function LinhaProdutoRepresentante({
           </p>
         </div>
       )}
+      <div role="cell" className="min-w-0">
+        <span className="text-muted-foreground text-xs lg:hidden">Estoque</span>
+        <div>
+          {contexto
+            ? editar("estoque", contexto.estoque)
+            : "Escolha o contexto"}
+        </div>
+      </div>
       <div role="cell">
         <Badge variant="secondary">
           {produto.situacao === "published"

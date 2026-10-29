@@ -421,6 +421,13 @@
       "when": 1793230862606,
       "tag": "0059_operacao_produtos_representantes",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793312535019,
+      "tag": "0060_ativacao_comissao_representante",
+      "breakpoints": true
     }
   ]
 }

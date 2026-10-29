@@ -81,13 +81,13 @@ export function ListagemProdutosRepresentante({
           >
             <div
               role="row"
-              className={`bg-muted text-muted-foreground hidden gap-3 p-4 text-xs lg:grid ${exibirComissao ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,.8fr)_minmax(0,.8fr)_auto]" : "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,.8fr)_auto]"}`}
+              className={`bg-muted text-muted-foreground hidden gap-3 p-4 text-xs lg:grid ${exibirComissao ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,.8fr)_minmax(0,1.3fr)_minmax(0,.8fr)_auto]" : "lg:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,.8fr)_auto]"}`}
             >
               {[
                 "Produto",
                 "Preço",
-                "Estoque",
                 ...(exibirComissao ? ["Comissão"] : []),
+                "Estoque",
                 "Situação",
                 "Ação",
               ].map((c) => (

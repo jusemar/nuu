@@ -25,10 +25,12 @@ import {
 } from "../../../actions/representantes/configurar-comissao-gestor";
 import { consultarPerfilProdutosAdmin } from "../../../actions/representantes/consultar-produtos-representante";
 import { chavesProdutosRepresentante } from "../../../constants/representantes/query-keys";
+import { converterValorComissao } from "../../../lib/comissoes-representantes/converter-valor-comissao";
 
 const schema = z.object({
   tipo: z.enum(["nenhuma", "percentual", "fixa"]),
   visivel: z.boolean(),
+  ativa: z.boolean(),
   valor: z.string().regex(/^\d+(?:[,.]\d{1,2})?$/, "Informe um valor válido."),
 });
 type Configuracao = Awaited<
@@ -47,6 +49,7 @@ function FormularioComissao({
     defaultValues: {
       tipo: configuracao.tipo ?? "nenhuma",
       visivel: configuracao.visivel,
+      ativa: configuracao.comissaoAtiva,
       valor: ((configuracao.valor ?? 0) / 100).toFixed(2).replace(".", ","),
     },
   });
@@ -58,9 +61,8 @@ function FormularioComissao({
         autorizacaoId: configuracao.id,
         tipo: dados.tipo === "nenhuma" ? null : dados.tipo,
         valor:
-          dados.tipo === "nenhuma"
-            ? null
-            : Math.round(Number(dados.valor.replace(",", ".")) * 100),
+          dados.tipo === "nenhuma" ? null : converterValorComissao(dados.valor),
+        ativa: dados.tipo !== "nenhuma" && dados.ativa,
         visivel: dados.tipo !== "nenhuma" && dados.visivel,
       });
       if (!resultado.sucesso) throw new Error(resultado.mensagem);
@@ -107,6 +109,16 @@ function FormularioComissao({
                 {form.formState.errors.valor.message}
               </p>
             )}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="ativacao-comissao">Comissão ativa</Label>
+            <Switch
+              id="ativacao-comissao"
+              checked={form.watch("ativa")}
+              onCheckedChange={(valor) =>
+                form.setValue("ativa", valor, { shouldDirty: true })
+              }
+            />
           </div>
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor="visibilidade-comissao">

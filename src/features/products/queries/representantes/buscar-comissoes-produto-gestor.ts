@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq,sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/connection";
@@ -21,6 +21,7 @@ export async function buscarComissoesProdutoGestor(produtoId: unknown) {
       nome: userTable.name,
       fornecedor: fornecedoresTable.nome,
       ativa: autorizacoesProdutosRepresentantesTable.ativa,
+      comissionadoProximasVendas: sql<boolean>`exists(select 1 from representantes_comissionados_produtos e where e.produto_id=${autorizacoesProdutosRepresentantesTable.produtoId} and e.autorizacao_id=${autorizacoesProdutosRepresentantesTable.id})`,
       comissaoAtiva: autorizacoesProdutosRepresentantesTable.comissaoAtiva,
       tipo: autorizacoesProdutosRepresentantesTable.comissaoTipo,
       valor: autorizacoesProdutosRepresentantesTable.comissaoValor,

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { CategoryBreadcrumb } from "@/components/common/category-breadcrumb";
 import { CampoMensagemAtendente } from "@/features/atendimento-ia";
+import {AtendimentoPublicoJaaa} from "@/features/fornecedores/components/store/jaaa/atendimento-publico-jaaa";
 import { Header } from "@/features/header";
 
 import type { ProdutoRelacionadoPdp } from "../queries/buscar-produtos-relacionados-pdp";
@@ -109,6 +110,7 @@ export function PaginaProdutoAprovada({
           <div className="flex min-w-0 flex-col gap-5 min-[800px]:col-span-7 lg:gap-6">
             {informacoes}
             {caixaCompra}
+            {!modoPreVisualizacao && <AtendimentoPublicoJaaa produtoId={produtoId}/>}
           </div>
         </section>
 

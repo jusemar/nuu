@@ -25,12 +25,16 @@ import {
   validarDeltaSnapshotAmbientesLaquila,
   validarDeltaSnapshotAtivacaoComissao,
   validarDeltaSnapshotColunasLegadasEntregaPropria,
+  validarDeltaSnapshotComissionadoProduto,
+  validarDeltaSnapshotComissoesPedidos,
   validarDeltaSnapshotConsolidacaoEntregaPropria,
   validarDeltaSnapshotConviteAdministrativo,
   validarDeltaSnapshotDisponibilidadeFreteExterno,
   validarDeltaSnapshotEntregaPropriaCategoria,
   validarDeltaSnapshotIntegridadeEntregaPropria,
+  validarDeltaSnapshotJaaa,
   validarDeltaSnapshotOperacaoRepresentantes,
+  validarDeltaSnapshotPainelComissoes,
   validarDeltaSnapshotPoliticasEntregaPropria,
   validarDeltaSnapshotRbacGlobal,
   validarDeltaSnapshotRepresentantes,
@@ -459,6 +463,22 @@ function validarArquivosLocais(migrations: MigrationLocal[]) {
   const entradas = journal.entries ?? [];
   try {
     validarSequenciaLocal(migrations, entradas);
+    validarDeltaSnapshotJaaa(
+      JSON.parse(readFileSync("drizzle/meta/0063_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0064_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotPainelComissoes(
+      JSON.parse(readFileSync("drizzle/meta/0062_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0063_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotComissionadoProduto(
+      JSON.parse(readFileSync("drizzle/meta/0061_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0062_snapshot.json", "utf8")),
+    );
+    validarDeltaSnapshotComissoesPedidos(
+      JSON.parse(readFileSync("drizzle/meta/0060_snapshot.json", "utf8")),
+      JSON.parse(readFileSync("drizzle/meta/0061_snapshot.json", "utf8")),
+    );
     validarDeltaSnapshotAtivacaoComissao(
       JSON.parse(readFileSync("drizzle/meta/0059_snapshot.json", "utf8")),
       JSON.parse(readFileSync("drizzle/meta/0060_snapshot.json", "utf8")),

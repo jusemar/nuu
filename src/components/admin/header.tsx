@@ -29,6 +29,8 @@ export const AdminHeader = ({ usuario, empresa }: AdminHeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const titulosPorRota: Array<[string, string]> = [
+    ["/admin/comissoes-representantes", "Vendas / Comissões"],
+    ["/admin/atendimento-jaaa", "Atendimento Jaaa"],
     ["/admin/products", "Produtos"],
     ["/admin/orders", "Pedidos"],
     ["/admin/categories", "Categorias"],

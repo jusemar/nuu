@@ -31,6 +31,7 @@ export {
   checkoutEstoqueAlocacaoStatusEnum,
   checkoutEstoqueAlocacoesTable,
 } from "./tabelas/estoque-alocacoes";
+export * from "./tabelas/item-comissoes";
 export { checkoutPagamentosTable } from "./tabelas/pagamentos";
 export { checkoutPedidoCancelamentosTable } from "./tabelas/pedido-cancelamentos";
 export { checkoutPedidoHistoricosTable } from "./tabelas/pedido-historicos";

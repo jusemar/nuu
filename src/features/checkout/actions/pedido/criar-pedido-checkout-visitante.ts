@@ -30,6 +30,7 @@ import {
   calcularParcelamentosCartao,
 } from "@/features/precificacao/server";
 import { VALOR_MINIMO_PAGAMENTO_APOS_FIDELIDADE_EM_CENTAVOS } from "@/features/programa-fidelidade/constants/resgate-fidelidade";
+import { ratearCupomEntreItens } from "@/features/programa-fidelidade/lib/calcular-pontos-pedido";
 import {
   calcularCreditoPontos,
   calcularLimitesResgate,
@@ -76,6 +77,7 @@ import {
   type CheckoutVisitanteSchema,
   checkoutVisitanteSchema,
 } from "../../schemas/checkout.schema";
+import { capturarComissoesNoCheckoutSeguro } from "../comissoes-representantes/capturar-comissoes-checkout";
 
 type LinhaNumeroPedido = {
   numeroPedido: string;
@@ -1451,14 +1453,24 @@ export async function criarPedidoCheckoutVisitanteInterno({
       descontoCupomEmCentavos,
       creditoFidelidadeEmCentavos: resgateCalculado?.creditoEmCentavos ?? 0,
     });
-    await tx.insert(checkoutPedidoItensTable).values(
+    // IDs ambíguos não impedem a venda, mas não produzem base de comissão atribuível.
+    const basesComissaoConfiaveis = new Set(dados.itens.map(item=>item.id)).size === dados.itens.length;
+    const rateioCupom = ratearCupomEntreItens({
+      itens:itensPedido.map((item,indice)=>({id:dados.itens[indice]!.id,valorBrutoEmCentavos:item.totalEmCentavos})),
+      descontoCupomEmCentavos,
+    });
+    const itensGravados = await tx.insert(checkoutPedidoItensTable).values(
       itensPedido.map((item, indice) => ({
         pedidoId: pedido.id,
         ...item,
+        precoComercialUnitarioEmCentavos: basesComissaoConfiaveis ? previaTotaisPedido.itensComerciais.find(base=>base.id===dados.itens[indice]!.id)?.precoUnitarioEmCentavos ?? null : null,
+        descontoCupomRateadoEmCentavos: basesComissaoConfiaveis ? rateioCupom.get(dados.itens[indice]!.id) ?? 0 : null,
         creditoFidelidadeRateadoEmCentavos:
           rateioFidelidade.get(dados.itens[indice]!.id) ?? 0,
       })),
-    );
+    ).returning();
+
+    await capturarComissoesNoCheckoutSeguro(tx,pedido.id,itensGravados);
 
     // Pedido, itens, estoque e alocações só ficam visíveis juntos no commit.
     await alocarEstoqueLocalPedido(tx, pedido.id, quantidadePorVariante);

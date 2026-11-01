@@ -21,6 +21,7 @@ import {
   reembolsarPagamento,
 } from "../../lib/gateways/reembolsos";
 import { cancelarPedidoClienteSchema } from "../../schemas/cancelamento-pedido.schema";
+import { processarComissoesPedidoSeguro } from "../comissoes-representantes/processar-comissoes-pedido";
 import { liberarAlocacoesEstoquePedido } from "../estoque/liberar-alocacoes-estoque-pedido";
 
 export type EstadoCancelarPedido = {
@@ -162,6 +163,7 @@ export async function cancelarPedidoCliente(
     });
     // O cancelamento e a devolução física pré-expedição fazem parte do mesmo commit.
     await liberarAlocacoesEstoquePedido(tx, pedido.id);
+    await processarComissoesPedidoSeguro(tx,pedido.id);
     await processarEventoPedidoFidelidade(tx, pedido.id, "pedido_cancelado");
     return {
       tipo: exigeReembolso ? ("reembolsar" as const) : ("cancelado" as const),
@@ -275,6 +277,7 @@ export async function cancelarPedidoCliente(
           .update(checkoutPedidosTable)
           .set({ status: "refunded", updatedAt: agora })
           .where(eq(checkoutPedidosTable.id, preparacao.pedido.id));
+        await processarComissoesPedidoSeguro(tx,preparacao.pedido.id);
         await processarEventoPedidoFidelidade(
           tx,
           preparacao.pedido.id,

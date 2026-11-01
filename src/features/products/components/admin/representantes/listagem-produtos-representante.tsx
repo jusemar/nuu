@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {MeuAcessoJaaa} from "@/features/fornecedores/components/admin/jaaa/acesso-real-jaaa";
 
 import { consultarProdutosRepresentante } from "../../../actions/representantes/consultar-produtos-representante";
 import { chavesProdutosRepresentante } from "../../../constants/representantes/query-keys";
@@ -53,6 +54,7 @@ export function ListagemProdutosRepresentante({
           </Button>
         )}
       </div>
+      <MeuAcessoJaaa/>
       <Input
         aria-label="Pesquisar produtos"
         placeholder="Buscar por nome, SKU ou código"

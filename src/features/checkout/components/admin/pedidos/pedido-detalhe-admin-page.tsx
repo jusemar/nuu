@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { ResumoSincronizacaoPedidoLaquila } from "@/features/fornecedores/integracoes/laquila/components/admin/resumo-sincronizacao-pedido-laquila";
 import { PainelRecebimentoPagamentoEntrega } from "@/features/pagamento-na-entrega/components/admin/painel-recebimento-pagamento-entrega";
+import { ROTULO_MODALIDADE_FORNECEDOR } from "@/features/precificacao/constants/rotulo-fornecedor";
 
 import {
   PAGAMENTO_GATEWAY_LABEL,
@@ -139,7 +140,7 @@ function ItensPedido({ pedido }: { pedido: PedidoAdminDetalhe }) {
               {item.modalidade &&
               Object.keys(item.atributosVariante).length === 0 ? (
                 <div>
-                  <div>{item.modalidade}</div>
+                  <div>{item.modalidade === "dropshipping" ? ROTULO_MODALIDADE_FORNECEDOR : item.modalidade}</div>
                   <div className="text-xs text-slate-500">
                     {item.prazoModalidade}
                   </div>

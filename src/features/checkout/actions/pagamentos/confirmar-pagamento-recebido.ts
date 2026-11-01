@@ -4,6 +4,7 @@ import { checkoutPedidosTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
 import { resolverStatusOperacionalPedidoAposPagamento } from "../../lib/pedidos/resolver-status-operacional-pedido";
+import { processarComissoesPedidoSeguro } from "../comissoes-representantes/processar-comissoes-pedido";
 import { reobterRecursosPedidoPago } from "../estoque/reobter-recursos-pedido-pago";
 
 type TransacaoBanco = Parameters<Parameters<typeof dbTransacional.transaction>[0]>[0];
@@ -28,6 +29,7 @@ export async function confirmarPagamentoRecebido(
   // Um webhook/reconciliador repetido não re-reserva pontos já consumidos nem
   // tenta realocar estoque novamente depois do primeiro commit bem-sucedido.
   if (pedido.pagamentoStatus === "paid") {
+    await processarComissoesPedidoSeguro(tx,pedidoId);
     return {
       recursos: ["processing", "paid", "shipped", "delivered"].includes(pedido.status)
         ? "prontos"
@@ -40,6 +42,7 @@ export async function confirmarPagamentoRecebido(
     await tx.update(checkoutPedidosTable)
       .set({ pagamentoStatus: "paid", updatedAt: new Date() })
       .where(eq(checkoutPedidosTable.id, pedidoId));
+    await processarComissoesPedidoSeguro(tx,pedidoId);
     return { recursos: "indisponiveis", statusOperacional: pedido.status };
   }
 
@@ -50,5 +53,6 @@ export async function confirmarPagamentoRecebido(
   await tx.update(checkoutPedidosTable)
     .set({ status: statusOperacional, pagamentoStatus: "paid", updatedAt: new Date() })
     .where(eq(checkoutPedidosTable.id, pedidoId));
+  await processarComissoesPedidoSeguro(tx,pedidoId);
   return { recursos, statusOperacional };
 }

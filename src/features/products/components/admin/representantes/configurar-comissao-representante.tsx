@@ -26,6 +26,7 @@ import {
 import { consultarPerfilProdutosAdmin } from "../../../actions/representantes/consultar-produtos-representante";
 import { chavesProdutosRepresentante } from "../../../constants/representantes/query-keys";
 import { converterValorComissao } from "../../../lib/comissoes-representantes/converter-valor-comissao";
+import { ComissionadoProximasVendas } from "./comissionado-proximas-vendas";
 
 const schema = z.object({
   tipo: z.enum(["nenhuma", "percentual", "fixa"]),
@@ -181,8 +182,7 @@ export function ConfigurarComissaoRepresentante({
         <DialogHeader>
           <DialogTitle>Comissão do representante</DialogTitle>
           <DialogDescription>
-            Configuração de exibição por autorização individual. Não registra
-            vendas ou valores ganhos.
+            Regra por autorização individual e representante único para as próximas vendas. Pedidos antigos mantêm seus snapshots.
           </DialogDescription>
         </DialogHeader>
         {comissoes.isPending ? (
@@ -196,6 +196,7 @@ export function ConfigurarComissaoRepresentante({
           </p>
         ) : (
           <>
+            <ComissionadoProximasVendas key={comissoes.data.find(c=>c.comissionadoProximasVendas)?.id??"nenhum"} produtoId={produtoId} opcoes={comissoes.data} />
             <label className="space-y-2 text-sm">
               <span>Representante e fornecedor</span>
               <select

@@ -119,6 +119,18 @@ type EntradaMenuAdmin = ItemMenuAdmin | GrupoMenuAdmin;
  * Dados do menu - estrutura hierárquica completa
  */
 export const menuAdmin: EntradaMenuAdmin[] = [
+  {
+    id: "atendimento-jaaa",
+    label: "Atendimento Jaaa",
+    href: "/admin/atendimento-jaaa",
+    icon: "Users",
+  },
+  {
+    id: "comissoes-representantes",
+    label: "Comissões de representantes",
+    href: "/admin/comissoes-representantes",
+    icon: "Percent",
+  },
   // Item solto: Dashboard
   {
     id: "dashboard",
@@ -528,9 +540,11 @@ export function filtrarMenuAdmin(
 export function AdminSidebar({
   permissoes,
   representante = false,
+  gestorComissoes = false,
 }: {
   permissoes: string[];
   representante?: boolean;
+  gestorComissoes?: boolean;
 }) {
   const menuPermitido: EntradaMenuAdmin[] = representante
     ? [
@@ -540,8 +554,27 @@ export function AdminSidebar({
           href: "/admin/products",
           icon: "Package",
         },
+        {
+          id: "vendas-comissoes",
+          label: "Vendas / Comissões",
+          href: "/admin/comissoes-representantes",
+          icon: "Percent",
+        },
+        {
+          id: "jaaa",
+          label: "Jaaa",
+          href: "/admin/atendimento-jaaa",
+          icon: "Users",
+        },
       ]
-    : filtrarMenuAdmin(menuAdmin, new Set(permissoes));
+    : filtrarMenuAdmin(
+        menuAdmin.filter(
+          (e) =>
+            gestorComissoes ||
+            !["comissoes-representantes", "atendimento-jaaa"].includes(e.id),
+        ),
+        new Set(permissoes),
+      );
   // Hook que controla estado (aberto/fechado, expandido/recolhido)
   const {
     isCollapsed,
@@ -766,7 +799,9 @@ export function AdminSidebar({
           .filter(
             (entrada): entrada is ItemMenuAdmin =>
               "href" in entrada &&
-              ["dashboard", "orders", "products"].includes(entrada.id),
+              ["dashboard", "orders", "products", "vendas-comissoes"].includes(
+                entrada.id,
+              ),
           )
           .map((item) => {
             const ativo = isActive(item.href);

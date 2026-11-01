@@ -14,6 +14,7 @@ import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/
 
 import { montarDescricaoAlteracaoManualStatus } from "../../lib/admin-pedidos/montar-descricao-historico-pedido";
 import { alterarStatusPedidoAdminSchema } from "../../schemas/admin-pedidos.schema";
+import { processarComissoesPedidoSeguro } from "../comissoes-representantes/processar-comissoes-pedido";
 import { liberarAlocacoesEstoquePedido } from "../estoque/liberar-alocacoes-estoque-pedido";
 
 export type EstadoAlterarStatusPedidoAdmin = {
@@ -129,6 +130,7 @@ export async function alterarStatusPedidoAdmin(
         await processarEventoPedidoFidelidade(tx, pedidoId, "pedido_cancelado");
       }
 
+      await processarComissoesPedidoSeguro(tx,pedidoId);
       return {
         atualizado: true,
         mensagem: "Status do pedido atualizado com sucesso.",

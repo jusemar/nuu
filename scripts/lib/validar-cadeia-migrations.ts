@@ -1,8 +1,8 @@
 export const ANCORA_MIGRATIONS = {
-  total: 61,
-  ultimoIndice: 60,
-  ultimaTag: "0060_ativacao_comissao_representante",
-  ultimoArquivo: "drizzle/0060_ativacao_comissao_representante.sql",
+  total: 65,
+  ultimoIndice: 64,
+  ultimaTag: "0064_vinculos_atendimento_jaaa",
+  ultimoArquivo: "drizzle/0064_vinculos_atendimento_jaaa.sql",
 } as const;
 
 export type MigrationLocalValidacao = {
@@ -1048,4 +1048,138 @@ export function validarDeltaSnapshotAtivacaoComissao(
       serializarCanonico(copia[grupo]) !== serializarCanonico(anterior[grupo])
     )
       falhar(`0060 alterou indevidamente ${grupo}.`);
+}
+
+/** 0061 só acrescenta bases históricas e as duas tabelas aditivas da comissão por item. */
+export function validarDeltaSnapshotComissoesPedidos(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0060/0061 não estão encadeados.");
+  const copia = structuredClone(atual);
+  for (const nome of [
+    "public.checkout_item_comissoes",
+    "public.checkout_item_comissao_eventos",
+  ]) {
+    if (nome in anterior.tables || !(nome in copia.tables))
+      falhar("Tabela de comissão inesperada.");
+    delete copia.tables[nome];
+  }
+  const itens = copia.tables["public.checkout_pedido_itens"] as {
+    columns: Record<string, unknown>;
+  };
+  for (const nome of [
+    "preco_comercial_unitario_em_centavos",
+    "desconto_cupom_rateado_em_centavos",
+  ]) {
+    if (!itens.columns[nome]) falhar("Base histórica ausente.");
+    delete itens.columns[nome];
+  }
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const)
+    if (
+      serializarCanonico(copia[grupo]) !== serializarCanonico(anterior[grupo])
+    )
+      falhar(`0061 alterou indevidamente ${grupo}.`);
+}
+
+/** Correção: uma escolha explícita por produto, sem tocar nos snapshots 0061. */
+export function validarDeltaSnapshotComissionadoProduto(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0061/0062 não estão encadeados.");
+  const copia = structuredClone(atual),
+    nome = "public.representantes_comissionados_produtos";
+  if (nome in anterior.tables || !copia.tables[nome])
+    falhar("Escolha única por produto ausente.");
+  delete copia.tables[nome];
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const)
+    if (
+      serializarCanonico(copia[grupo]) !== serializarCanonico(anterior[grupo])
+    )
+      falhar(`0062 alterou indevidamente ${grupo}.`);
+}
+
+/** 0063 acrescenta somente quitação externa e índices usados pelas consultas do painel. */
+export function validarDeltaSnapshotPainelComissoes(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0062/0063 não estão encadeados.");
+  const copia = structuredClone(atual),
+    nome = "public.checkout_item_comissao_quitacoes";
+  if (nome in anterior.tables || !copia.tables[nome])
+    falhar("Quitação auditável ausente.");
+  delete copia.tables[nome];
+  const tabela = copia.tables["public.checkout_item_comissoes"] as {
+    indexes: Record<string, unknown>;
+  };
+  for (const i of [
+    "checkout_item_comissoes_titular_data_idx",
+    "checkout_item_comissoes_data_idx",
+  ]) {
+    if (!tabela.indexes[i]) falhar("Índice do painel ausente.");
+    delete tabela.indexes[i];
+  }
+  for (const g of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const)
+    if (serializarCanonico(copia[g]) !== serializarCanonico(anterior[g]))
+      falhar(`0063 alterou indevidamente ${g}.`);
+}
+
+/** 0064 inclui somente identidade pública e destino explícito de atendimento; não altera histórico. */
+export function validarDeltaSnapshotJaaa(
+  anterior: SnapshotDrizzle,
+  atual: SnapshotDrizzle,
+) {
+  if (atual.prevId !== anterior.id)
+    falhar("Snapshots 0063/0064 não encadeados.");
+  const copia = structuredClone(atual);
+  for (const nome of [
+    "public.identidades_jaaa_representantes",
+    "public.atendimentos_jaaa_produtos",
+  ]) {
+    if (nome in anterior.tables || !copia.tables[nome])
+      falhar("Vínculo Jaaa ausente.");
+    delete copia.tables[nome];
+  }
+  for (const grupo of [
+    "tables",
+    "enums",
+    "schemas",
+    "sequences",
+    "roles",
+    "policies",
+    "views",
+  ] as const)
+    if (
+      serializarCanonico(copia[grupo]) !== serializarCanonico(anterior[grupo])
+    )
+      falhar(`0064 alterou indevidamente ${grupo}.`);
 }

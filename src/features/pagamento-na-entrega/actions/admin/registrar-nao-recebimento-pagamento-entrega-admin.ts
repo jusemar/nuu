@@ -13,6 +13,7 @@ import { dbTransacional } from "@/db/transaction";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { buscarSessaoAdmin } from "@/features/autenticacao/queries/sessao/buscar-sessao-admin";
+import { processarComissoesPedidoSeguro } from "@/features/checkout/actions/comissoes-representantes/processar-comissoes-pedido";
 import { liberarAlocacoesEstoquePedido } from "@/features/checkout/actions/estoque/liberar-alocacoes-estoque-pedido";
 import { processarEventoPedidoFidelidade } from "@/features/programa-fidelidade/lib/processar-evento-pedido-fidelidade";
 
@@ -162,6 +163,7 @@ export async function registrarNaoRecebimentoPagamentoEntregaAdmin(
         },
       });
 
+      await processarComissoesPedidoSeguro(tx,dados.pedidoId);
       await processarEventoPedidoFidelidade(
         tx,
         dados.pedidoId,

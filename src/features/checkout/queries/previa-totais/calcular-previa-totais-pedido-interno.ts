@@ -106,6 +106,7 @@ export type TotalPreviaFormaPagamento = TotaisCheckout & {
 };
 
 export type ResultadoCalcularPreviaTotaisPedido = {
+  itensComerciais: Array<{id:string;precoUnitarioEmCentavos:number}>;
   sucesso: true;
   cupom: ResultadoValidarCupomPromocao | null;
   freteGratisProgressivo: ResultadoFreteGratisProgressivo;
@@ -538,6 +539,8 @@ export async function calcularPreviaTotaisPedidoInterno({
 
   return {
     sucesso: true,
+    // Dados comerciais da MESMA cotação oficial, sem taxa de cartão/parcelamento.
+    itensComerciais: resumo.itens.map(item=>({id:item.id,precoUnitarioEmCentavos:item.pix.valorEmCentavos})),
     cupom: cupomCartao ?? cupomPix,
     freteGratisProgressivo,
     freteGratisAtingido: freteGratisProgressivo.freteGratisAtingido,

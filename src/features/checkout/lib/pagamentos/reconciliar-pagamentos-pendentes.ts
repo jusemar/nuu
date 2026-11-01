@@ -5,6 +5,7 @@ import { and, asc, eq, isNotNull, lte } from "drizzle-orm";
 import { checkoutPagamentosTable } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
+import { reconciliarComissoesPendentes } from "../../actions/comissoes-representantes/reconciliar-comissoes-pendentes";
 import { consultarCobrancaPixEfi } from "../gateways/efi/pix-efi";
 import { processarWebhookPixEfi } from "../gateways/efi/webhook-efi";
 import { obterStripe } from "../gateways/stripe/cliente-stripe";
@@ -177,5 +178,6 @@ export async function reconciliarPagamentosPendentes() {
     reconciliarStripe(),
   ]);
 
-  return { executadoEm: agora.toISOString(), pix, stripe };
+  const comissoes=await reconciliarComissoesPendentes();
+  return { executadoEm: agora.toISOString(), pix, stripe, comissoes };
 }

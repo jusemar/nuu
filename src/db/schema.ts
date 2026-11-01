@@ -904,5 +904,9 @@ export const feriadosRelationsRetirada = relations(
   }),
 );
 
+export * from "./tables/checkout/tabelas/item-comissao-quitacoes";
+export * from "./tables/checkout/tabelas/item-comissoes";
+export * from "./tables/representantes-fornecedores/comissionado-produto";
+export * from "./tables/representantes-fornecedores/jaaa";
 export * from "./tables/representantes-fornecedores/relacoes";
 export * from "./tables/representantes-fornecedores/tabelas";

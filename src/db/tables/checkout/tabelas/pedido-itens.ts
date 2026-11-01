@@ -34,6 +34,9 @@ export const checkoutPedidoItensTable = pgTable(
     quantidade: integer("quantidade").notNull(),
     precoUnitarioEmCentavos: integer("preco_unitario_em_centavos").notNull(),
     totalEmCentavos: integer("total_em_centavos").notNull(),
+    // Novos itens congelam a base comercial; NULL legado impede cálculo retroativo.
+    precoComercialUnitarioEmCentavos: integer("preco_comercial_unitario_em_centavos"),
+    descontoCupomRateadoEmCentavos: integer("desconto_cupom_rateado_em_centavos"),
     creditoFidelidadeRateadoEmCentavos: integer(
       "credito_fidelidade_rateado_em_centavos",
     )

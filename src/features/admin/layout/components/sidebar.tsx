@@ -248,6 +248,12 @@ export const menuAdmin: EntradaMenuAdmin[] = [
         icon: "Building2",
       },
       {
+        id: "fornecedores-representantes",
+        label: "Representantes",
+        href: "/admin/fornecedores/representantes",
+        icon: "Users",
+      },
+      {
         id: "fornecedores-catalogos",
         label: "Catálogos de fornecedores",
         href: "/admin/fornecedores",
@@ -502,6 +508,7 @@ const permissaoPorItem: Partial<Record<string, PermissaoAdministrativaChave>> =
     "retirada-local": "logistica.visualizar",
     shipping: "logistica.visualizar",
     "fornecedores-visao-geral": "fornecedores.visualizar",
+    "fornecedores-representantes": "administradores.administrar",
     "fornecedores-catalogos": "fornecedores.visualizar",
     "fornecedores-produtos": "fornecedores.visualizar",
     "fornecedores-configuracoes": "fornecedores.administrar",

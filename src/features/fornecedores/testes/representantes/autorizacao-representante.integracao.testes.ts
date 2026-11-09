@@ -89,12 +89,29 @@ test("integração PostgreSQL: preservação, integridade e isolamento de repres
       "product_pricing",
       "fornecedor_produto_vinculos",
     ];
+    // Migrations posteriores podem acrescentar colunas; compare os campos que já existiam no recorte.
+    const colunasOriginais = new Map<string, string[]>();
+    for (const tabela of tabelas) {
+      const linhas = await pool.query<{ column_name: string }>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position",
+        [tabela],
+      );
+      colunasOriginais.set(
+        tabela,
+        linhas.rows.map((linha) => linha.column_name),
+      );
+    }
     async function retrato() {
       const resultado: Record<string, unknown[]> = {};
-      for (const tabela of tabelas)
+      for (const tabela of tabelas) {
+        const campos = colunasOriginais
+          .get(tabela)!
+          .map((coluna) => `"${coluna}"`)
+          .join(",");
         resultado[tabela] = (
-          await pool!.query(`SELECT * FROM "${tabela}" ORDER BY id`)
+          await pool!.query(`SELECT ${campos} FROM "${tabela}" ORDER BY id`)
         ).rows;
+      }
       return resultado;
     }
     const antes = await retrato();
@@ -324,6 +341,14 @@ test("integração PostgreSQL: preservação, integridade e isolamento de repres
           "INSERT INTO administradores (id,usuario_id,administrador_principal) VALUES ($1,'usuario-a',false),($2,'gestor',true)",
           [adminA, adminGestor],
         );
+        // A ação do gestor exige a função real, além das permissões de acesso.
+        await pool!.query(
+          "INSERT INTO funcoes_administrativas (chave,nome) VALUES ('representante_fornecedor','Representante fornecedor') ON CONFLICT (chave) DO NOTHING",
+        );
+        await pool!.query(
+          "INSERT INTO administradores_funcoes (administrador_id,funcao_id) SELECT $1,id FROM funcoes_administrativas WHERE chave='representante_fornecedor'",
+          [adminA],
+        );
         for (const chave of [
           "representantes_produtos.administrar",
           "representantes_produtos.visualizar",
@@ -437,6 +462,26 @@ test("integração PostgreSQL: preservação, integridade e isolamento de repres
           /ACESSO_PRODUTO_REPRESENTANTE_NEGADO/,
         );
         usuarioSessao = "gestor";
+        await assert.rejects(
+          executar(() =>
+            salvarVinculoRepresentante({
+              usuarioId: "usuario-b",
+              fornecedorId: fornecedorA,
+              ativo: true,
+            }),
+          ),
+          /REPRESENTANTE_OU_FORNECEDOR_INVALIDO/,
+        );
+        await assert.rejects(
+          executar(() =>
+            salvarAutorizacaoProdutoRepresentante({
+              representanteFornecedorId: segundoVinculo,
+              produtoId: produtoB,
+              ativa: true,
+            }),
+          ),
+          /PRODUTO_FORNECEDOR_INVALIDO/,
+        );
         await executar(() =>
           exigirAcessoProdutoRepresentante("visualizar", {
             fornecedorId: fornecedorB,

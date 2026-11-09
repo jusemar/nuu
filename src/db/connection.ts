@@ -12,7 +12,6 @@ import { Pool } from "pg";
 import {
   ehBancoLocal,
   validarDestinoBancoDesenvolvimento,
-  VARIAVEL_NEON_EXPLICITO,
 } from "./destino-banco-desenvolvimento";
 import * as schema from "./schema";
 export { productVariantTable } from "./table/products/product-variants";
@@ -76,11 +75,10 @@ function resolverUrlDoBanco(): string {
 
 const urlBanco = resolverUrlDoBanco();
 
-// `next dev` só aceita Neon quando iniciado por `npm run dev:neon`.
+// `next dev` aceita exclusivamente o PostgreSQL local.
 validarDestinoBancoDesenvolvimento({
   url: urlBanco,
   ambienteNode: process.env.NODE_ENV,
-  neonExplicito: process.env[VARIAVEL_NEON_EXPLICITO],
 });
 
 function criarBancoPostgresLocal() {

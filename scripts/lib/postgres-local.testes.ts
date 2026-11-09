@@ -36,26 +36,17 @@ test("log do destino nunca mostra a senha", () => {
   assert.equal(texto.includes("segredo"), false);
 });
 
-test("next dev recusa Neon sem o sinal explícito do dev:neon", () => {
+test("next dev recusa qualquer banco Neon", () => {
   assert.throws(() =>
     validarDestinoBancoDesenvolvimento({
       url: URL_NEON,
       ambienteNode: "development",
-      neonExplicito: undefined,
-    }),
-  );
-  assert.doesNotThrow(() =>
-    validarDestinoBancoDesenvolvimento({
-      url: URL_NEON,
-      ambienteNode: "development",
-      neonExplicito: "sim",
     }),
   );
   assert.doesNotThrow(() =>
     validarDestinoBancoDesenvolvimento({
       url: URL_LOCAL,
       ambienteNode: "development",
-      neonExplicito: undefined,
     }),
   );
   // Vercel/produção e scripts não passam por esta trava.
@@ -63,7 +54,6 @@ test("next dev recusa Neon sem o sinal explícito do dev:neon", () => {
     validarDestinoBancoDesenvolvimento({
       url: URL_NEON,
       ambienteNode: "production",
-      neonExplicito: undefined,
     }),
   );
 });
@@ -97,5 +87,6 @@ test("comandos: dev é local, Neon só em comandos explícitos", () => {
 test("lançador do dev nunca reescreve arquivos .env", () => {
   const lancador = readFileSync("scripts/iniciar-dev.ts", "utf8");
   assert.equal(/writeFile|appendFile|copyFile|rename/.test(lancador), false);
-  assert.equal(lancador.includes("NOOO_BANCO_NEON_EXPLICITO"), true);
+  assert.equal(lancador.includes("BLOQUEADO"), true);
+  assert.equal(lancador.includes(".env.dev-neon.local"), false);
 });

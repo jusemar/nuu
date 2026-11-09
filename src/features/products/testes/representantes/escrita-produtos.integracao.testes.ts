@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import test from "node:test";
 
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -614,7 +615,50 @@ test("Etapa 4: escrita real, revogação e dados comerciais em PostgreSQL descar
     );
     await t.test(
       "imagens só podem ser enviadas, ordenadas ou removidas no produto autorizado",
-      async () => {
+      async (imagemTeste) => {
+        // Banco descartável e SDK em memória: nenhuma imagem ou credencial real
+        // participa do teste, mesmo ao simular o ramo de execução do Blob.
+        const ambienteAnterior = {
+          NODE_ENV: process.env.NODE_ENV,
+          NOOO_BANCO: process.env.NOOO_BANCO,
+          BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
+        };
+        imagemTeste.after(() => {
+          for (const [nome, valor] of Object.entries(ambienteAnterior)) {
+            if (valor === undefined) delete process.env[nome];
+            else process.env[nome] = valor;
+          }
+        });
+        const blob = createRequire(import.meta.url)(
+          "@vercel/blob",
+        ) as typeof import("@vercel/blob");
+        const envios: string[] = [];
+        imagemTeste.mock.method(globalThis, "fetch", async () => {
+          throw new Error("Rede proibida no teste de imagens.");
+        });
+        imagemTeste.mock.method(
+          blob,
+          "put",
+          async (
+            ...[caminho, , opcoes]: Parameters<typeof blob.put>
+          ) => {
+            assert.equal(opcoes.access, "public");
+            envios.push(caminho);
+            return {
+              url: `https://storage.fixture.invalid/${caminho}`,
+              downloadUrl: `https://storage.fixture.invalid/${caminho}?download=1`,
+              pathname: caminho,
+              contentType: "image/png",
+              contentDisposition: "inline",
+            };
+          },
+        );
+        imagemTeste.mock.method(blob, "del", async () => {});
+        Object.assign(process.env, {
+          NODE_ENV: "production",
+          NOOO_BANCO: "fixture",
+          BLOB_READ_WRITE_TOKEN: "fixture-sem-credencial-real",
+        });
         const png = Buffer.from(
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=",
           "base64",
@@ -630,6 +674,7 @@ test("Etapa 4: escrita real, revogação e dados comerciais em PostgreSQL descar
           return executar(() => enviarImagemProdutoRepresentante(form));
         };
         assert.equal((await enviar(produtoB)).sucesso, false);
+        assert.equal(envios.length, 0);
         const imagem = await enviar(produtoA);
         assert.ok(imagem.sucesso);
         assert.equal(
@@ -658,31 +703,45 @@ test("Etapa 4: escrita real, revogação e dados comerciais em PostgreSQL descar
           ).sucesso,
           false,
         );
-        const { GET } = await import(
-          "@/app/api/imagens-representante-local/[imagemId]/route"
-        );
-        const localId = (await detalhe()).imagens[0].url.split("/").pop()!;
+        const urlPersistida = (await detalhe()).imagens[0].url;
         assert.equal(
-          (
-            await executar(() =>
-              GET(new Request("http://localhost"), {
-                params: Promise.resolve({ imagemId: localId }),
-              }),
-            )
-          ).status,
-          200,
+          urlPersistida,
+          `https://storage.fixture.invalid/${envios[0]}`,
         );
+        assert.match(envios[0], new RegExp(`^products/${produtoA}/`));
         usuario = "rep-b";
-        assert.equal(
-          (
-            await executar(() =>
-              GET(new Request("http://localhost"), {
-                params: Promise.resolve({ imagemId: localId }),
-              }),
-            )
-          ).status,
-          404,
+        await assert.rejects(detalhe());
+        usuario = "gestor";
+        const { getProductById } = await import(
+          "@/features/admin/products/service/getProductById"
         );
+        const leituraGestor = await executar(() => getProductById(produtoA));
+        assert.ok(leituraGestor.success);
+        assert.equal(leituraGestor.data?.images[0].url, urlPersistida);
+        const [antesDaPublicacao] = (
+          await pool!.query("SELECT status,slug FROM product WHERE id=$1", [
+            produtoA,
+          ])
+        ).rows;
+        try {
+          // Apenas a fixture descartável muda de estado. A leitura pública real
+          // deve retornar a mesma URL Blob sem consultar sessão administrativa.
+          await pool!.query(
+            "UPDATE product SET status='published' WHERE id=$1",
+            [produtoA],
+          );
+          usuario = null;
+          const { getProductBySlug } = await import(
+            "@/features/store/products/service/productService"
+          );
+          const publico = await getProductBySlug(antesDaPublicacao.slug);
+          assert.equal(publico?.galleryImages[0].imageUrl, urlPersistida);
+        } finally {
+          await pool!.query("UPDATE product SET status=$2 WHERE id=$1", [
+            produtoA,
+            antesDaPublicacao.status,
+          ]);
+        }
         usuario = "rep-a";
         assert.ok(
           (

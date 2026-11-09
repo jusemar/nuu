@@ -1,7 +1,4 @@
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
-
-import { parse } from "dotenv";
 
 import {
   consultarMigrationsLocais,
@@ -13,19 +10,11 @@ import {
  * Lançador do servidor de desenvolvimento.
  *
  *   npm run dev       → Next local + PostgreSQL LOCAL persistente (padrão seguro)
- *   npm run dev:neon  → Next local + Neon, somente neste processo
+ *   npm run dev:neon  → recusado: localhost nunca utiliza Neon
  *
- * A escolha vale apenas para o processo iniciado: nenhum arquivo `.env*` é
- * reescrito. O Next.js não sobrescreve variáveis já presentes no ambiente, então
- * DATABASE_URL (e APP_ENVIRONMENT no modo Neon) definidos aqui vencem `.env.local`.
- * Ao encerrar `dev:neon`, o próximo `npm run dev` volta ao banco local.
+ * O lançador resolve e valida o PostgreSQL local antes de iniciar o Next. Nenhum
+ * arquivo `.env*` é reescrito e nenhuma configuração remota é carregada.
  */
-
-const ARQUIVO_NEON = ".env.dev-neon.local";
-
-function descreverHost(url: string) {
-  return new URL(url).hostname;
-}
 
 async function ambienteLocal() {
   const { url, versao } = await garantirPostgresLocal();
@@ -38,61 +27,26 @@ async function ambienteLocal() {
       `[dev] ATENÇÃO: ${migrations.noRepositorio - migrations.aplicadas} migration(s) pendente(s) no banco local. Rode \`npm run migrations:local\`.`,
     );
   }
-  // Nunca herda a marca do modo Neon (ex.: terminal reaproveitado).
   const ambiente: NodeJS.ProcessEnv = {
     ...process.env,
     DATABASE_URL: url,
     NOOO_BANCO: "local",
   };
-  delete ambiente.NOOO_BANCO_NEON_EXPLICITO;
   return ambiente;
-}
-
-function ambienteNeon() {
-  let variaveis: Record<string, string>;
-  try {
-    variaveis = parse(readFileSync(ARQUIVO_NEON));
-  } catch {
-    throw new Error(
-      `${ARQUIVO_NEON} não encontrado. Veja docs/ambientes-banco-e-scripts.md.`,
-    );
-  }
-  const url = variaveis.DATABASE_URL?.trim() ?? "";
-  let host = "";
-  try {
-    host = descreverHost(url);
-  } catch {
-    throw new Error(`DATABASE_URL inválida em ${ARQUIVO_NEON}.`);
-  }
-  if (!host.endsWith(".neon.tech")) {
-    throw new Error(`${ARQUIVO_NEON} precisa apontar para um endpoint Neon.`);
-  }
-  // Nenhuma conexão é aberta aqui: a Neon só é acessada pela aplicação.
-  console.warn("┌──────────────────────────────────────────────────────────");
-  console.warn("│ [dev:neon] APLICAÇÃO LOCAL + BANCO NEON (explícito)");
-  console.warn(`│ host: ${host}`);
-  console.warn(
-    `│ APP_ENVIRONMENT: ${variaveis.APP_ENVIRONMENT ?? "(de .env.local)"}`,
-  );
-  console.warn("│ Consome compute da Neon. Encerre com Ctrl+C.");
-  console.warn("└──────────────────────────────────────────────────────────");
-  return {
-    ...process.env,
-    DATABASE_URL: url,
-    ...(variaveis.APP_ENVIRONMENT
-      ? { APP_ENVIRONMENT: variaveis.APP_ENVIRONMENT }
-      : {}),
-    NOOO_BANCO: "neon",
-    NOOO_BANCO_NEON_EXPLICITO: "sim",
-  };
 }
 
 async function executar() {
   const [modo, ...argumentosNext] = process.argv.slice(2);
-  if (modo !== "local" && modo !== "neon") {
-    throw new Error("Uso: tsx scripts/iniciar-dev.ts <local|neon>");
+  if (modo === "neon") {
+    throw new Error(
+      "BLOQUEADO: o servidor localhost utiliza exclusivamente o PostgreSQL local. " +
+        "Nenhuma configuração Neon foi carregada e nenhuma conexão foi iniciada.",
+    );
   }
-  const ambiente = modo === "neon" ? ambienteNeon() : await ambienteLocal();
+  if (modo !== "local") {
+    throw new Error("Uso: tsx scripts/iniciar-dev.ts local");
+  }
+  const ambiente = await ambienteLocal();
 
   const processo = spawn(
     "bash",

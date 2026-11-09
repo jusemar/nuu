@@ -5,11 +5,9 @@ import { AdminHeader } from "@/components/admin/header";
 import { AdminSidebar } from "@/features/admin/layout/components/sidebar";
 import {
   CATALOGO_PERMISSOES_ADMIN,
-  PERMISSOES_ADMIN,
 } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { podeAdmin } from "@/features/autenticacao/lib/autorizacao-admin/resolver-autorizacao-admin";
 import {
-  exigirPermissaoAdmin,
   obterContextoAdministrativo,
 } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
 import { montarUrlLoginAdmin } from "@/features/autenticacao/lib/normalizar-redirecionamento-admin";
@@ -50,10 +48,6 @@ export default async function AdminLayout({
     contexto.representanteFornecedor &&
     !contexto.administradorPrincipal;
   const perfil = representante ? await buscarPerfilProdutosAdmin() : null;
-  if (representante && caminho === "/admin") redirect("/admin/products");
-  if (caminho === "/admin") {
-    await exigirPermissaoAdmin(PERMISSOES_ADMIN.PAINEL.VISUALIZAR);
-  }
   const permissoesMenu = CATALOGO_PERMISSOES_ADMIN.filter(({ chave }) =>
     podeAdmin(contexto, chave),
   ).map(({ chave }) => chave);

@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionCards } from "@/components/ui/section-cards";
 import { GraficoDesempenhoNegocio } from "@/features/admin/components/grafico-desempenho-negocio";
+import { exigirAcessoPaginaInicialAdmin } from "@/features/autenticacao/queries/sessao/exigir-acesso-pagina-inicial-admin";
 import { auditarLogisticaProdutos } from "@/features/logistica/queries/listar-diagnosticos-logisticos-produtos";
 
 const alertasEstaticos = [
@@ -106,6 +107,7 @@ const modulos = [
 ] as const;
 
 export default async function Page() {
+  await exigirAcessoPaginaInicialAdmin();
   let quantidadeProblemasLogisticos: number | null = null;
   try {
     const auditoria = await auditarLogisticaProdutos();

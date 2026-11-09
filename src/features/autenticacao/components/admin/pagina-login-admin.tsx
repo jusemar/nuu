@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -48,7 +47,7 @@ export function PaginaLoginAdmin({
   mensagemInicial,
   encerrarSessaoAtual = false,
 }: PaginaLoginAdminProps) {
-  const router = useRouter();
+  const [pronto, setPronto] = useState(false);
   const [erro, setErro] = useState<string | null>(mensagemInicial ?? null);
   const [entrando, setEntrando] = useState(false);
   const [senhaVisivel, setSenhaVisivel] = useState(false);
@@ -56,6 +55,10 @@ export function PaginaLoginAdmin({
     resolver: zodResolver(loginAdminSchema),
     defaultValues: { identificador: "", senha: "" },
   });
+
+  useEffect(() => {
+    setPronto(true);
+  }, []);
 
   useEffect(() => {
     if (!encerrarSessaoAtual) return;
@@ -90,8 +93,9 @@ export function PaginaLoginAdmin({
         return;
       }
 
-      router.replace(destino);
-      router.refresh();
+      // A sessão mudou: inicia uma árvore autenticada nova, sem reutilizar o
+      // layout público do login ou o cache privado de uma conta anterior.
+      window.location.replace(destino);
     } catch {
       setErro("Não foi possível entrar agora. Tente novamente.");
     } finally {
@@ -99,7 +103,7 @@ export function PaginaLoginAdmin({
     }
   }
 
-  const processando = entrando;
+  const processando = entrando || !pronto;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 sm:px-6">
@@ -140,6 +144,7 @@ export function PaginaLoginAdmin({
 
             <Form {...formulario}>
               <form
+                method="post"
                 onSubmit={formulario.handleSubmit(entrar)}
                 className="space-y-4"
               >

@@ -1,13 +1,13 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { del, put } from "@vercel/blob";
 
 const pastaLocal = "/tmp/nooo-imagens-representantes";
-/** O desenvolvimento nunca usa o token Blob real para ensaiar uploads. */
+/** Compatibilidade somente de leitura com URLs temporárias já persistidas. */
 export function armazenamentoImagemEhLocal() {
   try {
     return (
@@ -49,17 +49,14 @@ export async function armazenarImagemRepresentante(
 ) {
   const extensao = validarImagemRepresentante(bytes, tipo);
   const id = randomUUID();
-  if (armazenamentoImagemEhLocal()) {
-    await mkdir(pastaLocal, { recursive: true });
-    await writeFile(join(pastaLocal, id), bytes, { flag: "wx" });
-    return {
-      url: `/api/imagens-representante-local/${id}`,
-      excluir: () => unlink(join(pastaLocal, id)),
-    };
-  }
-  if (process.env.NODE_ENV !== "production")
+  // Sem armazenamento de testes comprovado, bloqueia desenvolvimento e também
+  // builds iniciados com banco local antes do SDK. Não cria URL temporária.
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NOOO_BANCO === "local"
+  )
     throw new Error(
-      "Configure o banco e o armazenamento locais para enviar imagens.",
+      "Upload real bloqueado no desenvolvimento: o Blob exclusivo de testes precisa ser confirmado. Nenhuma imagem foi enviada.",
     );
   const blob = await put(
     `products/${produtoId}/${id}.${extensao}`,

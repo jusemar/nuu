@@ -12,8 +12,9 @@ escrita por comando dedicado, com autorização explícita.
 - **O padrão é o PostgreSQL LOCAL persistente.** Ele já existe: `nooo-postgres-local`.
   **Nunca crie outro container/banco de desenvolvimento.** Reutilize este (`npm run db:local:subir`).
 - Testes, fixtures e ensaios de migration usam **PostgreSQL descartável** (Docker, removido ao final).
-- Neon só quando explícito: `npm run dev:neon` (validação online) e `npm run migrations:producao`
-  (aplicação final, uma vez, autorizada).
+- O servidor localhost nunca usa Neon: `npm run dev:neon` é bloqueado antes de
+  carregar qualquer configuração remota. Neon permanece restrito aos comandos
+  administrativos explicitamente protegidos.
 - **Nunca criar branch Neon.** A Neon tem somente `production` e `desenvolvimento-local`.
 
 ---
@@ -25,7 +26,7 @@ escrita por comando dedicado, com autorização explícita.
 | **local** (padrão)       | Docker `nooo-postgres-local`, `127.0.0.1:55432/nooo_desenvolvimento`        | `npm run dev`, seeds, importações, manutenção, admin local            |
 | descartável              | Docker `nuu-validacao-migrations-*` / `nuu-testes-logistica-*`, porta livre | migrations repetidas, integração, fixtures; removido ao final         |
 | `desenvolvimento` (Neon) | branch `desenvolvimento-local` (`ep-quiet-bar-acb7yly2`)                    | homologação online, somente por comando explícito                     |
-| `producao` (Neon)        | branch `production` (`ep-proud-bonus-acy2bafx`)                             | aplicação publicada; local só via `dev:neon` ou `migrations:producao` |
+| `producao` (Neon)        | branch `production` (`ep-proud-bonus-acy2bafx`)                             | aplicação publicada; manutenção somente por comando protegido e autorizado |
 
 ### PostgreSQL local persistente
 
@@ -54,7 +55,7 @@ depois `npm run db:local:subir`, `npm run migrations:local` e os seeds da seçã
 | Comando                                                | Arquivo lido                                                                   | Destino                                       |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------- |
 | `npm run dev`                                          | `.env.local` (`DATABASE_URL` local)                                            | **PostgreSQL local persistente**              |
-| `npm run dev:neon`                                     | `.env.dev-neon.local` (`DATABASE_URL` Neon + `APP_ENVIRONMENT`) + `.env.local` | Neon, somente neste processo                  |
+| `npm run dev:neon`                                     | nenhum arquivo remoto é carregado                                              | bloqueado explicitamente                      |
 | `npm run build` / `start`                              | `.env.local`                                                                   | PostgreSQL local                              |
 | `npm run seed:*`, `import:*`, `manutencao:*`, `rbac:*` | `.env.local` (`AMBIENTE_BANCO=local`)                                          | PostgreSQL local persistente                  |
 | `npm run migrations:local`                             | `.env.local`                                                                   | PostgreSQL local persistente                  |
@@ -65,21 +66,19 @@ depois `npm run db:local:subir`, `npm run migrations:local` e os seeds da seçã
 | `npm run migrations:producao`                          | `.env` + autorização explícita                                                 | Neon `production` (explícito)                 |
 | `npx drizzle-kit generate`                             | `DATABASE_URL_MIGRACOES` informada na própria linha                            | o que for informado                           |
 
-Como a troca acontece sem editar arquivos: `scripts/iniciar-dev.ts` define `DATABASE_URL`
-no ambiente **do processo** antes de iniciar o Next. O Next não sobrescreve variáveis já
-presentes, então o valor do lançador vence `.env.local`. Ao encerrar `dev:neon`, o próximo
-`npm run dev` volta ao local.
+`scripts/iniciar-dev.ts` valida o PostgreSQL local e define sua `DATABASE_URL` no ambiente
+**do processo** antes de iniciar o Next. O Next não sobrescreve variáveis já presentes,
+então o valor local validado pelo lançador vence qualquer fallback.
 
 Travas contra Neon acidental:
 
-- em `next dev`, `src/db/connection.ts` e `src/db/transaction.ts` recusam banco não-local
-  sem `NOOO_BANCO_NEON_EXPLICITO=sim` (marcado só pelo `dev:neon`);
+- em `next dev`, `src/db/connection.ts` e `src/db/transaction.ts` recusam qualquer
+  banco não-local, sem marcador capaz de liberar a conexão;
 - a guarda dos scripts (`AMBIENTE_BANCO=local`) exige exatamente o container persistente,
   conferido pelo `cluster_name` do servidor.
 
-`APP_ENVIRONMENT`: `homologacao` no local (Laquila/Efí de homologação); `dev:neon` usa o
-valor de `.env.dev-neon.local` (hoje `producao`, porque o banco é o de produção). **No
-`dev:neon`, integrações sensíveis (Laquila, Efí, Frenet) agem como produção — use com cuidado.**
+`APP_ENVIRONMENT`: `homologacao` no local (Laquila/Efí de homologação). O servidor
+localhost não oferece modo Neon.
 
 `.env` guarda a URL de produção documentada (usada só por `migrations:producao`).
 Todos os `.env*` são ignorados pelo git. Nenhuma credencial é versionada.
@@ -136,8 +135,9 @@ npx drizzle-kit migrate                              # sem DATABASE_URL_MIGRACOE
 
 Executar um script direto é bloqueado em duas camadas independentes — ver seção 5.
 
-Nunca aponte `.env.local` para a Neon: ele é do PostgreSQL local. Neon no Next local é
-só via `npm run dev:neon` (`.env.desenvolvimento.local` é da homologação explícita).
+Nunca aponte `.env.local` para a Neon: ele é do PostgreSQL local. Neon é recusado pelo
+Next em desenvolvimento (`.env.desenvolvimento.local` permanece reservado a comandos
+administrativos explícitos e protegidos).
 
 ---
 

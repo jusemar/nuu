@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, CircleX } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import type { DiagnosticoLogisticoProduto } from "@/features/logistica/lib/diagn
 type AlertaDiagnosticoLogisticoProdutoProps = {
   diagnostico: DiagnosticoLogisticoProduto | null | undefined;
   aoAbrirConfiguracaoTransporte?: () => void;
+  orientacoes?: ReactNode;
 };
 
 const campos = [
@@ -38,6 +40,7 @@ const campos = [
 export function AlertaDiagnosticoLogisticoProduto({
   diagnostico,
   aoAbrirConfiguracaoTransporte,
+  orientacoes,
 }: AlertaDiagnosticoLogisticoProdutoProps) {
   if (!diagnostico || diagnostico.valido) return null;
   const problemaTransporte = diagnostico.problemas.some((problema) =>
@@ -111,6 +114,9 @@ export function AlertaDiagnosticoLogisticoProduto({
               );
             })}
           </dl>
+
+          {/* A audiência muda as instruções, nunca o diagnóstico central. */}
+          {orientacoes}
 
           {problemaTransporte && diagnostico.origem.chave === "laquila" ? (
             <div className="bg-background/80 mt-4 flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">

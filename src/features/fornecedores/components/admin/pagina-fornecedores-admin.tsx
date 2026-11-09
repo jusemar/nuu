@@ -198,12 +198,15 @@ export function PaginaFornecedoresAdmin({
           <p className="text-sm text-slate-600">Origens, arquivos e APIs.</p>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline"><Link href="/admin/fornecedores/representantes">Representantes</Link></Button>
         <Button asChild variant="outline">
           <Link href="/admin/fornecedores/importacoes">
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Importações
           </Link>
         </Button>
+        </div>
       </div>
 
       <Card className="rounded-lg">

@@ -1,8 +1,13 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
 import {
   auditoriasAdministrativasTable,
   autorizacoesProdutosRepresentantesTable,
+  fornecedorProdutoVinculosTable,
+  representantesFornecedoresTable,
 } from "@/db/schema";
 import { dbTransacional } from "@/db/transaction";
 
@@ -14,6 +19,27 @@ export async function salvarAutorizacaoProdutoRepresentante(entrada: unknown) {
   const gestor = await exigirGestorRepresentantes();
   const dados = salvarAutorizacaoProdutoRepresentanteSchema.parse(entrada);
   return dbTransacional.transaction(async (transacao) => {
+    // A autorização individual só pode alcançar produto comercialmente associado ao fornecedor do vínculo.
+    const [vinculo] = await transacao
+      .select({ fornecedorId: representantesFornecedoresTable.fornecedorId })
+      .from(representantesFornecedoresTable)
+      .where(
+        eq(representantesFornecedoresTable.id, dados.representanteFornecedorId),
+      )
+      .limit(1);
+    if (!vinculo) throw new Error("VINCULO_INVALIDO");
+    const [produto] = await transacao
+      .select({ id: fornecedorProdutoVinculosTable.id })
+      .from(fornecedorProdutoVinculosTable)
+      .where(
+        and(
+          eq(fornecedorProdutoVinculosTable.fornecedorId, vinculo.fornecedorId),
+          eq(fornecedorProdutoVinculosTable.produtoId, dados.produtoId),
+          eq(fornecedorProdutoVinculosTable.status, "ativo"),
+        ),
+      )
+      .limit(1);
+    if (dados.ativa && !produto) throw new Error("PRODUTO_FORNECEDOR_INVALIDO");
     const [autorizacao] = await transacao
       .insert(autorizacoesProdutosRepresentantesTable)
       .values({
@@ -46,6 +72,7 @@ export async function salvarAutorizacaoProdutoRepresentante(entrada: unknown) {
         produtoId: dados.produtoId,
       },
     });
+    revalidatePath("/admin/fornecedores/representantes");
     return autorizacao;
   });
 }

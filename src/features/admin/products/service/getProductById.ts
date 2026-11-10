@@ -525,7 +525,11 @@ export async function getProductById(id: string) {
           destinationType: preco.destinationType,
           destinationId: preco.destinationId,
           shippingPrice: preco.shippingPrice,
+          rapidDeliveryActive: preco.rapidDeliveryActive,
           deliveryDeadline: preco.deliveryDeadline,
+          scheduledDeliveryActive: preco.scheduledDeliveryActive,
+          scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,
+          scheduledDeliveryPrice: preco.scheduledDeliveryPrice,
           isActive: preco.isActive,
         })),
         // Dado somente administrativo, derivado do vínculo ativo já existente.

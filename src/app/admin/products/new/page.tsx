@@ -12,7 +12,6 @@ import {
   Send,
   ShieldCheck,
   Store,
-  Truck,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -24,7 +23,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { publicarProdutoAdmin } from "@/features/products/actions/publicar-produto-admin";
 import { useCreateProduct } from "@/hooks/admin/mutations/products/useCreateProduct";
 
-import { ShippingTab } from "../../../../features/admin/products/components/ShippingTab";
 // Import das abas
 import { BasicTab } from "./components/tabs/BasicTab";
 import { EntregaTab } from "./components/tabs/EntregaTab";
@@ -99,25 +97,14 @@ export default function NewProductPage() {
       ),
     },
     {
-      name: "Frete",
-      icon: Truck,
-      value: "shipping",
-      component: (
-        <ShippingTab
-          data={productData}
-          onChange={(updates) =>
-            setProductData((prev) => ({ ...prev, ...updates }))
-          }
-        />
-      ),
-    },
-    {
       name: "Entrega",
       icon: PackageCheck,
       value: "entrega",
       component: (
         <EntregaTab
           data={productData.entrega ?? {}}
+          productKind={productData.productKind}
+          variants={productData.variants}
           categoriaId={productData.categoryId || null}
           dimensoesFrete={productData.dimensoesFreteExterno}
           aoAlterarDimensoes={(dimensoes) =>

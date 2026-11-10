@@ -1,7 +1,6 @@
 "use client";
 
-// Tab de Entrega - Novas opções de entrega
-// Combina: Retirada Local + Entrega Própria
+// Configurações reais de transporte, expedição e retirada do produto.
 
 import { CheckCircle2, Loader2, Package, Store, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -34,7 +33,10 @@ import { ProdutoEntregaPropriaPrecos } from "@/features/admin/logistics/entrega-
 import { EntregaPropriaInfoCard } from "@/features/admin/logistics/entrega-propria/components/EntregaPropriaInfoCard";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import type { ResultadoListaTransportadorasLaquila } from "@/features/fornecedores/integracoes/laquila/queries/listar-transportadoras-laquila";
+import { validarLogisticaProduto } from "@/features/logistica/lib/validar-logistica-produto";
 import type { ModoDisponibilidadeFreteExterno } from "@/features/logistica/types/disponibilidade-frete-externo";
+import type { ProductKind, ProductVariantFormInput } from "@/features/products";
+import { summarizeVariantEditor } from "@/features/products";
 
 type Props = {
   data: {
@@ -51,6 +53,8 @@ type Props = {
     disponibilidadeFreteExterno?: ModoDisponibilidadeFreteExterno;
   };
   productId?: string;
+  productKind?: ProductKind;
+  variants?: ProductVariantFormInput[];
   /** Categoria selecionada no formulário (base da herança do Frete Externo). */
   categoriaId?: string | null;
   onChange?: (updates: Partial<Props["data"]>) => void;
@@ -63,6 +67,8 @@ type Props = {
 export function EntregaTab({
   data,
   productId,
+  productKind = "simple",
+  variants = [],
   categoriaId = null,
   onChange,
   dimensoesFrete = {},
@@ -165,6 +171,43 @@ export function EntregaTab({
     data.disponibilidadeEntregaPropria ??
     (data.permiteEntregaPropria ? "ativado" : "desativado");
   const entregaPropriaNaoDesativada = modoEntregaPropria !== "desativado";
+  const tiposEntregaPermitidos = data.tiposEntregaPermitidos ?? [];
+  const resumoVariantes = summarizeVariantEditor(variants);
+  const diagnosticoFormulario = validarLogisticaProduto({
+    pesoEmGramas: dimensoesFrete.pesoEmKg
+      ? Number(dimensoesFrete.pesoEmKg) * 1000
+      : null,
+    alturaEmCm: dimensoesFrete.alturaEmCm
+      ? Number(dimensoesFrete.alturaEmCm)
+      : null,
+    larguraEmCm: dimensoesFrete.larguraEmCm
+      ? Number(dimensoesFrete.larguraEmCm)
+      : null,
+    comprimentoEmCm: dimensoesFrete.comprimentoEmCm
+      ? Number(dimensoesFrete.comprimentoEmCm)
+      : null,
+    tiposEntregaPermitidos,
+    permiteSomenteRetirada: Boolean(data.permiteRetirada),
+  });
+
+  /** Mantém preços e heranças quando a origem de envio é desmarcada. */
+  const alterarOrigem = (
+    tipo: "own" | "supplier" | "carrier",
+    ativo: boolean,
+  ) => {
+    const tipos = ativo
+      ? Array.from(new Set([...tiposEntregaPermitidos, tipo]))
+      : tiposEntregaPermitidos.filter((atual) => atual !== tipo);
+    onChange?.(
+      tipo === "own" && !ativo && entregaPropriaNaoDesativada
+        ? {
+            tiposEntregaPermitidos: tipos,
+            disponibilidadeEntregaPropria: "desativado",
+            permiteEntregaPropria: false,
+          }
+        : { tiposEntregaPermitidos: tipos },
+    );
+  };
 
   const handleOwnDeliveryChange = (modo: ModoDisponibilidadeEntregaPropria) => {
     const permite = modo !== "desativado";
@@ -235,23 +278,130 @@ export function EntregaTab({
         </Card>
       ) : null}
 
-      <Tabs defaultValue="retirada" className="min-w-0 space-y-4 sm:space-y-6">
+      <Tabs
+        defaultValue="dados-transporte"
+        className="min-w-0 space-y-4 sm:space-y-6"
+      >
         <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
-          <TabsList className="w-max min-w-max justify-start">
-            <TabsTrigger value="retirada" className="shrink-0 gap-2">
-              <Store className="h-4 w-4" />
-              Retirada Local
+          <TabsList className="h-auto w-max min-w-max justify-start gap-1 p-1">
+            <TabsTrigger value="dados-transporte" className="shrink-0 gap-2">
+              <Package className="h-4 w-4" />
+              Dados para transporte
+            </TabsTrigger>
+            <TabsTrigger value="origem" className="shrink-0 gap-2">
+              Origem e disponibilidade
             </TabsTrigger>
             <TabsTrigger value="entrega-propria" className="shrink-0 gap-2">
               <Truck className="h-4 w-4" />
-              {usaLogisticaLaquila ? "Expedição Laquila" : "Entrega Própria"}
+              {usaLogisticaLaquila
+                ? "Expedição Laquila"
+                : "Entrega própria Nooo"}
             </TabsTrigger>
             <TabsTrigger value="regras-logisticas" className="shrink-0 gap-2">
-              <Package className="h-4 w-4" />
               Frete Externo
+            </TabsTrigger>
+            <TabsTrigger value="retirada" className="shrink-0 gap-2">
+              <Store className="h-4 w-4" />
+              Retirada
+            </TabsTrigger>
+            <TabsTrigger value="diagnostico" className="shrink-0 gap-2">
+              Diagnóstico
             </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="dados-transporte" className="space-y-4">
+          <DimensoesFreteExterno
+            dimensoes={dimensoesFrete}
+            aoAlterar={aoAlterarDimensoes}
+          />
+          {productKind === "variable" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Dimensões das variantes
+                </CardTitle>
+                <CardDescription>
+                  Os campos acima pertencem ao produto pai. Cada variante pode
+                  ter peso e dimensões próprios na aba Variantes, sem ser
+                  sobrescrita pelas alterações aqui.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
+                <p className="rounded-lg border p-3">
+                  <strong>
+                    {resumoVariantes.withWeight}/{resumoVariantes.total}
+                  </strong>{" "}
+                  com peso
+                </p>
+                <p className="rounded-lg border p-3">
+                  <strong>
+                    {resumoVariantes.withDimensions}/{resumoVariantes.total}
+                  </strong>{" "}
+                  com dimensões completas
+                </p>
+                <p className="rounded-lg border p-3">
+                  <strong>{resumoVariantes.missingDimensions}</strong> variantes
+                  ativas pendentes
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="origem">
+          <Card>
+            <CardHeader>
+              <CardTitle>Origem e disponibilidade</CardTitle>
+              <CardDescription>
+                Escolha as origens de envio permitidas. A disponibilidade da
+                entrega própria e do frete externo pode herdar a configuração da
+                categoria. Desmarcar a expedição pela loja desativa a entrega
+                própria, mantendo seus preços para uma futura reativação.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {(
+                [
+                  [
+                    "own",
+                    "Expedição pela loja",
+                    "Origem usada pela entrega própria e pelo frete externo.",
+                  ],
+                  [
+                    "supplier",
+                    "Expedição do fornecedor",
+                    "Permite a logística de fornecedores como a Laquila.",
+                  ],
+                  [
+                    "carrier",
+                    "Transportadora",
+                    "Permite modalidades de transportadora configuradas pela loja.",
+                  ],
+                ] as const
+              ).map(([tipo, rotulo, descricao]) => (
+                <div
+                  key={tipo}
+                  className="flex items-start justify-between gap-3 rounded-lg border p-4"
+                >
+                  <div className="min-w-0">
+                    <Label htmlFor={`origem-${tipo}`} className="font-medium">
+                      {rotulo}
+                    </Label>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {descricao}
+                    </p>
+                  </div>
+                  <Switch
+                    id={`origem-${tipo}`}
+                    checked={tiposEntregaPermitidos.includes(tipo)}
+                    onCheckedChange={(ativo) => alterarOrigem(tipo, ativo)}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="retirada">
           <Card>
@@ -419,10 +569,6 @@ export function EntregaTab({
                 onChange?.({ disponibilidadeFreteExterno: modo })
               }
             />
-            <DimensoesFreteExterno
-              dimensoes={dimensoesFrete}
-              aoAlterar={aoAlterarDimensoes}
-            />
             <ResumoLogisticaProduto
               produtoId={productId}
               tiposDisponiveis={tiposDisponiveis}
@@ -487,6 +633,60 @@ export function EntregaTab({
               }}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="diagnostico">
+          <Card>
+            <CardHeader>
+              <CardTitle>Diagnóstico logístico</CardTitle>
+              <CardDescription>
+                Resumo dos dados atuais do formulário. A publicação também
+                verifica as regras logísticas da loja e das integrações.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  variant={diagnosticoFormulario.valido ? "default" : "warning"}
+                >
+                  {diagnosticoFormulario.valido
+                    ? "Dados básicos completos"
+                    : "Dados básicos pendentes"}
+                </Badge>
+                <Badge variant="secondary">
+                  {tiposEntregaPermitidos.length} origem(ns) de envio
+                </Badge>
+                <Badge variant="secondary">
+                  Entrega própria: {modoEntregaPropria}
+                </Badge>
+                <Badge variant="secondary">
+                  Frete externo: {data.disponibilidadeFreteExterno ?? "herdar"}
+                </Badge>
+                <Badge variant="secondary">
+                  Retirada: {data.permiteRetirada ? "ativada" : "desativada"}
+                </Badge>
+              </div>
+              {diagnosticoFormulario.problemas.length > 0 ? (
+                <ul className="list-inside list-disc space-y-1 text-sm text-amber-800 dark:text-amber-300">
+                  {diagnosticoFormulario.problemas.map((problema) => (
+                    <li key={problema.codigo}>{problema.mensagemAdmin}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Peso, dimensões e origem de envio estão preenchidos.
+                </p>
+              )}
+              {productKind === "variable" &&
+              resumoVariantes.missingDimensions > 0 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                  {resumoVariantes.missingDimensions} variante(s) ativa(s) ainda
+                  precisam de peso ou dimensões próprias. Confira a aba
+                  Variantes.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

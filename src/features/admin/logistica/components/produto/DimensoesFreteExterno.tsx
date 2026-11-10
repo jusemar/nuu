@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
+
 import { AjudaContextualFreteExterno } from "./AjudaContextualFreteExterno";
 
 type PropriedadesDimensoesFreteExterno = {
@@ -23,14 +24,14 @@ export function DimensoesFreteExterno({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="h-5 w-5" />
-          Dimensões para Frete Externo
+          Peso e dimensões do produto
           <AjudaContextualFreteExterno
             titulo="Peso e dimensões"
             descricao="Usado para cálculo de frete e validação logística."
           />
         </CardTitle>
         <p className="text-muted-foreground text-sm">
-          Usado para cálculo de frete externo.
+          Usados para cálculo de frete e validação logística.
         </p>
       </CardHeader>
       <CardContent>

@@ -10,7 +10,7 @@ import {
   Truck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,6 @@ import {
 import {
   type EntregaPropriaDestinoProduto,
   listarDestinosEntregaPropriaProduto,
-  listarPrecosEntregaPropriaProduto,
 } from "../../queries/admin-entrega-propria.queries";
 import type {
   OwnDeliveryDestinationType,
@@ -147,7 +146,6 @@ export function ResumoAgendaDestino({
 }
 
 export function ProdutoEntregaPropriaPrecos({
-  productId,
   contexto = "produto",
   value = [],
   onChange,
@@ -166,39 +164,14 @@ export function ProdutoEntregaPropriaPrecos({
   const [selectedDestination, setSelectedDestination] = useState("");
   const [shippingPrice, setShippingPrice] = useState("");
   const [deliveryDeadline, setDeliveryDeadline] = useState("");
-  const loadedExistingPricesRef = useRef(false);
-  const onChangeRef = useRef(onChange);
-
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
-
   useEffect(() => {
     async function loadData() {
       const destinosData = await listarDestinosEntregaPropriaProduto();
       setDestinos(destinosData);
-
-      if (productId && !loadedExistingPricesRef.current) {
-        loadedExistingPricesRef.current = true;
-        const precos = await listarPrecosEntregaPropriaProduto(productId);
-        onChangeRef.current(
-          precos.map((preco) => ({
-            destinationType: preco.destinationType,
-            destinationId: preco.destinationId,
-            shippingPrice: preco.shippingPrice,
-            rapidDeliveryActive: preco.rapidDeliveryActive,
-            deliveryDeadline: preco.deliveryDeadline,
-            scheduledDeliveryActive: preco.scheduledDeliveryActive,
-            scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays,
-            scheduledDeliveryPrice: preco.scheduledDeliveryPrice,
-            isActive: preco.isActive,
-          })),
-        );
-      }
     }
 
     loadData();
-  }, [productId]);
+  }, []);
 
   const destinosPorChave = useMemo(() => {
     return new Map(

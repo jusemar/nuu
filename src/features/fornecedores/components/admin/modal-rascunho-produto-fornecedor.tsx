@@ -21,7 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShippingTab } from "@/features/admin/products/components/ShippingTab";
 import { montarDadosIniciaisRascunhoProdutoFornecedor } from "@/features/fornecedores/lib/montar-dados-iniciais-rascunho-produto-fornecedor";
 import type {
   DadosFornecedorParaRascunhoProduto,
@@ -83,16 +82,13 @@ export function ModalRascunhoProdutoFornecedor({
       conteudo: <PricingTab data={produto} onChange={atualizarProduto} />,
     },
     {
-      label: "Frete",
-      valor: "shipping",
-      conteudo: <ShippingTab data={produto} onChange={atualizarProduto} />,
-    },
-    {
       label: "Entrega",
       valor: "entrega",
       conteudo: (
         <EntregaTab
           data={produto.entrega ?? {}}
+          productKind={produto.productKind}
+          variants={produto.variants}
           dimensoesFrete={produto.dimensoesFreteExterno}
           aoAlterarDimensoes={(dimensoes) =>
             atualizarProduto({ dimensoesFreteExterno: dimensoes })

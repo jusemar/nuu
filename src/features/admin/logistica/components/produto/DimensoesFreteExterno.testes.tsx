@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -18,8 +19,11 @@ describe("dimensões para frete externo", () => {
       />,
     );
 
-    assert.equal(html.includes("Dimensões para Frete Externo"), true);
-    assert.equal(html.includes("Usado para cálculo de frete externo."), true);
+    assert.equal(html.includes("Peso e dimensões do produto"), true);
+    assert.equal(
+      html.includes("Usados para cálculo de frete e validação logística."),
+      true,
+    );
     assert.equal(html.includes("Ajuda: Peso e dimensões"), true);
     assert.equal(html.includes("Peso (kg)"), true);
     assert.equal(html.includes("Altura (cm)"), true);

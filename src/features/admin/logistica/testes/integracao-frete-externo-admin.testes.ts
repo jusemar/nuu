@@ -9,7 +9,7 @@ const ler = (caminho: string) =>
   readFileSync(join(process.cwd(), caminho), "utf-8");
 
 describe("Frete Externo no Admin (Produto e Categoria)", () => {
-  it("Produto → Entrega → Frete Externo mostra o gate antes das regras", () => {
+  it("Produto → Entrega mostra dados de transporte e gate antes das regras", () => {
     const entregaTab = ler(
       "src/app/admin/products/new/components/tabs/EntregaTab.tsx",
     );
@@ -17,8 +17,13 @@ describe("Frete Externo no Admin (Produto e Categoria)", () => {
       "<DisponibilidadeFreteExternoProduto",
     );
     const posicaoDimensoes = entregaTab.indexOf("<DimensoesFreteExterno");
+    const posicaoRegras = entregaTab.indexOf("<ResumoLogisticaProduto");
     assert.ok(posicaoGate > 0, "gate presente na aba Frete Externo");
-    assert.ok(posicaoGate < posicaoDimensoes, "gate no início da seção");
+    assert.ok(
+      posicaoDimensoes < posicaoGate,
+      "dados de transporte vêm primeiro",
+    );
+    assert.ok(posicaoGate < posicaoRegras, "gate antes das regras");
     assert.equal(entregaTab.includes("categoriaId={categoriaId}"), true);
 
     for (const pagina of [

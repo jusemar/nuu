@@ -17,6 +17,7 @@ import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/ent
 import { dbTransacional } from "@/db/transaction";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
+import { resolverPrecosAtualizacaoProduto } from "@/features/admin/logistics/entrega-propria/lib/resolver-precos-atualizacao-produto";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
 import { PERMISSOES_ADMIN } from "@/features/autenticacao/constants/permissoes-administrativas";
 import { exigirPermissaoAdmin } from "@/features/autenticacao/lib/autorizacao-admin/servico-autorizacao-admin";
@@ -650,14 +651,17 @@ export async function updateProduct(id: string, data: UpdateProductData) {
       }
 
       if (data.entrega !== undefined) {
-        await salvarPrecosEntregaPropriaProduto(
-          id,
-          !usaLogisticaLaquila &&
-            updateFields.disponibilidadeEntregaPropria !== "desativado"
-            ? (data.entrega.precosEntregaPropria ?? [])
-            : [],
-          { executor: tx, revalidar: false },
+        const precosParaSalvar = resolverPrecosAtualizacaoProduto(
+          data.entrega.precosEntregaPropria,
+          updateFields.disponibilidadeEntregaPropria!,
+          usaLogisticaLaquila,
         );
+        if (precosParaSalvar !== undefined) {
+          await salvarPrecosEntregaPropriaProduto(id, precosParaSalvar, {
+            executor: tx,
+            revalidar: false,
+          });
+        }
       }
 
       if (

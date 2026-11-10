@@ -20,6 +20,7 @@ import { normalizarLocalidadeEntregaPropria } from "@/features/logistica/lib/ent
 
 import { gerarFaixasContiguasDeCeps } from "../lib/cep-ranges";
 import { montarCondicoesDestinoEntregaPropria } from "../lib/montar-condicoes-destino-entrega-propria";
+import { precosEntregaPropriaAlterados } from "../lib/precos-entrega-propria-alterados";
 import type { ProductOwnDeliveryPriceFormItem } from "../types/shipping";
 
 function revalidarEntregaPropria() {
@@ -575,6 +576,14 @@ export async function salvarPrecosEntregaPropriaProduto(
 ) {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.LOGISTICA.ADMINISTRAR);
   const executor = opcoes?.executor ?? db;
+
+  // Não apaga e recria preços quando o formulário reenviou os mesmos valores.
+  const precosAtuais: (typeof productOwnDeliveryPrices.$inferSelect)[] =
+    await executor
+      .select()
+      .from(productOwnDeliveryPrices)
+      .where(eq(productOwnDeliveryPrices.productId, productId));
+  if (!precosEntregaPropriaAlterados(precosAtuais, items)) return;
 
   await executor
     .delete(productOwnDeliveryPrices)

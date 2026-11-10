@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { db } from "@/db/connection";
 import {
@@ -13,6 +14,7 @@ import {
   produtosTiposLogisticosTable,
 } from "@/db/schema";
 import type { ModoDisponibilidadeEntregaPropria } from "@/db/table/logistics/entrega-propria/modo-disponibilidade-entrega-propria";
+import { dbTransacional } from "@/db/transaction";
 import type { DimensoesFreteExternoProduto } from "@/features/admin/logistica/types/logistica.types";
 import { salvarPrecosEntregaPropriaProduto } from "@/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions";
 import type { ProductOwnDeliveryPriceFormItem } from "@/features/admin/logistics/entrega-propria/types/shipping";
@@ -31,13 +33,16 @@ import {
   ErroIdentificadorCatalogo,
   salvarIdentificadorCatalogo,
 } from "@/features/products/actions/salvar-identificador-catalogo";
+import { resolverTiposEntregaCadastro } from "@/features/products/lib/admin/resolver-tipos-entrega-cadastro";
 import { validarGtin } from "@/features/products/lib/identificadores-catalogo";
 import { normalizarEstoqueProdutoSimples } from "@/features/products/lib/normalizar-estoque-produto-simples";
+import { dadosEssenciaisCadastroProdutoSchema } from "@/features/products/schemas/dados-essenciais-cadastro-produto.schema";
 import { validarConfiguracaoRecompensaProduto } from "@/features/products/schemas/recompensa-produto.schema";
 
-function revalidateAdminProductsPath() {
+function revalidateAdminProductsPath(productId: string) {
   try {
     revalidatePath("/admin/products");
+    revalidatePath(`/admin/products/${productId}/edit`);
   } catch (error) {
     console.warn("Nao foi possivel revalidar /admin/products:", error);
   }
@@ -112,6 +117,7 @@ interface CreateProductData {
     modeloRetiradaId?: string | null;
     prazoCustom?: string | null;
     permiteEntregaPropria?: boolean;
+    tiposEntregaPermitidos?: string[];
     disponibilidadeEntregaPropria?: ModoDisponibilidadeEntregaPropria;
     aceitaPagamentoNaEntrega?: boolean;
     precosEntregaPropria?: ProductOwnDeliveryPriceFormItem[];
@@ -130,6 +136,16 @@ interface CreateProductData {
     imagemUrl?: string | null;
   };
 }
+
+type ResultadoCadastroProduto =
+  | {
+      success: true;
+      productId: string;
+      slug: string;
+      varianteTecnicaId: string | null;
+      error?: never;
+    }
+  | { success: false; error: string; productId?: never };
 
 function converterPrecoEmCentavos(valor?: string) {
   if (!valor?.trim()) return null;
@@ -160,11 +176,23 @@ async function buscarMarcaPorId(id: string) {
   return marca ?? null;
 }
 
-export async function createProduct(data: CreateProductData) {
+export async function createProduct(
+  data: CreateProductData,
+): Promise<ResultadoCadastroProduto> {
   await exigirPermissaoAdmin(PERMISSOES_ADMIN.PRODUTOS.ADMINISTRAR);
-  let produtoCriadoId: string | null = null;
 
   try {
+    const dadosEssenciais =
+      dadosEssenciaisCadastroProdutoSchema.safeParse(data);
+    if (!dadosEssenciais.success) {
+      return {
+        success: false,
+        error:
+          dadosEssenciais.error.issues[0]?.message ??
+          "Verifique os campos obrigatórios do produto.",
+      };
+    }
+
     const recompensa = validarConfiguracaoRecompensaProduto(data);
     if (!recompensa.sucesso) {
       return { success: false, error: recompensa.erro };
@@ -195,6 +223,12 @@ export async function createProduct(data: CreateProductData) {
     }
     const entregaPropriaNaoDesativada =
       modoEntregaPropria.data !== "desativado";
+    const tiposEntregaPermitidos = z
+      .array(z.enum(["own", "supplier", "carrier"]))
+      .safeParse(resolverTiposEntregaCadastro(data));
+    if (!tiposEntregaPermitidos.success) {
+      return { success: false, error: "O tipo de entrega é inválido." };
+    }
 
     if (
       (data.productKind ?? "simple") === "simple" &&
@@ -225,211 +259,215 @@ export async function createProduct(data: CreateProductData) {
       : null;
     const marcaFinal = marcaSelecionada ?? marcaPadrao;
 
-    // 1. Criar o produto principal
-    const [product] = await db
-      .insert(productTable)
-      .values({
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        categoryId: data.categoryId,
-        marcaId: marcaFinal.id,
-        brand: marcaFinal.nome,
-        sku: data.sku,
-        productType: data.productType,
-        productCode: data.productCode,
-        ncmCode: data.ncmCode,
-        collection: data.collection,
-        tags: data.tags,
-        storeProductFlags: data.storeProductFlags ?? ["general"],
-        cardShortText: data.cardShortText,
-        productKind: data.productKind ?? "simple",
-        recompensaPontosAtiva: recompensa.recompensaPontosAtiva,
-        recompensaCustoPontos: recompensa.recompensaCustoPontos,
-        costPrice: converterPrecoEmCentavos(data.pricing?.costPrice),
-        salePrice: data.varianteTecnicaProdutoSimples?.precoEmCentavos ?? null,
-        warrantyPeriod: data.warranty?.period
-          ? parseInt(data.warranty.period)
-          : null,
-        warrantyProvider: data.warranty?.provider,
-        metaTitle: data.metaTitle,
-        metaDescription: data.metaDescription,
-        canonicalUrl: data.canonicalUrl,
-
-        // Configuração de retirada local
-        allowsPickup: data.entrega?.permiteRetirada ?? false,
-        allowsOwnDelivery: entregaPropriaNaoDesativada,
-        disponibilidadeEntregaPropria: modoEntregaPropria.data,
-        allowsSupplierDelivery:
-          data.allowedDeliveryTypes?.includes("supplier") ?? false,
-        allowedDeliveryTypes: data.allowedDeliveryTypes ?? ["own"],
-        // Opt-in: sem marcação explícita do gestor, o produto não aceita.
-        aceitaPagamentoNaEntrega:
-          data.entrega?.aceitaPagamentoNaEntrega ?? false,
-        modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
-        prazoRetiradaCustom: data.entrega?.prazoCustom || null,
-        disponibilidadeFreteExterno: modoFreteExterno.data,
-
-        weight: converterPesoEmGramas(data.dimensoesFreteExterno?.pesoEmKg),
-        height: converterValorEmInteiro(data.dimensoesFreteExterno?.alturaEmCm),
-        width: converterValorEmInteiro(data.dimensoesFreteExterno?.larguraEmCm),
-        length: converterValorEmInteiro(
-          data.dimensoesFreteExterno?.comprimentoEmCm,
-        ),
-
-        status: data.status ?? "draft",
-        isActive: data.isActive ?? true,
-      })
-      .returning();
-    produtoCriadoId = product.id;
-    console.log("Produto criado:", product);
-
-    // 2. Adicionar imagens na galeria
-    const validImages = data.images.filter((image) => image.url);
-
-    if (validImages.length > 0) {
-      await db.insert(productGalleryImagesTable).values(
-        validImages.map((image, index) => ({
-          productId: product.id,
-          imageUrl: image.url!,
-          altText: image.altText || data.name,
-          isPrimary: image.isPrimary,
-          sortOrder: index,
-        })),
-      );
-    }
-
-    // 3. SALVAR MODALIDADES DE PREÇO (apenas texto descritivo)
-    if (data.pricing?.modalities) {
-      const pricingEntries = Object.entries(data.pricing.modalities).map(
-        ([type, modality]) => ({
-          productId: product.id,
-          type: type,
-          price: converterPrecoEmCentavos(modality.price) ?? 0,
-          deliveryDays: modality.deliveryText || "",
-          pricingModalDescription: modality.deliveryText || "",
-
-          mainCardPrice: data.pricing?.mainCardPriceType === type,
-
-          isActive: true,
-        }),
-      );
-
-      if (pricingEntries.length > 0) {
-        await db.insert(productPricingTable).values(pricingEntries);
-      }
-    }
-
-    if (entregaPropriaNaoDesativada) {
-      await salvarPrecosEntregaPropriaProduto(
-        product.id,
-        data.entrega?.precosEntregaPropria ?? [],
-      );
-    }
-
-    if (data.entrega?.classificacoesLogisticasIds?.length) {
-      await db.insert(produtosTiposLogisticosTable).values(
-        data.entrega.classificacoesLogisticasIds.map((tipoLogisticoId) => ({
-          produtoId: product.id,
-          tipoLogisticoId,
-        })),
-      );
-    }
-
-    await salvarEstruturaVariantesProduto({
-      productId: product.id,
-      productKind: data.productKind ?? "simple",
-      attributes: data.attributes,
-      variants: data.variants,
-      marcaId: marcaFinal.id,
-    });
-
-    let varianteTecnicaId: string | null = null;
-    if ((data.productKind ?? "simple") === "simple") {
-      const precoTecnico =
-        data.varianteTecnicaProdutoSimples?.precoEmCentavos ??
-        obterPrecoPrincipalFormulario(data.pricing);
-      const [varianteTecnica] = await db
-        .insert(productVariantTable)
+    // Uma falha em qualquer registro relacionado desfaz o cadastro inteiro.
+    // URLs de imagens já enviadas pelo navegador são externas a esta transação.
+    const cadastro = await dbTransacional.transaction(async (tx) => {
+      // 1. Criar o produto principal
+      const [product] = await tx
+        .insert(productTable)
         .values({
-          productId: product.id,
-          sku: data.sku,
-          name: data.name,
-          attributes: {},
-          priceInCents: precoTecnico,
-          // Produto simples mantém o estoque exclusivamente na variante técnica.
-          stockQuantity: estoqueProdutoSimples ?? 0,
-          weightInGrams: converterPesoEmGramas(
-            data.dimensoesFreteExterno?.pesoEmKg,
-          ),
-          heightInCm: converterValorEmInteiro(
+          name: dadosEssenciais.data.name,
+          slug: dadosEssenciais.data.slug,
+          description: dadosEssenciais.data.description,
+          categoryId: dadosEssenciais.data.categoryId,
+          marcaId: marcaFinal.id,
+          brand: marcaFinal.nome,
+          sku: dadosEssenciais.data.sku,
+          productType: data.productType,
+          productCode: data.productCode,
+          ncmCode: data.ncmCode,
+          collection: data.collection,
+          tags: data.tags,
+          storeProductFlags: data.storeProductFlags ?? ["general"],
+          cardShortText: data.cardShortText,
+          productKind: data.productKind ?? "simple",
+          recompensaPontosAtiva: recompensa.recompensaPontosAtiva,
+          recompensaCustoPontos: recompensa.recompensaCustoPontos,
+          costPrice: converterPrecoEmCentavos(data.pricing?.costPrice),
+          salePrice:
+            data.varianteTecnicaProdutoSimples?.precoEmCentavos ?? null,
+          warrantyPeriod: data.warranty?.period
+            ? parseInt(data.warranty.period)
+            : null,
+          warrantyProvider: data.warranty?.provider,
+          metaTitle: data.metaTitle,
+          metaDescription: data.metaDescription,
+          canonicalUrl: data.canonicalUrl,
+
+          // Configuração de retirada local
+          allowsPickup: data.entrega?.permiteRetirada ?? false,
+          allowsOwnDelivery: entregaPropriaNaoDesativada,
+          disponibilidadeEntregaPropria: modoEntregaPropria.data,
+          allowsSupplierDelivery:
+            tiposEntregaPermitidos.data.includes("supplier"),
+          allowedDeliveryTypes: tiposEntregaPermitidos.data,
+          // Opt-in: sem marcação explícita do gestor, o produto não aceita.
+          aceitaPagamentoNaEntrega:
+            data.entrega?.aceitaPagamentoNaEntrega ?? false,
+          modeloRetiradaId: data.entrega?.modeloRetiradaId || null,
+          prazoRetiradaCustom: data.entrega?.prazoCustom || null,
+          disponibilidadeFreteExterno: modoFreteExterno.data,
+
+          weight: converterPesoEmGramas(data.dimensoesFreteExterno?.pesoEmKg),
+          height: converterValorEmInteiro(
             data.dimensoesFreteExterno?.alturaEmCm,
           ),
-          widthInCm: converterValorEmInteiro(
+          width: converterValorEmInteiro(
             data.dimensoesFreteExterno?.larguraEmCm,
           ),
-          lengthInCm: converterValorEmInteiro(
+          length: converterValorEmInteiro(
             data.dimensoesFreteExterno?.comprimentoEmCm,
           ),
-          imageUrl:
-            data.varianteTecnicaProdutoSimples?.imagemUrl ??
-            validImages.find((imagem) => imagem.isPrimary)?.url ??
-            validImages[0]?.url ??
-            null,
-          isActive: true,
-          isDefault: true,
-          updatedAt: new Date(),
+
+          status: data.status ?? "draft",
+          isActive: data.isActive ?? true,
         })
-        .returning({ id: productVariantTable.id });
+        .returning();
 
-      varianteTecnicaId = varianteTecnica.id;
+      // 2. Adicionar imagens na galeria
+      const validImages = data.images.filter((image) => image.url);
 
-      if (data.gtinProdutoSimples?.trim()) {
+      if (validImages.length > 0) {
+        await tx.insert(productGalleryImagesTable).values(
+          validImages.map((image, index) => ({
+            productId: product.id,
+            imageUrl: image.url!,
+            altText: image.altText || data.name,
+            isPrimary: image.isPrimary,
+            sortOrder: index,
+          })),
+        );
+      }
+
+      // 3. SALVAR MODALIDADES DE PREÇO (apenas texto descritivo)
+      if (data.pricing?.modalities) {
+        const pricingEntries = Object.entries(data.pricing.modalities).map(
+          ([type, modality]) => ({
+            productId: product.id,
+            type: type,
+            price: converterPrecoEmCentavos(modality.price) ?? 0,
+            deliveryDays: modality.deliveryText || "",
+            pricingModalDescription: modality.deliveryText || "",
+
+            mainCardPrice: data.pricing?.mainCardPriceType === type,
+
+            isActive: true,
+          }),
+        );
+
+        if (pricingEntries.length > 0) {
+          await tx.insert(productPricingTable).values(pricingEntries);
+        }
+      }
+
+      if (entregaPropriaNaoDesativada) {
+        await salvarPrecosEntregaPropriaProduto(
+          product.id,
+          data.entrega?.precosEntregaPropria ?? [],
+          { executor: tx, revalidar: false },
+        );
+      }
+
+      if (data.entrega?.classificacoesLogisticasIds?.length) {
+        await tx.insert(produtosTiposLogisticosTable).values(
+          data.entrega.classificacoesLogisticasIds.map((tipoLogisticoId) => ({
+            produtoId: product.id,
+            tipoLogisticoId,
+          })),
+        );
+      }
+
+      await salvarEstruturaVariantesProduto({
+        productId: product.id,
+        productKind: data.productKind ?? "simple",
+        attributes: data.attributes,
+        variants: data.variants,
+        marcaId: marcaFinal.id,
+        executor: tx,
+      });
+
+      let varianteTecnicaId: string | null = null;
+      if ((data.productKind ?? "simple") === "simple") {
+        const precoTecnico =
+          data.varianteTecnicaProdutoSimples?.precoEmCentavos ??
+          obterPrecoPrincipalFormulario(data.pricing);
+        const [varianteTecnica] = await tx
+          .insert(productVariantTable)
+          .values({
+            productId: product.id,
+            sku: dadosEssenciais.data.sku,
+            name: dadosEssenciais.data.name,
+            attributes: {},
+            priceInCents: precoTecnico,
+            // Produto simples mantém o estoque exclusivamente na variante técnica.
+            stockQuantity: estoqueProdutoSimples ?? 0,
+            weightInGrams: converterPesoEmGramas(
+              data.dimensoesFreteExterno?.pesoEmKg,
+            ),
+            heightInCm: converterValorEmInteiro(
+              data.dimensoesFreteExterno?.alturaEmCm,
+            ),
+            widthInCm: converterValorEmInteiro(
+              data.dimensoesFreteExterno?.larguraEmCm,
+            ),
+            lengthInCm: converterValorEmInteiro(
+              data.dimensoesFreteExterno?.comprimentoEmCm,
+            ),
+            imageUrl:
+              data.varianteTecnicaProdutoSimples?.imagemUrl ??
+              validImages.find((imagem) => imagem.isPrimary)?.url ??
+              validImages[0]?.url ??
+              null,
+            isActive: true,
+            isDefault: true,
+            updatedAt: new Date(),
+          })
+          .returning({ id: productVariantTable.id });
+
+        varianteTecnicaId = varianteTecnica.id;
+
+        if (data.gtinProdutoSimples?.trim()) {
+          await salvarIdentificadorCatalogo({
+            tipo: "gtin",
+            valor: data.gtinProdutoSimples,
+            varianteId: varianteTecnica.id,
+            marcaId: marcaFinal.id,
+            origem: data.procedenciaIdentificadores?.origem ?? "manual_admin",
+            fornecedorId: data.procedenciaIdentificadores?.fornecedorId,
+            referenciaOrigem: data.procedenciaIdentificadores?.referenciaOrigem,
+            executor: tx,
+          });
+        }
+      }
+
+      if (data.mpnProduto?.trim()) {
         await salvarIdentificadorCatalogo({
-          tipo: "gtin",
-          valor: data.gtinProdutoSimples,
-          varianteId: varianteTecnica.id,
+          tipo: "mpn",
+          valor: data.mpnProduto,
+          produtoId: product.id,
           marcaId: marcaFinal.id,
           origem: data.procedenciaIdentificadores?.origem ?? "manual_admin",
           fornecedorId: data.procedenciaIdentificadores?.fornecedorId,
           referenciaOrigem: data.procedenciaIdentificadores?.referenciaOrigem,
+          executor: tx,
         });
       }
-    }
 
-    if (data.mpnProduto?.trim()) {
-      await salvarIdentificadorCatalogo({
-        tipo: "mpn",
-        valor: data.mpnProduto,
-        produtoId: product.id,
-        marcaId: marcaFinal.id,
-        origem: data.procedenciaIdentificadores?.origem ?? "manual_admin",
-        fornecedorId: data.procedenciaIdentificadores?.fornecedorId,
-        referenciaOrigem: data.procedenciaIdentificadores?.referenciaOrigem,
-      });
-    }
+      return {
+        productId: product.id,
+        slug: product.slug,
+        varianteTecnicaId,
+      };
+    });
 
-    // 4. Revalidar cache
-    revalidateAdminProductsPath();
+    // Cache só é revalidado depois do commit da transação.
+    revalidateAdminProductsPath(cadastro.productId);
     return {
       success: true,
-      productId: product.id,
-      slug: product.slug,
-      varianteTecnicaId,
+      ...cadastro,
     };
   } catch (error) {
     console.error("Erro ao criar produto:", error);
-
-    if (produtoCriadoId) {
-      try {
-        await db
-          .delete(productTable)
-          .where(eq(productTable.id, produtoCriadoId));
-      } catch (erroLimpeza) {
-        console.error("Erro ao remover produto incompleto:", erroLimpeza);
-      }
-    }
-
     return {
       success: false,
       error:

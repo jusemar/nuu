@@ -71,14 +71,6 @@ export interface ProductFormData {
     mainCardPriceType?: string;
     configuracaoMapeamentoComercial?: unknown;
   };
-  shipping?: {
-    weight?: string | number;
-    length?: string | number;
-    width?: string | number;
-    height?: string | number;
-    hasFreeShipping?: boolean;
-    hasLocalPickup?: boolean;
-  };
   dimensoesFreteExterno?: DimensoesFreteExternoProduto;
   entrega?: {
     permiteRetirada?: boolean;
@@ -122,11 +114,6 @@ export interface ProductFormData {
 
 // Adicione estas interfaces no product-form-data.ts
 export interface PricingTabProps {
-  data: ProductFormData;
-  onChange: (updates: Partial<ProductFormData>) => void;
-}
-
-export interface ShippingTabProps {
   data: ProductFormData;
   onChange: (updates: Partial<ProductFormData>) => void;
 }

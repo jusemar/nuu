@@ -12,6 +12,14 @@ describe("integração logística na edição de produto", () => {
     process.cwd(),
     "src/app/admin/products/new/components/tabs/EntregaTab.tsx",
   );
+  const caminhoCadastro = join(
+    process.cwd(),
+    "src/app/admin/products/new/page.tsx",
+  );
+  const caminhoRascunhoFornecedor = join(
+    process.cwd(),
+    "src/features/fornecedores/components/admin/modal-rascunho-produto-fornecedor.tsx",
+  );
   const caminhoCriarProduto = join(
     process.cwd(),
     "src/actions/admin/products/create.ts",
@@ -32,6 +40,60 @@ describe("integração logística na edição de produto", () => {
     process.cwd(),
     "src/features/admin/logistics/entrega-propria/components/admin/produto-entrega-propria-precos.tsx",
   );
+  const caminhoSalvarPrecos = join(
+    process.cwd(),
+    "src/features/admin/logistics/entrega-propria/actions/admin-entrega-propria.actions.ts",
+  );
+
+  it("cadastro persiste tipos selecionados na aba Entrega com validação no servidor", () => {
+    const conteudo = readFileSync(caminhoCriarProduto, "utf-8");
+    assert.equal(conteudo.includes("resolverTiposEntregaCadastro(data)"), true);
+    assert.equal(
+      conteudo.includes('z.enum(["own", "supplier", "carrier"])'),
+      true,
+    );
+    assert.equal(
+      conteudo.includes("allowedDeliveryTypes: tiposEntregaPermitidos.data"),
+      true,
+    );
+  });
+
+  it("carrega todas as condições antes de liberar a edição e não faz segunda leitura tardia", () => {
+    const busca = readFileSync(caminhoBuscaProduto, "utf-8");
+    const componente = readFileSync(caminhoPrecosEntregaPropria, "utf-8");
+    const edicao = readFileSync(caminhoEdicao, "utf-8");
+    for (const campo of [
+      "rapidDeliveryActive: preco.rapidDeliveryActive",
+      "scheduledDeliveryActive: preco.scheduledDeliveryActive",
+      "scheduledDeliveryMinDays: preco.scheduledDeliveryMinDays",
+      "scheduledDeliveryPrice: preco.scheduledDeliveryPrice",
+    ]) {
+      assert.equal(busca.includes(campo), true);
+    }
+    assert.equal(
+      componente.includes("listarPrecosEntregaPropriaProduto"),
+      false,
+    );
+    assert.equal(
+      edicao.includes("!carregamentoInicialAplicadoRef.current"),
+      true,
+    );
+  });
+
+  it("salvamento sem mudança logística não regrava preços", () => {
+    const edicao = readFileSync(caminhoEdicao, "utf-8");
+    const atualizacao = readFileSync(caminhoAtualizarProduto, "utf-8");
+    const salvamento = readFileSync(caminhoSalvarPrecos, "utf-8");
+    assert.equal(edicao.includes("omitirLogisticaInalterada("), true);
+    assert.equal(
+      atualizacao.includes("resolverPrecosAtualizacaoProduto("),
+      true,
+    );
+    assert.equal(
+      salvamento.includes("precosEntregaPropriaAlterados(precosAtuais, items)"),
+      true,
+    );
+  });
 
   it("reutiliza o mesmo componente EntregaTab na edição", () => {
     const conteudo = readFileSync(caminhoEdicao, "utf-8");
@@ -41,6 +103,22 @@ describe("integração logística na edição de produto", () => {
       ),
       true,
     );
+  });
+
+  it("exibe apenas Entrega nos formulários administrativos e uma vez os dados físicos", () => {
+    for (const caminho of [
+      caminhoCadastro,
+      caminhoEdicao,
+      caminhoRascunhoFornecedor,
+    ]) {
+      const conteudo = readFileSync(caminho, "utf-8");
+      assert.equal(conteudo.includes("ShippingTab"), false, caminho);
+      assert.equal(conteudo.includes('value: "shipping"'), false, caminho);
+      assert.equal(conteudo.includes('valor: "shipping"'), false, caminho);
+      assert.equal(conteudo.includes("<EntregaTab"), true, caminho);
+    }
+    const entrega = readFileSync(caminhoEntregaTab, "utf-8");
+    assert.equal(entrega.match(/<DimensoesFreteExterno\b/g)?.length, 1);
   });
 
   it("passa productId para EntregaTab na edição", () => {

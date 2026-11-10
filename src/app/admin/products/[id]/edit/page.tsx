@@ -11,7 +11,6 @@ import {
   Save,
   Search,
   ShieldCheck,
-  Truck,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -26,10 +25,10 @@ import {
   SeloSituacaoPublicacao,
 } from "@/features/products";
 import { AbaVendaCruzada } from "@/features/products/components/admin/venda-cruzada/aba-venda-cruzada";
+import { omitirLogisticaInalterada } from "@/features/products/lib/admin/omitir-logistica-inalterada";
 import { useUpdateProduct } from "@/hooks/admin/mutations/products/useUpdateProduct";
 import { useProductId } from "@/hooks/admin/queries/products/use-Product-Id";
 
-import { ShippingTab } from "../../../../../features/admin/products/components/ShippingTab";
 // Import das abas
 import { BasicTab } from "../../new/components/tabs/BasicTab";
 import { EntregaTab } from "../../new/components/tabs/EntregaTab";
@@ -61,9 +60,11 @@ export default function EditProductPage() {
     useState<ProductFormData>(initialProductData);
   const [abaAtiva, setAbaAtiva] = useState("basic");
   const carregamentoInicialAplicadoRef = useRef(false);
+  const dadosCarregadosRef = useRef<ProductFormData | null>(null);
 
   useEffect(() => {
     carregamentoInicialAplicadoRef.current = false;
+    dadosCarregadosRef.current = null;
   }, [productId]);
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export default function EditProductPage() {
         };
       };
 
-      setProductData({
+      const dadosCarregados: ProductFormData = {
         // Campos básicos
         name: product.name || "",
         slug: product.slug || "",
@@ -230,15 +231,6 @@ export default function EditProductPage() {
             }))
           : [],
 
-        // Campos de shipping (valores padrão)
-        shipping: {
-          weight: product.weight ?? "",
-          length: product.length ?? "",
-          width: product.width ?? "",
-          height: product.height ?? "",
-          hasFreeShipping: false,
-          hasLocalPickup: false,
-        },
         dimensoesFreteExterno: {
           pesoEmKg:
             product.weight === null || product.weight === undefined
@@ -274,7 +266,9 @@ export default function EditProductPage() {
           internalCode: product.internalCode || "",
           sellerInfo: product.sellerInfo || "",
         },
-      });
+      };
+      dadosCarregadosRef.current = dadosCarregados;
+      setProductData(dadosCarregados);
       carregamentoInicialAplicadoRef.current = true;
     }
   }, [productResponse, productId]);
@@ -307,25 +301,14 @@ export default function EditProductPage() {
       ),
     },
     {
-      name: "Frete",
-      icon: Truck,
-      value: "shipping",
-      component: (
-        <ShippingTab
-          data={productData}
-          onChange={(updates) =>
-            setProductData((prev) => ({ ...prev, ...updates }))
-          }
-        />
-      ),
-    },
-    {
       name: "Entrega",
       icon: PackageCheck,
       value: "entrega",
       component: (
         <EntregaTab
           data={productData.entrega ?? {}}
+          productKind={productData.productKind}
+          variants={productData.variants}
           productId={productId}
           categoriaId={productData.categoryId || null}
           dimensoesFrete={productData.dimensoesFreteExterno}
@@ -400,15 +383,25 @@ export default function EditProductPage() {
 
   const handleUpdateProduct = async () => {
     try {
+      if (
+        !dadosCarregadosRef.current ||
+        !carregamentoInicialAplicadoRef.current
+      ) {
+        return;
+      }
       if (!productData.categoryId) {
         alert("Selecione uma categoria antes de salvar!");
         return;
       }
 
-      await updateProductMutation.mutateAsync({
+      const resultado = await updateProductMutation.mutateAsync({
         id: productId,
-        data: productData,
+        data: omitirLogisticaInalterada(
+          productData,
+          dadosCarregadosRef.current,
+        ),
       });
+      if (resultado.success) dadosCarregadosRef.current = productData;
       clearVariantsDraft(variantsDraftKey);
     } catch (error) {
       console.error("Erro ao atualizar produto:", error);
